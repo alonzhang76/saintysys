@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>财务管理 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">财务管理</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 标签页 -->
+      <div class="tabs" id="tabs">
+        <div class="tab-item active" data-tab="invoice" onclick="Finance.switchTab('invoice')">发票管理</div>
+        <div class="tab-item" data-tab="payment" onclick="Finance.switchTab('payment')">付款管理</div>
+        <div class="tab-item" data-tab="collection" onclick="Finance.switchTab('collection')">收汇管理</div>
+      </div>
+
+      <!-- 发票管理 -->
+      <div class="card" id="tab-invoice">
+        <div class="filter-bar">
+          <div class="search-input">
+            <input type="text" class="form-input" id="inv_search" placeholder="按发票号/订单号/款号搜索" oninput="Finance.renderInvoice()">
+          </div>
+          <select class="form-select" id="inv_status" onchange="Finance.renderInvoice()">
+            <option value="">全部状态</option>
+            <option value="已开票">已开票</option>
+            <option value="已作废">已作废</option>
+          </select>
+        </div>
+        <div class="table-toolbar">
+          <div class="table-toolbar-left"><span class="card-title">发票列表</span></div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary" onclick="Finance.openAddInvoice()" title="新增">➕</button>
+          </div>
+        </div>
+        <div id="invoiceTable"></div>
+      </div>
+
+      <!-- 付款管理 -->
+      <div class="card hidden" id="tab-payment">
+        <div class="filter-bar">
+          <div class="search-input">
+            <input type="text" class="form-input" id="pay_search" placeholder="按发票号/款号/收款方搜索" oninput="Finance.renderPayment()">
+          </div>
+          <select class="form-select" id="pay_statusFilter" onchange="Finance.renderPayment()">
+            <option value="">全部状态</option>
+            <option value="已付款">已付款</option>
+            <option value="待付款">待付款</option>
+          </select>
+        </div>
+        <div class="table-toolbar">
+          <div class="table-toolbar-left"><span class="card-title">付款列表</span></div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary" onclick="Finance.openAddPayment()" title="新增">➕</button>
+          </div>
+        </div>
+        <div id="paymentTable"></div>
+      </div>
+
+      <!-- 收汇管理 -->
+      <div class="card hidden" id="tab-collection">
+        <div class="filter-bar">
+          <div class="search-input">
+            <input type="text" class="form-input" id="col_search" placeholder="按订单号/款号搜索" oninput="Finance.renderCollection()">
+          </div>
+          <select class="form-select" id="col_statusFilter" onchange="Finance.renderCollection()">
+            <option value="">全部状态</option>
+            <option value="已收汇">已收汇</option>
+            <option value="待收汇">待收汇</option>
+          </select>
+        </div>
+        <div class="table-toolbar">
+          <div class="table-toolbar-left"><span class="card-title">收汇列表</span></div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary" onclick="Finance.openAddCollection()" title="新增">➕</button>
+          </div>
+        </div>
+        <div id="collectionTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('finance');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('finance');
+
+// ===== 财务管理模块 =====
+const Finance = {
+  currentTab: 'invoice',
+
+  // 财务专用状态标签映射
+  invoiceStatusMap: { '已开票': 'tag-blue', '已作废': 'tag-red' },
+  paymentStatusMap: { '已付款': 'tag-green', '待付款': 'tag-orange' },
+  collectionStatusMap: { '已收汇': 'tag-green', '待收汇': 'tag-orange' },
+
+  // ===== 数据获取 =====
+  getInvoices() { return App.store.get('invoices', []); },
+  getPayments() { return App.store.get('payments', []); },
+  getCollections() { return App.store.get('collections', []); },
+
+  // 自动生成发票号
+  genInvoiceNo() {
+    const list = this.getInvoices();
+    const seq = list.length + 1;
+    return `INV-2026-${String(seq).padStart(4, '0')}`;
+  },
+
+  // 渲染统计卡片
+  renderStats() {
+    const invoices = this.getInvoices();
+    const payments = this.getPayments();
+    const collections = this.getCollections();
+
+    // 已开票总额（排除已作废）
+    const invoicedTotal = invoices.filter(i => i.status === '已开票').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    // 已付款总额
+    const paidTotal = payments.filter(p => p.status === '已付款').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    // 已收汇总额（USD）
+    const collectedTotal = collections.filter(c => c.status === '已收汇').reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    // 待收汇金额
+    const pendingCollection = collections.filter(c => c.status === '待收汇').reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+    const cards = [
+      { icon: '🧾', bg: '#e8f1f5', color: '#004D6D', label: '已开票总额', value: '$' + App.utils.formatMoney(invoicedTotal), sub: '有效发票金额' },
+      { icon: '💸', bg: '#fff8ed', color: '#d9883a', label: '已付款总额', value: App.utils.formatMoney(paidTotal), sub: '已付采购款' },
+      { icon: '💰', bg: '#ecfdf5', color: '#2d9d5f', label: '已收汇总额(USD)', value: '$' + App.utils.formatMoney(collectedTotal), sub: '已收外汇' },
+      { icon: '⏳', bg: '#fef2f2', color: '#d44848', label: '待收汇金额', value: '$' + App.utils.formatMoney(pendingCollection), sub: '待收外汇' },
+    ];
+
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+        <div class="stat-info">
+          <div class="stat-label">${c.label}</div>
+          <div class="stat-value" style="color:${c.color};">${c.value}</div>
+          <div class="stat-sub">${c.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  // 切换标签页
+  switchTab(tab) {
+    this.currentTab = tab;
+    document.querySelectorAll('#tabs .tab-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    // 显示/隐藏对应卡片区域
+    document.getElementById('tab-invoice').classList.toggle('hidden', tab !== 'invoice');
+    document.getElementById('tab-payment').classList.toggle('hidden', tab !== 'payment');
+    document.getElementById('tab-collection').classList.toggle('hidden', tab !== 'collection');
+    // 重新渲染对应表格
+    if (tab === 'invoice') this.renderInvoice();
+    else if (tab === 'payment') this.renderPayment();
+    else if (tab === 'collection') this.renderCollection();
+  },
+
+  // ===== 发票管理 =====
+  renderInvoice() {
+    let list = this.getInvoices();
+    // 搜索过滤
+    const search = document.getElementById('inv_search').value.trim().toLowerCase();
+    if (search) {
+      list = list.filter(i =>
+        (i.invoiceNo || '').toLowerCase().includes(search) ||
+        (i.orderNo || '').toLowerCase().includes(search) ||
+        (i.styleNo || '').toLowerCase().includes(search)
+      );
+    }
+    // 状态过滤
+    const status = document.getElementById('inv_status').value;
+    if (status) list = list.filter(i => i.status === status);
+
+    // 按开票日期倒序（空值排末尾）
+    list = App.utils.sortByDateDesc(list, 'invoiceDate');
+
+    App.renderTable('invoiceTable', {
+      columns: [
+        { key: 'invoiceNo', title: '发票号', width: '150px' },
+        { key: 'orderNo', title: '订单号', width: '140px' },
+        { key: 'styleNo', title: '款号', width: '160px' },
+        { key: 'invoiceDate', title: '开票日期', width: '110px' },
+        { key: 'amount', title: '金额', width: '130px', render: (v, row) => `${row.currency} ${App.utils.formatMoney(v)}` },
+        { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v, this.invoiceStatusMap) },
+      ],
+      data: list,
+      actions: (row) => {
+        let html = '';
+        html += `<button class="btn btn-sm" onclick="Finance.openEditInvoice('${row.id}')" title="编辑">✏</button>`;
+        html += `<button class="btn btn-sm btn-danger" onclick="Finance.removeInvoice('${row.id}')" title="删除">🗑</button>`;
+        return html;
+      }
+    });
+  },
+
+  // 发票表单
+  buildInvoiceForm(data = {}) {
+    const orders = App.store.get('orders', []);
+    const styles = App.store.get('styles', []);
+    const orderOptions = orders.map(o => `<option value="${o.orderNo}" ${data.orderNo === o.orderNo ? 'selected' : ''}>${o.orderNo}</option>`).join('');
+    const styleOptions = styles.map(s => `<option value="${s.styleNo}" ${data.styleNo === s.styleNo ? 'selected' : ''}>${s.styleNo}</option>`).join('');
+    const currencies = ['USD', 'EUR', 'CNY'];
+    const statuses = ['已开票', '已作废'];
+
+    return `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">发票号<span class="required">*</span></label>
+          <input type="text" class="form-input" id="iv_invoiceNo" value="${data.invoiceNo || this.genInvoiceNo()}" readonly style="background:#f9fafb;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">开票日期<span class="required">*</span></label>
+          <input type="date" class="form-input" id="iv_invoiceDate" value="${data.invoiceDate || App.utils.today()}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">订单号</label>
+          <select class="form-select" id="iv_orderNo">
+            <option value="">请选择订单号</option>
+            ${orderOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">款号</label>
+          <select class="form-select" id="iv_styleNo">
+            <option value="">请选择款号</option>
+            ${styleOptions}
+          </select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">金额<span class="required">*</span></label>
+          <input type="number" step="0.01" class="form-input" id="iv_amount" value="${data.amount || ''}" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">币种</label>
+          <select class="form-select" id="iv_currency">
+            ${currencies.map(c => `<option value="${c}" ${data.currency === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">状态</label>
+          <select class="form-select" id="iv_status">
+            ${statuses.map(s => `<option value="${s}" ${data.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `;
+  },
+
+  // 打开新增发票模态框
+  openAddInvoice() {
+    App.modal.open({
+      title: '新增发票',
+      body: this.buildInvoiceForm(),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Finance.saveInvoice()">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 打开编辑发票模态框
+  openEditInvoice(id) {
+    const list = this.getInvoices();
+    const item = list.find(i => i.id === id);
+    if (!item) return;
+    App.modal.open({
+      title: '编辑发票',
+      body: this.buildInvoiceForm(item),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Finance.saveInvoice('${id}')">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 保存发票
+  saveInvoice(id) {
+    const invoiceNo = document.getElementById('iv_invoiceNo').value;
+    const invoiceDate = document.getElementById('iv_invoiceDate').value;
+    const amount = document.getElementById('iv_amount').value;
+
+    // 校验必填字段
+    if (!invoiceNo) { App.toast('发票号不能为空', 'error'); return; }
+    if (!invoiceDate) { App.toast('请选择开票日期', 'error'); return; }
+    if (!amount) { App.toast('请输入金额', 'error'); return; }
+
+    const data = {
+      invoiceNo,
+      orderNo: document.getElementById('iv_orderNo').value,
+      styleNo: document.getElementById('iv_styleNo').value,
+      invoiceDate,
+      amount: Number(amount),
+      currency: document.getElementById('iv_currency').value,
+      status: document.getElementById('iv_status').value,
+    };
+
+    const list = this.getInvoices();
+    if (id) {
+      // 编辑更新
+      const idx = list.findIndex(i => i.id === id);
+      if (idx > -1) list[idx] = { ...list[idx], ...data };
+      App.toast('修改成功', 'success');
+    } else {
+      // 新增
+      list.push({ id: App.utils.genId('IV'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('invoices', list);
+    App.modal.close();
+    this.renderStats();
+    this.renderInvoice();
+  },
+
+  // 删除发票
+  removeInvoice(id) {
+    App.confirm('确定要删除这张发票吗？', () => {
+      let list = this.getInvoices();
+      list = list.filter(i => i.id !== id);
+      App.store.set('invoices', list);
+      App.toast('删除成功', 'success');
+      this.renderStats();
+      this.renderInvoice();
+    });
+  },
+
+  // ===== 付款管理 =====
+  renderPayment() {
+    let list = this.getPayments();
+    // 搜索过滤
+    const search = document.getElementById('pay_search').value.trim().toLowerCase();
+    if (search) {
+      list = list.filter(p =>
+        (p.invoiceNo || '').toLowerCase().includes(search) ||
+        (p.styleNo || '').toLowerCase().includes(search) ||
+        (p.payee || '').toLowerCase().includes(search)
+      );
+    }
+    // 状态过滤
+    const status = document.getElementById('pay_statusFilter').value;
+    if (status) list = list.filter(p => p.status === status);
+
+    // 按付款日期倒序（空值排末尾）
+    list = App.utils.sortByDateDesc(list, 'paymentDate');
+
+    App.renderTable('paymentTable', {
+      columns: [
+        { key: 'invoiceNo', title: '关联发票号', width: '150px' },
+        { key: 'styleNo', title: '款号', width: '160px' },
+        { key: 'paymentDate', title: '付款日期', width: '110px' },
+        { key: 'amount', title: '付款金额', width: '120px', render: (v) => App.utils.formatMoney(v) },
+        { key: 'payee', title: '收款方', width: '140px', render: (v) => App.utils.escapeHtml(v) },
+        { key: 'method', title: '付款方式', width: '90px', render: (v) => `<span class="tag tag-blue">${v}</span>` },
+        { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v, this.paymentStatusMap) },
+      ],
+      data: list,
+      actions: (row) => {
+        let html = '';
+        html += `<button class="btn btn-sm" onclick="Finance.openEditPayment('${row.id}')" title="编辑">✏</button>`;
+        html += `<button class="btn btn-sm btn-danger" onclick="Finance.removePayment('${row.id}')" title="删除">🗑</button>`;
+        return html;
+      }
+    });
+  },
+
+  // 付款表单
+  buildPaymentForm(data = {}) {
+    const invoices = this.getInvoices().filter(i => i.status === '已开票');
+    const styles = App.store.get('styles', []);
+    const invoiceOptions = invoices.map(i => `<option value="${i.invoiceNo}" ${data.invoiceNo === i.invoiceNo ? 'selected' : ''}>${i.invoiceNo}</option>`).join('');
+    const styleOptions = styles.map(s => `<option value="${s.styleNo}" ${data.styleNo === s.styleNo ? 'selected' : ''}>${s.styleNo}</option>`).join('');
+    const methods = ['T/T', '现金', '银行转账', '其他'];
+    const statuses = ['已付款', '待付款'];
+
+    return `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">关联发票号</label>
+          <select class="form-select" id="pay_invoiceNo">
+            <option value="">请选择发票号</option>
+            ${invoiceOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">款号</label>
+          <select class="form-select" id="pay_styleNo">
+            <option value="">请选择款号</option>
+            ${styleOptions}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">付款日期<span class="required">*</span></label>
+          <input type="date" class="form-input" id="pay_paymentDate" value="${data.paymentDate || App.utils.today()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">付款金额<span class="required">*</span></label>
+          <input type="number" step="0.01" class="form-input" id="pay_amount" value="${data.amount || ''}" placeholder="0.00">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">收款方</label>
+          <input type="text" class="form-input" id="pay_payee" value="${App.utils.escapeHtml(data.payee || '')}" placeholder="请输入收款方">
+        </div>
+        <div class="form-group">
+          <label class="form-label">付款方式</label>
+          <select class="form-select" id="pay_method">
+            ${methods.map(m => `<option value="${m}" ${data.method === m ? 'selected' : ''}>${m}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="pay_status">
+          ${statuses.map(s => `<option value="${s}" ${data.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  },
+
+  // 打开新增付款模态框
+  openAddPayment() {
+    App.modal.open({
+      title: '新增付款',
+      body: this.buildPaymentForm(),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Finance.savePayment()">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 打开编辑付款模态框
+  openEditPayment(id) {
+    const list = this.getPayments();
+    const item = list.find(p => p.id === id);
+    if (!item) return;
+    App.modal.open({
+      title: '编辑付款',
+      body: this.buildPaymentForm(item),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Finance.savePayment('${id}')">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 保存付款
+  savePayment(id) {
+    const paymentDate = document.getElementById('pay_paymentDate').value;
+    const amount = document.getElementById('pay_amount').value;
+
+    // 校验必填字段
+    if (!paymentDate) { App.toast('请选择付款日期', 'error'); return; }
+    if (!amount) { App.toast('请输入付款金额', 'error'); return; }
+
+    const data = {
+      invoiceNo: document.getElementById('pay_invoiceNo').value,
+      styleNo: document.getElementById('pay_styleNo').value,
+      paymentDate,
+      amount: Number(amount),
+      payee: document.getElementById('pay_payee').value.trim(),
+      method: document.getElementById('pay_method').value,
+      status: document.getElementById('pay_status').value,
+    };
+
+    const list = this.getPayments();
+    if (id) {
+      // 编辑更新
+      const idx = list.findIndex(p => p.id === id);
+      if (idx > -1) list[idx] = { ...list[idx], ...data };
+      App.toast('修改成功', 'success');
+    } else {
+      // 新增
+      list.push({ id: App.utils.genId('PAY'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('payments', list);
+    App.modal.close();
+    this.renderStats();
+    this.renderPayment();
+  },
+
+  // 删除付款
+  removePayment(id) {
+    App.confirm('确定要删除这条付款记录吗？', () => {
+      let list = this.getPayments();
+      list = list.filter(p => p.id !== id);
+      App.store.set('payments', list);
+      App.toast('删除成功', 'success');
+      this.renderStats();
+      this.renderPayment();
+    });
+  },
+
+  // ===== 收汇管理 =====
+  renderCollection() {
+    let list = this.getCollections();
+    // 搜索过滤
+    const search = document.getElementById('col_search').value.trim().toLowerCase();
+    if (search) {
+      list = list.filter(c =>
+        (c.orderNo || '').toLowerCase().includes(search) ||
+        (c.styleNo || '').toLowerCase().includes(search)
+      );
+    }
+    // 状态过滤
+    const status = document.getElementById('col_statusFilter').value;
+    if (status) list = list.filter(c => c.status === status);
+
+    // 按收汇日期倒序（空值排末尾）
+    list = App.utils.sortByDateDesc(list, 'collectionDate');
+
+    App.renderTable('collectionTable', {
+      columns: [
+        { key: 'orderNo', title: '订单号', width: '140px' },
+        { key: 'styleNo', title: '款号', width: '160px' },
+        { key: 'collectionDate', title: '收汇日期', width: '110px' },
+        { key: 'amount', title: '收汇金额', width: '130px', render: (v, row) => `${row.currency} ${App.utils.formatMoney(v)}` },
+        { key: 'exchangeRate', title: '汇率', width: '80px', render: (v) => v || '<span class="text-muted">-</span>' },
+        { key: 'rmbAmount', title: '人民币金额', width: '130px', render: (v) => '¥' + App.utils.formatMoney(v) },
+        { key: 'type', title: '类型', width: '80px', render: (v) => `<span class="tag tag-purple">${v}</span>` },
+        { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v, this.collectionStatusMap) },
+      ],
+      data: list,
+      actions: (row) => {
+        let html = '';
+        html += `<button class="btn btn-sm" onclick="Finance.openEditCollection('${row.id}')" title="编辑">✏</button>`;
+        html += `<button class="btn btn-sm btn-danger" onclick="Finance.removeCollection('${row.id}')" title="删除">🗑</button>`;
+        return html;
+      }
+    });
+  },
+
+  // 收汇表单
+  buildCollectionForm(data = {}) {
+    const orders = App.store.get('orders', []);
+    const styles = App.store.get('styles', []);
+    const orderOptions = orders.map(o => `<option value="${o.orderNo}" ${data.orderNo === o.orderNo ? 'selected' : ''}>${o.orderNo}</option>`).join('');
+    const styleOptions = styles.map(s => `<option value="${s.styleNo}" ${data.styleNo === s.styleNo ? 'selected' : ''}>${s.styleNo}</option>`).join('');
+    const currencies = ['USD', 'EUR', 'CNY'];
+    const types = ['预付款', '尾款', '全款'];
+    const statuses = ['已收汇', '待收汇'];
+
+    return `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">订单号</label>
+          <select class="form-select" id="col_orderNo">
+            <option value="">请选择订单号</option>
+            ${orderOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">款号</label>
+          <select class="form-select" id="col_styleNo">
+            <option value="">请选择款号</option>
+            ${styleOptions}
+          </select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">收汇日期<span class="required">*</span></label>
+          <input type="date" class="form-input" id="col_collectionDate" value="${data.collectionDate || App.utils.today()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">金额<span class="required">*</span></label>
+          <input type="number" step="0.01" class="form-input" id="col_amount" value="${data.amount || ''}" placeholder="0.00" oninput="Finance.calcRmb()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">币种</label>
+          <select class="form-select" id="col_currency" onchange="Finance.calcRmb()">
+            ${currencies.map(c => `<option value="${c}" ${data.currency === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">汇率</label>
+          <input type="number" step="0.0001" class="form-input" id="col_exchangeRate" value="${data.exchangeRate || ''}" placeholder="0.0000" oninput="Finance.calcRmb()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">人民币金额(自动)</label>
+          <input type="text" class="form-input" id="col_rmbAmount" value="${data.rmbAmount ? App.utils.formatMoney(data.rmbAmount) : ''}" readonly style="background:#f9fafb;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">类型</label>
+          <select class="form-select" id="col_type">
+            ${types.map(t => `<option value="${t}" ${data.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="col_status">
+          ${statuses.map(s => `<option value="${s}" ${data.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  },
+
+  // 自动计算人民币金额 = 金额 × 汇率
+  calcRmb() {
+    const amount = Number(document.getElementById('col_amount').value) || 0;
+    const rate = Number(document.getElementById('col_exchangeRate').value) || 0;
+    const rmb = amount * rate;
+    document.getElementById('col_rmbAmount').value = App.utils.formatMoney(rmb);
+  },
+
+  // 打开新增收汇模态框
+  openAddCollection() {
+    App.modal.open({
+      title: '新增收汇',
+      body: this.buildCollectionForm(),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Finance.saveCollection()">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 打开编辑收汇模态框
+  openEditCollection(id) {
+    const list = this.getCollections();
+    const item = list.find(c => c.id === id);
+    if (!item) return;
+    App.modal.open({
+      title: '编辑收汇',
+      body: this.buildCollectionForm(item),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Finance.saveCollection('${id}')">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 保存收汇
+  saveCollection(id) {
+    const collectionDate = document.getElementById('col_collectionDate').value;
+    const amount = document.getElementById('col_amount').value;
+
+    // 校验必填字段
+    if (!collectionDate) { App.toast('请选择收汇日期', 'error'); return; }
+    if (!amount) { App.toast('请输入金额', 'error'); return; }
+
+    const amountNum = Number(amount);
+    const rate = Number(document.getElementById('col_exchangeRate').value) || 0;
+    const rmbAmount = amountNum * rate; // 人民币金额自动计算
+
+    const data = {
+      orderNo: document.getElementById('col_orderNo').value,
+      styleNo: document.getElementById('col_styleNo').value,
+      collectionDate,
+      amount: amountNum,
+      currency: document.getElementById('col_currency').value,
+      exchangeRate: rate,
+      rmbAmount: rmbAmount,
+      type: document.getElementById('col_type').value,
+      status: document.getElementById('col_status').value,
+    };
+
+    const list = this.getCollections();
+    if (id) {
+      // 编辑更新
+      const idx = list.findIndex(c => c.id === id);
+      if (idx > -1) list[idx] = { ...list[idx], ...data };
+      App.toast('修改成功', 'success');
+    } else {
+      // 新增
+      list.push({ id: App.utils.genId('COL'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('collections', list);
+    App.modal.close();
+    this.renderStats();
+    this.renderCollection();
+  },
+
+  // 删除收汇
+  removeCollection(id) {
+    App.confirm('确定要删除这条收汇记录吗？', () => {
+      let list = this.getCollections();
+      list = list.filter(c => c.id !== id);
+      App.store.set('collections', list);
+      App.toast('删除成功', 'success');
+      this.renderStats();
+      this.renderCollection();
+    });
+  }
+};
+
+// 初始化渲染
+Finance.renderStats();
+Finance.renderInvoice();
+</script>
+</body>
+</html>

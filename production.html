@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生产管理 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">生产管理</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 标签页 -->
+      <div class="tabs" id="tabs">
+        <div class="tab-item active" data-tab="all" onclick="Production.switchTab('all')">全部</div>
+        <div class="tab-item" data-tab="服装厂" onclick="Production.switchTab('服装厂')">服装厂</div>
+        <div class="tab-item" data-tab="水洗厂" onclick="Production.switchTab('水洗厂')">水洗厂</div>
+      </div>
+
+      <!-- 卡片区域 -->
+      <div class="card">
+        <!-- 筛选栏 -->
+        <div class="filter-bar">
+          <div class="search-input">
+            <input type="text" class="form-input" id="searchInput" placeholder="按款号/工厂名搜索" oninput="Production.render()">
+          </div>
+          <select class="form-select" id="statusFilter" onchange="Production.render()">
+            <option value="">全部状态</option>
+            <option value="待排产">待排产</option>
+            <option value="生产中">生产中</option>
+            <option value="已完成">已完成</option>
+          </select>
+        </div>
+        <!-- 工具栏 -->
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <span class="card-title">生产工单列表</span>
+          </div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary" onclick="Production.openAdd()" title="新增">➕</button>
+          </div>
+        </div>
+        <!-- 表格容器 -->
+        <div id="productionTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('production');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('production');
+
+// ===== 生产管理模块 =====
+const Production = {
+  currentTab: 'all',
+
+  // 获取数据
+  getData() {
+    return App.store.get('productions', []);
+  },
+
+  // 渲染统计卡片
+  renderStats() {
+    const list = this.getData();
+    const inProd = list.filter(p => p.status === '生产中').length;
+    const pending = list.filter(p => p.status === '待排产').length;
+    const done = list.filter(p => p.status === '已完成').length;
+
+    const cards = [
+      { icon: '🏭', bg: '#e8f1f5', color: '#004D6D', label: '生产工单总数', value: list.length, sub: '全部工单' },
+      { icon: '⚙️', bg: '#fff8ed', color: '#d9883a', label: '生产中', value: inProd, sub: '正在生产' },
+      { icon: '📋', bg: '#f9fafb', color: '#6b7280', label: '待排产', value: pending, sub: '等待排产' },
+      { icon: '✅', bg: '#ecfdf5', color: '#2d9d5f', label: '已完成', value: done, sub: '生产完成' },
+    ];
+
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+        <div class="stat-info">
+          <div class="stat-label">${c.label}</div>
+          <div class="stat-value" style="color:${c.color};">${c.value}</div>
+          <div class="stat-sub">${c.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  // 切换标签页
+  switchTab(tab) {
+    this.currentTab = tab;
+    document.querySelectorAll('#tabs .tab-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    this.render();
+  },
+
+  // 过滤数据
+  getFiltered() {
+    let list = this.getData();
+    // 标签页过滤（按工厂类型）
+    if (this.currentTab !== 'all') {
+      list = list.filter(p => p.factoryType === this.currentTab);
+    }
+    // 搜索过滤（按款号/工厂名）
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (search) {
+      list = list.filter(p =>
+        (p.styleNo || '').toLowerCase().includes(search) ||
+        (p.factoryName || '').toLowerCase().includes(search)
+      );
+    }
+    // 状态过滤
+    const status = document.getElementById('statusFilter').value;
+    if (status) {
+      list = list.filter(p => p.status === status);
+    }
+    // 按开始日期倒序（空值排末尾）
+    return App.utils.sortByDateDesc(list, ['startDate', 'expectedEnd', 'actualEnd']);
+  },
+
+  // 渲染表格
+  render() {
+    const list = this.getFiltered();
+    App.renderTable('productionTable', {
+      columns: [
+        { key: 'styleNo', title: '款号', width: '150px' },
+        { key: 'orderNo', title: '订单号', width: '130px' },
+        { key: 'factoryType', title: '工厂类型', width: '80px', render: (v) => `<span class="tag ${v === '服装厂' ? 'tag-blue' : 'tag-teal'}">${v}</span>` },
+        { key: 'factoryName', title: '工厂名称', width: '140px', render: (v) => App.utils.escapeHtml(v) },
+        { key: 'contactPerson', title: '联系人', width: '80px', render: (v) => App.utils.escapeHtml(v) },
+        { key: 'contactPhone', title: '联系电话', width: '120px' },
+        { key: 'startDate', title: '开始日期', width: '100px', render: (v) => v || '<span class="text-muted">-</span>' },
+        { key: 'expectedEnd', title: '预计完成', width: '100px', render: (v) => v || '<span class="text-muted">-</span>' },
+        { key: 'actualEnd', title: '实际完成', width: '100px', render: (v) => v || '<span class="text-muted">-</span>' },
+        { key: 'qtyPlanned', title: '计划数量', width: '80px' },
+        { key: 'qtyCompleted', title: '完成数量', width: '80px' },
+        // 完成进度列 - 用进度条显示百分比
+        { key: 'qtyCompleted', title: '完成进度', width: '120px', render: (v, row) => {
+          const planned = row.qtyPlanned || 0;
+          const completed = row.qtyCompleted || 0;
+          const pct = planned > 0 ? Math.min(100, Math.round(completed / planned * 100)) : 0;
+          const cls = pct >= 100 ? 'success' : (pct >= 50 ? '' : 'warning');
+          return `<div class="progress-bar"><div class="progress-fill ${cls}" style="width:${pct}%"></div></div><span class="font-sm text-muted">${pct}%</span>`;
+        }},
+        { key: 'qcResult', title: '质检结果', width: '80px', render: (v) => App.statusTag(v) },
+        { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
+      ],
+      data: list,
+      actions: (row) => {
+        let html = '';
+        html += `<button class="btn btn-sm" onclick="Production.openEdit('${row.id}')" title="编辑">✏</button>`;
+        html += `<button class="btn btn-sm btn-primary" onclick="Production.openProgress('${row.id}')" title="更新进度">📊</button>`;
+        html += `<button class="btn btn-sm btn-danger" onclick="Production.remove('${row.id}')" title="删除">🗑</button>`;
+        return html;
+      }
+    });
+  },
+
+  // 构建新增/编辑表单
+  buildForm(data = {}) {
+    // 从订单管理中提取款号（去重）
+    const orders = App.store.get('orders', []);
+    const seenStyle = new Set();
+    const styleList = [];
+    orders.forEach(o => {
+      if (o.styleNo && !seenStyle.has(o.styleNo)) {
+        seenStyle.add(o.styleNo);
+        styleList.push(o.styleNo);
+      }
+    });
+    const styleOptions = styleList.map(s => `<option value="${App.utils.escapeHtml(s)}" ${data.styleNo === s ? 'selected' : ''}>${App.utils.escapeHtml(s)}</option>`).join('');
+    const orderOptions = orders.map(o => `<option value="${App.utils.escapeHtml(o.orderNo)}" ${data.orderNo === o.orderNo ? 'selected' : ''}>${App.utils.escapeHtml(o.orderNo)}</option>`).join('');
+    const factoryTypes = ['服装厂', '水洗厂'];
+    const qcResults = ['待检', '合格', '不合格', '返工'];
+    const statuses = ['待排产', '生产中', '已完成'];
+
+    return `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">款号<span class="required">*</span></label>
+          <select class="form-select" id="pd_styleNo">
+            <option value="">请选择款号</option>
+            ${styleOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">订单号</label>
+          <select class="form-select" id="pd_orderNo">
+            <option value="">请选择订单号</option>
+            ${orderOptions}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">工厂类型<span class="required">*</span></label>
+          <select class="form-select" id="pd_factoryType">
+            ${factoryTypes.map(t => `<option value="${t}" ${data.factoryType === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">工厂名称<span class="required">*</span></label>
+          <input type="text" class="form-input" id="pd_factoryName" value="${App.utils.escapeHtml(data.factoryName || '')}" placeholder="请输入工厂名称">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">联系人</label>
+          <input type="text" class="form-input" id="pd_contactPerson" value="${App.utils.escapeHtml(data.contactPerson || '')}" placeholder="请输入联系人">
+        </div>
+        <div class="form-group">
+          <label class="form-label">联系电话</label>
+          <input type="text" class="form-input" id="pd_contactPhone" value="${App.utils.escapeHtml(data.contactPhone || '')}" placeholder="请输入联系电话">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">开始日期</label>
+          <input type="date" class="form-input" id="pd_startDate" value="${data.startDate || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">预计完成</label>
+          <input type="date" class="form-input" id="pd_expectedEnd" value="${data.expectedEnd || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">实际完成</label>
+          <input type="date" class="form-input" id="pd_actualEnd" value="${data.actualEnd || ''}">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">计划数量</label>
+          <input type="number" class="form-input" id="pd_qtyPlanned" value="${data.qtyPlanned || 0}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">完成数量</label>
+          <input type="number" class="form-input" id="pd_qtyCompleted" value="${data.qtyCompleted || 0}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">质检结果</label>
+          <select class="form-select" id="pd_qcResult">
+            ${qcResults.map(q => `<option value="${q}" ${data.qcResult === q ? 'selected' : ''}>${q}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="pd_status">
+          ${statuses.map(s => `<option value="${s}" ${data.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  },
+
+  // 打开新增模态框
+  openAdd() {
+    App.modal.open({
+      title: '新增生产工单',
+      body: this.buildForm(),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Production.save()">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 打开编辑模态框
+  openEdit(id) {
+    const list = this.getData();
+    const item = list.find(p => p.id === id);
+    if (!item) return;
+    App.modal.open({
+      title: '编辑生产工单',
+      body: this.buildForm(item),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Production.save('${id}')">保存</button>`,
+      size: 'lg'
+    });
+  },
+
+  // 保存（新增或编辑）
+  save(id) {
+    const styleNo = document.getElementById('pd_styleNo').value;
+    const factoryType = document.getElementById('pd_factoryType').value;
+    const factoryName = document.getElementById('pd_factoryName').value.trim();
+
+    // 校验必填字段
+    if (!styleNo) { App.toast('请选择款号', 'error'); return; }
+    if (!factoryType) { App.toast('请选择工厂类型', 'error'); return; }
+    if (!factoryName) { App.toast('请输入工厂名称', 'error'); return; }
+
+    // 水洗厂类型校验：必须存在已确认的水洗记录
+    if (factoryType === '水洗厂' && !id) {
+      const washes = App.store.get('washes', []);
+      const confirmed = washes.some(w =>
+        w.styleNo === styleNo &&
+        ((w.rounds && w.rounds.some(r => r.status === '已确认')) || w.status === '已确认')
+      );
+      if (!confirmed) {
+        App.toast('该款号尚未有已确认的水洗记录，请先在水洗管理中完成水洗样确认', 'warning');
+        return;
+      }
+    }
+
+    const data = {
+      styleNo,
+      orderNo: document.getElementById('pd_orderNo').value,
+      factoryType,
+      factoryName,
+      contactPerson: document.getElementById('pd_contactPerson').value.trim(),
+      contactPhone: document.getElementById('pd_contactPhone').value.trim(),
+      startDate: document.getElementById('pd_startDate').value,
+      expectedEnd: document.getElementById('pd_expectedEnd').value,
+      actualEnd: document.getElementById('pd_actualEnd').value,
+      qtyPlanned: Number(document.getElementById('pd_qtyPlanned').value) || 0,
+      qtyCompleted: Number(document.getElementById('pd_qtyCompleted').value) || 0,
+      qcResult: document.getElementById('pd_qcResult').value,
+      status: document.getElementById('pd_status').value,
+    };
+
+    const list = this.getData();
+    if (id) {
+      // 编辑更新
+      const idx = list.findIndex(p => p.id === id);
+      if (idx > -1) {
+        list[idx] = { ...list[idx], ...data };
+      }
+      App.toast('修改成功', 'success');
+    } else {
+      // 新增
+      list.push({ id: App.utils.genId('P'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('productions', list);
+    App.modal.close();
+    this.renderStats();
+    this.render();
+  },
+
+  // 打开更新进度模态框（小模态框）
+  openProgress(id) {
+    const list = this.getData();
+    const item = list.find(p => p.id === id);
+    if (!item) return;
+    const planned = item.qtyPlanned || 0;
+    const completed = item.qtyCompleted || 0;
+    const pct = planned > 0 ? Math.min(100, Math.round(completed / planned * 100)) : 0;
+    App.modal.open({
+      title: '更新生产进度',
+      body: `
+        <div class="form-group">
+          <label class="form-label">款号 / 工厂</label>
+          <div class="text-muted">${item.styleNo} - ${App.utils.escapeHtml(item.factoryName)}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">计划数量 / 当前完成</label>
+          <div class="text-muted">${planned} / ${completed} （${pct}%）</div>
+          <div class="progress-bar mt-8"><div class="progress-fill ${pct >= 100 ? 'success' : (pct >= 50 ? '' : 'warning')}" style="width:${pct}%"></div></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">完成数量<span class="required">*</span></label>
+          <input type="number" class="form-input" id="pg_qtyCompleted" value="${completed}" placeholder="请输入完成数量">
+        </div>
+      `,
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Production.saveProgress('${id}')">更新</button>`,
+      size: 'sm'
+    });
+  },
+
+  // 保存进度更新
+  saveProgress(id) {
+    const qtyCompleted = Number(document.getElementById('pg_qtyCompleted').value) || 0;
+    const list = this.getData();
+    const idx = list.findIndex(p => p.id === id);
+    if (idx > -1) {
+      list[idx].qtyCompleted = qtyCompleted;
+      // 完成数量达到计划数量时自动标记为已完成
+      if (list[idx].qtyPlanned > 0 && qtyCompleted >= list[idx].qtyPlanned) {
+        list[idx].status = '已完成';
+        list[idx].actualEnd = App.utils.today();
+      } else if (qtyCompleted > 0 && list[idx].status === '待排产') {
+        // 有完成数量且当前为待排产，自动改为生产中
+        list[idx].status = '生产中';
+      }
+    }
+    App.store.set('productions', list);
+    App.modal.close();
+    App.toast('进度更新成功', 'success');
+    this.renderStats();
+    this.render();
+  },
+
+  // 删除
+  remove(id) {
+    App.confirm('确定要删除这条生产工单吗？', () => {
+      let list = this.getData();
+      list = list.filter(p => p.id !== id);
+      App.store.set('productions', list);
+      App.toast('删除成功', 'success');
+      this.renderStats();
+      this.render();
+    });
+  }
+};
+
+// 初始化渲染
+Production.renderStats();
+Production.render();
+</script>
+</body>
+</html>

@@ -1,0 +1,2805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>订单管理 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spinner { -moz-appearance: textfield; }
+.modal-lg .modal-body { max-height: calc(60vh + 40mm); }
+.modal.modal-lg { max-width: 1100px; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">订单管理</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 标签页 -->
+      <div class="tabs" id="orderTabs" style="margin-bottom:0;">
+        <div class="tab-item active" data-tab="orders" onclick="switchOrderTab('orders')">订单列表</div>
+        <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">物料登记</div>
+        <div class="tab-item" data-tab="sizes" onclick="switchOrderTab('sizes')">尺寸表</div>
+        <div class="tab-item" data-tab="layout" onclick="switchOrderTab('layout')">款式图</div>
+      </div>
+
+      <!-- 订单列表 -->
+      <div id="ordersTab">
+        <!-- 统计卡片 -->
+        <div class="stat-grid" id="statCards"></div>
+
+        <!-- 表格区域 -->
+        <div class="table-wrap">
+          <div class="filter-bar">
+            <div class="search-input">
+              <input type="text" id="searchInput" class="form-input" placeholder="按PO/款号/客户搜索" oninput="renderTable()">
+            </div>
+            <select id="statusFilter" class="form-select" onchange="renderTable()">
+              <option value="">全部状态</option>
+              <option value="草稿">草稿</option>
+              <option value="待排产">待排产</option>
+              <option value="生产中">生产中</option>
+              <option value="已发货">已发货</option>
+              <option value="已完成">已完成</option>
+              <option value="已取消">已取消</option>
+            </select>
+            <select id="customerFilter" class="form-select" onchange="renderTable()">
+              <option value="">全部客户</option>
+            </select>
+          </div>
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <span class="card-title">订单列表</span>
+            </div>
+            <div class="table-toolbar-right">
+              <button class="btn btn-primary" onclick="openForm()">➕</button>
+            </div>
+          </div>
+          <div id="orderTable"></div>
+        </div>
+      </div>
+
+      <!-- 物料登记 -->
+      <div id="materialsTab" style="display:none;">
+        <div class="table-wrap">
+          <div class="filter-bar">
+            <div class="search-input">
+              <input type="text" id="matSearchInput" class="form-input" placeholder="搜索PO/款号/名称/供应商" oninput="renderMaterials()">
+            </div>
+            <select id="matCategoryFilter" class="form-select" onchange="renderMaterials()">
+              <option value="">全部类别</option>
+              <option value="面料">面料</option>
+              <option value="里料">里料</option>
+              <option value="衬">衬</option>
+              <option value="填充料">填充料</option>
+              <option value="辅料">辅料</option>
+              <option value="水洗">水洗</option>
+            </select>
+            <select id="matOrderFilter" class="form-select" onchange="renderMaterials()">
+              <option value="">全部订单</option>
+            </select>
+          </div>
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <span class="card-title">物料登记</span>
+              <span class="text-muted" id="matCountLabel" style="font-size:12px;"></span>
+            </div>
+            <div class="table-toolbar-right">
+              <button class="btn btn-sm" onclick="syncMaterialsToModules()" title="同步当前数据到各模块">🔄 同步到模块</button>
+              <button class="btn btn-primary" onclick="openMaterialModal()" title="新增登记">➕</button>
+            </div>
+          </div>
+          <div id="materialsTable"></div>
+        </div>
+      </div>
+
+      <!-- 尺寸表 -->
+      <div id="sizesTab" style="display:none;">
+        <div class="table-wrap">
+          <div class="filter-bar">
+            <div class="search-input">
+              <input type="text" id="sizeSearchInput" class="form-input" placeholder="搜索PO号或款号" oninput="renderSizeSheets()">
+            </div>
+            <select id="sizeTypeFilter" class="form-select" onchange="renderSizeSheets()">
+              <option value="">全部类型</option>
+              <option value="头样">头样</option>
+              <option value="尺码样">尺码样</option>
+              <option value="产前样">产前样</option>
+              <option value="船样">船样</option>
+              <option value="照片样">照片样</option>
+              <option value="大货">大货</option>
+              <option value="客供尺寸表">客供尺寸表</option>
+            </select>
+            <button class="btn btn-sm" onclick="downloadSizeTemplate()" title="下载模板">📄 模板</button>
+            <button class="btn btn-sm" onclick="document.getElementById('sizeImportInput').click()" title="导入Excel">📥 导入</button>
+            <input type="file" id="sizeImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleSizeImport(event)">
+            <button class="btn btn-sm" onclick="clearAllSizeSheets()" title="清空全部">🗑️ 清空</button>
+          </div>
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <span class="card-title">尺寸表</span>
+              <span class="text-muted" id="sizeSheetCount" style="font-size:12px;"></span>
+            </div>
+            <div class="table-toolbar-right" id="sizeSheetToolbar"></div>
+          </div>
+          <div id="sizeSheetContainer"></div>
+        </div>
+      </div>
+
+      <!-- 款式图 -->
+      <div id="layoutTab" style="display:none;">
+        <div class="table-wrap">
+          <div class="filter-bar">
+            <div class="search-input">
+              <input type="text" id="layoutSearchInput" class="form-input" placeholder="输入款号搜索款式图（如 111057）" oninput="searchLayoutImages()">
+            </div>
+            <button class="btn btn-sm" onclick="document.getElementById('layoutFolderInput').click()" title="选择款式图文件夹">📁 选择文件夹</button>
+            <input type="file" id="layoutFolderInput" webkitdirectory style="display:none" onchange="loadLayoutFolder(event)">
+            <span id="layoutFolderName" style="font-size:12px;color:var(--muted);"></span>
+          </div>
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <span class="card-title">款式图预览</span>
+              <span class="text-muted" id="layoutCount" style="font-size:12px;"></span>
+            </div>
+            <div class="table-toolbar-right">
+              <label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-right:8px;">
+                <input type="checkbox" id="layoutSelectAll" onchange="toggleLayoutSelectAll(this.checked)" style="width:14px;height:14px;"> 全选
+              </label>
+              <button class="btn btn-sm" onclick="printLayoutImages()" title="打印选中或全部匹配图片">🖨️ 打印PDF</button>
+            </div>
+          </div>
+          <div id="layoutContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('order');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('order');
+
+// ===== 工具函数 =====
+
+// 根据联系人ID获取客户公司名
+function getCustomerName(customerId) {
+  const contacts = App.store.get('contacts', []);
+  const c = contacts.find(c => c.id === customerId);
+  return c ? c.name : customerId || '-';
+}
+
+// 根据联系人ID获取联系人姓名（用于planner/designer/pManager）
+function getContactPersonName(contactId) {
+  const contacts = App.store.get('contacts', []);
+  const c = contacts.find(c => c.id === contactId);
+  if (!c) return contactId || '-';
+  return c.contactPerson || c.name || contactId;
+}
+
+// 自动生成订单号 ORD-2026-XXXX
+function genOrderNo() {
+  const orders = App.store.get('orders', []);
+  const year = new Date().getFullYear();
+  let maxNum = 0;
+  orders.forEach(o => {
+    const match = o.orderNo && o.orderNo.match(/ORD-\d{4}-(\d{4})/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  const nextNum = String(maxNum + 1).padStart(4, '0');
+  return `ORD-${year}-${nextNum}`;
+}
+
+// ===== 统计卡片 =====
+function renderStats() {
+  const orders = App.store.get('orders', []);
+  const total = orders.length;
+  const inProduction = orders.filter(o => o.status === '生产中').length;
+  const pending = orders.filter(o => o.status === '待排产').length;
+  const shipped = orders.filter(o => o.status === '已发货').length;
+
+  const cards = [
+    { icon: '📋', bg: '#e8f1f5', color: '#004D6D', label: '订单总数', value: total, sub: '全部订单' },
+    { icon: '🏭', bg: '#fff8ed', color: '#d9883a', label: '生产中', value: inProduction, sub: '正在生产' },
+    { icon: '⏳', bg: '#f9fafb', color: '#6b7280', label: '待排产', value: pending, sub: '等待排产' },
+    { icon: '🚚', bg: '#ecfdfa', color: '#0d9488', label: '已发货', value: shipped, sub: '已发出' },
+  ];
+
+  document.getElementById('statCards').innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+      <div class="stat-info">
+        <div class="stat-label">${c.label}</div>
+        <div class="stat-value" style="color:${c.color};">${c.value}</div>
+        <div class="stat-sub">${c.sub}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== 客户筛选下拉 =====
+function renderCustomerFilter() {
+  const customers = App.store.get('contacts', []).filter(c => c.type === '客户');
+  const filter = document.getElementById('customerFilter');
+  const currentVal = filter.value;
+  filter.innerHTML = '<option value="">全部客户</option>' +
+    customers.map(c => `<option value="${c.id}">${App.utils.escapeHtml(c.name)}</option>`).join('');
+  filter.value = currentVal;
+}
+
+// ===== 获取筛选后数据 =====
+function getFilteredOrders() {
+  const orders = App.store.get('orders', []);
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+  const customer = document.getElementById('customerFilter').value;
+
+  const filtered = orders.filter(o => {
+    // 搜索条件：订单号或款号
+    if (search) {
+      const orderNo = (o.orderNo || '').toLowerCase();
+      const styleNo = (o.styleNo || '').toLowerCase();
+      if (!orderNo.includes(search) && !styleNo.includes(search)) return false;
+    }
+    // 状态筛选
+    if (status && o.status !== status) return false;
+    // 客户筛选
+    if (customer && o.customerId !== customer) return false;
+    return true;
+  });
+  // 按订单日期倒序（空值排末尾）
+  return App.utils.sortByDateDesc(filtered, ['orderDate', 'etd']);
+}
+
+// ===== 渲染表格 =====
+function renderTable() {
+  const data = getFilteredOrders();
+  const allChecked = data.length > 0 && data.every(o => _selectedOrderIds.has(o.id));
+  App.renderTable('orderTable', {
+    columns: [
+      { key: 'id', title: `<input type="checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this.checked)">`, width: '40px', render: (v) => `<input type="checkbox" ${_selectedOrderIds.has(v) ? 'checked' : ''} onchange="toggleSelect('${v}', this.checked)">` },
+      { key: 'orderNo', title: 'PO', width: '130px' },
+      { key: 'styleNo', title: 'Style No.', width: '110px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
+      { key: 'customerId', title: 'Customer', width: '110px', render: (v) => App.utils.escapeHtml(getCustomerName(v)) },
+      { key: 'orderDate', title: 'Date', width: '95px' },
+      { key: 'season', title: 'Season', width: '70px', render: (v) => v || '-' },
+      { key: 'styleDescription', title: 'Style Desc', width: '120px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
+      { key: 'packageId', title: 'Package ID', width: '110px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
+      { key: 'assType', title: 'Ass.Type', width: '60px', render: (v) => v || '-' },
+      { key: 'colorCode', title: 'Color Code', width: '80px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
+      { key: 'colorName', title: 'Color', width: '80px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
+      { key: 'quantity', title: 'Qty', width: '70px', render: (v) => v ? Number(v).toLocaleString() : '-' },
+      { key: 'unitPrice', title: 'U/Prx', width: '80px', render: (v) => {
+        if (!App.canSeePrice()) return v ? '<span class="text-muted">*</span>' : '-';
+        return v ? App.utils.formatMoney(v) : '-';
+      } },
+      { key: 'totalAmount', title: 'TTL Amount', width: '100px', render: (v) => {
+        if (!App.canSeePrice()) return v ? '<span class="text-muted">*</span>' : '-';
+        return v ? App.utils.formatMoney(v) : '-';
+      } },
+      { key: 'shipMethod', title: 'Shp Method', width: '80px', render: (v) => v || '-' },
+      { key: 'etd', title: 'ETD', width: '95px' },
+      { key: 'status', title: 'Status', width: '80px', render: (v) => App.statusTag(v || '草稿') },
+      { key: 'remark', title: 'Remarks', width: '130px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
+    ],
+    data: data,
+    actions: (row) => `
+      <button class="btn btn-sm" title="查看详情" onclick="viewDetail('${row.id}')">👁️</button>
+      <button class="btn btn-sm" title="编辑" onclick="openForm('${row.id}')">✏️</button>
+      <button class="btn btn-sm btn-danger" title="删除" onclick="deleteOrder('${row.id}')">🗑️</button>
+    `
+  });
+}
+
+// ===== 尺码矩阵状态 =====
+let _sizeMatrix = { sizeGroupId: null, sizes: [], rows: [] };
+
+// ===== 表格选中状态 =====
+let _selectedOrderIds = new Set();
+
+function toggleSelectAll(checked) {
+  const data = getFilteredOrders();
+  if (checked) {
+    data.forEach(o => _selectedOrderIds.add(o.id));
+  } else {
+    data.forEach(o => _selectedOrderIds.delete(o.id));
+  }
+  renderTable();
+}
+
+function toggleSelect(id, checked) {
+  if (checked) {
+    _selectedOrderIds.add(id);
+  } else {
+    _selectedOrderIds.delete(id);
+  }
+  // 只更新表头全选框状态，不重建整个表格
+  const allChecked = getFilteredOrders().every(o => _selectedOrderIds.has(o.id));
+  const headerCb = document.querySelector('#orderTable thead input[type="checkbox"]');
+  if (headerCb) headerCb.checked = allChecked;
+}
+
+function loadSizeGroup() {
+  const groups = App.store.get('maintSizes', []);
+  const container = document.getElementById('sizeMatrixContainer');
+  if (!container) return;
+
+  if (groups.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:20px;border:2px dashed var(--border);border-radius:var(--radius);">
+        <p style="color:var(--muted);margin-bottom:10px;">尺码表中暂无尺码组</p>
+        <a href="maintenance.html" class="btn btn-primary" style="font-size:12px;padding:4px 12px;">前往尺码表添加</a>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom:8px;color:var(--muted);font-size:12px;">请选择一个尺码组：</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
+      ${groups.map(g => `
+        <div onclick="OrderModule.selectSizeGroup('${g.id}')" style="padding:10px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='var(--primary-light)'" onmouseout="this.style.borderColor='var(--border)';this.style.background=''">
+          <div style="font-weight:600;font-size:13px;">${App.utils.escapeHtml(g.category)} / ${App.utils.escapeHtml(g.part)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">${(g.sizes || []).join(', ')}</div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+// 全局选择尺码组的方法
+const OrderModule = {
+  selectSizeGroup(gid) {
+    if (!gid) return;
+    const groups = App.store.get('maintSizes', []);
+    const g = groups.find(x => x.id === gid);
+    if (!g) return;
+    _sizeMatrix = {
+      sizeGroupId: g.id,
+      sizes: [...(g.sizes || [])],
+      rows: [{ packageId: '', assType: '', colorCode: '', colorName: '', noOfCartons: '', quantities: {} }]
+    };
+    renderSizeMatrix();
+  }
+};
+
+function renderSizeMatrix() {
+  const container = document.getElementById('sizeMatrixContainer');
+  if (!container) return;
+
+  if (!_sizeMatrix.sizes.length) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:20px;border:2px dashed var(--border);border-radius:var(--radius);">
+        <p style="color:var(--muted);margin-bottom:10px;">尚未选择尺码组</p>
+        <button class="btn btn-primary" onclick="loadSizeGroup()">📏 从尺码表选择</button>
+      </div>`;
+    return;
+  }
+
+  const sizes = _sizeMatrix.sizes;
+  const sizeCols = sizes.map(s => `<th style="width:50px;text-align:center;">${App.utils.escapeHtml(s)}</th>`).join('');
+
+  let rowsHtml = '';
+  let totalQty = 0;
+  _sizeMatrix.rows.forEach((row, idx) => {
+    const qtyCells = sizes.map((s, si) => {
+      const val = row.quantities[s] || '';
+      return `<td style="padding:2px;"><input type="number" class="form-input sm no-spinner" style="width:50px;text-align:center;padding:2px;font-size:12px;" value="${val}" oninput="updateMatrixQty(${idx}, '${s}', this.value)"></td>`;
+    }).join('');
+
+    // 行小计 = 类型为SOLID时仅取尺码数量之和，否则 × 箱数
+    const sizeSum = sizes.reduce((sum, s) => sum + (parseInt(row.quantities[s]) || 0), 0);
+    const cartons = parseInt(row.noOfCartons) || 0;
+    const rowTotal = row.assType === 'SOLID' ? sizeSum : sizeSum * cartons;
+    totalQty += rowTotal;
+
+    const assTypeOpts = ['A', 'B', 'C', 'D', 'SOLID'].map(opt =>
+      `<option value="${opt}" ${row.assType === opt ? 'selected' : ''}>${opt}</option>`
+    ).join('');
+
+    rowsHtml += `
+      <tr>
+        <td style="padding:2px;"><input type="text" class="form-input sm" style="width:130px;padding:2px;font-size:12px;" placeholder="包装ID" value="${App.utils.escapeHtml(row.packageId)}" oninput="updateMatrixRow(${idx}, 'packageId', this.value)"></td>
+        <td style="padding:2px;"><select class="form-select sm" style="width:70px;padding:2px;font-size:12px;" onchange="updateMatrixRow(${idx}, 'assType', this.value); updateMatrixTotals();"><option value="">类型</option>${assTypeOpts}</select></td>
+        <td style="padding:2px;"><input type="text" class="form-input sm" style="width:55px;padding:2px;font-size:12px;" placeholder="色号" value="${App.utils.escapeHtml(row.colorCode)}" oninput="updateMatrixRow(${idx}, 'colorCode', this.value)"></td>
+        <td style="padding:2px;"><input type="text" class="form-input sm" style="width:110px;padding:2px;font-size:12px;" placeholder="颜色" value="${App.utils.escapeHtml(row.colorName)}" oninput="updateMatrixRow(${idx}, 'colorName', this.value)"></td>
+        <td style="padding:2px;"><input type="number" class="form-input sm no-spinner" style="width:45px;text-align:center;padding:2px;font-size:12px;" placeholder="箱数" value="${row.noOfCartons}" oninput="updateMatrixRow(${idx}, 'noOfCartons', this.value); updateMatrixTotals();"></td>
+        ${qtyCells}
+        <td style="text-align:center;font-weight:600;color:var(--primary);" id="rowSub-${idx}">${rowTotal}</td>
+        <td style="padding:2px;"><button class="btn btn-sm btn-danger" title="删除行" onclick="removeMatrixRow(${idx})" style="padding:2px 6px;">🗑️</button></td>
+      </tr>`;
+  });
+
+  // 合计行（每列：SOLID行取尺码数量，其他行 数量×箱数）
+  const totalCells = sizes.map((s, si) => {
+    const colSum = _sizeMatrix.rows.reduce((sum, r) => {
+      const qty = parseInt(r.quantities[s]) || 0;
+      return sum + (r.assType === 'SOLID' ? qty : qty * (parseInt(r.noOfCartons) || 0));
+    }, 0);
+    return `<td style="text-align:center;font-weight:600;color:var(--primary);" id="colTotal-${si}">${colSum}</td>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      <span class="text-muted font-sm">尺码组：</span>
+      <span class="size-badge-muted">${App.utils.escapeHtml(_sizeMatrix.sizes.join(' · '))}</span>
+      <button class="btn btn-sm" onclick="loadSizeGroup()" style="padding:2px 8px;">🔄 更换</button>
+      <button class="btn btn-sm btn-primary" onclick="addMatrixRow()" style="padding:2px 8px;">➕ 添加行</button>
+      <span style="flex:1;"></span>
+      <span class="font-sm">合计数量：<strong style="color:var(--primary);font-size:14px;" id="matrixTotal">${totalQty}</strong></span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="data-table" style="min-width:100%;font-size:12px;">
+        <thead>
+          <tr>
+            <th style="width:130px;">包装ID</th>
+            <th style="width:70px;">类型</th>
+            <th style="width:55px;">色号</th>
+            <th style="width:110px;">颜色</th>
+            <th style="width:50px;">箱数</th>
+            ${sizeCols}
+            <th style="width:60px;">小计</th>
+            <th style="width:45px;"></th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <thead>
+          <tr style="background:var(--primary-light);">
+            <td colspan="5" style="font-weight:600;text-align:right;">合计：</td>
+            ${totalCells}
+            <td style="font-weight:700;color:var(--primary);text-align:center;" id="grandTotal">${totalQty}</td>
+            <td></td>
+          </tr>
+        </thead>
+      </table>
+    </div>
+  `;
+  // 更新总数量和总箱数字段
+  const qtyInput = document.getElementById('f_qtyInCartons');
+  if (qtyInput) qtyInput.value = totalQty;
+  const cartonsInput = document.getElementById('f_noOfCartons');
+  if (cartonsInput) {
+    const totalCartons = _sizeMatrix.rows.reduce((sum, r) => sum + (parseInt(r.noOfCartons) || 0), 0);
+    cartonsInput.value = totalCartons;
+  }
+  calcTotal();
+}
+
+function updateMatrixRow(idx, field, val) {
+  if (!_sizeMatrix.rows[idx]) return;
+  _sizeMatrix.rows[idx][field] = val;
+}
+
+function updateMatrixQty(idx, size, val) {
+  if (!_sizeMatrix.rows[idx]) return;
+  _sizeMatrix.rows[idx].quantities[size] = val;
+  updateMatrixTotals();
+}
+
+// 轻量更新合计数值（不重建DOM，避免输入框失焦）
+function updateMatrixTotals() {
+  const sizes = _sizeMatrix.sizes;
+  let totalQty = 0;
+  _sizeMatrix.rows.forEach((row, idx) => {
+    const sizeSum = sizes.reduce((sum, s) => sum + (parseInt(row.quantities[s]) || 0), 0);
+    const cartons = parseInt(row.noOfCartons) || 0;
+    const rowTotal = row.assType === 'SOLID' ? sizeSum : sizeSum * cartons;
+    totalQty += rowTotal;
+    const subEl = document.getElementById(`rowSub-${idx}`);
+    if (subEl) subEl.textContent = rowTotal;
+  });
+  // 列合计
+  sizes.forEach((s, si) => {
+    const colSum = _sizeMatrix.rows.reduce((sum, r) => {
+      const qty = parseInt(r.quantities[s]) || 0;
+      return sum + (r.assType === 'SOLID' ? qty : qty * (parseInt(r.noOfCartons) || 0));
+    }, 0);
+    const colEl = document.getElementById(`colTotal-${si}`);
+    if (colEl) colEl.textContent = colSum;
+  });
+  // 总计
+  const grandEl = document.getElementById('grandTotal');
+  if (grandEl) grandEl.textContent = totalQty;
+  const matrixTotalEl = document.getElementById('matrixTotal');
+  if (matrixTotalEl) matrixTotalEl.textContent = totalQty;
+  // 更新总数量和总箱数字段
+  const qtyInput = document.getElementById('f_qtyInCartons');
+  if (qtyInput) qtyInput.value = totalQty;
+  const cartonsInput = document.getElementById('f_noOfCartons');
+  if (cartonsInput) {
+    const totalCartons = _sizeMatrix.rows.reduce((sum, r) => sum + (parseInt(r.noOfCartons) || 0), 0);
+    cartonsInput.value = totalCartons;
+  }
+  calcTotal();
+}
+
+function addMatrixRow() {
+  _sizeMatrix.rows.push({ packageId: '', assType: '', colorCode: '', colorName: '', noOfCartons: '', quantities: {} });
+  renderSizeMatrix();
+}
+
+function removeMatrixRow(idx) {
+  _sizeMatrix.rows.splice(idx, 1);
+  renderSizeMatrix();
+}
+
+// ===== 新增/编辑表单 =====
+function openForm(id) {
+  const isEdit = !!id;
+  const orders = App.store.get('orders', []);
+  const order = isEdit ? orders.find(o => o.id === id) : null;
+  const allContacts = App.store.get('contacts', []);
+  const customersRaw = allContacts.filter(c => c.type === '客户');
+  // 按客户名称去重（保留首个出现的）
+  const seenNames = new Set();
+  const customers = customersRaw.filter(c => {
+    if (seenNames.has(c.name)) return false;
+    seenNames.add(c.name);
+    return true;
+  });
+  const factories = allContacts.filter(c => c.type === '工厂');
+  const designers = allContacts.filter(c => c.type === '样衣师');
+
+  const defaultCustomerId = isEdit ? order.customerId : (customers.find(c => c.name === 'Castro Model LTD')?.id || '');
+  const customerOptions = '<option value="">请选择客户</option>' +
+    customers.map(c => `<option value="${c.id}" ${defaultCustomerId === c.id ? 'selected' : ''}>${App.utils.escapeHtml(c.name)}</option>`).join('');
+
+  const factoryOptions = '<option value="">请选择</option>' +
+    factories.map(c => `<option value="${c.id}" ${order && order.planner === c.id ? 'selected' : ''}>${App.utils.escapeHtml(c.name)}</option>`).join('');
+
+  const designerOptions = '<option value="">请选择</option>' +
+    designers.map(c => `<option value="${c.id}" ${order && order.designer === c.id ? 'selected' : ''}>${App.utils.escapeHtml(c.name)}</option>`).join('');
+
+  const defaultOrderNo = isEdit ? order.orderNo : '';
+  const year = new Date().getFullYear();
+
+  // 初始化尺码矩阵
+  if (isEdit && order.sizeMatrix) {
+    _sizeMatrix = JSON.parse(JSON.stringify(order.sizeMatrix));
+  } else {
+    _sizeMatrix = { sizeGroupId: null, sizes: [], rows: [] };
+  }
+
+  const body = `
+    <div class="form-section-title">📋 订单信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">Date (日期)</label>
+        <input type="date" id="f_orderDate" class="form-input" value="${isEdit ? (order.orderDate || '') : App.utils.today()}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label">Customer (客户)<span class="required">*</span></label>
+        <select id="f_customerId" class="form-select" onchange="loadCustomerPersonnel(this.value)">${customerOptions}</select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">PO (订单号)</label>
+        <input type="text" id="f_orderNo" class="form-input" value="${App.utils.escapeHtml(defaultOrderNo)}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">Season (季节)</label>
+        <input id="f_season" list="seasonList" class="form-input" placeholder="选择或输入" value="${App.utils.escapeHtml(isEdit ? (order.season || '') : '')}">
+        <datalist id="seasonList">
+          <option value="Spring ${year}"></option>
+          <option value="Summer ${year}"></option>
+          <option value="Autumn ${year}"></option>
+          <option value="Winter ${year}"></option>
+        </datalist>
+      </div>
+    </div>
+
+    <div class="form-section-title">👗 款式信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label">Style No. (款号)</label>
+        <input type="text" id="f_styleNo" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.styleNo || '') : ''}" placeholder="款号">
+      </div>
+      <div class="form-group" style="flex:2;min-width:200px;">
+        <label class="form-label">Style Description (款式描述)</label>
+        <input type="text" id="f_styleDesc" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.styleDescription || '') : ''}" placeholder="款式描述">
+      </div>
+    </div>
+
+    <div class="form-section-title">📏 尺码数量分配（从尺码表选择尺码组，按包装行输入各尺码数量）</div>
+    <div class="form-group">
+      <div id="sizeMatrixContainer"></div>
+    </div>
+
+    <div class="form-section-title">💰 价格与数量</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">No. of Cartons (箱数)</label>
+        <input type="text" id="f_noOfCartons" class="form-input" readonly value="${isEdit ? order.noOfCartons || 0 : 0}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">Qty in Cartons (总数量)</label>
+        <input type="text" id="f_qtyInCartons" class="form-input" readonly value="${isEdit ? order.quantity || 0 : 0}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;${App.canSeePrice() ? '' : 'display:none;'}">
+        <label class="form-label">U/Prx (单价)</label>
+        <input type="number" id="f_unitPrice" class="form-input" step="0.01" value="${isEdit ? order.unitPrice || '' : ''}" oninput="calcTotal()">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;${App.canSeePrice() ? '' : 'display:none;'}">
+        <label class="form-label">TTL Amount (总金额)</label>
+        <input type="text" id="f_totalAmount" class="form-input" readonly value="${isEdit ? App.utils.formatMoney(order.totalAmount || 0) : ''}">
+      </div>
+    </div>
+
+    <div class="form-section-title">🚚 出运</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">Shp Method (出货方式)</label>
+        <select id="f_shipMethod" class="form-select">
+          <option value="">请选择</option>
+          <option value="Sea" ${isEdit && order.shipMethod === 'Sea' ? 'selected' : ''}>Sea (海运)</option>
+          <option value="Air" ${isEdit && order.shipMethod === 'Air' ? 'selected' : ''}>Air (空运)</option>
+          <option value="Express" ${isEdit && order.shipMethod === 'Express' ? 'selected' : ''}>Express (快递)</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">ETD (交货日期)</label>
+        <input type="date" id="f_etd" class="form-input" value="${isEdit ? (order.etd || '') : ''}">
+      </div>
+    </div>
+
+    <div class="form-section-title">👥 客户联系人</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">Planner (计划员)</label>
+        <select id="f_planner" class="form-select"></select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">Designer (设计师)</label>
+        <select id="f_designer" class="form-select"></select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">P. Manager (生产经理)</label>
+        <select id="f_pManager" class="form-select"></select>
+      </div>
+    </div>
+
+    <div class="form-section-title">📝 备注</div>
+    <div class="form-group">
+      <textarea id="f_remark" class="form-textarea" rows="2" placeholder="Remarks (备注)">${isEdit ? App.utils.escapeHtml(order.remark || '') : ''}</textarea>
+    </div>
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="saveForm('${id || ''}')">💾</button>
+  `;
+
+  App.modal.open({
+    title: isEdit ? '编辑订单' : '新增订单',
+    body: body,
+    footer: footer,
+    size: 'lg',
+    closeOnOverlay: false
+  });
+
+  // 渲染尺码矩阵
+  renderSizeMatrix();
+
+  // 加载客户对应的人员下拉
+  loadCustomerPersonnel(defaultCustomerId, order);
+}
+
+// 根据客户加载对应人员（Planner/Designer/P.Manager）
+function loadCustomerPersonnel(customerId, existingOrder) {
+  const plannerSel = document.getElementById('f_planner');
+  const designerSel = document.getElementById('f_designer');
+  const pManagerSel = document.getElementById('f_pManager');
+  if (!plannerSel || !designerSel || !pManagerSel) return;
+
+  const contacts = App.store.get('contacts', []);
+  const customer = contacts.find(c => c.id === customerId);
+  if (!customer) {
+    [plannerSel, designerSel, pManagerSel].forEach(s => s.innerHTML = '<option value="">请选择</option>');
+    return;
+  }
+  // 获取该客户公司下所有联系人记录（同名）
+  const companyContacts = contacts.filter(c => c.name === customer.name && c.contactPerson);
+
+  // 按职位关键词严格匹配（无匹配则返回空，不回退显示全部）
+  const matchByKeywords = (keywords) => {
+    return companyContacts.filter(c => {
+      const pos = (c.position || '').toLowerCase();
+      return keywords.some(kw => pos.includes(kw.toLowerCase()));
+    });
+  };
+
+  const buildOptions = (contacts, selectedId) => {
+    return '<option value="">请选择</option>' +
+      contacts.map(c => `<option value="${c.id}" ${selectedId === c.id ? 'selected' : ''}>${App.utils.escapeHtml(c.contactPerson)}${c.position ? ' (' + App.utils.escapeHtml(c.position) + ')' : ''}</option>`).join('');
+  };
+
+  const ex = existingOrder || {};
+  plannerSel.innerHTML = buildOptions(matchByKeywords(['planner', '计划']), ex.planner);
+  designerSel.innerHTML = buildOptions(matchByKeywords(['design', '设计']), ex.designer);
+  pManagerSel.innerHTML = buildOptions(matchByKeywords(['manager', '经理', '生产']), ex.pManager);
+}
+
+// 自动计算总金额
+function calcTotal() {
+  const qty = parseFloat(document.getElementById('f_qtyInCartons')?.value) || 0;
+  const price = parseFloat(document.getElementById('f_unitPrice')?.value) || 0;
+  const total = qty * price;
+  const totalEl = document.getElementById('f_totalAmount');
+  if (totalEl) totalEl.value = App.utils.formatMoney(total);
+}
+
+// ===== 保存表单 =====
+function saveForm(id) {
+  const orderNo = document.getElementById('f_orderNo').value.trim();
+  const styleNo = document.getElementById('f_styleNo').value.trim();
+  const customerId = document.getElementById('f_customerId').value;
+  const orderDate = document.getElementById('f_orderDate').value;
+  const season = document.getElementById('f_season').value;
+  const styleDescription = document.getElementById('f_styleDesc').value.trim();
+  // 包装信息从尺码矩阵汇总（取各行非空值的唯一集合，逗号连接）
+  const joinUnique = (field) => [...new Set(_sizeMatrix.rows.map(r => r[field]).filter(v => v))].join(', ');
+  const packageId = joinUnique('packageId');
+  const assType = joinUnique('assType');
+  const colorCode = joinUnique('colorCode');
+  const colorName = joinUnique('colorName');
+  const noOfCartons = parseFloat(document.getElementById('f_noOfCartons').value) || 0;
+  const quantity = parseFloat(document.getElementById('f_qtyInCartons').value) || 0;
+  const shipMethod = document.getElementById('f_shipMethod').value;
+  const etd = document.getElementById('f_etd').value;
+  const planner = document.getElementById('f_planner').value;
+  const designer = document.getElementById('f_designer').value;
+  const pManager = document.getElementById('f_pManager').value;
+  const remark = document.getElementById('f_remark').value.trim();
+
+  // 表单验证
+  if (!orderNo) { App.toast('请输入PO (订单号)', 'error'); return; }
+  if (!styleNo) { App.toast('请输入Style No.', 'error'); return; }
+  if (!customerId) { App.toast('请选择Customer (客户)', 'error'); return; }
+
+  const orders = App.store.get('orders', []);
+
+  // 价格字段：无权限用户看不到也改不了，保留原值
+  const existingOrder = id ? orders.find(o => o.id === id) : null;
+  const priceInputEl = document.getElementById('f_unitPrice');
+  const unitPrice = priceInputEl ? (parseFloat(priceInputEl.value) || 0) : (existingOrder ? (existingOrder.unitPrice || 0) : 0);
+  const totalAmount = quantity * unitPrice;
+
+  const data = {
+    orderNo, styleNo, customerId, orderDate, season, styleDescription,
+    packageId, assType, colorCode, colorName,
+    noOfCartons, quantity, unitPrice, totalAmount,
+    shipMethod, etd, planner, designer, pManager,
+    remark,
+    sizeMatrix: JSON.parse(JSON.stringify(_sizeMatrix)),
+  };
+
+  if (id) {
+    const idx = orders.findIndex(o => o.id === id);
+    if (idx >= 0) orders[idx] = { ...orders[idx], ...data };
+    App.toast('订单更新成功', 'success');
+  } else {
+    orders.push({ id: App.utils.genId('ORD'), status: '草稿', ...data });
+    App.toast('订单创建成功', 'success');
+  }
+
+  App.store.set('orders', orders);
+  App.modal.close();
+  renderStats();
+  renderTable();
+}
+
+// ===== 删除订单 =====
+function deleteOrder(id) {
+  App.confirm('确定要删除此订单吗？删除后不可恢复。', () => {
+    let orders = App.store.get('orders', []);
+    orders = orders.filter(o => o.id !== id);
+    App.store.set('orders', orders);
+    App.toast('订单已删除', 'success');
+    renderStats();
+    renderTable();
+  });
+}
+
+// ===== 查看详情 =====
+function viewDetail(id) {
+  const orders = App.store.get('orders', []);
+  const order = orders.find(o => o.id === id);
+  if (!order) return;
+
+  const styleNo = order.styleNo;
+  const fabrics = App.store.get('fabrics', []).filter(f => f.styleNo === styleNo);
+  const accessories = App.store.get('accessories', []).filter(a => a.styleNo === styleNo);
+  const samples = App.store.get('samples', []).filter(s => s.styleNo === styleNo);
+  const productions = App.store.get('productions', []).filter(p => p.styleNo === styleNo || p.orderNo === order.orderNo);
+
+  const seasonMap = { SS: '春夏', FW: '秋冬', AW: '秋冬', Holiday: '假日' };
+  const shipMap = { Sea: '海运', Air: '空运', Express: '快递' };
+
+  // 尺码矩阵渲染
+  let matrixHtml = '';
+  if (order.sizeMatrix && order.sizeMatrix.sizes && order.sizeMatrix.sizes.length) {
+    const sm = order.sizeMatrix;
+    const sizeCols = sm.sizes.map(s => `<th style="text-align:center;padding:4px;font-size:12px;">${App.utils.escapeHtml(s)}</th>`).join('');
+
+    let rowsHtml = '';
+    sm.rows.forEach(row => {
+      const qtyCells = sm.sizes.map(s => {
+        const val = row.quantities && row.quantities[s] ? row.quantities[s] : '-';
+        return `<td style="text-align:center;padding:4px;font-size:12px;">${val}</td>`;
+      }).join('');
+      const sizeSum = sm.sizes.reduce((sum, s) => sum + (parseInt(row.quantities?.[s]) || 0), 0);
+      const cartons = parseInt(row.noOfCartons) || 0;
+      const rowTotal = row.assType === 'SOLID' ? sizeSum : sizeSum * cartons;
+
+      rowsHtml += `
+        <tr>
+          <td style="padding:4px;font-size:12px;">${App.utils.escapeHtml(row.packageId || '-')}</td>
+          <td style="padding:4px;font-size:12px;">${App.utils.escapeHtml(row.assType || '-')}</td>
+          <td style="padding:4px;font-size:12px;">${App.utils.escapeHtml(row.colorCode || '-')}</td>
+          <td style="padding:4px;font-size:12px;">${App.utils.escapeHtml(row.colorName || '-')}</td>
+          <td style="text-align:center;padding:4px;font-size:12px;">${row.noOfCartons || '-'}</td>
+          ${qtyCells}
+          <td style="text-align:center;font-weight:600;color:var(--primary);padding:4px;font-size:12px;">${rowTotal}</td>
+        </tr>`;
+    });
+
+    const totalCells = sm.sizes.map(s => {
+      const colSum = sm.rows.reduce((sum, r) => {
+        const qty = parseInt(r.quantities?.[s]) || 0;
+        return sum + (r.assType === 'SOLID' ? qty : qty * (parseInt(r.noOfCartons) || 0));
+      }, 0);
+      return `<td style="text-align:center;font-weight:600;color:var(--primary);padding:4px;font-size:12px;">${colSum}</td>`;
+    }).join('');
+    const grandTotal = sm.rows.reduce((sum, r) => {
+      const sizeSum = sm.sizes.reduce((s, sz) => s + (parseInt(r.quantities?.[sz]) || 0), 0);
+      const cartons = parseInt(r.noOfCartons) || 0;
+      return sum + (r.assType === 'SOLID' ? sizeSum : sizeSum * cartons);
+    }, 0);
+
+    matrixHtml = `
+      <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+        <div class="card-header"><span class="card-title">📏 尺码数量分配 (${sm.sizes.join(' · ')})</span></div>
+        <div style="overflow-x:auto;padding:0 8px 4px;">
+          <table class="data-table" style="width:100%;font-size:12px;">
+            <thead>
+              <tr>
+                <th style="padding:4px;font-size:12px;">包装ID</th>
+                <th style="padding:4px;font-size:12px;">类型</th>
+                <th style="padding:4px;font-size:12px;">色号</th>
+                <th style="padding:4px;font-size:12px;">颜色</th>
+                <th style="padding:4px;font-size:12px;">箱数</th>
+                ${sizeCols}
+                <th style="padding:4px;font-size:12px;">小计</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+            <tfoot>
+              <tr style="background:var(--primary-light);">
+                <td colspan="5" style="font-weight:600;text-align:right;padding:4px;font-size:12px;">合计：</td>
+                ${totalCells}
+                <td style="font-weight:700;color:var(--primary);text-align:center;padding:4px;font-size:12px;">${grandTotal}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  const body = `
+    <div style="text-align:right;margin-bottom:6px;">
+      <button class="btn btn-primary btn-sm" onclick="printOrderPDF('${id}')" title="打印PDF">🖨️</button>
+    </div>
+
+    <!-- 订单信息（含款式信息） -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">📋 订单信息</span></div>
+      <div style="display:flex;gap:4px 12px;padding:0 12px 6px;flex-wrap:nowrap;">
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Date</span><span class="detail-value">${App.utils.formatDate(order.orderDate)}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Customer</span><span class="detail-value">${App.utils.escapeHtml(getCustomerName(order.customerId))}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">PO</span><span class="detail-value font-bold">${App.utils.escapeHtml(order.orderNo)}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Season</span><span class="detail-value">${seasonMap[order.season] || order.season || '-'}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Style No.</span><span class="detail-value">${App.utils.escapeHtml(order.styleNo || '-')}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Style Desc</span><span class="detail-value">${App.utils.escapeHtml(order.styleDescription || '-')}</span></div>
+      </div>
+    </div>
+
+    ${matrixHtml}
+
+    <!-- 价格与数量 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">💰 价格与数量</span></div>
+      <div style="display:flex;gap:4px 12px;padding:0 12px 6px;flex-wrap:nowrap;">
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">No. of Cartons</span><span class="detail-value">${(order.noOfCartons && order.noOfCartons > 0) ? order.noOfCartons : (order.sizeMatrix ? order.sizeMatrix.rows.reduce((s,r)=>s+(parseInt(r.noOfCartons)||0),0) : '-')}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Qty in Cartons</span><span class="detail-value">${(order.quantity || 0).toLocaleString()}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">U/Prx</span><span class="detail-value">${App.canSeePrice() ? (order.unitPrice ? App.utils.formatMoney(order.unitPrice) : '-') : (order.unitPrice ? '*' : '-')}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">TTL Amount</span><span class="detail-value font-bold">${App.canSeePrice() ? (order.totalAmount ? App.utils.formatMoney(order.totalAmount) : '-') : (order.totalAmount ? '*' : '-')}</span></div>
+      </div>
+    </div>
+
+    <!-- 物流与人员 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">🚚 出运 / 👥 客户联系人</span></div>
+      <div style="display:flex;gap:4px 12px;padding:0 12px 6px;flex-wrap:nowrap;">
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Shp Method</span><span class="detail-value">${shipMap[order.shipMethod] || order.shipMethod || '-'}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">ETD (交货日期)</span><span class="detail-value">${order.etd ? App.utils.formatDate(order.etd) : '-'}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Planner</span><span class="detail-value">${order.planner ? App.utils.escapeHtml(getContactPersonName(order.planner)) : '-'}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Designer</span><span class="detail-value">${order.designer ? App.utils.escapeHtml(getContactPersonName(order.designer)) : '-'}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">P. Manager</span><span class="detail-value">${order.pManager ? App.utils.escapeHtml(getContactPersonName(order.pManager)) : '-'}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Status</span><span class="detail-value">${App.statusTag(order.status || '草稿')}</span></div>
+      </div>
+    </div>
+
+    <!-- 样衣记录 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">样衣记录 (${samples.length})</span></div>
+      <div id="detail_samples"></div>
+    </div>
+    <!-- 面料信息 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">面料信息 (${fabrics.length})</span></div>
+      <div id="detail_fabrics"></div>
+    </div>
+    <!-- 辅料信息 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">辅料信息 (${accessories.length})</span></div>
+      <div id="detail_accessories"></div>
+    </div>
+    <!-- 生产记录 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);">
+      <div class="card-header"><span class="card-title">生产记录 (${productions.length})</span></div>
+      <div id="detail_productions"></div>
+    </div>
+  `;
+
+  App.modal.open({
+    title: '订单详情',
+    body: body,
+    footer: `<button class="btn" onclick="App.modal.close()">✖️</button>`,
+    size: 'lg'
+  });
+
+  // 渲染样衣记录表格
+  App.renderTable('detail_samples', {
+    columns: [
+      { key: 'stage', title: '阶段', width: '80px' },
+      { key: 'round', title: '轮次', width: '60px' },
+      { key: 'sampleDate', title: '日期', width: '110px' },
+      { key: 'factory', title: '样衣工厂' },
+      { key: 'size', title: '尺码', width: '60px' },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
+    ],
+    data: samples
+  });
+
+  // 渲染面料信息表格
+  App.renderTable('detail_fabrics', {
+    columns: [
+      { key: 'fabricName', title: '面料名称' },
+      { key: 'supplier', title: '供应商' },
+      { key: 'composition', title: '成分' },
+      { key: 'color', title: '颜色', width: '80px' },
+      { key: 'qtyOrdered', title: '数量', width: '90px', render: (v, row) => `${v} ${row.unit || ''}` },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
+    ],
+    data: fabrics
+  });
+
+  // 渲染辅料信息表格
+  App.renderTable('detail_accessories', {
+    columns: [
+      { key: 'accessoryName', title: '辅料名称' },
+      { key: 'supplier', title: '供应商' },
+      { key: 'spec', title: '规格' },
+      { key: 'color', title: '颜色', width: '80px' },
+      { key: 'qtyOrdered', title: '数量', width: '90px', render: (v, row) => `${v} ${row.unit || ''}` },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
+    ],
+    data: accessories
+  });
+
+  // 渲染生产记录表格
+  App.renderTable('detail_productions', {
+    columns: [
+      { key: 'factoryType', title: '工厂类型', width: '90px' },
+      { key: 'factoryName', title: '工厂名称' },
+      { key: 'startDate', title: '开始日期', width: '110px' },
+      { key: 'expectedEnd', title: '预计完成', width: '110px' },
+      { key: 'qtyPlanned', title: '计划数', width: '80px' },
+      { key: 'qtyCompleted', title: '已完成', width: '80px' },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
+    ],
+    data: productions
+  });
+}
+
+// ===== 打印订单详情PDF =====
+function printOrderPDF(id) {
+  const orders = App.store.get('orders', []);
+  const order = orders.find(o => o.id === id);
+  if (!order) { App.toast('订单不存在', 'error'); return; }
+
+  const seasonMap = { SS: '春夏', FW: '秋冬', AW: '秋冬', Holiday: '假日' };
+  const shipMap = { Sea: '海运', Air: '空运', Express: '快递' };
+  const customerName = getCustomerName(order.customerId);
+  const plannerName = order.planner ? getContactPersonName(order.planner) : '-';
+  const designerName = order.designer ? getContactPersonName(order.designer) : '-';
+  const pManagerName = order.pManager ? getContactPersonName(order.pManager) : '-';
+  const totalCartons = (order.noOfCartons && order.noOfCartons > 0) ? order.noOfCartons :
+    (order.sizeMatrix ? order.sizeMatrix.rows.reduce((s,r)=>s+(parseInt(r.noOfCartons)||0),0) : 0);
+
+  // 关联数据
+  const styleNo = order.styleNo;
+  const fabrics = App.store.get('fabrics', []).filter(f => f.styleNo === styleNo);
+  const accessories = App.store.get('accessories', []).filter(a => a.styleNo === styleNo);
+  const samples = App.store.get('samples', []).filter(s => s.styleNo === styleNo);
+  const productions = App.store.get('productions', []).filter(p => p.styleNo === styleNo || p.orderNo === order.orderNo);
+
+  const esc = App.utils.escapeHtml;
+  const bgCA = '-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+  const thStyle = 'border:1px solid #333;padding:3px 6px;font-size:10px;background:#e8f1f5;text-align:left;' + bgCA;
+  const tdStyle = 'border:1px solid #333;padding:3px 6px;font-size:10px;';
+  const tcStyle = 'border:1px solid #333;padding:3px 6px;font-size:10px;text-align:center;';
+
+  // 尺码矩阵HTML（SOLID不乘箱数，A/B/C/D乘箱数）
+  let matrixHtml = '';
+  if (order.sizeMatrix && order.sizeMatrix.sizes && order.sizeMatrix.sizes.length) {
+    const sm = order.sizeMatrix;
+    const sizeCols = sm.sizes.map(s => `<th style="${tcStyle}background:#e8f1f5;${bgCA}">${esc(s)}</th>`).join('');
+    let rowsHtml = '';
+    sm.rows.forEach(row => {
+      const qtyCells = sm.sizes.map(s => {
+        const val = row.quantities && row.quantities[s] ? row.quantities[s] : '-';
+        return `<td style="${tcStyle}">${val}</td>`;
+      }).join('');
+      const sizeSum = sm.sizes.reduce((sum, s) => sum + (parseInt(row.quantities?.[s]) || 0), 0);
+      const cartons = parseInt(row.noOfCartons) || 0;
+      const rowTotal = row.assType === 'SOLID' ? sizeSum : sizeSum * cartons;
+      rowsHtml += `<tr>
+        <td style="${tdStyle}">${esc(row.packageId || '-')}</td>
+        <td style="${tcStyle}">${esc(row.assType || '-')}</td>
+        <td style="${tdStyle}">${esc(row.colorCode || '-')}</td>
+        <td style="${tdStyle}">${esc(row.colorName || '-')}</td>
+        <td style="${tcStyle}">${row.noOfCartons || '-'}</td>
+        ${qtyCells}
+        <td style="${tcStyle}font-weight:600;">${rowTotal}</td>
+      </tr>`;
+    });
+    const totalCells = sm.sizes.map(s => {
+      const colSum = sm.rows.reduce((sum, r) => {
+        const qty = parseInt(r.quantities?.[s]) || 0;
+        return sum + (r.assType === 'SOLID' ? qty : qty * (parseInt(r.noOfCartons) || 0));
+      }, 0);
+      return `<td style="${tcStyle}font-weight:600;background:#f3f4f6;${bgCA}">${colSum}</td>`;
+    }).join('');
+    const grandTotal = sm.rows.reduce((sum, r) => {
+      const sizeSum = sm.sizes.reduce((s, sz) => s + (parseInt(r.quantities?.[sz]) || 0), 0);
+      const cartons = parseInt(r.noOfCartons) || 0;
+      return sum + (r.assType === 'SOLID' ? sizeSum : sizeSum * cartons);
+    }, 0);
+    matrixHtml = `
+      <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
+        <thead>
+          <tr>
+            <th style="${thStyle}">包装ID</th>
+            <th style="${thStyle}">类型</th>
+            <th style="${thStyle}">色号</th>
+            <th style="${thStyle}">颜色</th>
+            <th style="${thStyle}">箱数</th>
+            ${sizeCols}
+            <th style="${thStyle}">小计</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot>
+          <tr style="background:#f3f4f6;${bgCA}">
+            <td colspan="5" style="${tdStyle}text-align:right;font-weight:600;">合计：</td>
+            ${totalCells}
+            <td style="${tcStyle}font-weight:700;">${grandTotal}</td>
+          </tr>
+        </tfoot>
+      </table>`;
+  }
+
+  // 通用表格生成
+  const buildTable = (columns, data) => {
+    if (!data || data.length === 0) return '<div style="font-size:10px;color:#999;padding:4px;">暂无数据</div>';
+    const heads = columns.map(c => `<th style="${thStyle}">${c.title}</th>`).join('');
+    const rows = data.map(row => {
+      const cells = columns.map(c => {
+        let v = row[c.key];
+        if (c.render) v = c.render(row[c.key], row);
+        if (v === null || v === undefined || v === '') v = '-';
+        return `<td style="${tdStyle}">${v}</td>`;
+      }).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><thead><tr>${heads}</tr></thead><tbody>${rows}</tbody></table>`;
+  };
+
+  const samplesTable = buildTable([
+    { key: 'stage', title: '阶段' },
+    { key: 'round', title: '轮次' },
+    { key: 'sampleDate', title: '日期' },
+    { key: 'factory', title: '打样厂' },
+    { key: 'size', title: '尺码' },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
+  ], samples);
+
+  const fabricsTable = buildTable([
+    { key: 'fabricName', title: '面料名称' },
+    { key: 'supplier', title: '供应商' },
+    { key: 'composition', title: '成分' },
+    { key: 'color', title: '颜色' },
+    { key: 'qtyOrdered', title: '数量', render: (v, row) => `${v || '-'} ${row.unit || ''}` },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
+  ], fabrics);
+
+  const accessoriesTable = buildTable([
+    { key: 'accessoryName', title: '辅料名称' },
+    { key: 'supplier', title: '供应商' },
+    { key: 'spec', title: '规格' },
+    { key: 'color', title: '颜色' },
+    { key: 'qtyOrdered', title: '数量', render: (v, row) => `${v || '-'} ${row.unit || ''}` },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
+  ], accessories);
+
+  const productionsTable = buildTable([
+    { key: 'factoryType', title: '工厂类型' },
+    { key: 'factoryName', title: '工厂名称' },
+    { key: 'startDate', title: '开始日期' },
+    { key: 'expectedEnd', title: '预计完成' },
+    { key: 'qtyPlanned', title: '计划数' },
+    { key: 'qtyCompleted', title: '已完成' },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
+  ], productions);
+
+  const printDate = App.utils.formatDate(new Date());
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>订单详情 - ${esc(order.orderNo)}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 12mm 10mm 14mm 10mm;
+    @bottom-left {
+      content: "打印日期：${printDate}";
+      font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+      font-size: 9px;
+      color: #666;
+      border-top: 1px solid #ddd;
+      padding-top: 3mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @bottom-right {
+      content: "第 " counter(page) " / " counter(pages) " 页";
+      font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+      font-size: 9px;
+      color: #666;
+      border-top: 1px solid #ddd;
+      padding-top: 3mm;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif; color: #222; font-size: 11px; line-height: 1.4; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #004D6D; padding-bottom: 6px; margin-bottom: 10px; }
+  .doc-header .company { font-size: 18px; font-weight: 700; color: #004D6D; }
+  .doc-header .company-en { font-size: 10px; color: #666; margin-top: 1px; }
+  .doc-header .doc-title { text-align: right; }
+  .doc-header .doc-title h2 { font-size: 14px; color: #004D6D; margin-bottom: 4px; }
+  .doc-header .doc-title .kv { display: flex; justify-content: flex-end; gap: 2px; margin-top: 2px; font-size: 11px; }
+  .doc-header .doc-title .kv .k { background: #d32f2f; color: #fff; padding: 2px 8px; font-weight: 600; border-radius: 3px 0 0 3px; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc-header .doc-title .kv .v { background: #d32f2f; color: #fff; padding: 2px 8px; font-weight: 700; border-radius: 0 3px 3px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .section-title { font-size: 11px; font-weight: 700; color: #004D6D; border-left: 3px solid #004D6D; padding-left: 5px; margin: 8px 0 4px; }
+  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  .info-table td { border: 1px solid #ccc; padding: 3px 6px; font-size: 10px; vertical-align: top; }
+  .info-table .label { background: #f3f4f6; font-weight: 600; color: #555; white-space: nowrap; width: 90px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc-footer-screen { font-size: 9px; color: #666; display: flex; justify-content: space-between; margin-top: 14px; padding-top: 4mm; border-top: 1px solid #ddd; }
+  @media screen {
+    .doc-footer-screen { padding: 4mm 4mm 0; }
+  }
+  @media print {
+    .no-print { display: none !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .doc-footer-screen { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="doc-header">
+    <div>
+      <div class="company">江苏舜天汉唐贸易有限公司</div>
+      <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
+    </div>
+    <div class="doc-title">
+      <h2>订单详情表</h2>
+      <div class="kv"><span class="k">PO</span><span class="v">${esc(order.orderNo)}</span></div>
+      <div class="kv"><span class="k">STYLE NO</span><span class="v">${esc(order.styleNo || '-')}</span></div>
+    </div>
+  </div>
+
+  <div class="section-title">订单信息</div>
+  <table class="info-table">
+    <tr>
+      <td class="label">Date</td><td>${App.utils.formatDate(order.orderDate)}</td>
+      <td class="label">Customer</td><td>${esc(customerName)}</td>
+      <td class="label">Season</td><td>${esc(seasonMap[order.season] || order.season || '-')}</td>
+      <td class="label">Status</td><td>${esc(order.status || '草稿')}</td>
+    </tr>
+    <tr>
+      <td class="label">Style Desc</td><td colspan="7">${esc(order.styleDescription || '-')}</td>
+    </tr>
+  </table>
+
+  ${matrixHtml ? `
+  <div class="section-title">尺码数量分配</div>
+  ${matrixHtml}
+  ` : ''}
+
+  <div class="section-title">价格与数量</div>
+  <table class="info-table">
+    <tr>
+      <td class="label">No. of Cartons</td><td>${totalCartons}</td>
+      <td class="label">Qty in Cartons</td><td>${(order.quantity || 0).toLocaleString()}</td>
+      <td class="label">U/Prx</td><td>${App.canSeePrice() ? (order.unitPrice ? App.utils.formatMoney(order.unitPrice) : '-') : (order.unitPrice ? '*' : '-')}</td>
+      <td class="label">TTL Amount</td><td style="font-weight:700;">${App.canSeePrice() ? (order.totalAmount ? App.utils.formatMoney(order.totalAmount) : '-') : (order.totalAmount ? '*' : '-')}</td>
+    </tr>
+  </table>
+
+  <div class="section-title">出运 / 客户联系人</div>
+  <table class="info-table">
+    <tr>
+      <td class="label">Shp Method</td><td>${shipMap[order.shipMethod] || order.shipMethod || '-'}</td>
+      <td class="label">ETD (交货日期)</td><td>${order.etd ? App.utils.formatDate(order.etd) : '-'}</td>
+      <td class="label">Planner</td><td>${esc(plannerName)}</td>
+      <td class="label">Designer</td><td>${esc(designerName)}</td>
+    </tr>
+    <tr>
+      <td class="label">P. Manager</td><td>${esc(pManagerName)}</td>
+      <td class="label"></td><td></td>
+      <td class="label"></td><td></td>
+      <td class="label"></td><td></td>
+    </tr>
+  </table>
+
+  <div class="section-title">样衣记录 (${samples.length})</div>
+  ${samplesTable}
+
+  <div class="section-title">面料信息 (${fabrics.length})</div>
+  ${fabricsTable}
+
+  <div class="section-title">辅料信息 (${accessories.length})</div>
+  ${accessoriesTable}
+
+  <div class="section-title">生产记录 (${productions.length})</div>
+  ${productionsTable}
+
+  <div class="doc-footer-screen no-print">
+    <span>打印日期：${printDate}</span>
+    <span>页码 / 页数需在打印或打印预览中查看</span>
+  </div>
+
+  <div class="no-print" style="text-align:center;margin-top:14px;">
+    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨️ 打印</button>
+    <button onclick="window.close()" style="padding:6px 20px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;margin-left:6px;">✖️ 关闭</button>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { App.toast('请允许弹窗以打印PDF', 'warning'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 300);
+}
+
+// ===== 尺寸表标签页 =====
+let currentOrderTab = 'orders';
+let _sizeSheetSearch = '';
+
+function switchOrderTab(tab) {
+  currentOrderTab = tab;
+  document.querySelectorAll('#orderTabs .tab-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  document.getElementById('ordersTab').style.display = tab === 'orders' ? '' : 'none';
+  document.getElementById('materialsTab').style.display = tab === 'materials' ? '' : 'none';
+  document.getElementById('sizesTab').style.display = tab === 'sizes' ? '' : 'none';
+  document.getElementById('layoutTab').style.display = tab === 'layout' ? '' : 'none';
+  if (tab === 'materials') { renderMaterialOrderFilter(); renderMaterials(); }
+  if (tab === 'sizes') renderSizeSheets();
+  if (tab === 'layout') searchLayoutImages();
+}
+
+// 尺寸表数据管理
+function getSizeSheets() {
+  return App.store.get('sizeSheets', []);
+}
+
+function saveSizeSheets(sheets) {
+  App.store.set('sizeSheets', sheets);
+}
+
+// 渲染尺寸表列表（卡片式）
+function renderSizeSheets() {
+  const sheets = getSizeSheets();
+  _sizeSheetSearch = document.getElementById('sizeSearchInput').value;
+  const search = (_sizeSheetSearch || '').toLowerCase().trim();
+  const typeFilter = document.getElementById('sizeTypeFilter').value;
+  const container = document.getElementById('sizeSheetContainer');
+  const countEl = document.getElementById('sizeSheetCount');
+
+  let filtered = sheets;
+  if (search) {
+    filtered = filtered.filter(s =>
+      (s.orderNo && s.orderNo.toLowerCase().includes(search)) ||
+      (s.styleNo && s.styleNo.toLowerCase().includes(search))
+    );
+  }
+  if (typeFilter) {
+    filtered = filtered.filter(s => (s.sampleType || '大货') === typeFilter);
+  }
+
+  countEl.textContent = sheets.length > 0 ? `（共 ${sheets.length} 份尺寸表，筛选 ${filtered.length} 份）` : '';
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px;color:#999;">
+        <div style="font-size:48px;margin-bottom:12px;">📐</div>
+        <div style="margin-bottom:16px;">${sheets.length === 0 ? '暂无尺寸表数据，请导入Excel文件' : '没有匹配的尺寸表'}</div>
+        ${sheets.length === 0 ? '<div style="font-size:12px;color:#999;">点击"📄 模板"下载模板，点击"📥 导入"上传数据</div>' : ''}
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(sheet => {
+    const sizeCount = sheet.sizes ? sheet.sizes.length : 0;
+    const rowCount = sheet.rows ? sheet.rows.length : 0;
+    return `
+      <div class="size-sheet-card" style="border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light);background:#f8f9fa;">
+          <div style="display:flex;gap:20px;align-items:center;">
+            <div>
+              <span style="color:var(--muted);font-size:12px;">类型：</span>
+              ${App.statusTag(sheet.sampleType || '大货')}
+            </div>
+            <div>
+              <span style="color:var(--muted);font-size:12px;">PO：</span>
+              <span style="font-weight:600;color:var(--primary);">${App.utils.escapeHtml(sheet.orderNo || '-')}</span>
+            </div>
+            <div>
+              <span style="color:var(--muted);font-size:12px;">款号：</span>
+              <span style="font-weight:600;">${App.utils.escapeHtml(sheet.styleNo || '-')}</span>
+            </div>
+            <div>
+              <span style="color:var(--muted);font-size:12px;">日期：</span>
+              <span>${App.utils.escapeHtml(sheet.date || '-')}</span>
+            </div>
+            <div style="color:var(--muted);font-size:12px;">
+              ${rowCount} 个部位 · ${sizeCount} 个尺码
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" onclick="viewSizeSheet('${sheet.id}')" title="查看">👁️</button>
+            <button class="btn btn-sm" onclick="printSizeSheet('${sheet.id}')" title="打印PDF">🖨️</button>
+            <button class="btn btn-sm" onclick="exportSizeSheet('${sheet.id}')" title="导出">📤</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSizeSheet('${sheet.id}')" title="删除">🗑️</button>
+          </div>
+        </div>
+        <div id="sizeSheet_${sheet.id}" style="display:none;padding:12px;">
+          ${renderSizeSheetTable(sheet)}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// 渲染单个尺寸表
+function renderSizeSheetTable(sheet) {
+  const sizes = sheet.sizes || [];
+  const rows = sheet.rows || [];
+
+  if (rows.length === 0) {
+    return '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>';
+  }
+
+  const thead = `
+    <table class="data-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#e8f1f5;">
+          <th style="padding:6px 8px;border:1px solid #ddd;width:40px;">部位</th>
+          <th style="padding:6px 8px;border:1px solid #ddd;text-align:left;">英文</th>
+          <th style="padding:6px 8px;border:1px solid #ddd;text-align:left;width:120px;">中文</th>
+          <th style="padding:6px 8px;border:1px solid #ddd;width:50px;">公差<br>in cm</th>
+          ${sizes.map(s => `<th style="padding:6px 4px;border:1px solid #ddd;text-align:center;width:50px;">${App.utils.escapeHtml(s)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(row => `
+          <tr>
+            <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;font-weight:600;">${App.utils.escapeHtml(row.code || '')}</td>
+            <td style="padding:4px 8px;border:1px solid #ddd;">${App.utils.escapeHtml(row.en || '')}</td>
+            <td style="padding:4px 8px;border:1px solid #ddd;">${App.utils.escapeHtml(row.cn || '')}</td>
+            <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;">${App.utils.escapeHtml(row.tolerance || '')}</td>
+            ${sizes.map(s => `<td style="padding:4px;text-align:center;border:1px solid #ddd;">${App.utils.escapeHtml(row.values ? row.values[s] || '-' : '-')}</td>`).join('')}
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+  return thead;
+}
+
+// 查看尺寸表详情
+function viewSizeSheet(id) {
+  const sheet = getSizeSheets().find(s => s.id === id);
+  if (!sheet) return;
+  const el = document.getElementById('sizeSheet_' + id);
+  if (el.style.display === 'none') {
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// 删除尺寸表
+function deleteSizeSheet(id) {
+  App.confirm('确定要删除这个尺寸表吗？', () => {
+    const sheets = getSizeSheets().filter(s => s.id !== id);
+    saveSizeSheets(sheets);
+    renderSizeSheets();
+    App.toast('尺寸表已删除', 'success');
+  });
+}
+
+// 清空全部尺寸表
+function clearAllSizeSheets() {
+  const sheets = getSizeSheets();
+  if (sheets.length === 0) {
+    App.toast('尺寸表已是空的', 'warning');
+    return;
+  }
+  App.confirm(`确定要清空全部 ${sheets.length} 份尺寸表吗？此操作不可恢复！`, () => {
+    saveSizeSheets([]);
+    renderSizeSheets();
+    App.toast('已清空', 'success');
+  });
+}
+
+// 下载Excel模板
+function downloadSizeTemplate() {
+  const headers = ['PO号', '款号', '类型', '日期', '部位编号', '英文名称', '中文名称', '公差'];
+  const sampleData = [
+    ['260003960', '1110577', '头样', '2026/7/3', 'A', '1/2 BUST CIRC. at armhole point', '半胸围-腋底量', '1'],
+    ['260003960', '1110577', '头样', '2026/7/3', 'B', '1/2 WAIST CIRC.15 cm from armhole point', '半腰围-腋下15cm', '1'],
+    ['260003960', '1110577', '头样', '2026/7/3', 'D', '1/2 HEM CIRC. at edge straight line', '半下摆-直量', '1'],
+    ['260003960', '1110577', '尺码样', '2026/7/15', 'D6', 'FOLD HEM HEIGHT', '下摆折边高', '0.3'],
+    ['260003960', '1110577', '尺码样', '2026/7/15', 'E', 'NECK OPENING back neck straight seam to seam', '领宽', '0.3'],
+    ['260003960', '1110577', '产前样', '2026/8/1', 'E1', 'FRONT NECK DROP from H.P.S to edge', '前领深', '0.3'],
+  ];
+  const sizeHeaders = ['34', '36', '38', '40', '42', '44'];
+  const sizeData = [
+    ['45', '47', '49.5', '52', '55', '58'],
+    ['43', '45', '47.5', '50', '53', '56'],
+    ['54', '56', '58.5', '61', '64', '67'],
+    ['4', '4', '4', '4', '4', '4'],
+    ['16', '16.6', '17.2', '17.8', '18.4', '19'],
+    ['8.5', '8.8', '9.1', '9.4', '9.7', '10'],
+  ];
+
+  const headerRow = [...headers, ...sizeHeaders];
+  const rows = sampleData.map((d, i) => [...d, ...sizeData[i]]);
+  const csv = [headerRow, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '尺寸表模板.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  App.toast('模板已下载，请修改后导入', 'success');
+}
+
+// 导出单个尺寸表
+function exportSizeSheet(id) {
+  const sheet = getSizeSheets().find(s => s.id === id);
+  if (!sheet) return;
+  const headers = ['PO号', '款号', '类型', '日期', '部位编号', '英文名称', '中文名称', '公差', ...(sheet.sizes || [])];
+  const rows = (sheet.rows || []).map(row => [
+    sheet.orderNo, sheet.styleNo, sheet.sampleType || '大货', sheet.date,
+    row.code, row.en, row.cn, row.tolerance,
+    ...(sheet.sizes || []).map(s => row.values ? row.values[s] || '' : '')
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `尺寸表_${sheet.sampleType || '大货'}_${sheet.orderNo || ''}_${sheet.styleNo || ''}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  App.toast('导出成功', 'success');
+}
+
+// 处理尺寸表Excel导入
+function handleSizeImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1, raw: false });
+
+      if (rows.length < 2) {
+        App.toast('文件格式错误，至少需要2行数据', 'error');
+        return;
+      }
+
+      const sheets = getSizeSheets();
+      let importCount = 0;
+      let skipCount = 0;
+
+      const { processed, skipped } = parseSizeSheetRows(rows);
+      processed.forEach(sheet => {
+        const existsIdx = sheets.findIndex(s => s.orderNo === sheet.orderNo && s.styleNo === sheet.styleNo && (s.sampleType || '大货') === (sheet.sampleType || '大货'));
+        if (existsIdx >= 0) {
+          sheets[existsIdx] = sheet;
+        } else {
+          sheets.push(sheet);
+        }
+        importCount++;
+      });
+      skipCount = skipped;
+
+      saveSizeSheets(sheets);
+      renderSizeSheets();
+
+      let msg = `导入完成：成功 ${importCount} 份尺寸表`;
+      if (skipCount > 0) msg += `，跳过 ${skipCount} 行（格式不匹配）`;
+      App.toast(msg, 'success');
+    } catch (err) {
+      console.error('导入失败:', err);
+      App.toast('导入失败，请检查文件格式', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Excel日期序列号转字符串
+function formatExcelDate(val) {
+  if (val === null || val === undefined || val === '') return '';
+  // 已经是字符串日期（如 2026/7/3）
+  if (typeof val === 'string') return val.trim();
+  // Date对象（cellDates:true时）
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = val.getMonth() + 1;
+    const d = val.getDate();
+    return `${y}/${m}/${d}`;
+  }
+  // 数字序列号（如46243）
+  if (typeof val === 'number') {
+    const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+    const y = date.getUTCFullYear();
+    const m = date.getUTCMonth() + 1;
+    const d = date.getUTCDate();
+    return `${y}/${m}/${d}`;
+  }
+  return String(val).trim();
+}
+
+// 解析尺寸表数据行
+function parseSizeSheetRows(rows) {
+  const result = { processed: [], skipped: 0 };
+  if (rows.length < 2) return result;
+
+  const headerRow = rows[0].map(h => String(h).trim());
+  const headers = {
+    po: headerRow.findIndex(h => h.includes('PO') || h.includes('po') || h === 'PO号'),
+    styleNo: headerRow.findIndex(h => h.includes('款号') || h.includes('style') || h.toLowerCase().includes('style')),
+    sampleType: headerRow.findIndex(h => h === '类型' || h === '样衣类型'),
+    date: headerRow.findIndex(h => h === '日期' || h === 'date' || h.toLowerCase() === 'date'),
+    code: headerRow.findIndex(h => h === '部位编号' || h === '部位'),
+    en: headerRow.findIndex(h => h === '英文名称' || h === '英文'),
+    cn: headerRow.findIndex(h => h === '中文名称' || h === '中文'),
+    tolerance: headerRow.findIndex(h => h === '公差' || h === 'tolerance' || h.toLowerCase() === 'tolerance'),
+  };
+
+  if (headers.po === -1 || headers.styleNo === -1 || headers.code === -1) {
+    result.skipped = rows.length - 1;
+    return result;
+  }
+
+  const sizeStartIdx = Math.max(
+    headers.en, headers.cn, headers.tolerance,
+    headers.po, headers.styleNo, headers.date, headers.code,
+    headers.sampleType
+  ) + 1;
+
+  const sizeCols = [];
+  for (let i = sizeStartIdx; i < headerRow.length; i++) {
+    if (headerRow[i]) sizeCols.push({ col: i, size: headerRow[i] });
+  }
+
+  const sheetMap = {};
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length === 0) continue;
+
+    const orderNo = headers.po >= 0 ? String(row[headers.po] || '').trim() : '';
+    const styleNo = headers.styleNo >= 0 ? String(row[headers.styleNo] || '').trim() : '';
+    const sampleType = headers.sampleType >= 0 ? String(row[headers.sampleType] || '').trim() : '';
+    const date = headers.date >= 0 ? formatExcelDate(row[headers.date]) : '';
+    const code = headers.code >= 0 ? String(row[headers.code] || '').trim() : '';
+    const en = headers.en >= 0 ? String(row[headers.en] || '').trim() : '';
+    const cn = headers.cn >= 0 ? String(row[headers.cn] || '').trim() : '';
+    const tolerance = headers.tolerance >= 0 ? String(row[headers.tolerance] || '').trim() : '';
+
+    if (!code) { result.skipped++; continue; }
+
+    const key = `${orderNo}_${styleNo}_${sampleType}`;
+    if (!sheetMap[key]) {
+      sheetMap[key] = {
+        id: App.utils.genId('SS'),
+        orderNo, styleNo, sampleType: sampleType || '大货', date,
+        sizes: sizeCols.map(sc => sc.size),
+        rows: []
+      };
+    }
+
+    const values = {};
+    sizeCols.forEach(sc => {
+      values[sc.size] = row[sc.col] !== undefined && row[sc.col] !== null ? String(row[sc.col]).trim() : '';
+    });
+
+    sheetMap[key].rows.push({ code, en, cn, tolerance, values });
+  }
+
+  result.processed = Object.values(sheetMap);
+  return result;
+}
+
+// ===== 款式图标签页 =====
+let _layoutFiles = [];      // 存储选择的文件夹中的图片文件
+let _layoutFolderName = '';  // 文件夹名称
+let _selectedLayoutFiles = new Set();  // 选中的图片文件名
+let _layoutUrlMap = {};      // 文件名 -> objectURL 映射
+const _layoutImageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+
+// 加载款式图文件夹
+function loadLayoutFolder(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  _layoutFiles = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const name = f.name.toLowerCase();
+    if (_layoutImageExts.some(ext => name.endsWith(ext))) {
+      _layoutFiles.push(f);
+    }
+  }
+
+  _layoutFolderName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : '已选择文件夹';
+  _selectedLayoutFiles.clear();
+  _layoutUrlMap = {};
+  document.getElementById('layoutFolderName').textContent = `📁 ${_layoutFolderName}（${_layoutFiles.length} 张图片）`;
+  searchLayoutImages();
+}
+
+// 搜索款式图
+function searchLayoutImages() {
+  const container = document.getElementById('layoutContainer');
+  const countEl = document.getElementById('layoutCount');
+  const search = document.getElementById('layoutSearchInput').value.trim().toLowerCase();
+
+  if (_layoutFiles.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px;color:#999;">
+        <div style="font-size:48px;margin-bottom:12px;">📂</div>
+        <div style="margin-bottom:8px;">请先选择款式图文件夹</div>
+        <div style="font-size:12px;color:#999;">点击"📁 选择文件夹"按钮，选择项目中的 layout 文件夹</div>
+      </div>`;
+    countEl.textContent = '';
+    return;
+  }
+
+  if (!search) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px;color:#999;">
+        <div style="font-size:48px;margin-bottom:12px;">🔍</div>
+        <div>请输入款号进行搜索（如 111057）</div>
+      </div>`;
+    countEl.textContent = `共 ${_layoutFiles.length} 张图片`;
+    return;
+  }
+
+  // 精确匹配 + 部分匹配
+  const exact = [];
+  const partial = [];
+  _layoutFiles.forEach(f => {
+    const name = f.name.toLowerCase();
+    // 去掉扩展名后的文件名
+    const baseName = name.replace(/\.[^.]+$/, '');
+    // 精确匹配：文件名完全等于搜索词，或以 搜索词- 开头
+    if (baseName === search || baseName.startsWith(search + '-') || baseName.startsWith(search + '_')) {
+      exact.push(f);
+    } else if (baseName.includes(search)) {
+      partial.push(f);
+    }
+  });
+
+  const matched = [...exact, ...partial];
+  const selCount = matched.filter(f => _selectedLayoutFiles.has(f.name)).length;
+  countEl.textContent = `匹配 ${matched.length} 张 / 选中 ${selCount} 张 / 共 ${_layoutFiles.length} 张`;
+
+  // 更新全选复选框状态
+  const selectAllCb = document.getElementById('layoutSelectAll');
+  if (selectAllCb) {
+    selectAllCb.checked = matched.length > 0 && matched.every(f => _selectedLayoutFiles.has(f.name));
+  }
+
+  if (matched.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px;color:#999;">
+        <div style="font-size:48px;margin-bottom:12px;">📷</div>
+        <div>未找到包含"${search}"的款式图</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = matched.map(f => {
+    const url = URL.createObjectURL(f);
+    _layoutUrlMap[f.name] = url;
+    const displayName = f.name.replace(/\.[^.]+$/, '');
+    const checked = _selectedLayoutFiles.has(f.name);
+    return `
+      <div class="layout-card" style="display:inline-block;vertical-align:top;margin:8px;border:1px solid ${checked ? 'var(--primary)' : 'var(--border)'};border-radius:8px;overflow:hidden;background:#fff;width:240px;${checked ? 'box-shadow:0 0 0 2px var(--primary-light);' : ''}">
+        <div style="position:relative;overflow:hidden;background:#f5f5f5;height:280px;display:flex;align-items:center;justify-content:center;">
+          <img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;" onclick="previewLayoutImage('${url}', '${f.name}')" onerror="this.parentElement.innerHTML='<span style=\\'color:#ccc;\\'>图片加载失败</span>'">
+          <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleLayoutSelect('${f.name}', this.checked)" style="position:absolute;top:6px;left:6px;width:18px;height:18px;cursor:pointer;">
+        </div>
+        <div style="padding:8px 10px;font-size:12px;border-top:1px solid var(--border-light);">
+          <div style="font-weight:600;color:var(--primary);">${App.utils.escapeHtml(displayName)}</div>
+          <div style="color:var(--muted);font-size:11px;margin-top:2px;">${f.name}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// 切换图片选中
+function toggleLayoutSelect(fileName, checked) {
+  if (checked) {
+    _selectedLayoutFiles.add(fileName);
+  } else {
+    _selectedLayoutFiles.delete(fileName);
+  }
+  // 更新工具栏计数
+  const countEl = document.getElementById('layoutCount');
+  const search = document.getElementById('layoutSearchInput').value.trim().toLowerCase();
+  const matched = _layoutFiles.filter(f => {
+    const baseName = f.name.toLowerCase().replace(/\.[^.]+$/, '');
+    return baseName.includes(search);
+  });
+  const selCount = matched.filter(f => _selectedLayoutFiles.has(f.name)).length;
+  countEl.textContent = `匹配 ${matched.length} 张 / 选中 ${selCount} 张 / 共 ${_layoutFiles.length} 张`;
+}
+
+// 全选/取消全选当前匹配的图片
+function toggleLayoutSelectAll(checked) {
+  const search = document.getElementById('layoutSearchInput').value.trim().toLowerCase();
+  const matched = _layoutFiles.filter(f => {
+    const baseName = f.name.toLowerCase().replace(/\.[^.]+$/, '');
+    return baseName.includes(search);
+  });
+  if (checked) {
+    matched.forEach(f => _selectedLayoutFiles.add(f.name));
+  } else {
+    matched.forEach(f => _selectedLayoutFiles.delete(f.name));
+  }
+  searchLayoutImages();
+}
+
+// 预览大图
+function previewLayoutImage(url, name) {
+  App.modal.open({
+    title: name,
+    size: 'lg',
+    body: `<div style="text-align:center;"><img src="${url}" style="max-width:100%;max-height:70vh;object-fit:contain;"></div>`,
+    footer: `<button class="btn" onclick="App.modal.close()">关闭</button>`
+  });
+}
+
+// 打印尺寸表为PDF
+function printSizeSheet(id) {
+  const sheet = getSizeSheets().find(s => s.id === id);
+  if (!sheet) return;
+
+  const sizes = sheet.sizes || [];
+  const rows = sheet.rows || [];
+  if (rows.length === 0) { App.toast('尺寸表无数据', 'warning'); return; }
+
+  const esc = App.utils.escapeHtml;
+  const printDate = App.utils.formatDate(new Date());
+  const bgCA = '-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+
+  // 尝试关联订单获取客户信息
+  const order = App.store.get('orders', []).find(o => o.orderNo === sheet.orderNo);
+  const customerName = order ? getCustomerName(order.customerId) : '-';
+  const styleDesc = order ? (order.styleDescription || '-') : '-';
+
+  // 计算尺码列总宽，避免溢出
+  const sizeCount = sizes.length;
+  const codeW = 42, enW = 0, cnW = 110, tolW = 50, sizeW = 48;
+  const enWCalculated = Math.max(160, 740 - codeW - cnW - tolW - sizeCount * sizeW);
+
+  // 表头
+  const sizeHeads = sizes.map(s =>
+    `<th style="width:${sizeW}px;background:#004D6D;color:#fff;${bgCA}padding:6px 4px;border:1px solid #004D6D;text-align:center;font-weight:600;">${esc(s)}</th>`
+  ).join('');
+
+  // 数据行（斑马纹）
+  const bodyRows = rows.map((row, idx) => {
+    const zebra = idx % 2 === 1 ? `background:#f6f9fb;${bgCA}` : '';
+    const sizeCells = sizes.map(s => {
+      const v = row.values ? row.values[s] : '';
+      return `<td style="${zebra}padding:5px 4px;border:1px solid #ccc;text-align:center;font-feature-settings:'tnum';">${esc(v || '-')}</td>`;
+    }).join('');
+    return `<tr>
+      <td style="${zebra}padding:5px 8px;border:1px solid #ccc;text-align:center;font-weight:700;color:#004D6D;">${esc(row.code || '')}</td>
+      <td style="${zebra}padding:5px 8px;border:1px solid #ccc;text-align:left;font-size:10px;">${esc(row.en || '')}</td>
+      <td style="${zebra}padding:5px 8px;border:1px solid #ccc;text-align:left;">${esc(row.cn || '')}</td>
+      <td style="${zebra}padding:5px 4px;border:1px solid #ccc;text-align:center;color:#666;">${esc(row.tolerance || '')}</td>
+      ${sizeCells}
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>尺寸表 - ${esc(sheet.orderNo)} - ${esc(sheet.styleNo)}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 10mm 16mm 10mm;
+    @bottom-left {
+      content: "江苏舜天汉唐贸易有限公司 · 尺寸表  ｜  打印日期：${printDate}";
+      font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+      font-size: 9px;
+      color: #888;
+      border-top: 1px solid #ddd;
+      padding-top: 3mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @bottom-right {
+      content: "第 " counter(page) " / " counter(pages) " 页";
+      font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+      font-size: 9px;
+      color: #888;
+      border-top: 1px solid #ddd;
+      padding-top: 3mm;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif; color: #222; font-size: 11px; line-height: 1.5; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #004D6D; padding-bottom: 8px; margin-bottom: 12px; }
+  .doc-header .company { font-size: 18px; font-weight: 700; color: #004D6D; letter-spacing: 0.5px; }
+  .doc-header .company-en { font-size: 9.5px; color: #666; margin-top: 2px; letter-spacing: 0.3px; }
+  .doc-header .doc-title { text-align: right; }
+  .doc-header .doc-title h2 { font-size: 16px; color: #004D6D; margin-bottom: 6px; font-weight: 700; }
+  .doc-header .doc-title .kv { display: flex; justify-content: flex-end; gap: 0; margin-top: 4px; font-size: 11px; }
+  .doc-header .doc-title .kv .k { background: #d32f2f; color: #fff; padding: 3px 9px; font-weight: 600; border-radius: 3px 0 0 3px; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc-header .doc-title .kv .v { background: #d32f2f; color: #fff; padding: 3px 10px; font-weight: 700; border-radius: 0 3px 3px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .section-title { font-size: 11px; font-weight: 700; color: #004D6D; border-left: 3px solid #004D6D; padding-left: 6px; margin: 10px 0 6px; }
+  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  .info-table td { border: 1px solid #ccc; padding: 4px 8px; font-size: 10.5px; vertical-align: top; }
+  .info-table .label { background: #f3f4f6; font-weight: 600; color: #555; white-space: nowrap; width: 90px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .size-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .size-table thead th { background: #004D6D; color: #fff; ${bgCA} }
+  .size-table thead th:first-child { border-top-left-radius: 3px; }
+  .doc-footer-screen { font-size: 9px; color: #666; display: flex; justify-content: space-between; margin-top: 14px; padding-top: 4mm; border-top: 1px solid #ddd; }
+  @media screen { .doc-footer-screen { padding: 4mm 4mm 0; } }
+  @media print {
+    .no-print { display: none !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .doc-footer-screen { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="doc-header">
+    <div>
+      <div class="company">江苏舜天汉唐贸易有限公司</div>
+      <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
+    </div>
+    <div class="doc-title">
+      <h2>SIZE CHART 尺寸表</h2>
+      <div class="kv"><span class="k">PO</span><span class="v">${esc(sheet.orderNo || '-')}</span></div>
+      <div class="kv" style="margin-top:3px;"><span class="k">STYLE NO</span><span class="v">${esc(sheet.styleNo || '-')}</span></div>
+    </div>
+  </div>
+
+  <div class="section-title">基本信息</div>
+  <table class="info-table">
+    <tr>
+      <td class="label">Sample Type</td><td>${esc(sheet.sampleType || '大货')}</td>
+      <td class="label">Date</td><td>${esc(sheet.date || '-')}</td>
+      <td class="label">Customer</td><td>${esc(customerName)}</td>
+      <td class="label">Style Desc</td><td>${esc(styleDesc)}</td>
+    </tr>
+  </table>
+
+  <div class="section-title">尺寸明细（单位：cm）</div>
+  <table class="size-table">
+    <thead>
+      <tr>
+        <th style="width:${codeW}px;background:#004D6D;color:#fff;${bgCA}padding:6px 8px;border:1px solid #004D6D;text-align:center;font-weight:600;">部位</th>
+        <th style="width:${enWCalculated}px;background:#004D6D;color:#fff;${bgCA}padding:6px 8px;border:1px solid #004D6D;text-align:left;font-weight:600;">英文 MEASUREMENT POINT</th>
+        <th style="width:${cnW}px;background:#004D6D;color:#fff;${bgCA}padding:6px 8px;border:1px solid #004D6D;text-align:left;font-weight:600;">中文</th>
+        <th style="width:${tolW}px;background:#004D6D;color:#fff;${bgCA}padding:6px 4px;border:1px solid #004D6D;text-align:center;font-weight:600;">公差<br>in cm</th>
+        ${sizeHeads}
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+
+  <div class="doc-footer-screen no-print">
+    <span>打印日期：${printDate}</span>
+    <span>页码 / 页数需在打印或打印预览中查看</span>
+  </div>
+
+  <div class="no-print" style="text-align:center;margin-top:14px;">
+    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨️ 打印</button>
+    <button onclick="window.close()" style="padding:6px 20px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;margin-left:6px;">✖️ 关闭</button>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { App.toast('请允许弹窗以打印PDF', 'warning'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 300);
+}
+
+// 打印款式图为PDF
+function printLayoutImages() {
+  const search = document.getElementById('layoutSearchInput').value.trim();
+  if (!search) { App.toast('请先输入款号搜索', 'warning'); return; }
+
+  const searchLower = search.toLowerCase();
+  const matched = _layoutFiles.filter(f => {
+    const baseName = f.name.toLowerCase().replace(/\.[^.]+$/, '');
+    return baseName === searchLower || baseName.startsWith(searchLower + '-') || baseName.startsWith(searchLower + '_') || baseName.includes(searchLower);
+  });
+
+  if (matched.length === 0) { App.toast('没有匹配的款式图可打印', 'warning'); return; }
+
+  // 优先打印选中的，若未选中则打印全部匹配的
+  const toPrint = matched.filter(f => _selectedLayoutFiles.has(f.name));
+  const finalList = toPrint.length > 0 ? toPrint : matched;
+  const label = toPrint.length > 0 ? `选中 ${toPrint.length} 张` : `全部 ${matched.length} 张`;
+
+  const esc = App.utils.escapeHtml;
+  const printDate = App.utils.formatDate(new Date());
+
+  // 将图片转为base64
+  const promises = finalList.map(f => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve({ name: f.name.replace(/\.[^.]+$/, ''), data: e.target.result });
+      reader.onerror = () => resolve({ name: f.name.replace(/\.[^.]+$/, ''), data: '' });
+      reader.readAsDataURL(f);
+    });
+  });
+
+  Promise.all(promises).then(images => {
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>款式图 - ${esc(search)}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 10mm 16mm 10mm;
+    @bottom-left {
+      content: "江苏舜天汉唐贸易有限公司 · 款式图  ｜  打印日期：${printDate}";
+      font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+      font-size: 9px;
+      color: #888;
+      border-top: 1px solid #ddd;
+      padding-top: 3mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @bottom-right {
+      content: "第 " counter(page) " / " counter(pages) " 页";
+      font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+      font-size: 9px;
+      color: #888;
+      border-top: 1px solid #ddd;
+      padding-top: 3mm;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif; color: #222; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #004D6D; padding-bottom: 8px; margin-bottom: 12px; }
+  .doc-header .company { font-size: 18px; font-weight: 700; color: #004D6D; letter-spacing: 0.5px; }
+  .doc-header .company-en { font-size: 9.5px; color: #666; margin-top: 2px; letter-spacing: 0.3px; }
+  .doc-header .doc-title { text-align: right; }
+  .doc-header .doc-title h2 { font-size: 16px; color: #004D6D; margin-bottom: 6px; font-weight: 700; }
+  .doc-header .doc-title .kv { display: flex; justify-content: flex-end; gap: 0; margin-top: 4px; font-size: 11px; }
+  .doc-header .doc-title .kv .k { background: #d32f2f; color: #fff; padding: 3px 9px; font-weight: 600; border-radius: 3px 0 0 3px; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc-header .doc-title .kv .v { background: #d32f2f; color: #fff; padding: 3px 10px; font-weight: 700; border-radius: 0 3px 3px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .img-page { text-align: center; padding: 10px 0; }
+  .img-page + .img-page { page-break-before: always; }
+  .img-page img { max-width: 100%; max-height: 225mm; object-fit: contain; }
+  .img-page .name { font-size: 12px; color: #666; margin-top: 8px; }
+  .doc-footer-screen { font-size: 9px; color: #666; display: flex; justify-content: space-between; margin-top: 14px; padding-top: 4mm; border-top: 1px solid #ddd; }
+  @media screen { .doc-footer-screen { padding: 4mm 4mm 0; } }
+  @media print {
+    .no-print { display: none !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .doc-footer-screen { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="doc-header">
+    <div>
+      <div class="company">江苏舜天汉唐贸易有限公司</div>
+      <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
+    </div>
+    <div class="doc-title">
+      <h2>STYLE IMAGE 款式图</h2>
+      <div class="kv"><span class="k">STYLE NO</span><span class="v">${esc(search)}</span></div>
+      <div class="kv" style="margin-top:3px;"><span class="k">COUNT</span><span class="v">${esc(label)}</span></div>
+    </div>
+  </div>
+  ${images.map(img => `
+    <div class="img-page">
+      ${img.data ? `<img src="${img.data}" />` : '<div style="color:#999;padding:100px 0;">图片加载失败</div>'}
+      <div class="name">${esc(img.name)}</div>
+    </div>
+  `).join('')}
+  <div class="doc-footer-screen no-print">
+    <span>打印日期：${printDate}</span>
+    <span>页码 / 页数需在打印或打印预览中查看</span>
+  </div>
+  <div class="no-print" style="text-align:center;margin-top:14px;">
+    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨️ 打印</button>
+    <button onclick="window.close()" style="padding:6px 20px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;margin-left:6px;">✖️ 关闭</button>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { App.toast('请允许弹窗以打印PDF', 'warning'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
+  });
+}
+
+// ===== 物料登记标签页 =====
+let _matEditingId = null;
+
+// 物料登记分类映射：对应面里衬类型 / 辅料 / 水洗
+const MAT_CATEGORIES = [
+  { key: '面料', target: 'fabric', fabricType: '面料', cls: 'tag-teal' },
+  { key: '里料', target: 'fabric', fabricType: '里料', cls: 'tag-blue' },
+  { key: '衬', target: 'fabric', fabricType: '衬', cls: 'tag-purple' },
+  { key: '填充料', target: 'fabric', fabricType: '填充料', cls: 'tag-orange' },
+  { key: '辅料', target: 'accessory', cls: 'tag-green' },
+  { key: '水洗', target: 'wash', cls: 'tag-red' },
+];
+MAT_CATEGORIES._map = Object.fromEntries(MAT_CATEGORIES.map(c => [c.key, c]));
+
+function getOrderMaterials() {
+  return App.store.get('orderMaterials', []);
+}
+function saveOrderMaterials(list) {
+  App.store.set('orderMaterials', list);
+}
+
+// 通用：根据款号找订单号（优先取第一个匹配的订单）
+function getOrderNoByStyleNo(styleNo) {
+  if (!styleNo) return '';
+  const orders = App.store.get('orders', []);
+  const o = orders.find(x => x.styleNo === styleNo);
+  return o ? o.orderNo : '';
+}
+
+// 渲染订单下拉筛选
+function renderMaterialOrderFilter() {
+  const sel = document.getElementById('matOrderFilter');
+  if (!sel) return;
+  const orders = App.store.get('orders', []);
+  const cur = sel.value;
+  const opts = ['<option value="">全部订单</option>'];
+  orders
+    .slice()
+    .sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''))
+    .forEach(o => opts.push(`<option value="${o.orderNo}" ${o.orderNo === cur ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`));
+  sel.innerHTML = opts.join('');
+}
+
+// 获取筛选后的物料登记列表
+function getFilteredMaterials() {
+  const list = getOrderMaterials();
+  const search = (document.getElementById('matSearchInput')?.value || '').trim().toLowerCase();
+  const cat = document.getElementById('matCategoryFilter')?.value || '';
+  const order = document.getElementById('matOrderFilter')?.value || '';
+
+  return list.filter(m => {
+    if (cat && m.category !== cat) return false;
+    if (order && m.orderNo !== order) return false;
+    if (search) {
+      const str = [m.orderNo, m.styleNo, m.name, m.supplier, m.spec, m.remark, m.washMethod, m.usagePart].join(' ').toLowerCase();
+      if (!str.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
+// 渲染物料登记表格
+function renderMaterials() {
+  const list = App.utils.sortByDateDesc(getFilteredMaterials(), ['createDate', 'updateDate']);
+  const el = document.getElementById('materialsTable');
+  const labelEl = document.getElementById('matCountLabel');
+  if (labelEl) labelEl.textContent = list.length ? ` 共 ${list.length} 条` : '';
+  if (!el) return;
+
+  const tagCls = (key) => (MAT_CATEGORIES._map[key]?.cls || '');
+  const thead = `<thead><tr>
+    <th style="width:50px;">类别</th>
+    <th style="width:120px;">PO</th>
+    <th style="width:100px;">款号</th>
+    <th>名称</th>
+    <th style="width:90px;">使用部位</th>
+    <th style="width:120px;">规格/颜色/成</th>
+    <th style="width:120px;">供应商/水洗厂</th>
+    <th style="width:70px;">数量</th>
+    <th style="width:70px;">单价</th>
+    <th style="width:110px;">日期</th>
+    <th style="width:90px;">同步状态</th>
+    <th style="width:70px;white-space:nowrap;">操作</th>
+  </tr></thead>`;
+
+  let tbody;
+  if (list.length === 0) {
+    tbody = `<tbody><tr><td colspan="12" style="text-align:center;padding:24px;color:#999;">暂无数据，点击右上角「➕」登记面料/里料/衬/辅料/水洗信息</td></tr></tbody>`;
+  } else {
+    tbody = '<tbody>' + list.map(m => {
+      const cat = MAT_CATEGORIES._map[m.category];
+      const synced = m.syncedToModule ? `<span class="tag tag-green">已同步</span>` : `<span class="tag tag-warning">待同步</span>`;
+      const dateStr = m.date || m.createDate || '-';
+      const specParts = [
+        m.category === '水洗' ? (m.washMethod || '') : (m.spec || ''),
+        m.color || '',
+        m.fabricComposition ? (typeof m.fabricComposition === 'string' ? m.fabricComposition : '') : ''
+      ].filter(Boolean).join(' / ') || '-';
+      return `<tr>
+        <td>${cat ? `<span class="tag ${cat.cls}">${m.category}</span>` : m.category}</td>
+        <td>${App.utils.escapeHtml(m.orderNo || '-')}</td>
+        <td>${App.utils.escapeHtml(m.styleNo || '-')}</td>
+        <td>${App.utils.escapeHtml(m.name || '-')}</td>
+        <td>${App.utils.escapeHtml(m.usagePart || '-')}</td>
+        <td>${App.utils.escapeHtml(specParts)}</td>
+        <td>${App.utils.escapeHtml(m.supplier || '-')}</td>
+        <td>${m.qtyOrdered ? Number(m.qtyOrdered).toLocaleString() + (m.unit || '') : '-'}</td>
+        <td>${m.unitPrice ? App.utils.formatMoney(m.unitPrice) : '-'}</td>
+        <td>${App.utils.escapeHtml(dateStr)}</td>
+        <td>${synced}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-text btn-sm" onclick="openMaterialModal('${m.id}')" title="编辑">✏️</button>
+          <button class="btn btn-text btn-sm" onclick="syncOneMaterial('${m.id}')" title="同步到对应模块">🔄</button>
+          <button class="btn btn-text btn-sm" onclick="deleteMaterial('${m.id}')" title="删除">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('') + '</tbody>';
+  }
+
+  el.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+}
+
+// 生成水洗单号（WS-XXXX）
+function _matGenWashNo() {
+  const washes = App.store.get('washes', []);
+  let maxNum = 0;
+  washes.forEach(w => {
+    const m = w.washNo && w.washNo.match(/WS-(\d+)/);
+    if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+  });
+  return `WS-${String(maxNum + 1).padStart(4, '0')}`;
+}
+
+// 生成面里衬 / 辅料编号：STIG + YYYYMM + 4位随机
+function _matGenCode(prefix) {
+  const d = new Date();
+  const ym = d.getFullYear().toString() + String(d.getMonth() + 1).padStart(2, '0');
+  const r = String(Math.floor(Math.random() * 9000) + 1000);
+  return `${prefix || 'STIG'}${ym}${r}`;
+}
+
+// 打开新增/编辑物料弹窗
+function openMaterialModal(id) {
+  _matEditingId = id || null;
+  const list = getOrderMaterials();
+  const m = id ? { ...(list.find(x => x.id === id) || {}) } : {};
+  const orders = App.store.get('orders', []);
+  const today = App.utils.today();
+
+  // 订单选项
+  const orderOpts = orders.map(o => `<option value="${o.orderNo}" data-style="${App.utils.escapeHtml(o.styleNo || '')}" ${m.orderNo === o.orderNo ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`).join('');
+  // 类别选项
+  const catOpts = MAT_CATEGORIES.map(c => `<option value="${c.key}" ${m.category === c.key ? 'selected' : ''}>${c.key}</option>`).join('');
+  // 面里衬厂/辅料供应商/水洗厂选项
+  const contacts = App.store.get('contacts', []);
+  const fabricSuppliers = contacts.filter(c => c.type === '面里衬厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const accessorySuppliers = contacts.filter(c => c.type === '辅料厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const washFactories = contacts.filter(c => c.type === '水洗厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const garmentFactories = contacts.filter(c => c.type === '服装厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.shipFactory === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+
+  const defCat = m.category || '面料';
+  const cat = MAT_CATEGORIES._map[defCat] || MAT_CATEGORIES[0];
+  const isFabric = cat.target === 'fabric';
+  const isAccessory = cat.target === 'accessory';
+  const isWash = cat.target === 'wash';
+  const defaultStyle = m.styleNo || '';
+  const defaultOrder = m.orderNo || '';
+
+  // 不同类别下的供应商下拉
+  const supplierSelect = (placeholder, innerHtml) => `
+    <select class="form-select" id="m_supplier" style="width:100%;">
+      <option value="">${placeholder}</option>
+      ${innerHtml}
+    </select>`;
+
+  const body = `
+  <div class="form-grid" style="grid-template-columns:repeat(4,1fr);gap:10px 14px;">
+    <div class="form-group">
+      <label class="form-label">PO 订单号</label>
+      <select class="form-select" id="m_orderNo" onchange="_matOnOrderChange(this)">
+        <option value="">请选择</option>
+        ${orderOpts}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">款号 Style No.</label>
+      <input type="text" class="form-input" id="m_styleNo" value="${App.utils.escapeHtml(defaultStyle)}" placeholder="款号" list="_matStyleNoList">
+      <datalist id="_matStyleNoList">${[...new Set(orders.map(o => o.styleNo).filter(Boolean))].map(s => `<option value="${App.utils.escapeHtml(s)}">`).join('')}</datalist>
+    </div>
+    <div class="form-group">
+      <label class="form-label">类别<span class="required">*</span></label>
+      <select class="form-select" id="m_category" onchange="_matOnCategoryChange(this.value)">${catOpts}</select>
+    </div>
+    <div class="form-group" id="group_usagePart">
+      <label class="form-label">使用部位</label>
+      <input type="text" class="form-input" id="m_usagePart" value="${App.utils.escapeHtml(m.usagePart || '')}" placeholder="如：大身、领、门襟">
+    </div>
+
+    <div class="form-group" style="grid-column:span 2;">
+      <label class="form-label" id="label_name">名称<span class="required">*</span></label>
+      <input type="text" class="form-input" id="m_name" value="${App.utils.escapeHtml(m.name || '')}" placeholder="面料/辅料名称或水洗目标名称">
+    </div>
+    <div class="form-group" style="grid-column:span 2;">
+      <label class="form-label" id="label_supplier">供应商 / 工厂</label>
+      <div id="wrap_supplier">${supplierSelect('选择面里衬厂', fabricSuppliers)}</div>
+    </div>
+
+    <div class="form-group" id="group_spec">
+      <label class="form-label">规格</label>
+      <input type="text" class="form-input" id="m_spec" value="${App.utils.escapeHtml(m.spec || '')}" placeholder="规格">
+    </div>
+    <div class="form-group" id="group_color">
+      <label class="form-label">颜色</label>
+      <input type="text" class="form-input" id="m_color" value="${App.utils.escapeHtml(m.color || '')}" placeholder="颜色">
+    </div>
+    <div class="form-group" id="group_composition">
+      <label class="form-label">成分</label>
+      <input type="text" class="form-input" id="m_composition" value="${App.utils.escapeHtml(m.fabricComposition || '')}" placeholder="如：65%COT 35%P">
+    </div>
+    <div class="form-group" id="group_washMethod" style="display:none;">
+      <label class="form-label">水洗工艺</label>
+      <input type="text" class="form-input" id="m_washMethod" value="${App.utils.escapeHtml(m.washMethod || '')}" placeholder="如：石磨+酵素">
+    </div>
+
+    <div class="form-group" id="group_washCategory" style="display:none;">
+      <label class="form-label">水洗类型</label>
+      <select class="form-select" id="m_washCategory">
+        ${['面料水洗', '成衣水洗'].map(t => `<option value="${t}" ${(m.washCategory || '面料水洗') === t ? 'selected' : ''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" id="group_qty">
+      <label class="form-label">数量</label>
+      <input type="number" class="form-input no-spinner" id="m_qty" value="${m.qtyOrdered || ''}" placeholder="0">
+    </div>
+    <div class="form-group" id="group_unit">
+      <label class="form-label">单位</label>
+      <select class="form-select" id="m_unit">
+        ${['米','码','千克','个','打','套','件','米2'].map(u => `<option value="${u}" ${(m.unit || '米') === u ? 'selected' : ''}>${u}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" id="group_price">
+      <label class="form-label">单价</label>
+      <input type="number" class="form-input no-spinner" step="0.01" id="m_price" value="${m.unitPrice || ''}" placeholder="0.00">
+    </div>
+
+    <div class="form-group" id="group_shipFactory">
+      <label class="form-label">发货工厂</label>
+      <select class="form-select" id="m_shipFactory">
+        <option value="">请选择</option>
+        <optgroup label="服装厂">${garmentFactories}</optgroup>
+        <optgroup label="水洗厂">${washFactories}</optgroup>
+      </select>
+    </div>
+    <div class="form-group" id="group_date1">
+      <label class="form-label">主日期</label>
+      <input type="date" class="form-input" id="m_date1" value="${m.date || today}">
+    </div>
+    <div class="form-group" id="group_date2">
+      <label class="form-label">合同日期</label>
+      <input type="date" class="form-input" id="m_date2" value="${m.contractDate || ''}">
+    </div>
+    <div class="form-group" id="group_date3">
+      <label class="form-label">确认日期</label>
+      <input type="date" class="form-input" id="m_date3" value="${m.confirmedDate || ''}">
+    </div>
+
+    <div class="form-group" id="group_shipDate" style="grid-column:span 2;">
+      <label class="form-label">发货日期 → 到货日期</label>
+      <div style="display:flex;gap:6px;">
+        <input type="date" class="form-input" id="m_shipDate" value="${m.shipDate || ''}">
+        <input type="date" class="form-input" id="m_arrivalDate" value="${m.arrivalDate || ''}">
+      </div>
+    </div>
+    <div class="form-group" style="grid-column:span 2;">
+      <label class="form-label">备注</label>
+      <input type="text" class="form-input" id="m_remark" value="${App.utils.escapeHtml(m.remark || '')}" placeholder="备注">
+    </div>
+  </div>`;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">取消</button>
+    <button class="btn btn-primary" onclick="saveMaterial()">💾 保存并同步</button>`;
+
+  App.modal.open({ title: id ? '编辑物料登记' : '新增物料登记', body, footer, size: 'lg' });
+
+  // 初始化当前类别下的字段可见性
+  _matOnCategoryChange(defCat);
+
+  // 将值回填到 select
+  if (isFabric) document.getElementById('m_supplier').value = m.supplier || '';
+  // 如果类别是辅料 / 水洗，重新渲染对应的供应商选项（因为 _matOnCategoryChange 会重绘）
+  // 但我们下面手动触发时再处理
+}
+
+// 类别切换时切换字段显示与供应商选项
+function _matOnCategoryChange(val) {
+  const cat = MAT_CATEGORIES._map[val] || MAT_CATEGORIES[0];
+  const contacts = App.store.get('contacts', []);
+  const list = getOrderMaterials();
+  const m = _matEditingId ? (list.find(x => x.id === _matEditingId) || {}) : {};
+  const fabricSuppliers = contacts.filter(c => c.type === '面里衬厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const accessorySuppliers = contacts.filter(c => c.type === '辅料厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const washFactories = contacts.filter(c => c.type === '水洗厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+
+  const isFabric = cat.target === 'fabric';
+  const isAccessory = cat.target === 'accessory';
+  const isWash = cat.target === 'wash';
+
+  const labelName = document.getElementById('label_name');
+  const labelSupplier = document.getElementById('label_supplier');
+  if (labelName) labelName.textContent = (isWash ? (document.getElementById('m_washCategory')?.value === '成衣水洗' ? '成衣名称' : '面料名称') : '名称') + '*';
+  if (labelSupplier) labelSupplier.textContent = isWash ? '水洗厂' : (isAccessory ? '辅料供应商' : '面里衬厂');
+
+  const wrapSupplier = document.getElementById('wrap_supplier');
+  if (wrapSupplier) {
+    const ph = isWash ? '选择水洗厂' : (isAccessory ? '选择辅料供应商' : '选择面里衬厂');
+    const inner = isFabric ? fabricSuppliers : (isAccessory ? accessorySuppliers : washFactories);
+    wrapSupplier.innerHTML = `<select class="form-select" id="m_supplier" style="width:100%;"><option value="">${ph}</option>${inner}</select>`;
+  }
+
+  const show = (id, bool) => { const el = document.getElementById(id); if (el) el.style.display = bool ? '' : 'none'; };
+  show('group_usagePart', !isWash);
+  show('group_spec', !isWash);
+  show('group_color', !isWash);
+  show('group_composition', isFabric);
+  show('group_washMethod', isWash);
+  show('group_washCategory', isWash);
+  show('group_qty', !isWash);
+  show('group_unit', !isWash);
+  show('group_price', !isWash);
+  show('group_shipFactory', !isWash);
+  show('group_date1', true);
+  show('group_date2', !isWash);
+  show('group_date3', !isWash);
+  show('group_shipDate', !isWash);
+
+  // 如果类别切换到水洗，把主日期字段标签改为"水洗日期"
+  const d1 = document.getElementById('m_date1');
+  if (d1) {
+    const lbl = d1.previousElementSibling;
+    if (lbl && lbl.classList.contains('form-label')) lbl.textContent = isWash ? '水洗日期' : (isFabric ? '寄样日期' : '寄样日期');
+  }
+
+  // 切换水洗类型时同步名称标签
+  const wc = document.getElementById('m_washCategory');
+  if (wc) {
+    wc.onchange = () => {
+      const lblName = document.getElementById('label_name');
+      if (lblName) lblName.textContent = (wc.value === '成衣水洗' ? '成衣名称' : '面料名称') + '*';
+    };
+  }
+}
+
+// 选择订单号时自动回填款号
+function _matOnOrderChange(sel) {
+  const styleNo = sel.selectedOptions[0]?.dataset.style || '';
+  if (styleNo) {
+    const el = document.getElementById('m_styleNo');
+    if (el && !el.value) el.value = styleNo;
+  }
+}
+
+// 保存物料登记并自动同步到对应模块
+function saveMaterial() {
+  const category = document.getElementById('m_category').value;
+  const cat = MAT_CATEGORIES._map[category];
+  const orderNo = document.getElementById('m_orderNo').value.trim();
+  const styleNo = document.getElementById('m_styleNo').value.trim();
+  const name = document.getElementById('m_name').value.trim();
+  if (!category || !name) { App.toast('请填写类别和名称', 'warning'); return; }
+
+  const data = {
+    orderNo,
+    styleNo,
+    category,
+    name,
+    usagePart: document.getElementById('m_usagePart').value.trim(),
+    supplier: document.getElementById('m_supplier').value,
+    spec: document.getElementById('m_spec').value.trim(),
+    color: document.getElementById('m_color').value.trim(),
+    fabricComposition: document.getElementById('m_composition').value.trim(),
+    washMethod: document.getElementById('m_washMethod')?.value?.trim() || '',
+    washCategory: document.getElementById('m_washCategory')?.value || '面料水洗',
+    qtyOrdered: Number(document.getElementById('m_qty').value) || 0,
+    unit: document.getElementById('m_unit').value,
+    unitPrice: Number(document.getElementById('m_price').value) || 0,
+    shipFactory: document.getElementById('m_shipFactory').value,
+    date: document.getElementById('m_date1').value,
+    contractDate: document.getElementById('m_date2').value,
+    confirmedDate: document.getElementById('m_date3').value,
+    shipDate: document.getElementById('m_shipDate').value,
+    arrivalDate: document.getElementById('m_arrivalDate').value,
+    remark: document.getElementById('m_remark').value.trim(),
+    updateDate: App.utils.today(),
+  };
+
+  const list = getOrderMaterials();
+  let syncedTargetId = null;
+  if (_matEditingId) {
+    const idx = list.findIndex(x => x.id === _matEditingId);
+    if (idx !== -1) {
+      syncedTargetId = list[idx].syncedTargetId || null;
+      list[idx] = { ...list[idx], ...data, syncedToModule: false };
+    }
+  } else {
+    data.id = App.utils.genId('OM');
+    data.createDate = App.utils.today();
+    data.syncedToModule = false;
+    list.push(data);
+  }
+
+  // 先保存登记
+  saveOrderMaterials(list);
+
+  // 同步到对应模块
+  try {
+    const targetInfo = syncOneMaterialToModules({ ...data, syncedTargetId }, true);
+    // 回写同步状态和目标ID
+    const idx = list.findIndex(x => x.id === data.id || x.id === _matEditingId);
+    if (idx !== -1 && targetInfo) {
+      list[idx].syncedToModule = true;
+      list[idx].syncedTargetId = targetInfo.id;
+      list[idx].syncedTargetTable = targetInfo.table;
+      saveOrderMaterials(list);
+    }
+    App.toast('已保存并同步到' + (cat.target === 'fabric' ? '面里衬管理' : cat.target === 'accessory' ? '辅料管理' : '水洗管理'), 'success');
+  } catch (e) {
+    console.error(e);
+    App.toast('保存成功，但同步失败：' + (e.message || e), 'error');
+  }
+
+  App.modal.close();
+  renderMaterials();
+}
+
+// 单条同步（从列表按钮触发）
+function syncOneMaterial(id) {
+  const list = getOrderMaterials();
+  const idx = list.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const m = list[idx];
+  try {
+    const info = syncOneMaterialToModules(m, true);
+    if (info) {
+      list[idx].syncedToModule = true;
+      list[idx].syncedTargetId = info.id;
+      list[idx].syncedTargetTable = info.table;
+      saveOrderMaterials(list);
+      App.toast('同步成功 → ' + (info.table === 'fabrics' ? '面里衬管理' : info.table === 'accessories' ? '辅料管理' : '水洗管理'), 'success');
+      renderMaterials();
+    }
+  } catch (e) {
+    console.error(e);
+    App.toast('同步失败：' + (e.message || e), 'error');
+  }
+}
+
+// 批量同步所有未同步的数据
+function syncMaterialsToModules() {
+  const list = getOrderMaterials();
+  let updated = 0;
+  list.forEach((m, idx) => {
+    try {
+      const info = syncOneMaterialToModules(m, false);
+      if (info) {
+        list[idx].syncedToModule = true;
+        list[idx].syncedTargetId = info.id;
+        list[idx].syncedTargetTable = info.table;
+        updated++;
+      }
+    } catch (e) {
+      console.error('同步失败:', m.id, e);
+    }
+  });
+  saveOrderMaterials(list);
+  App.toast(`已同步 ${updated} 条记录到各模块`, updated ? 'success' : 'info');
+  renderMaterials();
+}
+
+// 核心：将一条物料登记记录同步到 fabric / accessory / wash 模块
+// 若记录已带 syncedTargetId，则更新该条，否则新增
+// forceDuplicate=false 时若已存在 styleNo+name+category 的相同记录，则跳过，返回 { id, table }
+function syncOneMaterialToModules(m, forceDuplicate = false) {
+  const cat = MAT_CATEGORIES._map[m.category];
+  if (!cat) throw new Error('未知类别');
+
+  const today = App.utils.today();
+
+  if (cat.target === 'fabric') {
+    const fabrics = App.store.get('fabrics', []);
+    const sampleSentDate = m.date || '';
+    const base = {
+      styleNo: m.styleNo || '',
+      fabricType: cat.fabricType || m.category,
+      fabricName: m.name,
+      usagePart: m.usagePart || '',
+      supplier: m.supplier || '',
+      composition: m.fabricComposition || '',
+      color: m.color || '',
+      colorCard: '',
+      weightGsm: 0,
+      width: '',
+      sampleRounds: 1,
+      sampleSentDate,
+      customerFeedback: '',
+      confirmedDate: m.confirmedDate || '',
+      contractNo: '',
+      contractDate: m.contractDate || '',
+      unitPrice: m.unitPrice || 0,
+      qtyOrdered: m.qtyOrdered || 0,
+      unit: m.unit || '米',
+      shipFactory: m.shipFactory || '',
+      shipDate: m.shipDate || '',
+      arrivalDate: m.arrivalDate || '',
+      remark: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
+    };
+
+    // 根据日期自动推进状态
+    let status = '待打样';
+    const STATUS_FLOW = ['待打样', '寄样中', '已确认', '采购合同', '发货中', '已到货'];
+    if (base.arrivalDate) status = '已到货';
+    else if (base.shipDate) status = '发货中';
+    else if (base.contractDate) status = '采购合同';
+    else if (base.confirmedDate) status = '已确认';
+    else if (base.sampleSentDate) status = '寄样中';
+    base.status = status;
+
+    // 编号：有则保留，无则生成
+    let targetIdx = -1;
+    if (m.syncedTargetId) targetIdx = fabrics.findIndex(f => f.id === m.syncedTargetId);
+    if (targetIdx === -1 && !forceDuplicate) {
+      targetIdx = fabrics.findIndex(f =>
+        (f.styleNo || '') === (m.styleNo || '') &&
+        (f.fabricName || '') === (m.name || '') &&
+        (f.fabricType || '') === (cat.fabricType || m.category)
+      );
+    }
+
+    if (targetIdx !== -1) {
+      const f = fabrics[targetIdx];
+      fabrics[targetIdx] = { ...f, ...base, fabricCode: f.fabricCode || _matGenCode('STIG'), id: f.id };
+    } else {
+      base.id = App.utils.genId('F');
+      base.fabricCode = _matGenCode('STIG');
+      fabrics.push(base);
+    }
+    App.store.set('fabrics', fabrics);
+    return { id: base.id || fabrics[targetIdx].id, table: 'fabrics' };
+  }
+
+  if (cat.target === 'accessory') {
+    const accessories = App.store.get('accessories', []);
+    const sampleSentDate = m.date || '';
+    const base = {
+      styleNo: m.styleNo || '',
+      accessoryName: m.name,
+      usagePart: m.usagePart || '',
+      supplier: m.supplier || '',
+      spec: m.spec || '',
+      color: m.color || '',
+      sampleRounds: 1,
+      sampleSentDate,
+      customerFeedback: '',
+      confirmedDate: m.confirmedDate || '',
+      contractNo: '',
+      contractDate: m.contractDate || '',
+      unitPrice: m.unitPrice || 0,
+      qtyOrdered: m.qtyOrdered || 0,
+      unit: m.unit || '个',
+      shipFactory: m.shipFactory || '',
+      shipDate: m.shipDate || '',
+      arrivalDate: m.arrivalDate || '',
+      remark: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
+    };
+
+    let status = '待打样';
+    const STATUS_FLOW = ['待打样', '寄样中', '已确认', '采购合同', '发货中', '已到货'];
+    if (base.arrivalDate) status = '已到货';
+    else if (base.shipDate) status = '发货中';
+    else if (base.contractDate) status = '采购合同';
+    else if (base.confirmedDate) status = '已确认';
+    else if (base.sampleSentDate) status = '寄样中';
+    base.status = status;
+
+    let targetIdx = -1;
+    if (m.syncedTargetId) targetIdx = accessories.findIndex(a => a.id === m.syncedTargetId);
+    if (targetIdx === -1 && !forceDuplicate) {
+      targetIdx = accessories.findIndex(a =>
+        (a.styleNo || '') === (m.styleNo || '') &&
+        (a.accessoryName || '') === (m.name || '') &&
+        (a.color || '') === (m.color || '')
+      );
+    }
+
+    if (targetIdx !== -1) {
+      const a = accessories[targetIdx];
+      accessories[targetIdx] = { ...a, ...base, accessoryCode: a.accessoryCode || _matGenCode('STIG'), id: a.id };
+    } else {
+      base.id = App.utils.genId('A');
+      base.accessoryCode = _matGenCode('STIG');
+      accessories.push(base);
+    }
+    App.store.set('accessories', accessories);
+    return { id: base.id || accessories[targetIdx].id, table: 'accessories' };
+  }
+
+  if (cat.target === 'wash') {
+    const washes = App.store.get('washes', []);
+    const washCategory = m.washCategory || '面料水洗';
+    const washDate = m.date || today;
+    const factory = m.supplier || '';
+    const rounds = [{
+      round: 1,
+      washDate,
+      factory,
+      washResult: m.washMethod || '',
+      status: '寄样中',
+      customerFeedback: '',
+      confirmedDate: m.confirmedDate || '',
+    }];
+    const base = {
+      washNo: '',
+      washCategory,
+      styleNo: m.styleNo || '',
+      itemName: m.name,
+      washMethod: m.washMethod || '',
+      targetColor: m.color || '',
+      techNotes: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
+      factory,
+      rounds,
+      status: '寄样中',
+      remark: m.orderNo ? ('[PO: ' + m.orderNo + ']') : '',
+      createDate: today,
+    };
+    // 已确认就推进状态
+    if (m.confirmedDate) base.status = '已确认';
+
+    let targetIdx = -1;
+    if (m.syncedTargetId) targetIdx = washes.findIndex(w => w.id === m.syncedTargetId);
+    if (targetIdx === -1 && !forceDuplicate) {
+      targetIdx = washes.findIndex(w =>
+        (w.styleNo || '') === (m.styleNo || '') &&
+        (w.itemName || '') === (m.name || '') &&
+        (w.washCategory || '') === washCategory
+      );
+    }
+
+    if (targetIdx !== -1) {
+      const w = washes[targetIdx];
+      // 已有水洗记录：追加一轮
+      const existingRounds = w.rounds && w.rounds.length ? w.rounds.slice() : [];
+      const nextRound = existingRounds.length + 1;
+      existingRounds.push({ ...rounds[0], round: nextRound, status: m.confirmedDate ? '已确认' : '寄样中', confirmedDate: m.confirmedDate || '' });
+      washes[targetIdx] = {
+        ...w,
+        washMethod: base.washMethod || w.washMethod,
+        targetColor: base.targetColor || w.targetColor,
+        techNotes: base.techNotes || w.techNotes,
+        factory: base.factory || w.factory,
+        rounds: existingRounds,
+        status: m.confirmedDate ? '已确认' : w.status,
+      };
+    } else {
+      base.id = App.utils.genId('WS');
+      base.washNo = _matGenWashNo();
+      washes.push(base);
+    }
+    App.store.set('washes', washes);
+    return { id: base.id || washes[targetIdx].id, table: 'washes' };
+  }
+
+  throw new Error('未知目标模块');
+}
+
+// 删除物料登记
+function deleteMaterial(id) {
+  App.confirm('删除这条物料登记记录？（不会删除已同步到各模块的数据）', () => {
+    const list = getOrderMaterials().filter(x => x.id !== id);
+    saveOrderMaterials(list);
+    App.toast('已删除', 'success');
+    renderMaterials();
+  });
+}
+
+// ===== 页面初始化 =====
+renderStats();
+renderCustomerFilter();
+renderTable();
+// 初始化尺寸表搜索
+_sizeSheetSearch = '';
+</script>
+</body>
+</html>

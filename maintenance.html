@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>维护资料 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+/* ===== 标签页计数徽章 ===== */
+.tab-item .tab-count {
+  display: inline-block;
+  min-width: 16px;
+  height: 15px;
+  line-height: 15px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 8px;
+  background: var(--border);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+.tab-item.active .tab-count {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ===== 类别标签 ===== */
+.cat-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+.cat-fabric { background: #6d28d9; }
+.cat-accessory { background: #0d9488; }
+.cat-general { background: #6b7280; }
+.cat-process { background: #d9883a; }
+.cat-part { background: #2d9d5f; }
+.cat-doc { background: #004D6D; }
+.cat-other { background: #9ca3af; }
+
+/* ===== 表单分区标题 ===== */
+.form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 5px 0 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.form-section-title:first-child { padding-top: 0; }
+
+/* ===== 工厂多选器 ===== */
+.factory-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 110px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  background: #fafbfc;
+}
+.factory-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 11px;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.15s;
+  user-select: none;
+}
+.factory-pick-item:hover { border-color: var(--primary); }
+.factory-pick-item input { margin: 0; cursor: pointer; }
+.factory-pick-item.checked {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+.factory-tags { display: flex; flex-wrap: wrap; gap: 2px; }
+.factory-tag {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ===== 尺码标签 ===== */
+.size-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.size-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.size-badge .size-remove {
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 10px;
+  margin-left: 1px;
+}
+.size-badge .size-remove:hover { opacity: 1; }
+.size-badge-muted {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.size-input-row { display: flex; gap: 5px; align-items: center; }
+
+/* ===== 操作下拉菜单 ===== */
+.action-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.action-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.action-dropdown-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.action-dropdown-btn .arrow {
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+.action-dropdown.open .action-dropdown-btn .arrow {
+  transform: rotate(180deg);
+}
+.action-dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 150px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 200;
+  overflow: hidden;
+}
+.action-dropdown.open .action-dropdown-menu {
+  display: block;
+}
+.action-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.action-dropdown-item:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.action-dropdown-item.danger:hover {
+  background: #fef2f2;
+  color: var(--error);
+}
+.action-dropdown-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0;
+}
+
+/* ===== 导入冲突对话框 ===== */
+.conflict-row {
+  background: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.conflict-row:last-child { margin-bottom: 0; }
+.conflict-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: #fff7ed;
+  border-bottom: 1px solid var(--border-light);
+}
+.conflict-index {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--error);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #fef2f2;
+}
+.conflict-en { font-size: 12px; color: var(--muted); flex: 1; }
+.conflict-en strong { color: var(--primary); }
+.conflict-compare {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+.conflict-col {
+  flex: 1;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: #fafbfc;
+}
+.conflict-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border-light);
+}
+.conflict-col-title.new-title { color: #2563eb; }
+.conflict-col-title.old-title { color: #059669; }
+.conflict-field {
+  font-size: 11px;
+  padding: 2px 0;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.conflict-label {
+  color: var(--muted);
+  display: inline-block;
+  min-width: 42px;
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">维护资料</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 标签页 -->
+      <div class="tabs">
+        <div class="tab-item active" onclick="Maintenance.switchTab('fabric', this)">
+          <span>🧵 面里衬信息</span><span class="tab-count" id="count-fabric">0</span>
+        </div>
+        <div class="tab-item" onclick="Maintenance.switchTab('accessory', this)">
+          <span>🔩 辅料信息</span><span class="tab-count" id="count-accessory">0</span>
+        </div>
+        <div class="tab-item" onclick="Maintenance.switchTab('size', this)">
+          <span>📏 尺码表</span><span class="tab-count" id="count-size">0</span>
+        </div>
+        <div class="tab-item" onclick="Maintenance.switchTab('term', this)">
+          <span>🔤 中英文对照表</span><span class="tab-count" id="count-term">0</span>
+        </div>
+      </div>
+
+      <!-- 面里衬信息 -->
+      <div class="tab-content active" id="tab-fabric">
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <input type="text" id="fabricSearch" class="form-input" style="width:220px;" placeholder="搜索名称/编号/成份/面里衬厂" oninput="Maintenance.renderFabric()">
+              <span class="text-muted font-sm" id="fabricCount">共 0 条</span>
+            </div>
+            <div class="table-toolbar-right">
+              <div class="action-dropdown" id="fabricActionDropdown">
+                <button class="action-dropdown-btn" onclick="Maintenance.toggleFabricActionMenu()">
+                  <span>⚙️</span>
+                  <span>操作</span>
+                  <span class="arrow">▼</span>
+                </button>
+                <div class="action-dropdown-menu">
+                  <div class="action-dropdown-item" onclick="Maintenance.fabricImportExcel()">
+                    <span>📥</span><span>导入Excel</span>
+                  </div>
+                  <div class="action-dropdown-item" onclick="Maintenance.fabricExportExcel()">
+                    <span>📤</span><span>导出Excel</span>
+                  </div>
+                  <div class="action-dropdown-divider"></div>
+                  <div class="action-dropdown-item danger" onclick="Maintenance.fabricClearAll()">
+                    <span>🗑️</span><span>清空</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="Maintenance.openFabricForm()" title="新增">➕</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table" id="fabricTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 辅料信息 -->
+      <div class="tab-content" id="tab-accessory">
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <input type="text" id="accessorySearch" class="form-input" style="width:220px;" placeholder="搜索名称/编号/规格/辅料厂" oninput="Maintenance.renderAccessory()">
+              <span class="text-muted font-sm" id="accessoryCount">共 0 条</span>
+            </div>
+            <div class="table-toolbar-right">
+              <div class="action-dropdown" id="accessoryActionDropdown">
+                <button class="action-dropdown-btn" onclick="Maintenance.toggleAccessoryActionMenu()">
+                  <span>⚙️</span>
+                  <span>操作</span>
+                  <span class="arrow">▼</span>
+                </button>
+                <div class="action-dropdown-menu">
+                  <div class="action-dropdown-item" onclick="Maintenance.accessoryImportExcel()">
+                    <span>📥</span><span>导入Excel</span>
+                  </div>
+                  <div class="action-dropdown-item" onclick="Maintenance.accessoryExportExcel()">
+                    <span>📤</span><span>导出Excel</span>
+                  </div>
+                  <div class="action-dropdown-divider"></div>
+                  <div class="action-dropdown-item danger" onclick="Maintenance.accessoryClearAll()">
+                    <span>🗑️</span><span>清空</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="Maintenance.openAccessoryForm()" title="新增">➕</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table" id="accessoryTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 尺码表 -->
+      <div class="tab-content" id="tab-size">
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <input type="text" id="sizeSearch" class="form-input" style="width:200px;" placeholder="搜索组名/尺码" oninput="Maintenance.renderSize()">
+              <select id="sizeCatFilter" class="form-select" style="width:auto;" onchange="Maintenance.renderSize()">
+                <option value="">全部类别</option>
+                <option value="童装">童装</option>
+                <option value="男装">男装</option>
+                <option value="女装">女装</option>
+              </select>
+              <span class="text-muted font-sm" id="sizeCount">共 0 条</span>
+            </div>
+            <div class="table-toolbar-right">
+              <button class="btn btn-primary" onclick="Maintenance.openSizeForm()" title="新增">➕</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table" id="sizeTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中英文对照表 -->
+      <div class="tab-content" id="tab-term">
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <input type="text" id="termSearch" class="form-input" style="width:200px;" placeholder="搜索中文/英文" oninput="Maintenance.renderTerm()">
+              <select id="termCatFilter" class="form-select" style="width:auto;" onchange="Maintenance.renderTerm()">
+                <option value="">全部类别</option>
+                <option value="通用">通用</option>
+                <option value="面料">面料</option>
+                <option value="辅料">辅料</option>
+                <option value="工艺">工艺</option>
+                <option value="服装部位">服装部位</option>
+                <option value="单证">单证</option>
+                <option value="其他">其他</option>
+              </select>
+              <span class="text-muted font-sm" id="termCount">共 0 条</span>
+            </div>
+            <div class="table-toolbar-right">
+              <div class="action-dropdown" id="termActionDropdown">
+                <button class="action-dropdown-btn" onclick="Maintenance.toggleTermActionMenu()">
+                  <span>⚙️</span>
+                  <span>操作</span>
+                  <span class="arrow">▼</span>
+                </button>
+                <div class="action-dropdown-menu">
+                  <div class="action-dropdown-item" onclick="Maintenance.termImportExcel()">
+                    <span>📥</span><span>导入Excel</span>
+                  </div>
+                  <div class="action-dropdown-item" onclick="Maintenance.termExportExcel()">
+                    <span>📤</span><span>导出Excel</span>
+                  </div>
+                  <div class="action-dropdown-divider"></div>
+                  <div class="action-dropdown-item danger" onclick="Maintenance.termClearAll()">
+                    <span>🗑️</span><span>清空</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="Maintenance.openTermForm()" title="新增">➕</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table" id="termTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('maintenance');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('maintenance');
+
+// ===== 维护资料模块 =====
+const Maintenance = {
+  currentTab: 'fabric',
+
+  // 面料/辅料选中ID集合（用于批量导出/清空）
+  _fabricSelectedIds: new Set(),
+  _accessorySelectedIds: new Set(),
+
+  // 通用导入冲突状态（供面料/辅料复用）
+  _importConflictState: null,
+
+  // 类别样式映射
+  catClassMap: {
+    '面料': 'cat-fabric', '辅料': 'cat-accessory',
+    '通用': 'cat-general', '工艺': 'cat-process',
+    '服装部位': 'cat-part', '单证': 'cat-doc', '其他': 'cat-other',
+  },
+
+  catTag(text) {
+    if (!text) return '';
+    const cls = this.catClassMap[text] || 'cat-other';
+    return `<span class="cat-tag ${cls}">${App.utils.escapeHtml(text)}</span>`;
+  },
+
+  // ===== 自动生成编号：STIG + 年月 + 4位随机数 =====
+  generateAutoCode(existingList) {
+    const now = new Date();
+    const ym = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0');
+    let code;
+    let attempts = 0;
+    do {
+      const random4 = Math.floor(1000 + Math.random() * 9000).toString();
+      code = `STIG${ym}${random4}`;
+      attempts++;
+    } while (
+      attempts < 100 &&
+      existingList.some(item => (item.code || '').toLowerCase() === code.toLowerCase())
+    );
+    return code;
+  },
+
+  // ===== 切换标签页 =====
+  switchTab(tab, el) {
+    this.currentTab = tab;
+    document.querySelectorAll('.tab-item').forEach(e => e.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+  },
+
+  // ===== 空状态 =====
+  emptyHtml(msg) {
+    return `<tr><td colspan="20" style="text-align:center;padding:30px;">
+      <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">${msg}</div></div>
+    </td></tr>`;
+  },
+
+  // ===== 工厂多选器（从通讯录调取）=====
+  getContactsByType(type) {
+    return App.store.get('contacts', []).filter(c => c.type === type);
+  },
+
+  renderFactoryPicker(containerId, contactType, selectedIds) {
+    const contacts = this.getContactsByType(contactType);
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (contacts.length === 0) {
+      container.innerHTML = `<span style="color:var(--muted);font-size:11px;padding:4px;">通讯录中暂无${contactType}，请先在通讯录中添加</span>`;
+      return;
+    }
+    container.innerHTML = contacts.map(c => {
+      const checked = selectedIds.includes(c.id) ? 'checked' : '';
+      return `<label class="factory-pick-item ${checked}" onclick="Maintenance.toggleFactoryPick(this)">
+        <input type="checkbox" value="${c.id}" ${checked}>
+        <span>${App.utils.escapeHtml(c.name)}</span>
+      </label>`;
+    }).join('');
+  },
+
+  toggleFactoryPick(label) {
+    const cb = label.querySelector('input');
+    cb.checked = !cb.checked;
+    label.classList.toggle('checked', cb.checked);
+  },
+
+  getSelectedFactoryIds(containerId) {
+    return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map(cb => cb.value);
+  },
+
+  // 将工厂ID数组转为名称标签HTML
+  factoryTagsHtml(factoryIds) {
+    if (!factoryIds || !factoryIds.length) return '<span style="color:var(--muted);">-</span>';
+    const contacts = App.store.get('contacts', []);
+    const names = factoryIds.map(id => {
+      const c = contacts.find(c => c.id === id);
+      return c ? c.name : null;
+    }).filter(Boolean);
+    if (!names.length) return '<span style="color:var(--muted);">-</span>';
+    return `<div class="factory-tags">${names.map(n => `<span class="factory-tag">${App.utils.escapeHtml(n)}</span>`).join('')}</div>`;
+  },
+
+  // ============================================================
+  //  面里衬信息
+  // ============================================================
+  getFilteredFabric() {
+    const list = App.store.get('maintFabrics', []);
+    const search = (document.getElementById('fabricSearch').value || '').trim().toLowerCase();
+    if (!search) return list;
+    return list.filter(f => {
+      const fields = [f.name, f.type, f.code, f.customerCode, f.patternNo, f.composition, f.color, f.colorCard, f.remark];
+      // 也搜索面里衬厂名称
+      const factoryNames = (f.factoryIds || []).map(id => {
+        const c = App.store.get('contacts', []).find(c => c.id === id);
+        return c ? c.name : '';
+      });
+      fields.push(...factoryNames);
+      return fields.some(v => (v || '').toString().toLowerCase().includes(search));
+    });
+  },
+
+  renderFabric() {
+    const data = this.getFilteredFabric();
+    document.getElementById('fabricCount').textContent = `共 ${data.length} 条`;
+    document.getElementById('count-fabric').textContent = App.store.get('maintFabrics', []).length;
+
+    const allChecked = data.length > 0 && data.every(f => this._fabricSelectedIds.has(f.id));
+    const selectAllChecked = allChecked ? 'checked' : '';
+
+    const thead = `<thead><tr>
+      <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="Maintenance.fabricToggleSelectAll(this.checked)"></th>
+      <th>名称</th><th style="width:70px;">类型</th><th>编号</th><th>客户编号</th><th>花色/色样号</th><th>经纬纱</th><th>经纬时密</th>
+      <th>幅宽</th><th>成份</th><th>克重</th><th>颜色</th><th>色卡</th><th>面里衬厂</th>
+      <th>备注</th><th style="width:70px;">操作</th>
+    </tr></thead>`;
+
+    let tbody;
+    if (data.length === 0) {
+      tbody = `<tbody>${this.emptyHtml('暂无面里衬信息，点击右上角 ➕ 新增')}</tbody>`;
+    } else {
+      tbody = '<tbody>' + data.map(f => {
+        const cbChecked = this._fabricSelectedIds.has(f.id) ? 'checked' : '';
+        return `
+        <tr>
+          <td><input type="checkbox" ${cbChecked} onchange="Maintenance.fabricToggleSelect('${f.id}', this.checked)"></td>
+          <td><strong>${App.utils.escapeHtml(f.name || '')}</strong></td>
+          <td>${App.utils.escapeHtml(f.type || '-')}</td>
+          <td>${App.utils.escapeHtml(f.code || '-')}</td>
+          <td>${App.utils.escapeHtml(f.customerCode || '-')}</td>
+          <td>${App.utils.escapeHtml(f.patternNo || '-')}</td>
+          <td>${App.utils.escapeHtml(f.yarn || '-')}</td>
+          <td>${App.utils.escapeHtml(f.density || '-')}</td>
+          <td>${App.utils.escapeHtml(f.width || '-')}</td>
+          <td>${App.utils.escapeHtml(f.composition || '-')}</td>
+          <td>${App.utils.escapeHtml(f.weight || '-')}</td>
+          <td>${App.utils.escapeHtml(f.color || '-')}</td>
+          <td>${App.utils.escapeHtml(f.colorCard || '-')}</td>
+          <td>${this.factoryTagsHtml(f.factoryIds)}</td>
+          <td>${App.utils.escapeHtml(f.remark || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openFabricForm('${f.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteFabric('${f.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('') + '</tbody>';
+    }
+    document.getElementById('fabricTable').innerHTML = thead + tbody;
+  },
+
+  openFabricForm(id) {
+    const isEdit = !!id;
+    const list = App.store.get('maintFabrics', []);
+    const item = isEdit ? list.find(f => f.id === id) : {};
+    const selectedFactoryIds = item.factoryIds || [];
+    const codeValue = isEdit ? (item.code || '') : this.generateAutoCode(list);
+
+    const body = `
+      <div class="form-section-title">📋 基本信息</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">编号</label>
+          <input type="text" id="ff_code" class="form-input" value="${App.utils.escapeHtml(codeValue)}" readonly>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">客户编号</label>
+          <input type="text" id="ff_customerCode" class="form-input" value="${App.utils.escapeHtml(item.customerCode || '')}" placeholder="客户编号">
+        </div>
+        <div class="form-group" style="flex:2;min-width:160px;">
+          <label class="form-label">名称<span class="required">*</span></label>
+          <input type="text" id="ff_name" class="form-input" value="${App.utils.escapeHtml(item.name || '')}" placeholder="请输入面里衬名称">
+        </div>
+        <div class="form-group" style="flex:1;min-width:90px;">
+          <label class="form-label">类型</label>
+          <select id="ff_type" class="form-select">
+            ${['面料','里料','衬','填充料'].map(t => `<option value="${t}" ${item.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">花色/色样号</label>
+          <input type="text" id="ff_patternNo" class="form-input" value="${App.utils.escapeHtml(item.patternNo || '')}" placeholder="花色/色样号">
+        </div>
+        <div class="form-group" style="flex:1;min-width:100px;">
+          <label class="form-label">色卡</label>
+          <input type="text" id="ff_colorCard" class="form-input" value="${App.utils.escapeHtml(item.colorCard || '')}" placeholder="色卡">
+        </div>
+      </div>
+
+      <div class="form-section-title">🧵 面里衬参数</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">经纬纱</label>
+          <input type="text" id="ff_yarn" class="form-input" value="${App.utils.escapeHtml(item.yarn || '')}" placeholder="经纬纱">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">经纬时密</label>
+          <input type="text" id="ff_density" class="form-input" value="${App.utils.escapeHtml(item.density || '')}" placeholder="经纬时密">
+        </div>
+        <div class="form-group" style="flex:1;min-width:100px;">
+          <label class="form-label">幅宽</label>
+          <input type="text" id="ff_width" class="form-input" value="${App.utils.escapeHtml(item.width || '')}" placeholder="如 150cm">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">成份</label>
+          <input type="text" id="ff_composition" class="form-input" value="${App.utils.escapeHtml(item.composition || '')}" placeholder="如 100%棉">
+        </div>
+        <div class="form-group" style="flex:1;min-width:100px;">
+          <label class="form-label">克重</label>
+          <input type="text" id="ff_weight" class="form-input" value="${App.utils.escapeHtml(item.weight || '')}" placeholder="如 200g/m²">
+        </div>
+        <div class="form-group" style="flex:1;min-width:100px;">
+          <label class="form-label">颜色</label>
+          <input type="text" id="ff_color" class="form-input" value="${App.utils.escapeHtml(item.color || '')}" placeholder="颜色">
+        </div>
+      </div>
+
+      <div class="form-section-title">🏭 面里衬厂（来源：通讯录，可多选）</div>
+      <div class="form-group">
+        <div class="factory-picker" id="ff_factoryIds"></div>
+      </div>
+
+      <div class="form-section-title">📝 备注</div>
+      <div class="form-group">
+        <textarea id="ff_remark" class="form-textarea" rows="2" placeholder="备注">${App.utils.escapeHtml(item.remark || '')}</textarea>
+      </div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️</button>
+      <button class="btn btn-primary" onclick="Maintenance.saveFabricForm('${id || ''}')">💾</button>
+    `;
+
+    App.modal.open({ title: isEdit ? '编辑面里衬信息' : '新增面里衬信息', body, footer, size: 'lg', closeOnOverlay: false });
+    this.renderFactoryPicker('ff_factoryIds', '面里衬厂', selectedFactoryIds);
+  },
+
+  saveFabricForm(id) {
+    const name = document.getElementById('ff_name').value.trim();
+    if (!name) { App.toast('请输入名称', 'error'); return; }
+
+    const data = {
+      name,
+      type: document.getElementById('ff_type').value,
+      code: document.getElementById('ff_code').value.trim(),
+      customerCode: document.getElementById('ff_customerCode').value.trim(),
+      patternNo: document.getElementById('ff_patternNo').value.trim(),
+      yarn: document.getElementById('ff_yarn').value.trim(),
+      density: document.getElementById('ff_density').value.trim(),
+      width: document.getElementById('ff_width').value.trim(),
+      composition: document.getElementById('ff_composition').value.trim(),
+      weight: document.getElementById('ff_weight').value.trim(),
+      color: document.getElementById('ff_color').value.trim(),
+      colorCard: document.getElementById('ff_colorCard').value.trim(),
+      factoryIds: this.getSelectedFactoryIds('ff_factoryIds'),
+      remark: document.getElementById('ff_remark').value.trim(),
+    };
+
+    const list = App.store.get('maintFabrics', []);
+
+    if (id) {
+      const idx = list.findIndex(f => f.id === id);
+      if (idx >= 0) list[idx] = { ...list[idx], ...data };
+      App.toast('更新成功', 'success');
+    } else {
+      list.push({ id: App.utils.genId('MF'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('maintFabrics', list);
+    App.modal.close();
+    this.renderFabric();
+  },
+
+  deleteFabric(id) {
+    App.confirm('确定删除此条面里衬信息吗？', () => {
+      let list = App.store.get('maintFabrics', []);
+      list = list.filter(f => f.id !== id);
+      App.store.set('maintFabrics', list);
+      App.toast('已删除', 'success');
+      this.renderFabric();
+    });
+  },
+
+  // ===== 面料复选框 =====
+  fabricToggleSelectAll(checked) {
+    const data = this.getFilteredFabric();
+    if (checked) {
+      data.forEach(f => this._fabricSelectedIds.add(f.id));
+    } else {
+      data.forEach(f => this._fabricSelectedIds.delete(f.id));
+    }
+    this.renderFabric();
+  },
+
+  fabricToggleSelect(id, checked) {
+    if (checked) {
+      this._fabricSelectedIds.add(id);
+    } else {
+      this._fabricSelectedIds.delete(id);
+    }
+    this.renderFabric();
+  },
+
+  // ===== 面料操作下拉菜单 =====
+  toggleFabricActionMenu() {
+    document.getElementById('fabricActionDropdown').classList.toggle('open');
+  },
+
+  closeFabricActionMenu() {
+    document.getElementById('fabricActionDropdown').classList.remove('open');
+  },
+
+  // ===== 面料导出Excel =====
+  fabricExportExcel() {
+    this.closeFabricActionMenu();
+    const all = App.store.get('maintFabrics', []);
+    let items;
+    if (this._fabricSelectedIds.size > 0) {
+      items = all.filter(f => this._fabricSelectedIds.has(f.id));
+      if (items.length === 0) {
+        App.toast('选中的数据不存在', 'error');
+        return;
+      }
+    } else {
+      items = all;
+      if (items.length === 0) {
+        App.toast('没有数据可导出', 'error');
+        return;
+      }
+    }
+
+    const headerMap = {
+      name: '名称', type: '类型', code: '编号', customerCode: '客户编号', patternNo: '花色/色样号',
+      yarn: '经纬纱', density: '经纬时密', width: '幅宽',
+      composition: '成份', weight: '克重', color: '颜色',
+      colorCard: '色卡', remark: '备注'
+    };
+    const keys = Object.keys(headerMap);
+
+    const data = items.map(f => {
+      const row = {};
+      keys.forEach(k => { row[headerMap[k]] = f[k] || ''; });
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data, { header: keys.map(k => headerMap[k]) });
+    ws['!cols'] = [
+      { wch: 18 }, { wch: 8 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
+      { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 25 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '面里衬信息');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `面里衬信息_${dateStr}.xlsx`);
+    App.toast(`已导出 ${items.length} 条数据`, 'success');
+  },
+
+  // ===== 面里衬导入Excel（自动编号）=====
+  fabricImportExcel() {
+    this.closeFabricActionMenu();
+    const existing = document.getElementById('fabricImportFileInput');
+    if (existing) existing.remove();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'fabricImportFileInput';
+    input.accept = '.xlsx,.xls,.csv';
+    input.style.display = 'none';
+    input.onchange = (e) => this.fabricHandleFileImport(e);
+    document.body.appendChild(input);
+    input.click();
+  },
+
+  fabricHandleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('fabricImportFileInput').remove();
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (rows.length === 0) {
+          App.toast('Excel文件中没有数据', 'error');
+          return;
+        }
+
+        const reverseMap = {
+          '名称': 'name', '面料名称': 'name', '面里衬名称': 'name',
+          '类型': 'type', '面料类型': 'type', '分类': 'type',
+          '客户编号': 'customerCode',
+          '花色/色样号': 'patternNo', '花色': 'patternNo', '色样号': 'patternNo',
+          '经纬纱': 'yarn',
+          '经纬时密': 'density',
+          '幅宽': 'width',
+          '成份': 'composition', '成分': 'composition',
+          '克重': 'weight',
+          '颜色': 'color',
+          '色卡': 'colorCard',
+          '备注': 'remark'
+        };
+
+        const fabrics = App.store.get('maintFabrics', []);
+        let importCount = 0;
+        let skipCount = 0;
+
+        rows.forEach(row => {
+          const obj = {};
+          let hasName = false;
+          Object.keys(row).forEach(header => {
+            const field = reverseMap[header.trim()];
+            if (field && row[header] !== undefined && row[header] !== null) {
+              obj[field] = String(row[header]).trim();
+              if (field === 'name' && obj[field]) hasName = true;
+            }
+          });
+
+          if (!hasName) { skipCount++; return; }
+
+          // 自动生成编号
+          obj.code = this.generateAutoCode(fabrics);
+          fabrics.push({ id: App.utils.genId('MF'), ...obj });
+          importCount++;
+        });
+
+        App.store.set('maintFabrics', fabrics);
+        this.renderFabric();
+        let msg = `导入完成：成功 ${importCount} 条`;
+        if (skipCount > 0) msg += `，跳过 ${skipCount} 条（缺少名称）`;
+        App.toast(msg, 'success');
+      } catch (err) {
+        console.error('导入失败:', err);
+        App.toast('导入失败，请检查文件格式', 'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  },
+
+  // ===== 面料清空 =====
+  fabricClearAll() {
+    this.closeFabricActionMenu();
+    const fabrics = App.store.get('maintFabrics', []);
+    if (this._fabricSelectedIds.size > 0) {
+      App.confirm(`确定要删除选中的 ${this._fabricSelectedIds.size} 条数据吗？`, () => {
+        const newFabrics = fabrics.filter(f => !this._fabricSelectedIds.has(f.id));
+        App.store.set('maintFabrics', newFabrics);
+        this._fabricSelectedIds.clear();
+        App.toast('已删除选中数据', 'success');
+        this.renderFabric();
+      });
+    } else {
+      if (fabrics.length === 0) {
+        App.toast('面里衬信息已是空的', 'error');
+        return;
+      }
+      App.confirm(`确定要清空全部 ${fabrics.length} 条面里衬信息吗？此操作不可恢复！`, () => {
+        App.store.set('maintFabrics', []);
+        this._fabricSelectedIds.clear();
+        App.toast('面里衬信息已清空', 'success');
+        this.renderFabric();
+      });
+    }
+  },
+
+  // ============================================================
+  //  辅料信息
+  // ============================================================
+  getFilteredAccessory() {
+    const list = App.store.get('maintAccessories', []);
+    const search = (document.getElementById('accessorySearch').value || '').trim().toLowerCase();
+    if (!search) return list;
+    return list.filter(a => {
+      const fields = [a.name, a.code, a.customerCode, a.supplierCode, a.spec, a.color, a.remark];
+      const factoryNames = (a.factoryIds || []).map(id => {
+        const c = App.store.get('contacts', []).find(c => c.id === id);
+        return c ? c.name : '';
+      });
+      fields.push(...factoryNames);
+      return fields.some(v => (v || '').toString().toLowerCase().includes(search));
+    });
+  },
+
+  renderAccessory() {
+    const data = this.getFilteredAccessory();
+    document.getElementById('accessoryCount').textContent = `共 ${data.length} 条`;
+    document.getElementById('count-accessory').textContent = App.store.get('maintAccessories', []).length;
+
+    const allChecked = data.length > 0 && data.every(a => this._accessorySelectedIds.has(a.id));
+    const selectAllChecked = allChecked ? 'checked' : '';
+
+    const thead = `<thead><tr>
+      <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="Maintenance.accessoryToggleSelectAll(this.checked)"></th>
+      <th>名称</th><th>编号</th><th>客户编号</th><th>供应商编号</th><th>规格</th><th>颜色</th>
+      <th>辅料厂</th><th>备注</th><th style="width:70px;">操作</th>
+    </tr></thead>`;
+
+    let tbody;
+    if (data.length === 0) {
+      tbody = `<tbody>${this.emptyHtml('暂无辅料信息，点击右上角 ➕ 新增')}</tbody>`;
+    } else {
+      tbody = '<tbody>' + data.map(a => {
+        const cbChecked = this._accessorySelectedIds.has(a.id) ? 'checked' : '';
+        return `
+        <tr>
+          <td><input type="checkbox" ${cbChecked} onchange="Maintenance.accessoryToggleSelect('${a.id}', this.checked)"></td>
+          <td><strong>${App.utils.escapeHtml(a.name || '')}</strong></td>
+          <td>${App.utils.escapeHtml(a.code || '-')}</td>
+          <td>${App.utils.escapeHtml(a.customerCode || '-')}</td>
+          <td>${App.utils.escapeHtml(a.supplierCode || '-')}</td>
+          <td>${App.utils.escapeHtml(a.spec || '-')}</td>
+          <td>${App.utils.escapeHtml(a.color || '-')}</td>
+          <td>${this.factoryTagsHtml(a.factoryIds)}</td>
+          <td>${App.utils.escapeHtml(a.remark || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openAccessoryForm('${a.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteAccessory('${a.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('') + '</tbody>';
+    }
+    document.getElementById('accessoryTable').innerHTML = thead + tbody;
+  },
+
+  openAccessoryForm(id) {
+    const isEdit = !!id;
+    const list = App.store.get('maintAccessories', []);
+    const item = isEdit ? list.find(a => a.id === id) : {};
+    const selectedFactoryIds = item.factoryIds || [];
+    const codeValue = isEdit ? (item.code || '') : this.generateAutoCode(list);
+
+    const body = `
+      <div class="form-section-title">📋 基本信息</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">编号</label>
+          <input type="text" id="af_code" class="form-input" value="${App.utils.escapeHtml(codeValue)}" readonly>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">客户编号</label>
+          <input type="text" id="af_customerCode" class="form-input" value="${App.utils.escapeHtml(item.customerCode || '')}" placeholder="客户编号">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">供应商编号</label>
+          <input type="text" id="af_supplierCode" class="form-input" value="${App.utils.escapeHtml(item.supplierCode || '')}" placeholder="供应商编号">
+        </div>
+        <div class="form-group" style="flex:2;min-width:160px;">
+          <label class="form-label">名称<span class="required">*</span></label>
+          <input type="text" id="af_name" class="form-input" value="${App.utils.escapeHtml(item.name || '')}" placeholder="请输入辅料名称">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">规格</label>
+          <input type="text" id="af_spec" class="form-input" value="${App.utils.escapeHtml(item.spec || '')}" placeholder="规格">
+        </div>
+        <div class="form-group" style="flex:1;min-width:100px;">
+          <label class="form-label">颜色</label>
+          <input type="text" id="af_color" class="form-input" value="${App.utils.escapeHtml(item.color || '')}" placeholder="颜色">
+        </div>
+      </div>
+
+      <div class="form-section-title">🏭 辅料厂（来源：通讯录，可多选）</div>
+      <div class="form-group">
+        <div class="factory-picker" id="af_factoryIds"></div>
+      </div>
+
+      <div class="form-section-title">📝 备注</div>
+      <div class="form-group">
+        <textarea id="af_remark" class="form-textarea" rows="2" placeholder="备注">${App.utils.escapeHtml(item.remark || '')}</textarea>
+      </div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️</button>
+      <button class="btn btn-primary" onclick="Maintenance.saveAccessoryForm('${id || ''}')">💾</button>
+    `;
+
+    App.modal.open({ title: isEdit ? '编辑辅料信息' : '新增辅料信息', body, footer, size: 'lg', closeOnOverlay: false });
+    this.renderFactoryPicker('af_factoryIds', '辅料厂', selectedFactoryIds);
+  },
+
+  saveAccessoryForm(id) {
+    const name = document.getElementById('af_name').value.trim();
+    if (!name) { App.toast('请输入名称', 'error'); return; }
+
+    const data = {
+      name,
+      code: document.getElementById('af_code').value.trim(),
+      customerCode: document.getElementById('af_customerCode').value.trim(),
+      supplierCode: document.getElementById('af_supplierCode').value.trim(),
+      spec: document.getElementById('af_spec').value.trim(),
+      color: document.getElementById('af_color').value.trim(),
+      factoryIds: this.getSelectedFactoryIds('af_factoryIds'),
+      remark: document.getElementById('af_remark').value.trim(),
+    };
+
+    const list = App.store.get('maintAccessories', []);
+
+    if (id) {
+      const idx = list.findIndex(a => a.id === id);
+      if (idx >= 0) list[idx] = { ...list[idx], ...data };
+      App.toast('更新成功', 'success');
+    } else {
+      list.push({ id: App.utils.genId('MA'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('maintAccessories', list);
+    App.modal.close();
+    this.renderAccessory();
+  },
+
+  deleteAccessory(id) {
+    App.confirm('确定删除此条辅料信息吗？', () => {
+      let list = App.store.get('maintAccessories', []);
+      list = list.filter(a => a.id !== id);
+      App.store.set('maintAccessories', list);
+      App.toast('已删除', 'success');
+      this.renderAccessory();
+    });
+  },
+
+  // ===== 辅料复选框 =====
+  accessoryToggleSelectAll(checked) {
+    const data = this.getFilteredAccessory();
+    if (checked) {
+      data.forEach(a => this._accessorySelectedIds.add(a.id));
+    } else {
+      data.forEach(a => this._accessorySelectedIds.delete(a.id));
+    }
+    this.renderAccessory();
+  },
+
+  accessoryToggleSelect(id, checked) {
+    if (checked) {
+      this._accessorySelectedIds.add(id);
+    } else {
+      this._accessorySelectedIds.delete(id);
+    }
+    this.renderAccessory();
+  },
+
+  // ===== 辅料操作下拉菜单 =====
+  toggleAccessoryActionMenu() {
+    document.getElementById('accessoryActionDropdown').classList.toggle('open');
+  },
+
+  closeAccessoryActionMenu() {
+    document.getElementById('accessoryActionDropdown').classList.remove('open');
+  },
+
+  // ===== 辅料导出Excel =====
+  accessoryExportExcel() {
+    this.closeAccessoryActionMenu();
+    const all = App.store.get('maintAccessories', []);
+    let items;
+    if (this._accessorySelectedIds.size > 0) {
+      items = all.filter(a => this._accessorySelectedIds.has(a.id));
+      if (items.length === 0) {
+        App.toast('选中的数据不存在', 'error');
+        return;
+      }
+    } else {
+      items = all;
+      if (items.length === 0) {
+        App.toast('没有数据可导出', 'error');
+        return;
+      }
+    }
+
+    const headerMap = {
+      name: '名称', code: '编号', customerCode: '客户编号', supplierCode: '供应商编号', spec: '规格',
+      color: '颜色', remark: '备注'
+    };
+    const keys = Object.keys(headerMap);
+
+    const data = items.map(a => {
+      const row = {};
+      keys.forEach(k => { row[headerMap[k]] = a[k] || ''; });
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data, { header: keys.map(k => headerMap[k]) });
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 12 }, { wch: 25 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '辅料信息');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `辅料信息_${dateStr}.xlsx`);
+    App.toast(`已导出 ${items.length} 条数据`, 'success');
+  },
+
+  // ===== 辅料导入Excel（自动编号）=====
+  accessoryImportExcel() {
+    this.closeAccessoryActionMenu();
+    const existing = document.getElementById('accessoryImportFileInput');
+    if (existing) existing.remove();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'accessoryImportFileInput';
+    input.accept = '.xlsx,.xls,.csv';
+    input.style.display = 'none';
+    input.onchange = (e) => this.accessoryHandleFileImport(e);
+    document.body.appendChild(input);
+    input.click();
+  },
+
+  accessoryHandleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('accessoryImportFileInput').remove();
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (rows.length === 0) {
+          App.toast('Excel文件中没有数据', 'error');
+          return;
+        }
+
+        const reverseMap = {
+          '名称': 'name', '辅料名称': 'name',
+          '客户编号': 'customerCode',
+          '供应商编号': 'supplierCode',
+          '规格': 'spec',
+          '颜色': 'color',
+          '备注': 'remark'
+        };
+
+        const accessories = App.store.get('maintAccessories', []);
+        let importCount = 0;
+        let skipCount = 0;
+
+        rows.forEach(row => {
+          const obj = {};
+          let hasName = false;
+          Object.keys(row).forEach(header => {
+            const field = reverseMap[header.trim()];
+            if (field && row[header] !== undefined && row[header] !== null) {
+              obj[field] = String(row[header]).trim();
+              if (field === 'name' && obj[field]) hasName = true;
+            }
+          });
+
+          if (!hasName) { skipCount++; return; }
+
+          // 自动生成编号
+          obj.code = this.generateAutoCode(accessories);
+          accessories.push({ id: App.utils.genId('MA'), ...obj });
+          importCount++;
+        });
+
+        App.store.set('maintAccessories', accessories);
+        this.renderAccessory();
+        let msg = `导入完成：成功 ${importCount} 条`;
+        if (skipCount > 0) msg += `，跳过 ${skipCount} 条（缺少名称）`;
+        App.toast(msg, 'success');
+      } catch (err) {
+        console.error('导入失败:', err);
+        App.toast('导入失败，请检查文件格式', 'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  },
+
+  // ===== 辅料清空 =====
+  accessoryClearAll() {
+    this.closeAccessoryActionMenu();
+    const accessories = App.store.get('maintAccessories', []);
+    if (this._accessorySelectedIds.size > 0) {
+      App.confirm(`确定要删除选中的 ${this._accessorySelectedIds.size} 条数据吗？`, () => {
+        const newAccessories = accessories.filter(a => !this._accessorySelectedIds.has(a.id));
+        App.store.set('maintAccessories', newAccessories);
+        this._accessorySelectedIds.clear();
+        App.toast('已删除选中数据', 'success');
+        this.renderAccessory();
+      });
+    } else {
+      if (accessories.length === 0) {
+        App.toast('辅料信息已是空的', 'error');
+        return;
+      }
+      App.confirm(`确定要清空全部 ${accessories.length} 条辅料信息吗？此操作不可恢复！`, () => {
+        App.store.set('maintAccessories', []);
+        this._accessorySelectedIds.clear();
+        App.toast('辅料信息已清空', 'success');
+        this.renderAccessory();
+      });
+    }
+  },
+
+  // ============================================================
+  //  尺码表（按尺码组管理，支持童装/男装/女装等）
+  // ============================================================
+  _editingSizes: [],
+
+  getFilteredSize() {
+    const list = App.store.get('maintSizes', []);
+    const search = (document.getElementById('sizeSearch').value || '').trim().toLowerCase();
+    const cat = document.getElementById('sizeCatFilter').value;
+    return list.filter(s => {
+      if (cat && s.category !== cat) return false;
+      if (search) {
+        const fields = [s.category, s.part, s.remark, ...(s.sizes || [])];
+        return fields.some(v => (v || '').toString().toLowerCase().includes(search));
+      }
+      return true;
+    });
+  },
+
+  renderSize() {
+    const allList = App.store.get('maintSizes', []);
+    const data = this.getFilteredSize();
+    document.getElementById('sizeCount').textContent = `共 ${data.length} 条`;
+    document.getElementById('count-size').textContent = allList.length;
+
+    const thead = `<thead><tr>
+      <th style="width:50px;">序号</th><th style="width:70px;">类别</th><th style="width:80px;">款式</th><th>尺码列表</th>
+      <th>备注</th><th style="width:70px;">操作</th>
+    </tr></thead>`;
+
+    let tbody;
+    if (data.length === 0) {
+      tbody = `<tbody>${this.emptyHtml('暂无尺码组，点击右上角 ➕ 新增')}</tbody>`;
+    } else {
+      tbody = '<tbody>' + data.map(s => {
+        const seq = allList.findIndex(x => x.id === s.id) + 1;
+        const sizesHtml = (s.sizes && s.sizes.length)
+          ? `<div class="size-tags">${s.sizes.map(sz => `<span class="size-badge-muted">${App.utils.escapeHtml(sz)}</span>`).join('')}</div>`
+          : '<span style="color:var(--muted);">-</span>';
+        return `
+        <tr>
+          <td><strong>${seq}</strong></td>
+          <td>${App.utils.escapeHtml(s.category || '-')}</td>
+          <td>${App.utils.escapeHtml(s.part || '-')}</td>
+          <td>${sizesHtml}</td>
+          <td>${App.utils.escapeHtml(s.remark || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openSizeForm('${s.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteSize('${s.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('') + '</tbody>';
+    }
+    document.getElementById('sizeTable').innerHTML = thead + tbody;
+  },
+
+  // ===== 款式选项管理（可增减）=====
+  getStyleOptions() {
+    const opts = App.store.get('maintStyleOptions', null);
+    if (opts && Array.isArray(opts) && opts.length) return opts;
+    // 默认款式选项
+    const defaults = ['上衣', '裤子', '裙子', '外套', '连衣裙', 'T恤', '衬衫'];
+    App.store.set('maintStyleOptions', defaults);
+    return defaults;
+  },
+
+  openStyleManager() {
+    // 保存当前尺码表单状态
+    this._sizeFormState = null;
+    const sizesInput = document.getElementById('sf_sizes');
+    if (sizesInput) {
+      this._sizeFormState = {
+        editingId: sizesInput.getAttribute('data-edit-id') || '',
+        category: document.getElementById('sf_category').value,
+        part: document.getElementById('sf_part').value,
+        sizes: sizesInput.value,
+        remark: document.getElementById('sf_remark').value,
+      };
+    }
+
+    const opts = this.getStyleOptions();
+    const body = `
+      <div class="form-section-title">⚙️ 款式选项管理（可增减）</div>
+      <div class="form-group">
+        <div style="display:flex;gap:5px;">
+          <input type="text" id="sm_newOption" class="form-input" style="flex:1;" placeholder="输入新款式名称" onkeydown="if(event.key==='Enter'){event.preventDefault();Maintenance.addStyleOption()}">
+          <button class="btn btn-primary" onclick="Maintenance.addStyleOption()" title="添加">➕</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <div id="sm_optionList" style="display:flex;flex-wrap:wrap;gap:5px;min-height:40px;"></div>
+      </div>
+      <div class="text-muted font-sm" style="margin-top:8px;">提示：点击选项右侧 ✕ 删除。已用于尺码组的款式删除后不影响历史记录。</div>
+    `;
+    const footer = `<button class="btn btn-primary" onclick="Maintenance.closeStyleManager()">✅ 完成</button>`;
+    App.modal.open({ title: '管理款式选项', body, footer, size: 'md', closeOnOverlay: false });
+    this.renderStyleOptionList();
+  },
+
+  closeStyleManager() {
+    App.modal.close();
+    // 恢复尺码表单
+    if (this._sizeFormState) {
+      const st = this._sizeFormState;
+      this.openSizeForm(st.editingId);
+      // 还原用户已输入的值
+      document.getElementById('sf_category').value = st.category;
+      if (st.part) document.getElementById('sf_part').value = st.part;
+      document.getElementById('sf_sizes').value = st.sizes;
+      document.getElementById('sf_remark').value = st.remark;
+      this._sizeFormState = null;
+    }
+  },
+
+  renderStyleOptionList() {
+    const opts = this.getStyleOptions();
+    const container = document.getElementById('sm_optionList');
+    if (!container) return;
+    if (opts.length === 0) {
+      container.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无款式选项，请在上方添加</span>';
+      return;
+    }
+    container.innerHTML = opts.map((opt, i) =>
+      `<span class="size-badge">${App.utils.escapeHtml(opt)}<span class="size-remove" onclick="Maintenance.removeStyleOption(${i})">✕</span></span>`
+    ).join('');
+  },
+
+  addStyleOption() {
+    const input = document.getElementById('sm_newOption');
+    const val = input.value.trim();
+    if (!val) return;
+    const opts = this.getStyleOptions();
+    if (opts.includes(val)) { App.toast('该款式已存在', 'error'); return; }
+    opts.push(val);
+    App.store.set('maintStyleOptions', opts);
+    input.value = '';
+    this.renderStyleOptionList();
+    input.focus();
+  },
+
+  removeStyleOption(index) {
+    const opts = this.getStyleOptions();
+    opts.splice(index, 1);
+    App.store.set('maintStyleOptions', opts);
+    this.renderStyleOptionList();
+  },
+
+  // 构建款式下拉HTML
+  _buildPartSelectOptions(selected) {
+    const opts = this.getStyleOptions();
+    return opts.map(opt => `<option value="${App.utils.escapeHtml(opt)}" ${opt === selected ? 'selected' : ''}>${App.utils.escapeHtml(opt)}</option>`).join('');
+  },
+
+  openSizeForm(id) {
+    const isEdit = !!id;
+    const list = App.store.get('maintSizes', []);
+    const item = isEdit ? list.find(s => s.id === id) : {};
+    const sizesText = item.sizes ? item.sizes.join('，') : '';
+
+    const body = `
+      <div class="form-section-title">📋 基本信息</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:100px;">
+          <label class="form-label">类别<span class="required">*</span></label>
+          <select id="sf_category" class="form-select">
+            <option value="男装">男装</option>
+            <option value="女装">女装</option>
+            <option value="童装">童装</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:140px;">
+          <label class="form-label">款式</label>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <select id="sf_part" class="form-select" style="flex:1;">
+              ${this._buildPartSelectOptions(item.part)}
+            </select>
+            <button type="button" class="btn" style="flex-shrink:0;" onclick="Maintenance.openStyleManager()" title="管理款式选项">⚙️</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section-title">📏 尺码列表（多个尺码用逗号或空格分隔，作为一组整体保存）</div>
+      <div class="form-group">
+        <input type="text" id="sf_sizes" class="form-input" value="${App.utils.escapeHtml(sizesText)}" data-edit-id="${id || ''}" placeholder="如 32，34，36，38，40，42，44 或 XXS,0/XS,1/S,2/M,3/L,4/XL">
+      </div>
+
+      <div class="form-section-title">📝 备注</div>
+      <div class="form-group">
+        <textarea id="sf_remark" class="form-textarea" rows="2" placeholder="备注">${App.utils.escapeHtml(item.remark || '')}</textarea>
+      </div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️</button>
+      <button class="btn btn-primary" onclick="Maintenance.saveSizeForm('${id || ''}')">💾</button>
+    `;
+
+    App.modal.open({ title: isEdit ? '编辑尺码组' : '新增尺码组', body, footer, size: 'lg', closeOnOverlay: false });
+    if (item.category) document.getElementById('sf_category').value = item.category;
+  },
+
+  saveSizeForm(id) {
+    const category = document.getElementById('sf_category').value;
+    const part = document.getElementById('sf_part').value;
+    const sizesRaw = document.getElementById('sf_sizes').value.trim();
+    if (!sizesRaw) { App.toast('请输入尺码列表', 'error'); return; }
+
+    // 用逗号（中英文）或空格分隔
+    const sizes = sizesRaw.split(/[,，\s]+/).map(s => s.trim()).filter(s => s);
+
+    const data = {
+      category,
+      part,
+      sizes,
+      remark: document.getElementById('sf_remark').value.trim(),
+    };
+
+    const list = App.store.get('maintSizes', []);
+    if (id) {
+      const idx = list.findIndex(s => s.id === id);
+      if (idx >= 0) list[idx] = { ...list[idx], ...data };
+      App.toast('更新成功', 'success');
+    } else {
+      list.push({ id: App.utils.genId('MS'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('maintSizes', list);
+    App.modal.close();
+    this.renderSize();
+  },
+
+  deleteSize(id) {
+    App.confirm('确定删除此尺码组吗？', () => {
+      let list = App.store.get('maintSizes', []);
+      list = list.filter(s => s.id !== id);
+      App.store.set('maintSizes', list);
+      App.toast('已删除', 'success');
+      this.renderSize();
+    });
+  },
+
+  // ============================================================
+  //  中英文对照表
+  // ============================================================
+  getFilteredTerm() {
+    const list = App.store.get('maintTerms', []);
+    const search = (document.getElementById('termSearch').value || '').trim().toLowerCase();
+    const cat = document.getElementById('termCatFilter').value;
+    return list.filter(t => {
+      if (cat && t.category !== cat) return false;
+      if (search) {
+        const fields = [t.part, t.cn, t.en, t.remark];
+        if (!fields.some(v => (v || '').toString().toLowerCase().includes(search))) return false;
+      }
+      return true;
+    });
+  },
+
+  // 中英文对照表选中的ID集合
+  _termSelectedIds: new Set(),
+
+  renderTerm() {
+    const data = this.getFilteredTerm();
+    document.getElementById('termCount').textContent = `共 ${data.length} 条`;
+    document.getElementById('count-term').textContent = App.store.get('maintTerms', []).length;
+
+    const allChecked = data.length > 0 && data.every(t => this._termSelectedIds.has(t.id));
+    const selectAllChecked = allChecked ? 'checked' : '';
+
+    const thead = `<thead><tr>
+      <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="Maintenance.termToggleSelectAll(this.checked)"></th>
+      <th>部位</th><th>英文</th><th>中文</th><th>类别</th><th>备注</th><th style="width:70px;">操作</th>
+    </tr></thead>`;
+
+    let tbody;
+    if (data.length === 0) {
+      tbody = `<tbody>${this.emptyHtml('暂无对照数据，点击右上角 ➕ 新增')}</tbody>`;
+    } else {
+      tbody = '<tbody>' + data.map(t => {
+        const cbChecked = this._termSelectedIds.has(t.id) ? 'checked' : '';
+        return `
+        <tr>
+          <td><input type="checkbox" ${cbChecked} onchange="Maintenance.termToggleSelect('${t.id}', this.checked)"></td>
+          <td>${App.utils.escapeHtml(t.part || '-')}</td>
+          <td>${App.utils.escapeHtml(t.en || '-')}</td>
+          <td><strong>${App.utils.escapeHtml(t.cn || '')}</strong></td>
+          <td>${this.catTag(t.category)}</td>
+          <td>${App.utils.escapeHtml(t.remark || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openTermForm('${t.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteTerm('${t.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('') + '</tbody>';
+    }
+    document.getElementById('termTable').innerHTML = thead + tbody;
+  },
+
+  // ===== 中英文对照表复选框 =====
+  termToggleSelectAll(checked) {
+    const data = this.getFilteredTerm();
+    if (checked) {
+      data.forEach(t => this._termSelectedIds.add(t.id));
+    } else {
+      data.forEach(t => this._termSelectedIds.delete(t.id));
+    }
+    this.renderTerm();
+  },
+
+  termToggleSelect(id, checked) {
+    if (checked) {
+      this._termSelectedIds.add(id);
+    } else {
+      this._termSelectedIds.delete(id);
+    }
+    this.renderTerm();
+  },
+
+  // ===== 操作下拉菜单 =====
+  toggleTermActionMenu() {
+    const dd = document.getElementById('termActionDropdown');
+    dd.classList.toggle('open');
+  },
+
+  closeTermActionMenu() {
+    document.getElementById('termActionDropdown').classList.remove('open');
+  },
+
+  // ===== 导出Excel =====
+  termExportExcel() {
+    this.closeTermActionMenu();
+    const allTerms = App.store.get('maintTerms', []);
+    // 如果有选中的，只导出选中的；否则导出全部
+    let terms;
+    if (this._termSelectedIds.size > 0) {
+      terms = allTerms.filter(t => this._termSelectedIds.has(t.id));
+      if (terms.length === 0) {
+        App.toast('选中的数据不存在', 'error');
+        return;
+      }
+    } else {
+      terms = allTerms;
+      if (terms.length === 0) {
+        App.toast('没有数据可导出', 'error');
+        return;
+      }
+    }
+
+    const headerMap = {
+      part: '部位',
+      en: '英文',
+      cn: '中文',
+      category: '类别',
+      remark: '备注'
+    };
+    const keys = Object.keys(headerMap);
+
+    const data = terms.map(t => {
+      const row = {};
+      keys.forEach(k => { row[headerMap[k]] = t[k] || ''; });
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data, { header: keys.map(k => headerMap[k]) });
+    ws['!cols'] = [
+      { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 12 }, { wch: 30 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '中英文对照表');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `中英文对照表_${dateStr}.xlsx`);
+    App.toast(`已导出 ${terms.length} 条数据`, 'success');
+  },
+
+  // ===== 导入Excel =====
+  termImportExcel() {
+    this.closeTermActionMenu();
+    const existing = document.getElementById('termImportFileInput');
+    if (existing) existing.remove();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'termImportFileInput';
+    input.accept = '.xlsx,.xls,.csv';
+    input.style.display = 'none';
+    input.onchange = (e) => this.termHandleFileImport(e);
+    document.body.appendChild(input);
+    input.click();
+  },
+
+  termHandleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('termImportFileInput').remove();
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (rows.length === 0) {
+          App.toast('Excel文件中没有数据', 'error');
+          return;
+        }
+
+        const reverseMap = {
+          '部位': 'part', '中文': 'cn', '英文': 'en', '类别': 'category', '备注': 'remark'
+        };
+        const validCategories = ['通用', '面料', '辅料', '工艺', '服装部位', '单证', '其他'];
+
+        const terms = App.store.get('maintTerms', []);
+        let skipCount = 0;
+        const safeItems = [];       // 无冲突，可直接导入
+        const conflictItems = [];   // 冲突项：{idx, newItem, existingItem}
+
+        rows.forEach(row => {
+          const obj = {};
+          let hasCn = false, hasEn = false;
+          Object.keys(row).forEach(header => {
+            const field = reverseMap[header.trim()];
+            if (field && row[header] !== undefined && row[header] !== null) {
+              obj[field] = String(row[header]).trim();
+              if (field === 'cn' && obj[field]) hasCn = true;
+              if (field === 'en' && obj[field]) hasEn = true;
+            }
+          });
+
+          if (!hasCn || !hasEn) { skipCount++; return; }
+          if (obj.category && !validCategories.includes(obj.category)) obj.category = '';
+
+          // 按"英文"精确匹配找冲突
+          const existing = terms.find(t => (t.en || '').toLowerCase() === (obj.en || '').toLowerCase());
+          if (existing) {
+            conflictItems.push({ newItem: obj, existingItem: existing });
+          } else {
+            safeItems.push(obj);
+          }
+        });
+
+        // 如果没有冲突，直接导入安全项
+        if (conflictItems.length === 0) {
+          let importCount = 0;
+          safeItems.forEach(obj => {
+            terms.push({ id: App.utils.genId('MT'), ...obj });
+            importCount++;
+          });
+          App.store.set('maintTerms', terms);
+          this.renderTerm();
+          let msg = `导入完成：成功 ${importCount} 条`;
+          if (skipCount > 0) msg += `，跳过 ${skipCount} 条（缺少中文或英文）`;
+          App.toast(msg, 'success');
+          return;
+        }
+
+        // 有冲突 → 打开冲突处理对话框
+        this._termImportConflictState = {
+          terms, safeItems, conflictItems, skipCount,
+          // 每条冲突的决策：'overwrite'（覆盖现有） | 'keep'（保留现有）| 'both'（两者都保留）
+          decisions: conflictItems.map(() => 'overwrite')
+        };
+        this.termOpenConflictDialog();
+      } catch (err) {
+        console.error('导入失败:', err);
+        App.toast('导入失败，请检查文件格式', 'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  },
+
+  // ===== 导入冲突处理对话框 =====
+  termOpenConflictDialog() {
+    const st = this._termImportConflictState;
+    if (!st) return;
+
+    const self = this;
+
+    // 批量设置决策
+    const setAllDecision = (val) => {
+      st.decisions = st.conflictItems.map(() => val);
+      self.termRenderConflictRows();
+    };
+
+    // 构建每条冲突行
+    const conflictRowsHtml = () => {
+      return st.conflictItems.map((c, i) => {
+        const d = st.decisions[i];
+        const sel = (v) => v === d ? 'selected' : '';
+        return `
+        <div class="conflict-row" data-idx="${i}">
+          <div class="conflict-header">
+            <span class="conflict-index">冲突 ${i + 1}</span>
+            <span class="conflict-en">英文：<strong>${App.utils.escapeHtml(c.newItem.en || '')}</strong></span>
+            <select class="form-select conflict-select" style="width:auto;" onchange="Maintenance.termSetOneDecision(${i}, this.value)">
+              <option value="overwrite" ${sel('overwrite')}>覆盖现有数据</option>
+              <option value="keep" ${sel('keep')}>保留现有数据</option>
+              <option value="both" ${sel('both')}>两者都保留</option>
+            </select>
+          </div>
+          <div class="conflict-compare">
+            <div class="conflict-col">
+              <div class="conflict-col-title new-title">📥 Excel中的数据</div>
+              <div class="conflict-field"><span class="conflict-label">部位：</span>${App.utils.escapeHtml(c.newItem.part || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">中文：</span>${App.utils.escapeHtml(c.newItem.cn || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">英文：</span>${App.utils.escapeHtml(c.newItem.en || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">类别：</span>${App.utils.escapeHtml(c.newItem.category || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">备注：</span>${App.utils.escapeHtml(c.newItem.remark || '-')}</div>
+            </div>
+            <div class="conflict-col">
+              <div class="conflict-col-title old-title">📂 系统中现有数据</div>
+              <div class="conflict-field"><span class="conflict-label">部位：</span>${App.utils.escapeHtml(c.existingItem.part || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">中文：</span>${App.utils.escapeHtml(c.existingItem.cn || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">英文：</span>${App.utils.escapeHtml(c.existingItem.en || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">类别：</span>${App.utils.escapeHtml(c.existingItem.category || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">备注：</span>${App.utils.escapeHtml(c.existingItem.remark || '-')}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    };
+
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="text-muted font-sm">
+          发现 <strong style="color:var(--error);">${st.conflictItems.length}</strong> 条英文重复冲突，
+          另有 <strong>${st.safeItems.length}</strong> 条可直接导入，
+          ${st.skipCount > 0 ? `<strong>${st.skipCount}</strong> 条跳过（缺中文/英文），` : ''}
+          请选择处理方式：
+        </div>
+        <div style="display:flex;gap:5px;">
+          <button class="btn btn-sm" onclick="Maintenance._termSetAllDecision('overwrite')">全部覆盖</button>
+          <button class="btn btn-sm" onclick="Maintenance._termSetAllDecision('keep')">全部保留现有</button>
+          <button class="btn btn-sm" onclick="Maintenance._termSetAllDecision('both')">全部保留双方</button>
+        </div>
+      </div>
+      <div id="conflictList" style="max-height:55vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:8px;background:#fafbfc;"></div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="Maintenance.termCancelImport()">✖️ 取消</button>
+      <button class="btn btn-primary" onclick="Maintenance.termApplyImport()">✅ 确认导入</button>
+    `;
+
+    App.modal.open({ title: `导入冲突处理（共 ${st.conflictItems.length} 条）`, body, footer, size: 'lg', closeOnOverlay: false });
+
+    // 挂方法用于内联onclick
+    this._termSetAllDecision = setAllDecision;
+    this.termRenderConflictRows = () => {
+      document.getElementById('conflictList').innerHTML = conflictRowsHtml();
+    };
+    this.termRenderConflictRows();
+  },
+
+  termSetOneDecision(idx, val) {
+    const st = this._termImportConflictState;
+    if (!st) return;
+    st.decisions[idx] = val;
+  },
+
+  termCancelImport() {
+    this._termImportConflictState = null;
+    App.modal.close();
+    App.toast('已取消导入', 'info');
+  },
+
+  termApplyImport() {
+    const st = this._termImportConflictState;
+    if (!st) return;
+
+    const { terms, safeItems, conflictItems, decisions, skipCount } = st;
+    let importCount = 0;
+    let overwriteCount = 0;
+    let keepCount = 0;
+    let bothCount = 0;
+
+    // 1) 先导入无冲突项
+    safeItems.forEach(obj => {
+      terms.push({ id: App.utils.genId('MT'), ...obj });
+      importCount++;
+    });
+
+    // 2) 按决策处理冲突项
+    conflictItems.forEach((c, i) => {
+      const d = decisions[i];
+      if (d === 'overwrite') {
+        // 覆盖：保留原id，其他字段替换为新值
+        const idx = terms.findIndex(t => t.id === c.existingItem.id);
+        if (idx >= 0) {
+          terms[idx] = { ...terms[idx], ...c.newItem, id: c.existingItem.id };
+        }
+        overwriteCount++;
+      } else if (d === 'both') {
+        // 两者都保留：把新值作为新增（注意英文相同，但用户主动选择）
+        terms.push({ id: App.utils.genId('MT'), ...c.newItem });
+        bothCount++;
+        importCount++;
+      } else {
+        // keep：保留现有
+        keepCount++;
+      }
+    });
+
+    App.store.set('maintTerms', terms);
+    this.renderTerm();
+    App.modal.close();
+    this._termImportConflictState = null;
+
+    const parts = [`新增 ${safeItems.length + bothCount} 条`];
+    if (overwriteCount > 0) parts.push(`覆盖 ${overwriteCount} 条`);
+    if (keepCount > 0) parts.push(`跳过(保留现有) ${keepCount} 条`);
+    if (bothCount > 0) parts.push(`重复保留 ${bothCount} 条`);
+    if (skipCount > 0) parts.push(`缺字段跳过 ${skipCount} 条`);
+    App.toast(`导入完成：${parts.join('，')}`, 'success');
+  },
+
+  // ===== 清空 =====
+  termClearAll() {
+    this.closeTermActionMenu();
+    const terms = App.store.get('maintTerms', []);
+    // 如果有选中的，只删除选中的；否则清空全部
+    if (this._termSelectedIds.size > 0) {
+      App.confirm(`确定要删除选中的 ${this._termSelectedIds.size} 条数据吗？`, () => {
+        const newTerms = terms.filter(t => !this._termSelectedIds.has(t.id));
+        App.store.set('maintTerms', newTerms);
+        this._termSelectedIds.clear();
+        App.toast('已删除选中数据', 'success');
+        this.renderTerm();
+      });
+    } else {
+      if (terms.length === 0) {
+        App.toast('对照表已是空的', 'error');
+        return;
+      }
+      App.confirm(`确定要清空全部 ${terms.length} 条对照数据吗？此操作不可恢复！`, () => {
+        App.store.set('maintTerms', []);
+        this._termSelectedIds.clear();
+        App.toast('对照表已清空', 'success');
+        this.renderTerm();
+      });
+    }
+  },
+
+  openTermForm(id) {
+    const isEdit = !!id;
+    const list = App.store.get('maintTerms', []);
+    const item = isEdit ? list.find(t => t.id === id) : {};
+
+    const body = `
+      <div class="form-section-title">🔤 中英文对照</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">部位</label>
+          <input type="text" id="tf_part" class="form-input" value="${App.utils.escapeHtml(item.part || '')}" placeholder="部位">
+        </div>
+        <div class="form-group" style="flex:1;min-width:160px;">
+          <label class="form-label">英文<span class="required">*</span></label>
+          <input type="text" id="tf_en" class="form-input" value="${App.utils.escapeHtml(item.en || '')}" placeholder="Please input English">
+        </div>
+        <div class="form-group" style="flex:1;min-width:140px;">
+          <label class="form-label">中文<span class="required">*</span></label>
+          <input type="text" id="tf_cn" class="form-input" value="${App.utils.escapeHtml(item.cn || '')}" placeholder="请输入中文">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">类别</label>
+          <select id="tf_category" class="form-select">
+            <option value="通用">通用</option>
+            <option value="面料">面料</option>
+            <option value="辅料">辅料</option>
+            <option value="工艺">工艺</option>
+            <option value="服装部位">服装部位</option>
+            <option value="单证">单证</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea id="tf_remark" class="form-textarea" rows="2" placeholder="备注">${App.utils.escapeHtml(item.remark || '')}</textarea>
+      </div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️</button>
+      <button class="btn btn-primary" onclick="Maintenance.saveTermForm('${id || ''}')">💾</button>
+    `;
+
+    App.modal.open({ title: isEdit ? '编辑对照词条' : '新增对照词条', body, footer, size: 'lg', closeOnOverlay: false });
+    if (item.category) document.getElementById('tf_category').value = item.category;
+  },
+
+  saveTermForm(id) {
+    const cn = document.getElementById('tf_cn').value.trim();
+    const en = document.getElementById('tf_en').value.trim();
+    if (!cn) { App.toast('请输入中文', 'error'); return; }
+    if (!en) { App.toast('请输入英文', 'error'); return; }
+
+    const data = {
+      part: document.getElementById('tf_part').value.trim(),
+      cn, en,
+      category: document.getElementById('tf_category').value,
+      remark: document.getElementById('tf_remark').value.trim(),
+    };
+
+    const list = App.store.get('maintTerms', []);
+    if (id) {
+      const idx = list.findIndex(t => t.id === id);
+      if (idx >= 0) list[idx] = { ...list[idx], ...data };
+      App.toast('更新成功', 'success');
+    } else {
+      list.push({ id: App.utils.genId('MT'), ...data });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('maintTerms', list);
+    App.modal.close();
+    this.renderTerm();
+  },
+
+  deleteTerm(id) {
+    App.confirm('确定删除此条对照词条吗？', () => {
+      let list = App.store.get('maintTerms', []);
+      list = list.filter(t => t.id !== id);
+      App.store.set('maintTerms', list);
+      App.toast('已删除', 'success');
+      this.renderTerm();
+    });
+  },
+
+  // ============================================================
+  //  通用导入冲突处理（面料/辅料复用，按"编号"去重）
+  // ============================================================
+  _openImportConflict(config) {
+    this._importConflictState = {
+      ...config,
+      decisions: config.conflictItems.map(() => 'overwrite')
+    };
+
+    const st = this._importConflictState;
+
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="text-muted font-sm">
+          发现 <strong style="color:var(--error);">${st.conflictItems.length}</strong> 条${st.dedupLabel}重复冲突，
+          另有 <strong>${st.safeItems.length}</strong> 条可直接导入，
+          ${st.skipCount > 0 ? `<strong>${st.skipCount}</strong> 条跳过（缺名称），` : ''}
+          请选择处理方式：
+        </div>
+        <div style="display:flex;gap:5px;">
+          <button class="btn btn-sm" onclick="Maintenance._setAllImportDecision('overwrite')">全部覆盖</button>
+          <button class="btn btn-sm" onclick="Maintenance._setAllImportDecision('keep')">全部保留现有</button>
+          <button class="btn btn-sm" onclick="Maintenance._setAllImportDecision('both')">全部保留双方</button>
+        </div>
+      </div>
+      <div id="conflictList" style="max-height:55vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:8px;background:#fafbfc;"></div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="Maintenance._cancelImportConflict()">✖️ 取消</button>
+      <button class="btn btn-primary" onclick="Maintenance._applyImportConflict()">✅ 确认导入</button>
+    `;
+
+    App.modal.open({ title: `导入冲突处理（共 ${st.conflictItems.length} 条）`, body, footer, size: 'lg', closeOnOverlay: false });
+    this._renderImportConflictRows();
+  },
+
+  _renderImportConflictRows() {
+    const st = this._importConflictState;
+    if (!st) return;
+    const html = st.conflictItems.map((c, i) => {
+      const d = st.decisions[i];
+      const sel = (v) => v === d ? 'selected' : '';
+      const newFieldsHtml = st.fieldDefs.map(fd =>
+        `<div class="conflict-field"><span class="conflict-label">${fd.label}：</span>${App.utils.escapeHtml(c.newItem[fd.key] || '-')}</div>`
+      ).join('');
+      const oldFieldsHtml = st.fieldDefs.map(fd =>
+        `<div class="conflict-field"><span class="conflict-label">${fd.label}：</span>${App.utils.escapeHtml(c.existingItem[fd.key] || '-')}</div>`
+      ).join('');
+      return `
+      <div class="conflict-row" data-idx="${i}">
+        <div class="conflict-header">
+          <span class="conflict-index">冲突 ${i + 1}</span>
+          <span class="conflict-en">${st.dedupLabel}：<strong>${App.utils.escapeHtml(c.newItem[st.dedupField] || '')}</strong></span>
+          <select class="form-select conflict-select" style="width:auto;" onchange="Maintenance._setOneImportDecision(${i}, this.value)">
+            <option value="overwrite" ${sel('overwrite')}>覆盖现有数据</option>
+            <option value="keep" ${sel('keep')}>保留现有数据</option>
+            <option value="both" ${sel('both')}>两者都保留</option>
+          </select>
+        </div>
+        <div class="conflict-compare">
+          <div class="conflict-col">
+            <div class="conflict-col-title new-title">📥 Excel中的数据</div>
+            ${newFieldsHtml}
+          </div>
+          <div class="conflict-col">
+            <div class="conflict-col-title old-title">📂 系统中现有数据</div>
+            ${oldFieldsHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    const list = document.getElementById('conflictList');
+    if (list) list.innerHTML = html;
+  },
+
+  _setOneImportDecision(idx, val) {
+    const st = this._importConflictState;
+    if (!st) return;
+    st.decisions[idx] = val;
+  },
+
+  _setAllImportDecision(val) {
+    const st = this._importConflictState;
+    if (!st) return;
+    st.decisions = st.conflictItems.map(() => val);
+    this._renderImportConflictRows();
+  },
+
+  _cancelImportConflict() {
+    this._importConflictState = null;
+    App.modal.close();
+    App.toast('已取消导入', 'info');
+  },
+
+  _applyImportConflict() {
+    const st = this._importConflictState;
+    if (!st) return;
+    st.applyFn(st);
+    this._importConflictState = null;
+  },
+
+  // ===== 初始化 =====
+  init() {
+    this.renderFabric();
+    this.renderAccessory();
+    this.renderSize();
+    this.renderTerm();
+  }
+};
+
+Maintenance.init();
+
+// 点击外部关闭操作下拉菜单
+document.addEventListener('click', (e) => {
+  ['fabricActionDropdown', 'accessoryActionDropdown', 'termActionDropdown'].forEach(id => {
+    const dd = document.getElementById(id);
+    if (dd && !dd.contains(e.target)) {
+      dd.classList.remove('open');
+    }
+  });
+});
+</script>
+</body>
+</html>

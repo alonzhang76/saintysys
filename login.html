@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+.login-btn-wrap { text-align:center; margin-top:4px; }
+.login-btn { padding:6px 36px;font-size:13px; }
+</style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">👔</div>
+    </div>
+    <div class="login-title">舜天汉唐服装外贸系统</div>
+    <div class="login-subtitle">Sainty Hantang Garment Trade System</div>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">用户名</label>
+        <input type="text" class="form-input" id="username" placeholder="请输入用户名" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">密码</label>
+        <input type="password" class="form-input" id="password" placeholder="请输入密码" autocomplete="current-password" required>
+      </div>
+      <div class="login-btn-wrap">
+        <button type="submit" class="btn btn-primary login-btn" id="loginBtn">登 录</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script src="js/common.js?v=20260812"></script>
+<script>
+// ============ 全局常量：固定超级管理员凭证 ============
+const MASTER_ADMIN = { username: 'admin', password: 'alon2601', role: 'admin', id: 'U-0001' };
+
+// ============ 写会话（localStorage 优先，失败退 sessionStorage）============
+function writeSession(key, val) {
+  try { localStorage.setItem(key, val); return true; } catch (e1) {
+    try { sessionStorage.setItem(key, val); return true; } catch (e2) { return false; }
+  }
+}
+
+// ============ 确保存储中的 admin 密码与 MASTER_ADMIN 一致 ============
+// 其他用户的密码由 admin 在"设置 → 用户"中分配，不在这里覆盖
+function syncAdminPassword() {
+  try {
+    var users = App.store.get('users', []);
+    if (!users || users.length === 0) {
+      // 首次初始化：写入 9 个默认用户，其他用户初始密码 123456，由 admin 后续修改
+      var today = new Date().toISOString().slice(0, 10);
+      users = [
+        { id: 'U-0001', username: 'admin',        password: MASTER_ADMIN.password, role: 'admin',        description: '系统管理员',   status: 'active', createDate: today },
+        { id: 'U-0002', username: 'merchandiser', password: '123456', role: 'merchandiser', description: '业务跟单员',   status: 'active', createDate: today },
+        { id: 'U-0003', username: 'purchaser',    password: '123456', role: 'purchaser',    description: '面辅料采购员', status: 'active', createDate: today },
+        { id: 'U-0004', username: 'designer',     password: '123456', role: 'designer',     description: '样衣师',       status: 'active', createDate: today },
+        { id: 'U-0005', username: 'qc',           password: '123456', role: 'qc',           description: '品控员',       status: 'active', createDate: today },
+        { id: 'U-0006', username: 'finance',      password: '123456', role: 'finance',      description: '财务专员',     status: 'active', createDate: today },
+        { id: 'U-0007', username: 'documentary',  password: '123456', role: 'documentary',  description: '单证员',       status: 'active', createDate: today },
+        { id: 'U-0008', username: 'manager',      password: '123456', role: 'manager',      description: '管理层',       status: 'active', createDate: today },
+        { id: 'U-0009', username: 'user',         password: '123456', role: 'user',         description: '普通用户',     status: 'active', createDate: today },
+      ];
+      App.store.set('users', users);
+    } else {
+      // 已有用户表：只确保 admin 密码正确（其他用户密码不动）
+      var adminIdx = -1;
+      for (var i = 0; i < users.length; i++) {
+        if (users[i].username === 'admin') { adminIdx = i; break; }
+      }
+      if (adminIdx >= 0) {
+        if (users[adminIdx].password !== MASTER_ADMIN.password) {
+          users[adminIdx].password = MASTER_ADMIN.password;
+          App.store.set('users', users);
+        }
+      } else {
+        // admin 用户丢失，重建
+        users.push({ id: 'U-0001', username: 'admin', password: MASTER_ADMIN.password, role: 'admin', description: '系统管理员', status: 'active', createDate: new Date().toISOString().slice(0,10) });
+        App.store.set('users', users);
+      }
+    }
+    return users;
+  } catch (e) {
+    return []; // 存储不可用时，靠绿色通道登录
+  }
+}
+
+// ============ 启动初始化 ============
+(function startInit(){
+  try {
+    // 清掉只有 isLoggedIn 但没有 currentUserId 的残留脏状态
+    var hasLoginFlag = localStorage.getItem('isLoggedIn') === 'true' || sessionStorage.getItem('isLoggedIn') === 'true';
+    var hasUid = localStorage.getItem('currentUserId') || sessionStorage.getItem('currentUserId');
+    if (hasLoginFlag && !hasUid) {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('username'); localStorage.removeItem('userRole'); localStorage.removeItem('currentUserId');
+      sessionStorage.removeItem('isLoggedIn');
+      sessionStorage.removeItem('username'); sessionStorage.removeItem('userRole'); sessionStorage.removeItem('currentUserId');
+    }
+    // 如果已经有完整登录态，直接跳首页
+    if (hasLoginFlag && hasUid) {
+      try { window.location.replace('index.html'); return; } catch(e){}
+    }
+
+    // 初始化示例数据
+    try { App.initSampleData(); } catch(err) {}
+    // 同步 admin 密码
+    syncAdminPassword();
+  } catch (e) {}
+})();
+
+// ============ 登录提交 ============
+function handleLogin(e) {
+  e.preventDefault();
+  var btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+
+  var username = document.getElementById('username').value.trim();
+  var password = document.getElementById('password').value;
+
+  if (!username || !password) {
+    App.toast('请输入用户名和密码', 'warning');
+    btn.disabled = false;
+    return false;
+  }
+
+  try {
+    // ===== 通道 1：超级管理员绿色通道（始终可用，不依赖任何存储）=====
+    if (username === MASTER_ADMIN.username && password === MASTER_ADMIN.password) {
+      doLoginSuccess(MASTER_ADMIN);
+      return false;
+    }
+
+    // ===== 通道 2：从 users 表正常查询（其他用户走这里）=====
+    var users = App.store.get('users', []);
+    var user = null;
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].username === username) { user = users[i]; break; }
+    }
+
+    if (!user) {
+      App.toast('用户不存在', 'error');
+      btn.disabled = false;
+      return false;
+    }
+    if (user.password !== password) {
+      App.toast('密码错误', 'error');
+      btn.disabled = false;
+      return false;
+    }
+    if (user.status === 'disabled') {
+      App.toast('该账号已被禁用，请联系管理员', 'error');
+      btn.disabled = false;
+      return false;
+    }
+
+    doLoginSuccess(user);
+    return false;
+
+  } catch (err) {
+    App.toast('登录异常: ' + err.message, 'error');
+    btn.disabled = false;
+    return false;
+  }
+}
+
+// ============ 登录成功：写会话 + 跳转 ============
+function doLoginSuccess(user) {
+  writeSession('refDPR', window.devicePixelRatio ? window.devicePixelRatio.toString() : '1');
+  writeSession('isLoggedIn', 'true');
+  writeSession('username', user.username);
+  writeSession('userRole', user.role);
+  writeSession('currentUserId', user.id);
+
+  App.toast('登录成功，正在跳转...', 'success');
+
+  setTimeout(function () {
+    try { window.location.replace('index.html'); }
+    catch (err) {
+      try { window.location.href = 'index.html'; }
+      catch (err2) {
+        document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;text-align:center;"><h2>✅ 登录成功</h2><p>自动跳转被拦截，请点击下方链接进入系统：</p><a href="index.html" style="font-size:20px;">→ 进入首页</a></div>';
+      }
+    }
+  }, 400);
+}
+</script>
+</body>
+</html>

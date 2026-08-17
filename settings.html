@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+.settings-tabs { display:flex;border-bottom:2px solid var(--border);margin-bottom:16px; }
+.settings-tab { padding:10px 20px;cursor:pointer;font-size:14px;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-2px; }
+.settings-tab.active { color:var(--primary);border-bottom-color:var(--primary);font-weight:600; }
+.perm-matrix { width:100%;border-collapse:collapse;font-size:12px; }
+.perm-matrix th, .perm-matrix td { border:1px solid var(--border-light);padding:6px 8px;text-align:center; }
+.perm-matrix th { background:#f3f4f6;font-weight:600; }
+.perm-matrix td:first-child, .perm-matrix th:first-child { text-align:left; }
+.perm-check { cursor:pointer;width:16px;height:16px; }
+.perm-check:disabled { cursor:not-allowed;opacity:0.4; }
+.avatar { display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;font-size:14px;font-weight:600;margin-right:8px; }
+.perm-btn { cursor:pointer;border:none;background:none;font-size:16px;padding:2px 6px; }
+.perm-btn-w { color:#2563eb; }
+.perm-btn-r { color:#6b7280; }
+.perm-btn-n { color:#d1d5db; }
+.user-status-active { color:#059669;font-weight:600; }
+.user-status-disabled { color:#9ca3af; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">设置</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name" id="userName">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <div class="settings-tabs">
+        <div class="settings-tab active" onclick="switchTab('users')">👥 用户</div>
+        <div class="settings-tab" onclick="switchTab('roles')">🛡️ 用户组</div>
+        <div class="settings-tab" onclick="switchTab('advanced')">⚙️ 高级设置</div>
+      </div>
+
+      <div id="tab-users"></div>
+      <div id="tab-roles" style="display:none;"></div>
+      <div id="tab-advanced" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('settings');
+App.checkLogin();
+App.initSampleData();
+
+// 只有管理员或有设置权限的用户才能访问
+const currentUser = App.getCurrentUser();
+const canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || App.getPermission('settings') !== 'none');
+if (!canAccessSettings) {
+  document.querySelector('.app-content').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
+      <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+      <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
+      <div style="font-size:14px;">您当前的角色无权访问设置模块，请联系管理员开通权限</div>
+    </div>`;
+}
+
+// ===== 标签页切换 =====
+let currentTab = 'users';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.settings-tab').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
+  document.getElementById('tab-roles').style.display = tab === 'roles' ? 'block' : 'none';
+  document.getElementById('tab-advanced').style.display = tab === 'advanced' ? 'block' : 'none';
+  if (tab === 'users') renderUsers();
+  if (tab === 'roles') renderRoles();
+  if (tab === 'advanced') renderAdvanced();
+}
+
+// ===== 用户管理 =====
+function getUsers() {
+  return App.store.get('users', []);
+}
+
+function saveUsers(users) {
+  App.store.set('users', users);
+}
+
+function renderUsers() {
+  const users = getUsers();
+  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const canEdit = isAdmin; // 只有管理员能增删改用户
+
+  let html = `
+    <div class="table-toolbar">
+      <div class="table-toolbar-left">
+        <span class="card-title">用户列表（共 ${users.length} 人）</span>
+      </div>
+      <div class="table-toolbar-right">
+        ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="openUserModal()" title="新增用户">➕ 新增</button>` : ''}
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr>
+        <th style="width:40px;"></th>
+        <th>用户名</th>
+        <th>描述</th>
+        <th>角色</th>
+        <th>状态</th>
+        <th style="width:100px;">操作</th>
+      </tr></thead>
+      <tbody>
+  `;
+
+  users.forEach(u => {
+    const isSelf = u.id === currentUser?.id;
+    const roleName = App.roles[u.role]?.name || u.role;
+    const statusTag = u.status === 'active'
+      ? '<span class="user-status-active">● 正常</span>'
+      : '<span class="user-status-disabled">● 已禁用</span>';
+    html += `
+      <tr>
+        <td><span class="avatar">${(u.username || '?')[0].toUpperCase()}</span></td>
+        <td><strong>${App.utils.escapeHtml(u.username)}</strong>${isSelf ? ' <span class="tag tag-blue" style="font-size:10px;">我</span>' : ''}</td>
+        <td>${App.utils.escapeHtml(u.description || '-')}</td>
+        <td>${App.utils.escapeHtml(roleName)}</td>
+        <td>${statusTag}</td>
+        <td style="white-space:nowrap;">
+          ${canEdit ? `
+            <button class="btn btn-text btn-sm" onclick="openUserModal('${u.id}')" title="编辑">✏️</button>
+            ${!isSelf ? `<button class="btn btn-text btn-sm" onclick="toggleUserStatus('${u.id}')" title="${u.status === 'active' ? '禁用' : '启用'}">${u.status === 'active' ? '🚫' : '✅'}</button>` : ''}
+            ${!isSelf ? `<button class="btn btn-text btn-sm" onclick="deleteUser('${u.id}')" title="删除">🗑️</button>` : ''}
+          ` : '<span class="text-muted">-</span>'}
+        </td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tab-users').innerHTML = html;
+}
+
+function openUserModal(id) {
+  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  if (!isAdmin) { App.toast('无权限', 'error'); return; }
+
+  const users = getUsers();
+  const user = id ? users.find(u => u.id === id) : {};
+  const isEdit = !!id;
+  const isSelf = isEdit && user.id === currentUser?.id;
+
+  const roleOptions = Object.keys(App.roles).map(key => {
+    const r = App.roles[key];
+    const selected = (user.role || 'user') === key ? 'selected' : '';
+    return `<option value="${key}" ${selected}>${r.name}</option>`;
+  }).join('');
+
+  const body = `
+    <div class="form-group">
+      <label class="form-label">用户名<span class="required">*</span></label>
+      <input type="text" class="form-input" id="m_username" value="${App.utils.escapeHtml(user.username || '')}" ${isEdit ? 'readonly' : ''} placeholder="登录用的用户名">
+    </div>
+    <div class="form-group">
+      <label class="form-label">密码${isEdit ? '（留空不修改）' : '<span class="required">*</span>'}</label>
+      <input type="password" class="form-input" id="m_password" placeholder="请输入密码">
+    </div>
+    <div class="form-group">
+      <label class="form-label">描述</label>
+      <input type="text" class="form-input" id="m_description" value="${App.utils.escapeHtml(user.description || '')}" placeholder="如：张三-业务跟单">
+    </div>
+    <div class="form-group">
+      <label class="form-label">角色</label>
+      <select class="form-select" id="m_role" ${isSelf ? 'disabled' : ''}>
+        ${roleOptions}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">状态</label>
+      <select class="form-select" id="m_status" ${isSelf ? 'disabled' : ''}>
+        <option value="active" ${user.status !== 'disabled' ? 'selected' : ''}>正常</option>
+        <option value="disabled" ${user.status === 'disabled' ? 'selected' : ''}>已禁用</option>
+      </select>
+    </div>
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="saveUser('${id || ''}')">💾</button>
+  `;
+
+  App.modal.open({
+    title: isEdit ? '编辑用户' : '新增用户',
+    body, footer, size: 'sm', closeOnOverlay: false
+  });
+}
+
+function saveUser(id) {
+  const username = document.getElementById('m_username').value.trim();
+  const password = document.getElementById('m_password').value;
+  const description = document.getElementById('m_description').value.trim();
+  const role = document.getElementById('m_role').value;
+  const status = document.getElementById('m_status').value;
+
+  if (!username) { App.toast('请输入用户名', 'warning'); return; }
+
+  const users = getUsers();
+  const isEdit = !!id;
+
+  if (isEdit) {
+    const idx = users.findIndex(u => u.id === id);
+    if (idx === -1) return;
+    users[idx].description = description;
+    users[idx].role = role;
+    users[idx].status = status;
+    if (password) users[idx].password = password;
+    App.toast('用户已更新', 'success');
+  } else {
+    if (!password) { App.toast('请输入密码', 'warning'); return; }
+    // 检查用户名是否重复
+    if (users.some(u => u.username === username)) {
+      App.toast('用户名已存在', 'warning');
+      return;
+    }
+    users.push({
+      id: 'U-' + String(users.length + 1).padStart(4, '0'),
+      username, password, description, role, status,
+      createDate: new Date().toISOString().slice(0, 10)
+    });
+    App.toast('用户已添加', 'success');
+  }
+
+  saveUsers(users);
+  App.modal.close();
+  renderUsers();
+}
+
+function toggleUserStatus(id) {
+  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  if (!isAdmin) return;
+  if (id === currentUser?.id) { App.toast('不能禁用自己', 'warning'); return; }
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === id);
+  if (idx === -1) return;
+  users[idx].status = users[idx].status === 'active' ? 'disabled' : 'active';
+  saveUsers(users);
+  renderUsers();
+}
+
+function deleteUser(id) {
+  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  if (!isAdmin) return;
+  if (id === currentUser?.id) { App.toast('不能删除自己', 'warning'); return; }
+  App.confirm('确定要删除该用户吗？', () => {
+    const users = getUsers().filter(u => u.id !== id);
+    saveUsers(users);
+    App.toast('用户已删除', 'success');
+    renderUsers();
+  });
+}
+
+// ===== 用户组/权限管理 =====
+function renderRoles() {
+  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const canEdit = isAdmin;
+
+  const roles = App.roles;
+  const modules = App.modulePermissions;
+  const perms = App.store.get('permissions', {});
+
+  // 构建权限矩阵
+  let matrixHtml = '<table class="perm-matrix"><thead><tr><th>模块</th>';
+  Object.values(roles).forEach(r => {
+    if (!r.isAdmin) matrixHtml += `<th>${r.name}</th>`;
+  });
+  matrixHtml += '</tr></thead><tbody>';
+
+  Object.keys(modules).forEach(modKey => {
+    matrixHtml += `<tr><td style="font-weight:600;">${modules[modKey]}</td>`;
+    Object.keys(roles).forEach(roleKey => {
+      const roleDef = roles[roleKey];
+      if (roleDef.isAdmin) return; // 管理员不显示在矩阵中（管理员始终拥有全部权限）
+      const modPerm = perms[modKey] || {};
+      const perm = modPerm[roleKey] || 'read';
+      const disabled = !canEdit ? 'disabled' : '';
+
+      if (!canEdit) {
+        // 只读查看模式
+        const display = perm === 'write' ? '✏️ 读写' : (perm === 'none' ? '🚫 无' : '👁️ 只读');
+        matrixHtml += `<td>${display}</td>`;
+      } else {
+        matrixHtml += `<td>
+          <select onchange="setPerm('${modKey}','${roleKey}',this.value)" ${disabled} style="width:70px;font-size:11px;padding:2px;">
+            <option value="write" ${perm === 'write' ? 'selected' : ''}>读写</option>
+            <option value="read" ${perm === 'read' ? 'selected' : ''}>只读</option>
+            <option value="none" ${perm === 'none' ? 'selected' : ''}>无</option>
+          </select>
+        </td>`;
+      }
+    });
+    matrixHtml += '</tr>';
+  });
+
+  matrixHtml += '</tbody></table>';
+
+  const helpText = canEdit
+    ? '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 提示：系统管理员始终拥有所有模块的读写权限，不受下表限制。修改权限后，相关用户需重新登录才能生效。</div>'
+    : '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 您是只读模式，如需修改权限请联系管理员。</div>';
+
+  document.getElementById('tab-roles').innerHTML = `
+    <div class="table-toolbar">
+      <div class="table-toolbar-left">
+        <span class="card-title">模块权限矩阵</span>
+      </div>
+      <div class="table-toolbar-right">
+        ${canEdit ? `
+          <button class="btn btn-sm" onclick="batchSetPerms('write')" title="全部设为读写">全设读写</button>
+          <button class="btn btn-sm" onclick="batchSetPerms('read')" title="全部设为只读">全设只读</button>
+          <button class="btn btn-sm" onclick="resetPerms()" title="恢复默认">↻ 恢复默认</button>
+        ` : ''}
+      </div>
+    </div>
+    <div style="overflow-x:auto;">${matrixHtml}</div>
+    ${helpText}
+  `;
+}
+
+function setPerm(modKey, roleKey, value) {
+  const perms = App.store.get('permissions', {});
+  if (!perms[modKey]) perms[modKey] = {};
+  perms[modKey][roleKey] = value;
+  App.store.set('permissions', perms);
+  App.toast('权限已更新', 'success');
+}
+
+function batchSetPerms(value) {
+  App.confirm(`确定将所有模块的权限都设为「${value === 'write' ? '读写' : '只读'}」吗？`, () => {
+    const perms = App.store.get('permissions', {});
+    Object.keys(perms).forEach(modKey => {
+      Object.keys(perms[modKey]).forEach(roleKey => {
+        perms[modKey][roleKey] = value;
+      });
+    });
+    App.store.set('permissions', perms);
+    renderRoles();
+    App.toast('批量更新成功', 'success');
+  });
+}
+
+function resetPerms() {
+  App.confirm('确定恢复默认权限配置吗？', () => {
+    localStorage.removeItem('permissions');
+    App.initSampleData();
+    renderRoles();
+    App.toast('已恢复默认配置', 'success');
+  });
+}
+
+// ===== 高级设置 =====
+function renderAdvanced() {
+  const users = getUsers();
+  const perms = App.store.get('permissions', {});
+
+  let html = `
+    <div class="table-toolbar">
+      <div class="table-toolbar-left"><span class="card-title">高级设置</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+      <div style="border:1px solid var(--border-light);border-radius:8px;padding:16px;background:#f9fafb;">
+        <div style="font-weight:600;margin-bottom:8px;">📦 数据管理</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-sm" onclick="exportData()">📤 导出所有数据</button>
+          <button class="btn btn-sm" onclick="importData()">📥 导入数据</button>
+          <button class="btn btn-sm" onclick="clearAllData()" style="color:#dc2626;">🗑️ 清空所有数据</button>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border-light);border-radius:8px;padding:16px;background:#f9fafb;">
+        <div style="font-weight:600;margin-bottom:8px;">👤 当前登录信息</div>
+        <div style="font-size:12px;color:#374151;line-height:1.8;">
+          <div>用户名：<strong>${App.utils.escapeHtml(currentUser?.username || '-')}</strong></div>
+          <div>角色：<strong>${App.utils.escapeHtml(App.roles[currentUser?.role]?.name || '-')}</strong></div>
+          <div>用户数：<strong>${users.length}</strong></div>
+          <div>数据版本：<strong>${localStorage.getItem('dataVersion')}</strong></div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border-light);border-radius:8px;padding:16px;background:#f9fafb;">
+        <div style="font-weight:600;margin-bottom:8px;">🔑 密码管理</div>
+        <div style="font-size:11px;color:#6b7280;line-height:1.6;margin-bottom:8px;">
+          admin 初始密码为 <code>alon2601</code>，其他用户初始密码为 <code>123456</code>。<br>
+          请在"用户"页为各用户分配独立密码。
+        </div>
+        <div style="font-size:11px;color:#374151;line-height:1.8;">
+          ${Object.values(App.roles).map((r, i) => `<div>• ${r.name}${i === 0 ? '（超级管理员）' : ''}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('tab-advanced').innerHTML = html;
+}
+
+function exportData() {
+  const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'users', 'permissions'];
+  const backup = { exportTime: new Date().toISOString(), version: localStorage.getItem('dataVersion') };
+  keys.forEach(key => {
+    const data = localStorage.getItem(key);
+    if (data) backup[key] = data;
+  });
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sainty-hantang-export-${App.utils.formatDate(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  App.toast('数据导出成功', 'success');
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (data.users && data.permissions) {
+          App.confirm('导入将覆盖现有所有数据，确定继续？', () => {
+            Object.keys(data).forEach(key => {
+              if (key === 'exportTime' || key === 'version') return;
+              localStorage.setItem(key, data[key]);
+            });
+            App.toast('数据导入成功，请刷新页面', 'success');
+            setTimeout(() => location.reload(), 1500);
+          });
+        } else {
+          App.toast('文件格式不正确', 'error');
+        }
+      } catch (err) {
+        App.toast('文件解析失败', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function clearAllData() {
+  App.confirm('确定要清空所有数据吗？此操作不可恢复！', () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    App.toast('数据已清空，请重新登录', 'success');
+    setTimeout(() => {
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('username', 'admin');
+      localStorage.setItem('userRole', 'admin');
+      localStorage.setItem('currentUserId', 'U-0001');
+      localStorage.setItem('refDPR', window.devicePixelRatio.toString());
+      App.initSampleData();
+      location.reload();
+    }, 1000);
+  });
+}
+
+// ===== 初始化 =====
+if (canAccessSettings) {
+  document.getElementById('userName').textContent = currentUser?.username || '管理员';
+  renderUsers();
+}
+</script>
+</body>
+</html>

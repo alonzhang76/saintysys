@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面里衬管理 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+.form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 5px 0 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.form-section-title:first-child { padding-top: 0; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">面里衬管理</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 标签页 -->
+      <div class="tabs" id="tabsBar"></div>
+
+      <!-- 面里衬列表 -->
+      <div class="table-wrap">
+        <div class="filter-bar" id="filterBar"></div>
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <span class="card-title">面里衬列表</span>
+          </div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="openFabricModal()" title="新增面里衬">➕</button>
+          </div>
+        </div>
+        <div id="fabricTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('fabric');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('fabric');
+
+// ===== 状态变量 =====
+let filterState = { search: '', status: '' };
+let currentTab = '全部';
+let editingId = null;
+let _fabricSelectedIds = new Set();
+
+// ===== 工作流状态定义 =====
+// 待打样 → 寄样中 → (需修改→再寄样) → 已确认 → 采购合同 → 发货中 → 已到货
+const STATUS_FLOW = ['待打样', '寄样中', '需修改', '已确认', '采购合同', '发货中', '已到货'];
+
+// 标签页 → 包含的状态
+const TAB_STATUS_MAP = {
+  '全部': null,
+  '待打样': ['待打样'],
+  '寄样中': ['寄样中', '需修改'],
+  '已确认': ['已确认'],
+  '采购合同': ['采购合同'],
+  '发货中': ['发货中'],
+  '已到货': ['已到货'],
+};
+
+// ===== 数据获取 =====
+function getFabrics() {
+  return App.store.get('fabrics', []);
+}
+
+// 从订单管理中获取所有款号（去重）
+function getStyleNos() {
+  const orders = App.store.get('orders', []);
+  const styleNos = orders.map(o => o.styleNo).filter(Boolean);
+  return [...new Set(styleNos)];
+}
+
+// 获取面料供应商（从通讯录中筛选类型为面里衬厂的）
+function getFabricSuppliers() {
+  return App.store.get('contacts', []).filter(c => c.type === '面里衬厂');
+}
+
+// 获取发货目标工厂（服装厂 + 水洗厂）
+function getShipFactories() {
+  return App.store.get('contacts', []).filter(c => ['服装厂', '水洗厂'].includes(c.type));
+}
+
+// 获取维护资料中的面料信息
+function getMaintFabrics() {
+  return App.store.get('maintFabrics', []);
+}
+
+// ===== 数据迁移：旧状态映射到新工作流 =====
+function migrateStatuses() {
+  const fabrics = getFabrics();
+  let changed = false;
+  fabrics.forEach(f => {
+    if (!f.status || f.status === '询价') { f.status = '待打样'; changed = true; }
+    else if (f.status === '已下单') { f.status = '采购合同'; changed = true; }
+
+    // 根据已填日期自动推进状态
+    const currentIdx = STATUS_FLOW.indexOf(f.status);
+    if (f.arrivalDate) {
+      const idx = STATUS_FLOW.indexOf('已到货');
+      if (idx > currentIdx) { f.status = '已到货'; changed = true; }
+    } else if (f.shipDate) {
+      const idx = STATUS_FLOW.indexOf('发货中');
+      if (idx > currentIdx) { f.status = '发货中'; changed = true; }
+    }
+  });
+  if (changed) App.store.set('fabrics', fabrics);
+}
+
+// ===== 渲染统计卡片 =====
+function renderStats() {
+  const fabrics = getFabrics();
+  const total = fabrics.length;
+  const sampling = fabrics.filter(f => ['寄样中', '需修改'].includes(f.status)).length;
+  const confirmed = fabrics.filter(f => f.status === '已确认').length;
+  const arrived = fabrics.filter(f => f.status === '已到货').length;
+
+  const cards = [
+    { icon: '🧵', bg: '#e8f1f5', color: '#004D6D', label: '面里衬总数', value: total, sub: '全部面里衬记录' },
+    { icon: '✂️', bg: '#fff8ed', color: '#d9883a', label: '寄样中', value: sampling, sub: '待客人确认' },
+    { icon: '✅', bg: '#ecfdf5', color: '#2d9d5f', label: '已确认', value: confirmed, sub: '待下采购合同' },
+    { icon: '🏭', bg: '#f0f9ff', color: '#0284c7', label: '已到货', value: arrived, sub: '已到工厂' },
+  ];
+
+  document.getElementById('statCards').innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+      <div class="stat-info">
+        <div class="stat-label">${c.label}</div>
+        <div class="stat-value" style="color:${c.color};">${c.value}</div>
+        <div class="stat-sub">${c.sub}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== 渲染标签页 =====
+function renderTabs() {
+  const tabs = Object.keys(TAB_STATUS_MAP);
+  document.getElementById('tabsBar').innerHTML = tabs.map(t => `
+    <div class="tab-item ${currentTab === t ? 'active' : ''}" onclick="switchTab('${t}')">${t}</div>
+  `).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  renderTabs();
+  renderFabricTable();
+}
+
+// ===== 渲染筛选栏 =====
+function renderFilterBar() {
+  document.getElementById('filterBar').innerHTML = `
+    <div class="search-input">
+      <input type="text" class="form-input" id="searchInput" placeholder="搜索面里衬名/款号/供应商" value="${App.utils.escapeHtml(filterState.search)}">
+    </div>
+    <select class="form-select" id="statusFilter">
+      <option value="">全部状态</option>
+      ${STATUS_FLOW.map(s => `<option value="${s}" ${filterState.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+    </select>
+    <button class="btn btn-sm" onclick="resetFilter()" title="重置筛选">🔄</button>
+  `;
+
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    filterState.search = e.target.value;
+    renderFabricTable();
+  });
+  document.getElementById('statusFilter').addEventListener('change', function(e) {
+    filterState.status = e.target.value;
+    renderFabricTable();
+  });
+  document.getElementById('statusFilter').value = filterState.status;
+}
+
+// ===== 筛选面料数据 =====
+function getFilteredFabrics() {
+  let fabrics = getFabrics();
+  const { search, status } = filterState;
+
+  // 按标签页筛选
+  const tabStatuses = TAB_STATUS_MAP[currentTab];
+  if (tabStatuses) {
+    fabrics = fabrics.filter(f => tabStatuses.includes(f.status));
+  }
+
+  // 按关键词搜索
+  if (search) {
+    const s = search.toLowerCase();
+    fabrics = fabrics.filter(f =>
+      (f.fabricName && f.fabricName.toLowerCase().includes(s)) ||
+      (f.fabricType && f.fabricType.toLowerCase().includes(s)) ||
+      (f.styleNo && f.styleNo.toLowerCase().includes(s)) ||
+      (f.supplier && f.supplier.toLowerCase().includes(s))
+    );
+  }
+
+  // 按状态筛选
+  if (status) {
+    fabrics = fabrics.filter(f => f.status === status);
+  }
+
+  // 按日期倒序（取所有日期中的最大值，空值排末尾）
+  return App.utils.sortByDateDesc(fabrics, ['sampleSentDate', 'confirmedDate', 'contractDate', 'shipDate', 'arrivalDate']);
+}
+
+// ===== 复选框操作 =====
+function toggleSelectAll(checked) {
+  const data = getFilteredFabrics();
+  if (checked) {
+    data.forEach(f => _fabricSelectedIds.add(f.id));
+  } else {
+    data.forEach(f => _fabricSelectedIds.delete(f.id));
+  }
+  renderFabricTable();
+}
+
+function toggleSelect(id, checked) {
+  if (checked) {
+    _fabricSelectedIds.add(id);
+  } else {
+    _fabricSelectedIds.delete(id);
+  }
+  renderFabricTable();
+}
+
+// ===== 渲染面料表格 =====
+function renderFabricTable() {
+  const fabrics = getFilteredFabrics();
+  const container = document.getElementById('fabricTable');
+
+  const allChecked = fabrics.length > 0 && fabrics.every(f => _fabricSelectedIds.has(f.id));
+  const selectAllChecked = allChecked ? 'checked' : '';
+
+  const thead = `<thead><tr>
+    <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="toggleSelectAll(this.checked)"></th>
+    <th style="width:100px;">款号</th>
+    <th style="width:60px;">类型</th>
+    <th style="width:80px;">编号</th>
+    <th>面里衬名称</th>
+    <th style="width:90px;">使用部位</th>
+    <th style="width:120px;">供应商</th>
+    <th style="width:70px;">颜色</th>
+    <th style="width:80px;">单价</th>
+    <th style="width:80px;">数量</th>
+    <th style="width:90px;">金额</th>
+    <th style="width:50px;">轮次</th>
+    <th style="width:80px;">状态</th>
+    <th style="width:90px;">寄样日期</th>
+    <th style="width:90px;">确认日期</th>
+    <th style="width:90px;">发货日期</th>
+    <th style="width:90px;">到货日期</th>
+    <th style="width:100px;">发货工厂</th>
+    <th>备注</th>
+    <th style="width:70px;white-space:nowrap;">操作</th>
+  </tr></thead>`;
+
+  let tbody;
+  if (fabrics.length === 0) {
+    tbody = `<tbody><tr><td colspan="20" style="text-align:center;padding:20px;color:#999;">暂无面里衬数据</td></tr></tbody>`;
+  } else {
+    tbody = '<tbody>' + fabrics.map(f => {
+      const cbChecked = _fabricSelectedIds.has(f.id) ? 'checked' : '';
+      const amount = (Number(f.unitPrice) || 0) * (Number(f.qtyOrdered) || 0);
+      return `
+      <tr>
+        <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${f.id}', this.checked)"></td>
+        <td>${App.utils.escapeHtml(f.styleNo || '-')}</td>
+        <td>${App.utils.escapeHtml(f.fabricType || '-')}</td>
+        <td>${App.utils.escapeHtml(f.fabricCode || '-')}</td>
+        <td>${App.utils.escapeHtml(f.fabricName || '-')}</td>
+        <td>${App.utils.escapeHtml(f.usagePart || '-')}</td>
+        <td>${App.utils.escapeHtml(f.supplier || '-')}</td>
+        <td>${App.utils.escapeHtml(f.color || '-')}</td>
+        <td>${App.utils.formatMoney(f.unitPrice)}</td>
+        <td>${f.qtyOrdered || 0} ${f.unit || ''}</td>
+        <td>${App.utils.formatMoney(amount)}</td>
+        <td style="text-align:center;">${f.sampleRounds || '-'}</td>
+        <td>${App.statusTag(f.status || '待打样')}</td>
+        <td>${App.utils.escapeHtml(f.sampleSentDate || '-')}</td>
+        <td>${App.utils.escapeHtml(f.confirmedDate || '-')}</td>
+        <td>${App.utils.escapeHtml(f.shipDate || '-')}</td>
+        <td>${App.utils.escapeHtml(f.arrivalDate || '-')}</td>
+        <td>${App.utils.escapeHtml(f.shipFactory || '-')}</td>
+        <td>${App.utils.escapeHtml(f.remark || '-')}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-text btn-sm" onclick="viewFabricDetail('${f.id}')" title="查看详情">👁️</button>
+          <button class="btn btn-text btn-sm" onclick="openFabricModal('${f.id}')" title="编辑">✏️</button>
+          <button class="btn btn-text btn-sm" onclick="deleteFabric('${f.id}')" title="删除">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('') + '</tbody>';
+  }
+
+  container.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+}
+
+// ===== 打开新增/编辑模态框 =====
+function openFabricModal(id) {
+  editingId = id || null;
+  const fabric = id ? getFabrics().find(f => f.id === id) : {};
+  const styleNos = getStyleNos();
+  const suppliers = getFabricSuppliers();
+  const garmentFactories = getShipFactories();
+  const maintFabrics = getMaintFabrics();
+
+  const styleNoOptions = styleNos.map(s => `<option value="${App.utils.escapeHtml(s)}">`).join('');
+  const supplierOptions = suppliers.map(s => `<option value="${App.utils.escapeHtml(s.name)}">`).join('');
+  const maintCodeOptions = maintFabrics.map(f => `<option value="${App.utils.escapeHtml(f.code || '')}">`).join('');
+  const factoryOptions = garmentFactories.map(f => `<option value="${App.utils.escapeHtml(f.name)}" ${fabric.shipFactory === f.name ? 'selected' : ''}>${App.utils.escapeHtml(f.name)}</option>`).join('');
+
+  window._maintFabricsData = maintFabrics;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const body = `
+    <div class="form-section-title">📋 基本信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">款号</label>
+        <input type="text" class="form-input" id="m_styleNo" list="styleNoList" value="${App.utils.escapeHtml(fabric.styleNo || '')}" placeholder="选择或输入款号">
+        <datalist id="styleNoList">${styleNoOptions}</datalist>
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">编号</label>
+        <input type="text" class="form-input" id="m_fabricCode" list="maintCodeList" value="${App.utils.escapeHtml(fabric.fabricCode || '')}" placeholder="选择或输入编号">
+        <datalist id="maintCodeList">${maintCodeOptions}</datalist>
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">类型</label>
+        <select class="form-select" id="m_fabricType">
+          ${['面料','里料','衬','填充料'].map(t => `<option value="${t}" ${fabric.fabricType === t ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="flex:2;min-width:160px;">
+        <label class="form-label">面里衬名称<span class="required">*</span></label>
+        <input type="text" class="form-input" id="m_fabricName" value="${App.utils.escapeHtml(fabric.fabricName || '')}" placeholder="请输入面里衬名称">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">使用部位</label>
+        <input type="text" class="form-input" id="m_usagePart" value="${App.utils.escapeHtml(fabric.usagePart || '')}" placeholder="如 前片/后片/领子">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">供应商</label>
+        <input type="text" class="form-input" id="m_supplier" list="supplierList" value="${App.utils.escapeHtml(fabric.supplier || '')}" placeholder="选择或输入">
+        <datalist id="supplierList">${supplierOptions}</datalist>
+      </div>
+    </div>
+
+    <div class="form-section-title">🧵 面里衬参数</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">成份</label>
+        <input type="text" class="form-input" id="m_composition" value="${App.utils.escapeHtml(fabric.composition || '')}" placeholder="如 100%棉">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">颜色</label>
+        <input type="text" class="form-input" id="m_color" value="${App.utils.escapeHtml(fabric.color || '')}" placeholder="颜色">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">色卡</label>
+        <input type="text" class="form-input" id="m_colorCard" value="${App.utils.escapeHtml(fabric.colorCard || '')}" placeholder="色卡">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">克重(gsm)</label>
+        <input type="text" class="form-input" id="m_weightGsm" value="${fabric.weightGsm || ''}" placeholder="克重" inputmode="decimal">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">门幅</label>
+        <input type="text" class="form-input" id="m_width" value="${App.utils.escapeHtml(fabric.width || '')}" placeholder="如 150cm">
+      </div>
+    </div>
+
+    <div class="form-section-title">✂️ 打样确认</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="m_status">
+          ${STATUS_FLOW.map(s => `<option value="${s}" ${fabric.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">打样轮次</label>
+        <input type="number" class="form-input" id="m_sampleRounds" value="${fabric.sampleRounds || 1}" min="1" placeholder="1">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">寄样日期</label>
+        <input type="date" class="form-input" id="m_sampleSentDate" value="${fabric.sampleSentDate || ''}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">确认日期</label>
+        <input type="date" class="form-input" id="m_confirmedDate" value="${fabric.confirmedDate || ''}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">客人意见</label>
+      <textarea class="form-textarea" id="m_customerFeedback" rows="2" placeholder="客人对打样的意见反馈">${App.utils.escapeHtml(fabric.customerFeedback || '')}</textarea>
+    </div>
+
+    <div class="form-section-title">📝 采购合同</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">合同编号</label>
+        <input type="text" class="form-input" id="m_contractNo" value="${App.utils.escapeHtml(fabric.contractNo || '')}" placeholder="采购合同编号">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">合同日期</label>
+        <input type="date" class="form-input" id="m_contractDate" value="${fabric.contractDate || ''}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">单价</label>
+        <input type="text" class="form-input" id="m_unitPrice" value="${fabric.unitPrice || ''}" placeholder="单价" inputmode="decimal">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">订单数量</label>
+        <input type="text" class="form-input" id="m_qtyOrdered" value="${fabric.qtyOrdered || ''}" placeholder="数量" inputmode="numeric">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">单位</label>
+        <select class="form-select" id="m_unit">
+          <option value="码" ${fabric.unit === '码' ? 'selected' : ''}>码</option>
+          <option value="米" ${fabric.unit === '米' ? 'selected' : ''}>米</option>
+          <option value="公斤" ${fabric.unit === '公斤' ? 'selected' : ''}>公斤</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">金额（自动计算）</label>
+        <input type="text" class="form-input" id="m_amount" readonly style="background:#f9fafb;" value="">
+      </div>
+    </div>
+
+    <div class="form-section-title">🚚 发货信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:160px;">
+        <label class="form-label">发货工厂（服装厂/水洗厂）</label>
+        <select class="form-select" id="m_shipFactory">
+          <option value="">请选择发货工厂</option>
+          ${factoryOptions}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">发货日期</label>
+        <input type="date" class="form-input" id="m_shipDate" value="${fabric.shipDate || ''}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">到货日期</label>
+        <input type="date" class="form-input" id="m_arrivalDate" value="${fabric.arrivalDate || ''}">
+      </div>
+    </div>
+
+    <div class="form-section-title">📝 备注</div>
+    <div class="form-group">
+      <input type="text" class="form-input" id="m_remark" value="${App.utils.escapeHtml(fabric.remark || '')}" placeholder="备注">
+    </div>
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="saveFabric()">💾</button>
+  `;
+
+  App.modal.open({
+    title: id ? '编辑面里衬' : '新增面里衬',
+    body: body,
+    footer: footer,
+    size: 'lg',
+    closeOnOverlay: false
+  });
+
+  // 编号选择后自动填充面里衬名称和面里衬参数
+  document.getElementById('m_fabricCode').addEventListener('change', function() {
+    const code = this.value.trim();
+    if (!code) return;
+    const maint = (window._maintFabricsData || []).find(f => f.code === code);
+    if (maint) {
+      if (maint.name) document.getElementById('m_fabricName').value = maint.name;
+      if (maint.type) document.getElementById('m_fabricType').value = maint.type;
+      if (maint.composition) document.getElementById('m_composition').value = maint.composition;
+      if (maint.color) document.getElementById('m_color').value = maint.color;
+      if (maint.colorCard) document.getElementById('m_colorCard').value = maint.colorCard;
+      if (maint.weight) document.getElementById('m_weightGsm').value = maint.weight;
+      if (maint.width) document.getElementById('m_width').value = maint.width;
+      App.toast('已从面里衬信息表自动填充参数', 'success');
+    }
+  });
+
+  // 状态切换时自动填充对应日期
+  document.getElementById('m_status').addEventListener('change', function() {
+    const status = this.value;
+    const fillDate = (id) => { if (!document.getElementById(id).value) document.getElementById(id).value = today; };
+    if (status === '寄样中') fillDate('m_sampleSentDate');
+    if (status === '已确认') fillDate('m_confirmedDate');
+    if (status === '采购合同') fillDate('m_contractDate');
+    if (status === '发货中') fillDate('m_shipDate');
+    if (status === '已到货') fillDate('m_arrivalDate');
+  });
+
+  // 填写日期时自动推进状态（仅在当前状态更靠前时才推进）
+  const statusSelect = document.getElementById('m_status');
+  const advanceStatus = (targetStatus) => {
+    const currentIdx = STATUS_FLOW.indexOf(statusSelect.value);
+    const targetIdx = STATUS_FLOW.indexOf(targetStatus);
+    if (targetIdx > currentIdx) {
+      statusSelect.value = targetStatus;
+    }
+  };
+  document.getElementById('m_sampleSentDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('寄样中');
+  });
+  document.getElementById('m_confirmedDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('已确认');
+  });
+  document.getElementById('m_contractDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('采购合同');
+  });
+  document.getElementById('m_shipDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('发货中');
+  });
+  document.getElementById('m_arrivalDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('已到货');
+  });
+
+  // 绑定金额自动计算
+  const updateAmount = () => {
+    const price = Number(document.getElementById('m_unitPrice').value) || 0;
+    const qty = Number(document.getElementById('m_qtyOrdered').value) || 0;
+    document.getElementById('m_amount').value = App.utils.formatMoney(price * qty);
+  };
+  document.getElementById('m_unitPrice').addEventListener('input', updateAmount);
+  document.getElementById('m_qtyOrdered').addEventListener('input', updateAmount);
+  updateAmount();
+}
+
+// ===== 保存面里衬 =====
+function saveFabric() {
+  const fabricName = document.getElementById('m_fabricName').value.trim();
+  if (!fabricName) {
+    App.toast('请输入面里衬名称', 'warning');
+    return;
+  }
+
+  const data = {
+    styleNo: document.getElementById('m_styleNo').value.trim(),
+    fabricCode: document.getElementById('m_fabricCode').value.trim(),
+    fabricType: document.getElementById('m_fabricType').value,
+    fabricName: fabricName,
+    usagePart: document.getElementById('m_usagePart').value.trim(),
+    supplier: document.getElementById('m_supplier').value.trim(),
+    composition: document.getElementById('m_composition').value.trim(),
+    color: document.getElementById('m_color').value.trim(),
+    colorCard: document.getElementById('m_colorCard').value.trim(),
+    weightGsm: Number(document.getElementById('m_weightGsm').value) || 0,
+    width: document.getElementById('m_width').value.trim(),
+    status: document.getElementById('m_status').value,
+    sampleRounds: Number(document.getElementById('m_sampleRounds').value) || 1,
+    sampleSentDate: document.getElementById('m_sampleSentDate').value,
+    customerFeedback: document.getElementById('m_customerFeedback').value.trim(),
+    confirmedDate: document.getElementById('m_confirmedDate').value,
+    contractNo: document.getElementById('m_contractNo').value.trim(),
+    contractDate: document.getElementById('m_contractDate').value,
+    unitPrice: Number(document.getElementById('m_unitPrice').value) || 0,
+    qtyOrdered: Number(document.getElementById('m_qtyOrdered').value) || 0,
+    unit: document.getElementById('m_unit').value,
+    shipFactory: document.getElementById('m_shipFactory').value,
+    shipDate: document.getElementById('m_shipDate').value,
+    arrivalDate: document.getElementById('m_arrivalDate').value,
+    remark: document.getElementById('m_remark').value.trim(),
+  };
+
+  // 根据已填日期自动推进状态（处理编辑已有记录时日期已存在但状态未更新的情况）
+  const currentIdx = STATUS_FLOW.indexOf(data.status);
+  if (data.arrivalDate) {
+    const idx = STATUS_FLOW.indexOf('已到货');
+    if (idx > currentIdx) data.status = '已到货';
+  } else if (data.shipDate) {
+    const idx = STATUS_FLOW.indexOf('发货中');
+    if (idx > currentIdx) data.status = '发货中';
+  } else if (data.contractDate) {
+    const idx = STATUS_FLOW.indexOf('采购合同');
+    if (idx > currentIdx) data.status = '采购合同';
+  } else if (data.confirmedDate) {
+    const idx = STATUS_FLOW.indexOf('已确认');
+    if (idx > currentIdx) data.status = '已确认';
+  } else if (data.sampleSentDate) {
+    const idx = STATUS_FLOW.indexOf('寄样中');
+    if (idx > currentIdx) data.status = '寄样中';
+  }
+
+  const fabrics = getFabrics();
+  if (editingId) {
+    const idx = fabrics.findIndex(f => f.id === editingId);
+    if (idx !== -1) {
+      fabrics[idx] = { ...fabrics[idx], ...data };
+    }
+    App.toast('面里衬信息已更新', 'success');
+  } else {
+    data.id = App.utils.genId('F');
+    fabrics.push(data);
+    App.toast('面里衬已添加', 'success');
+  }
+
+  App.store.set('fabrics', fabrics);
+  App.modal.close();
+  renderStats();
+  renderFabricTable();
+}
+
+// ===== 查看面里衬详情 =====
+function viewFabricDetail(id) {
+  const f = getFabrics().find(x => x.id === id);
+  if (!f) { App.toast('记录不存在', 'error'); return; }
+  const amount = (Number(f.unitPrice) || 0) * (Number(f.qtyOrdered) || 0);
+
+  const field = (label, val) => `
+    <div class="detail-item">
+      <div class="detail-label">${label}</div>
+      <div class="detail-value">${val || '-'}</div>
+    </div>`;
+
+  const body = `
+    <div class="detail-grid">
+      ${field('款号', App.utils.escapeHtml(f.styleNo))}
+      ${field('编号', App.utils.escapeHtml(f.fabricCode))}
+      ${field('类型', App.utils.escapeHtml(f.fabricType))}
+      ${field('面里衬名称', App.utils.escapeHtml(f.fabricName))}
+      ${field('使用部位', App.utils.escapeHtml(f.usagePart))}
+      ${field('供应商', App.utils.escapeHtml(f.supplier))}
+      ${field('成份', App.utils.escapeHtml(f.composition))}
+      ${field('颜色', App.utils.escapeHtml(f.color))}
+      ${field('色卡', App.utils.escapeHtml(f.colorCard))}
+      ${field('克重(gsm)', f.weightGsm)}
+      ${field('门幅', App.utils.escapeHtml(f.width))}
+    </div>
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">✂️ 打样确认流程</div>
+      <div class="detail-grid">
+        ${field('状态', App.statusTag(f.status || '待打样'))}
+        ${field('打样轮次', f.sampleRounds ? '第 ' + f.sampleRounds + ' 轮' : '-')}
+        ${field('寄样日期', App.utils.escapeHtml(f.sampleSentDate))}
+        ${field('确认日期', App.utils.escapeHtml(f.confirmedDate))}
+      </div>
+      <div class="detail-label mb-8 mt-8">客人意见</div>
+      <div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:36px;">
+        ${App.utils.escapeHtml(f.customerFeedback) || '<span class="text-muted">暂无</span>'}
+      </div>
+    </div>
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">📝 采购合同</div>
+      <div class="detail-grid">
+        ${field('合同编号', App.utils.escapeHtml(f.contractNo))}
+        ${field('合同日期', App.utils.escapeHtml(f.contractDate))}
+        ${field('单价', App.utils.formatMoney(f.unitPrice))}
+        ${field('订单数量', (f.qtyOrdered || 0) + ' ' + (f.unit || ''))}
+        ${field('金额', App.utils.formatMoney(amount))}
+      </div>
+    </div>
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">🚚 发货信息</div>
+      <div class="detail-grid">
+        ${field('发货工厂', App.utils.escapeHtml(f.shipFactory))}
+        ${field('发货日期', App.utils.escapeHtml(f.shipDate))}
+        ${field('到货日期', App.utils.escapeHtml(f.arrivalDate))}
+      </div>
+    </div>
+    ${f.remark ? `
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">📝 备注</div>
+      <div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;">
+        ${App.utils.escapeHtml(f.remark)}
+      </div>
+    </div>` : ''}
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="App.modal.close(); openFabricModal('${f.id}')">✏️</button>
+  `;
+
+  App.modal.open({ title: '面里衬详情', body, footer, size: 'lg' });
+}
+
+// ===== 删除面里衬 =====
+function deleteFabric(id) {
+  App.confirm('确定要删除这条面里衬记录吗？', () => {
+    const fabrics = getFabrics().filter(f => f.id !== id);
+    App.store.set('fabrics', fabrics);
+    _fabricSelectedIds.delete(id);
+    App.toast('面里衬已删除', 'success');
+    renderStats();
+    renderFabricTable();
+  });
+}
+
+// ===== 重置筛选 =====
+function resetFilter() {
+  filterState = { search: '', status: '' };
+  renderFilterBar();
+  renderFabricTable();
+}
+
+// ===== 初始化页面 =====
+migrateStatuses();
+renderStats();
+renderTabs();
+renderFilterBar();
+renderFabricTable();
+</script>
+</body>
+</html>

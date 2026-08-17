@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水洗管理 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+.form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 5px 0 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.form-section-title:first-child { padding-top: 0; }
+.round-card {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #fafbfc;
+}
+.round-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--primary);
+}
+.round-card-remove {
+  cursor: pointer;
+  color: var(--error);
+  border: none;
+  background: none;
+  font-size: 14px;
+}
+.multi-round-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.wash-type-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.wash-type-fabric { background:#dbeafe;color:#1d4ed8; }
+.wash-type-garment { background:#ccfbf1;color:#0f766e; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">水洗管理</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 标签页 -->
+      <div class="tabs" id="tabsBar"></div>
+
+      <!-- 表格区域 -->
+      <div class="table-wrap">
+        <div class="filter-bar" id="filterBar"></div>
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <span class="card-title">水洗记录</span>
+          </div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="openWashModal()" title="新增水洗记录">➕</button>
+          </div>
+        </div>
+        <div id="washTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js?v=20260812"></script>
+<script>
+App.init('wash');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('wash');
+
+// ===== 状态变量 =====
+let filterState = { search: '', status: '' };
+let currentTab = '全部';
+let editingId = null;
+let _selectedIds = new Set();
+let _editingRounds = [];
+
+// ===== 水洗类型定义 =====
+// 面料水洗 / 成衣水洗，都支持多轮寄样确认
+const WASH_TYPES = [
+  { key: '面料水洗', name: '面料水洗', cls: 'wash-type-fabric' },
+  { key: '成衣水洗', name: '成衣水洗', cls: 'wash-type-garment' },
+];
+
+// 状态流程：待打样 → 寄样中 → (需修改 → 再寄样) → 已确认
+const STATUS_FLOW = ['待打样', '寄样中', '需修改', '已确认'];
+
+// 标签页映射
+const TAB_MAP = {
+  '全部': null,
+  '面料水洗': ['面料水洗'],
+  '成衣水洗': ['成衣水洗'],
+};
+
+// 水洗工艺类型
+const WASH_METHODS = ['普洗', '酵素洗', '石洗', '漂洗', '砂洗', '马骝', '复合洗'];
+
+// ===== 数据获取 =====
+function getWashes() {
+  return App.store.get('washes', []);
+}
+
+// 从订单管理中提取款号（去重）
+function getStyleNos() {
+  const orders = App.store.get('orders', []);
+  const seen = new Set();
+  const list = [];
+  orders.forEach(o => {
+    if (o.styleNo && !seen.has(o.styleNo)) {
+      seen.add(o.styleNo);
+      list.push(o.styleNo);
+    }
+  });
+  return list;
+}
+
+// 获取面料名称列表
+function getFabricNames() {
+  return App.store.get('fabrics', []).map(f => f.fabricName).filter(Boolean);
+}
+
+// 获取水洗厂
+function getWashFactories() {
+  return App.store.get('contacts', []).filter(c => c.type === '水洗厂');
+}
+
+// 生成水洗单号
+function genWashNo() {
+  const washes = getWashes();
+  let maxNum = 0;
+  washes.forEach(w => {
+    const match = w.washNo && w.washNo.match(/WS-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  return `WS-${String(maxNum + 1).padStart(4, '0')}`;
+}
+
+// ===== 数据迁移：旧状态映射到新工作流 =====
+function migrateStatuses() {
+  const washes = getWashes();
+  let changed = false;
+  washes.forEach(w => {
+    // 旧状态映射
+    if (!w.status || w.status === '待排产') { w.status = '待打样'; changed = true; }
+    else if (w.status === '水洗中') { w.status = '寄样中'; changed = true; }
+    else if (w.status === '已完成') { w.status = '已确认'; changed = true; }
+    // 默认水洗类型
+    if (!w.washCategory) { w.washCategory = '面料水洗'; changed = true; }
+    // 旧数据迁移为多轮结构
+    if (!w.rounds && w.status !== '待打样') {
+      w.rounds = [{
+        round: 1,
+        washDate: w.startDate || '',
+        factory: w.factory || '',
+        washResult: w.washColor || '',
+        status: w.status,
+        customerFeedback: w.qcNotes || '',
+        confirmedDate: w.actualEnd || '',
+      }];
+      changed = true;
+    }
+  });
+  if (changed) App.store.set('washes', washes);
+}
+
+// ===== 水洗类型标签 =====
+function washTypeTag(category) {
+  const def = WASH_TYPES.find(t => t.key === category);
+  if (!def) return category || '-';
+  return `<span class="wash-type-tag ${def.cls}">${def.name}</span>`;
+}
+
+// ===== 获取主状态（最新轮次状态） =====
+function getMainStatus(w) {
+  if (w.rounds && w.rounds.length > 0) {
+    return w.rounds[w.rounds.length - 1].status || '待打样';
+  }
+  return w.status || '待打样';
+}
+
+// ===== 获取轮次数 =====
+function getRoundsCount(w) {
+  return (w.rounds && w.rounds.length > 0) ? w.rounds.length : 0;
+}
+
+// ===== 渲染统计卡片 =====
+function renderStats() {
+  const washes = getWashes();
+  const total = washes.length;
+  const sampling = washes.filter(w => ['寄样中', '需修改'].includes(getMainStatus(w))).length;
+  const confirmed = washes.filter(w => getMainStatus(w) === '已确认').length;
+  const fabricCount = washes.filter(w => w.washCategory === '面料水洗').length;
+  const garmentCount = washes.filter(w => w.washCategory === '成衣水洗').length;
+
+  const cards = [
+    { icon: '🌊', bg: '#e8f1f5', color: '#004D6D', label: '水洗总数', value: total, sub: `面料${fabricCount} / 成衣${garmentCount}` },
+    { icon: '🔄', bg: '#fff8ed', color: '#d9883a', label: '寄样中', value: sampling, sub: '待客人确认' },
+    { icon: '✅', bg: '#ecfdf5', color: '#2d9d5f', label: '已确认', value: confirmed, sub: '可安排大货水洗' },
+    { icon: '🏭', bg: '#f0f9ff', color: '#0284c7', label: '面料水洗', value: fabricCount, sub: '面料水洗记录' },
+  ];
+
+  document.getElementById('statCards').innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+      <div class="stat-info">
+        <div class="stat-label">${c.label}</div>
+        <div class="stat-value" style="color:${c.color};">${c.value}</div>
+        <div class="stat-sub">${c.sub}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== 渲染标签页 =====
+function renderTabs() {
+  const tabs = Object.keys(TAB_MAP);
+  document.getElementById('tabsBar').innerHTML = tabs.map(t => `
+    <div class="tab-item ${currentTab === t ? 'active' : ''}" onclick="switchTab('${t}')">${t}</div>
+  `).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  renderTabs();
+  renderTable();
+}
+
+// ===== 渲染筛选栏 =====
+function renderFilterBar() {
+  document.getElementById('filterBar').innerHTML = `
+    <div class="search-input">
+      <input type="text" class="form-input" id="searchInput" placeholder="搜索水洗单号/款号/工厂" value="${App.utils.escapeHtml(filterState.search)}">
+    </div>
+    <select class="form-select" id="statusFilter">
+      <option value="">全部状态</option>
+      ${STATUS_FLOW.map(s => `<option value="${s}" ${filterState.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+    </select>
+    <button class="btn btn-sm" onclick="resetFilter()" title="重置筛选">🔄</button>
+  `;
+
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    filterState.search = e.target.value;
+    renderTable();
+  });
+  document.getElementById('statusFilter').addEventListener('change', function(e) {
+    filterState.status = e.target.value;
+    renderTable();
+  });
+  document.getElementById('statusFilter').value = filterState.status;
+}
+
+// ===== 筛选数据 =====
+function getFilteredWashes() {
+  let washes = getWashes();
+  const { search, status } = filterState;
+
+  // 按标签页筛选
+  const tabCats = TAB_MAP[currentTab];
+  if (tabCats) {
+    washes = washes.filter(w => tabCats.includes(w.washCategory));
+  }
+
+  // 按关键词搜索
+  if (search) {
+    const s = search.toLowerCase();
+    washes = washes.filter(w =>
+      (w.washNo && w.washNo.toLowerCase().includes(s)) ||
+      (w.styleNo && w.styleNo.toLowerCase().includes(s)) ||
+      (w.itemName && w.itemName.toLowerCase().includes(s)) ||
+      (w.factory && w.factory.toLowerCase().includes(s))
+    );
+  }
+
+  // 按状态筛选
+  if (status) {
+    washes = washes.filter(w => getMainStatus(w) === status);
+  }
+
+  // 按日期倒序（取所有轮次日期中的最大值，空值排末尾）
+  return App.utils.sortByDateDesc(washes, w => {
+    const dates = [];
+    if (w.rounds && w.rounds.length) {
+      w.rounds.forEach(r => {
+        if (r.washDate) dates.push(r.washDate);
+        if (r.confirmedDate) dates.push(r.confirmedDate);
+      });
+    }
+    return dates.sort().pop() || '';
+  });
+}
+
+// ===== 复选框操作 =====
+function toggleSelectAll(checked) {
+  const data = getFilteredWashes();
+  if (checked) data.forEach(w => _selectedIds.add(w.id));
+  else data.forEach(w => _selectedIds.delete(w.id));
+  renderTable();
+}
+
+function toggleSelect(id, checked) {
+  if (checked) _selectedIds.add(id);
+  else _selectedIds.delete(id);
+  renderTable();
+}
+
+// ===== 渲染表格 =====
+function renderTable() {
+  const washes = getFilteredWashes();
+  const container = document.getElementById('washTable');
+  const allChecked = washes.length > 0 && washes.every(w => _selectedIds.has(w.id));
+  const selectAllChecked = allChecked ? 'checked' : '';
+
+  const thead = `<thead><tr>
+    <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="toggleSelectAll(this.checked)"></th>
+    <th style="width:120px;">水洗单号</th>
+    <th style="width:90px;">类型</th>
+    <th style="width:100px;">款号</th>
+    <th>面料/成衣名称</th>
+    <th style="width:90px;">水洗工艺</th>
+    <th style="width:120px;">目标效果</th>
+    <th style="width:50px;">轮次</th>
+    <th style="width:80px;">状态</th>
+    <th style="width:90px;">寄样日期</th>
+    <th style="width:90px;">确认日期</th>
+    <th style="width:100px;">水洗厂</th>
+    <th style="width:70px;white-space:nowrap;">操作</th>
+  </tr></thead>`;
+
+  let tbody;
+  if (washes.length === 0) {
+    tbody = `<tbody><tr><td colspan="13" style="text-align:center;padding:20px;color:#999;">暂无水洗记录</td></tr></tbody>`;
+  } else {
+    tbody = '<tbody>' + washes.map(w => {
+      const cbChecked = _selectedIds.has(w.id) ? 'checked' : '';
+      const mainStatus = getMainStatus(w);
+      const roundCount = getRoundsCount(w);
+      const lastRound = (w.rounds && w.rounds.length > 0) ? w.rounds[w.rounds.length - 1] : null;
+      const sampleDate = lastRound ? (lastRound.washDate || '-') : '-';
+      const confirmedDate = lastRound ? (lastRound.confirmedDate || '-') : '-';
+      const factory = lastRound ? (lastRound.factory || w.factory || '-') : (w.factory || '-');
+      return `
+      <tr>
+        <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${w.id}', this.checked)"></td>
+        <td><strong>${App.utils.escapeHtml(w.washNo || '-')}</strong></td>
+        <td>${washTypeTag(w.washCategory)}</td>
+        <td>${App.utils.escapeHtml(w.styleNo || '-')}</td>
+        <td>${App.utils.escapeHtml(w.itemName || '-')}</td>
+        <td>${App.utils.escapeHtml(w.washMethod || '-')}</td>
+        <td>${App.utils.escapeHtml(w.targetColor || '-')}</td>
+        <td style="text-align:center;">${roundCount > 0 ? roundCount + ' 轮' : '-'}</td>
+        <td>${App.statusTag(mainStatus)}</td>
+        <td>${App.utils.escapeHtml(sampleDate)}</td>
+        <td>${App.utils.escapeHtml(confirmedDate)}</td>
+        <td>${App.utils.escapeHtml(factory)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-text btn-sm" onclick="viewWashDetail('${w.id}')" title="查看详情">👁️</button>
+          <button class="btn btn-text btn-sm" onclick="openWashModal('${w.id}')" title="编辑">✏️</button>
+          <button class="btn btn-text btn-sm" onclick="deleteWash('${w.id}')" title="删除">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('') + '</tbody>';
+  }
+
+  container.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+}
+
+// ===== 打开新增/编辑模态框 =====
+function openWashModal(id) {
+  editingId = id || null;
+  const isEdit = !!id;
+  const wash = id ? getWashes().find(w => w.id === id) : {};
+  const styleNos = getStyleNos();
+  const fabricNames = getFabricNames();
+  const factories = getWashFactories();
+  const today = App.utils.today();
+
+  const styleNoOptions = styleNos.map(s => `<option value="${App.utils.escapeHtml(s)}">`).join('');
+  const fabricNameOptions = fabricNames.map(f => `<option value="${App.utils.escapeHtml(f)}">`).join('');
+  const factoryOptions = factories.map(f => `<option value="${App.utils.escapeHtml(f.name)}">`).join('');
+
+  // 初始化多轮数据
+  _editingRounds = [];
+  if (isEdit && wash.rounds && wash.rounds.length > 0) {
+    _editingRounds = wash.rounds.map(r => ({ ...r }));
+  } else if (!isEdit) {
+    _editingRounds = [{ round: 1, washDate: today, factory: '', washResult: '', status: '寄样中', customerFeedback: '', confirmedDate: '' }];
+  }
+
+  const defaultWashNo = isEdit ? (wash.washNo || '') : genWashNo();
+  const defaultCategory = wash.washCategory || '面料水洗';
+  const defaultWashMethod = wash.washMethod || '';
+  const defaultTargetColor = wash.targetColor || '';
+  const defaultStyleNo = wash.styleNo || '';
+  const defaultItemName = wash.itemName || '';
+  const defaultRemark = wash.remark || '';
+
+  const body = `
+    <div class="form-section-title">📋 基本信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label">水洗单号</label>
+        <input type="text" class="form-input" id="m_washNo" value="${App.utils.escapeHtml(defaultWashNo)}" placeholder="自动生成">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">水洗类型<span class="required">*</span></label>
+        <select class="form-select" id="m_washCategory" onchange="onWashCategoryChange(this.value)">
+          ${WASH_TYPES.map(t => `<option value="${t.key}" ${defaultCategory === t.key ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">款号</label>
+        <input type="text" class="form-input" id="m_styleNo" list="styleNoList" value="${App.utils.escapeHtml(defaultStyleNo)}" placeholder="可输入或选择款号">
+        <datalist id="styleNoList">${styleNoOptions}</datalist>
+      </div>
+      <div class="form-group" style="flex:2;min-width:160px;">
+        <label class="form-label" id="m_itemNameLabel">面料名称</label>
+        <input type="text" class="form-input" id="m_itemName" list="itemNameList" value="${App.utils.escapeHtml(defaultItemName)}" placeholder="请输入或选择">
+        <datalist id="itemNameList">${fabricNameOptions}</datalist>
+      </div>
+    </div>
+
+    <div class="form-section-title">🌊 水洗工艺</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">水洗工艺</label>
+        <select class="form-select" id="m_washMethod">
+          <option value="">请选择</option>
+          ${WASH_METHODS.map(m => `<option value="${m}" ${defaultWashMethod === m ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label">目标效果/颜色</label>
+        <input type="text" class="form-input" id="m_targetColor" value="${App.utils.escapeHtml(defaultTargetColor)}" placeholder="如：浅蓝/怀旧感/猫须纹">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">工艺要求</label>
+      <textarea class="form-textarea" id="m_techNotes" rows="2" placeholder="水洗工艺要求及注意事项">${App.utils.escapeHtml(wash.techNotes || '')}</textarea>
+    </div>
+
+    <div class="form-section-title">
+      ✂️ 多轮寄样 & 确认
+      <span style="font-weight:normal;color:#6b7280;margin-left:8px;font-size:11px;">水洗样寄客人进行多轮确认</span>
+      <button type="button" class="btn btn-sm btn-primary" style="float:right;" onclick="addRound()">➕ 添加一轮</button>
+    </div>
+    <div class="multi-round-list" id="roundListContainer"></div>
+
+    <div class="form-section-title">📝 备注</div>
+    <div class="form-group">
+      <input type="text" class="form-input" id="m_remark" value="${App.utils.escapeHtml(defaultRemark)}" placeholder="备注">
+    </div>
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="saveWash()">💾</button>
+  `;
+
+  App.modal.open({
+    title: isEdit ? '编辑水洗记录' : '新增水洗记录',
+    body, footer, size: 'lg', closeOnOverlay: false
+  });
+
+  // 根据水洗类型更新标签
+  onWashCategoryChange(defaultCategory);
+  renderRoundList();
+}
+
+// ===== 水洗类型变化时更新标签 =====
+function onWashCategoryChange(category) {
+  const label = document.getElementById('m_itemNameLabel');
+  if (label) {
+    label.textContent = category === '成衣水洗' ? '成衣名称' : '面料名称';
+  }
+}
+
+// ===== 多轮：渲染轮次卡片列表 =====
+function renderRoundList() {
+  const container = document.getElementById('roundListContainer');
+  if (!container) return;
+  if (_editingRounds.length === 0) {
+    container.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;">暂无轮次，点击右上角"➕ 添加一轮"</div>`;
+    return;
+  }
+  const isEdit = !!editingId;
+  const factories = getWashFactories();
+  const factoryOptions = factories.map(f => `<option value="${App.utils.escapeHtml(f.name)}">`).join('');
+
+  container.innerHTML = _editingRounds.map((r, i) => `
+    <div class="round-card" data-idx="${i}">
+      <div class="round-card-header">
+        <span>第 ${r.round || (i + 1)} 轮寄样</span>
+        ${_editingRounds.length > 1 ? `<button class="round-card-remove" onclick="removeRound(${i})" title="删除此轮">✖️ 删除</button>` : ''}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:140px;margin:0 0 8px;">
+          <label class="form-label">水洗厂</label>
+          <input type="text" class="form-input" id="r_factory_${i}" list="r_factoryList_${i}" value="${App.utils.escapeHtml(r.factory || '')}" placeholder="选择或输入水洗厂">
+          <datalist id="r_factoryList_${i}">${factoryOptions}</datalist>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
+          <label class="form-label">寄样日期</label>
+          <input type="date" class="form-input" id="r_washDate_${i}" value="${r.washDate || ''}">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
+          <label class="form-label">水洗结果</label>
+          <input type="text" class="form-input" id="r_washResult_${i}" value="${App.utils.escapeHtml(r.washResult || '')}" placeholder="水洗样效果描述">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
+          <label class="form-label">状态</label>
+          <select class="form-select" id="r_status_${i}" onchange="onRoundStatusChange(${i}, this.value)">
+            ${STATUS_FLOW.map(st => `<option value="${st}" ${(r.status || '寄样中') === st ? 'selected' : ''}>${st}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ${isEdit ? `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
+          <label class="form-label">确认日期</label>
+          <input type="date" class="form-input" id="r_confirmedDate_${i}" value="${r.confirmedDate || ''}">
+        </div>
+      </div>` : ''}
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">客人意见</label>
+        <textarea class="form-textarea" id="r_customerFeedback_${i}" rows="2" placeholder="客人对水洗样的意见反馈...">${App.utils.escapeHtml(r.customerFeedback || '')}</textarea>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== 多轮：状态变化自动填日期 =====
+function onRoundStatusChange(idx, status) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (status === '已确认') {
+    const input = document.getElementById('r_confirmedDate_' + idx);
+    if (input && !input.value) input.value = today;
+  }
+}
+
+// ===== 多轮：添加一轮 =====
+function addRound() {
+  const last = _editingRounds.length > 0 ? _editingRounds[_editingRounds.length - 1] : null;
+  const today = new Date().toISOString().slice(0, 10);
+  _editingRounds.push({
+    round: _editingRounds.length + 1,
+    washDate: today,
+    factory: last ? last.factory : '',
+    washResult: '',
+    status: '寄样中',
+    customerFeedback: '',
+    confirmedDate: '',
+  });
+  renderRoundList();
+}
+
+// ===== 多轮：删除一轮 =====
+function removeRound(idx) {
+  App.confirm(`确定删除第 ${idx + 1} 轮数据吗？`, () => {
+    _editingRounds.splice(idx, 1);
+    _editingRounds.forEach((r, i) => { r.round = i + 1; });
+    renderRoundList();
+  });
+}
+
+// ===== 保存水洗记录 =====
+function saveWash() {
+  const washNo = document.getElementById('m_washNo').value.trim();
+  const washCategory = document.getElementById('m_washCategory').value;
+  const styleNo = document.getElementById('m_styleNo').value.trim();
+  const itemName = document.getElementById('m_itemName').value.trim();
+
+  if (!washNo) { App.toast('请输入水洗单号', 'warning'); return; }
+  if (!washCategory) { App.toast('请选择水洗类型', 'warning'); return; }
+
+  // 收集多轮数据
+  const rounds = [];
+  for (let i = 0; i < _editingRounds.length; i++) {
+    const statusEl = document.getElementById('r_status_' + i);
+    if (!statusEl) continue;
+    const confirmedDateEl = document.getElementById('r_confirmedDate_' + i);
+    rounds.push({
+      round: i + 1,
+      washDate: document.getElementById('r_washDate_' + i).value,
+      factory: document.getElementById('r_factory_' + i).value,
+      washResult: document.getElementById('r_washResult_' + i).value.trim(),
+      status: statusEl.value,
+      customerFeedback: document.getElementById('r_customerFeedback_' + i).value.trim(),
+      confirmedDate: confirmedDateEl ? confirmedDateEl.value : '',
+    });
+  }
+  if (rounds.length === 0) {
+    App.toast('请至少添加一轮寄样记录', 'warning');
+    return;
+  }
+
+  const mainStatus = rounds[rounds.length - 1].status;
+
+  const data = {
+    washNo,
+    washCategory,
+    styleNo,
+    itemName,
+    washMethod: document.getElementById('m_washMethod').value,
+    targetColor: document.getElementById('m_targetColor').value.trim(),
+    techNotes: document.getElementById('m_techNotes').value.trim(),
+    rounds,
+    status: mainStatus,
+    remark: document.getElementById('m_remark').value.trim(),
+  };
+
+  const washes = getWashes();
+  if (editingId) {
+    const idx = washes.findIndex(w => w.id === editingId);
+    if (idx !== -1) washes[idx] = { ...washes[idx], ...data };
+    App.toast('水洗记录已更新', 'success');
+  } else {
+    data.id = App.utils.genId('WS');
+    data.createDate = App.utils.today();
+    washes.push(data);
+    App.toast('水洗记录已添加', 'success');
+  }
+
+  App.store.set('washes', washes);
+  App.modal.close();
+  renderStats();
+  renderTable();
+}
+
+// ===== 查看水洗详情 =====
+function viewWashDetail(id) {
+  const w = getWashes().find(x => x.id === id);
+  if (!w) { App.toast('记录不存在', 'error'); return; }
+  const mainStatus = getMainStatus(w);
+
+  const field = (label, val) => `
+    <div class="detail-item">
+      <div class="detail-label">${label}</div>
+      <div class="detail-value">${val || '-'}</div>
+    </div>`;
+
+  let body = `
+    <div class="detail-grid">
+      ${field('水洗单号', App.utils.escapeHtml(w.washNo))}
+      ${field('水洗类型', washTypeTag(w.washCategory))}
+      ${field('款号', App.utils.escapeHtml(w.styleNo))}
+      ${field(w.washCategory === '成衣水洗' ? '成衣名称' : '面料名称', App.utils.escapeHtml(w.itemName))}
+      ${field('水洗工艺', App.utils.escapeHtml(w.washMethod))}
+      ${field('目标效果', App.utils.escapeHtml(w.targetColor))}
+      ${field('状态', App.statusTag(mainStatus))}
+    </div>
+  `;
+
+  if (w.techNotes) {
+    body += `<div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">工艺要求</div>
+      <div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;">
+        ${App.utils.escapeHtml(w.techNotes)}
+      </div>
+    </div>`;
+  }
+
+  if (w.rounds && w.rounds.length > 0) {
+    body += `<div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">✂️ 多轮寄样记录（共 ${w.rounds.length} 轮）</div>`;
+    body += w.rounds.map((r, i) => `
+      <div style="border:1px solid var(--border-light);border-radius:6px;padding:10px;margin-bottom:8px;background:${r.status === '已确认' ? '#f0fdf4' : (r.status === '需修改' ? '#fef2f2' : '#fafbfc')};">
+        <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:6px;">第 ${r.round || (i + 1)} 轮 · ${App.statusTag(r.status)}</div>
+        <div class="detail-grid">
+          ${field('寄样日期', App.utils.formatDate(r.washDate))}
+          ${field('水洗厂', App.utils.escapeHtml(r.factory))}
+          ${field('水洗结果', App.utils.escapeHtml(r.washResult))}
+          ${field('确认日期', App.utils.formatDate(r.confirmedDate))}
+        </div>
+        <div class="mt-8">
+          <div class="detail-label mb-4">客人意见</div>
+          <div style="background:#fff;border:1px solid var(--border-light);border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:32px;">
+            ${App.utils.escapeHtml(r.customerFeedback) || '<span class="text-muted">暂无</span>'}
+          </div>
+        </div>
+      </div>
+    `).join('');
+    body += `</div>`;
+  }
+
+  if (w.remark) {
+    body += `<div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">📝 备注</div>
+      <div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;">
+        ${App.utils.escapeHtml(w.remark)}
+      </div>
+    </div>`;
+  }
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="App.modal.close(); openWashModal('${w.id}')">✏️</button>
+  `;
+
+  App.modal.open({ title: '水洗详情', body, footer, size: 'lg' });
+}
+
+// ===== 删除水洗记录 =====
+function deleteWash(id) {
+  App.confirm('确定要删除这条水洗记录吗？', () => {
+    const washes = getWashes().filter(w => w.id !== id);
+    App.store.set('washes', washes);
+    _selectedIds.delete(id);
+    App.toast('水洗记录已删除', 'success');
+    renderStats();
+    renderTable();
+  });
+}
+
+// ===== 重置筛选 =====
+function resetFilter() {
+  filterState = { search: '', status: '' };
+  renderFilterBar();
+  renderTable();
+}
+
+// ===== 初始化页面 =====
+migrateStatuses();
+renderStats();
+renderTabs();
+renderFilterBar();
+renderTable();
+</script>
+</body>
+</html>
