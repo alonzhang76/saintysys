@@ -31,14 +31,33 @@ function safeQuery(builder) {
 /**
  * 验证并规范化 payload 数据
  * 确保数据是数组或对象，避免 .filter 等方法报错
+ * 深度提取嵌套 data 结构
  */
 function normalizePayload(payload) {
   if (payload === null || payload === undefined) return null;
-  // 如果是对象且有 data 属性（Supabase 查询结果），提取 data
+  // 如果是对象且有 data 属性（Supabase 查询结果或二次包装），提取 data
   if (typeof payload === 'object' && !Array.isArray(payload) && payload.data !== undefined) {
-    return payload.data;
+    return normalizePayload(payload.data);  // 递归，防止多层嵌套
   }
+  // 如果是数组，检查每个元素是否需要进一步展开（一般不需要）
   return payload;
+}
+
+/**
+ * 根据默认值类型规范化返回值
+ * 如果默认值是数组但返回值不是数组，返回默认值
+ */
+function coerceType(value, defaultVal) {
+  if (value === undefined || value === null) return defaultVal;
+  if (Array.isArray(defaultVal) && !Array.isArray(value)) {
+    // 尝试将对象包装为数组或返回默认值
+    if (typeof value === 'object' && !Array.isArray(value) && value.data !== undefined) {
+      const extracted = normalizePayload(value);
+      if (Array.isArray(extracted)) return extracted;
+    }
+    return defaultVal;
+  }
+  return value;
 }
 
 // 本地缓存（避免每次读写都请求 Supabase）
@@ -376,11 +395,7 @@ function reset() {
 // 这些方法操作内存缓存，适合同步代码路径
 function getSync(key, defaultVal) {
   if (_cache[key] !== undefined) {
-    let val = _cache[key];
-    // 如果默认值是数组但缓存不是数组，返回默认值
-    if (Array.isArray(defaultVal) && !Array.isArray(val)) {
-      return defaultVal;
-    }
+    const val = coerceType(_cache[key], defaultVal);
     return JSON.parse(JSON.stringify(val));
   }
   return defaultVal;

@@ -47,8 +47,27 @@ localStorage.getItem = function(key) {
   // 走 Supabase 缓存
   if (window.SupabaseStore) {
     const val = window.SupabaseStore.getSync(key);
-    if (val === undefined || val === null) return _origGetItem(key); // 回退本地
-    return JSON.stringify(val);
+    if (val !== undefined && val !== null) {
+      return JSON.stringify(val);
+    }
+    // 缓存未命中，从原始 localStorage 读取
+    const raw = _origGetItem(key);
+    if (raw !== null) {
+      // 解析并规范化数据
+      try {
+        const parsed = JSON.parse(raw);
+        // 如果是 {data: [...]} 格式，提取 data
+        if (typeof parsed === 'object' && !Array.isArray(parsed) && parsed.data !== undefined) {
+          const normalized = parsed.data;
+          // 写回 SupabaseStore 缓存
+          window.SupabaseStore.setSync(key, normalized);
+          return JSON.stringify(normalized);
+        }
+      } catch (e) { /* 非 JSON 字符串，原样返回 */ }
+      // 写入 SupabaseStore 缓存
+      window.SupabaseStore.setSync(key, parsed);
+    }
+    return raw;
   }
   return _origGetItem(key);
 };

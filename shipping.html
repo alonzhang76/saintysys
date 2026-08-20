@@ -527,18 +527,23 @@ function getShippings() {
   return App.store.get('shippings', []);
 }
 function getOrders() {
-  return App.store.get('orders', []);
+  const v = App.store.get('orders', []);
+  return Array.isArray(v) ? v : [];
 }
 function getStyles() {
-  return App.store.get('styles', []);
+  const v = App.store.get('styles', []);
+  return Array.isArray(v) ? v : [];
 }
 function getCustomers() {
-  return App.store.get('customers', []);
+  const v = App.store.get('customers', []);
+  return Array.isArray(v) ? v : [];
 }
 
 // 获取货代公司（从通讯录中筛选类型为货代的）
 function getForwarders() {
-  return App.store.get('contacts', []).filter(c => c.type === '货代');
+  const contacts = App.store.get('contacts', []);
+  const arr = Array.isArray(contacts) ? contacts : [];
+  return arr.filter(c => c.type === '货代');
 }
 
 // 获取客户名称

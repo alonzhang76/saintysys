@@ -2033,6 +2033,7 @@ renderSampleTable();
     const styleNo = row['款号'] || '';
     const sBadge = statusBadges[getStatus(row)] || 'badge-gray';
     const mBadge = matBadges[row['面辅料准备情况']] || 'badge-gray';
+    const tBadge = typeBadges[row['样衣类型']] || 'badge-gray';
     const statusText = getStatus(row);
     // 两列多行（12 项，自动 6 行）
     document.getElementById('sp_imageInfoGrid').innerHTML = `

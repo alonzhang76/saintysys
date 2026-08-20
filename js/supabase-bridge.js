@@ -20,10 +20,9 @@ const bridgedStore = {
   // 同步 get：从内存缓存读取
   get(key, defaultVal) {
     if (!window.SupabaseStore) return origStore ? origStore.get(key, defaultVal) : defaultVal;
-    const val = window.SupabaseStore.getSync(key);
-    // 规范化：确保返回值类型正确
+    const val = window.SupabaseStore.getSync(key, defaultVal);
+    // getSync 内部已做 coerceType，这里做兜底
     if (val === undefined || val === null) return defaultVal !== undefined ? defaultVal : [];
-    // 如果默认值是数组但返回值不是数组，返回默认值
     if (Array.isArray(defaultVal) && !Array.isArray(val)) return defaultVal;
     return val;
   },

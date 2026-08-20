@@ -550,9 +550,10 @@ function removeMatrixRow(idx) {
 function openForm(id) {
   const isEdit = !!id;
   const orders = App.store.get('orders', []);
-  const order = isEdit ? orders.find(o => o.id === id) : null;
+  const order = isEdit && Array.isArray(orders) ? orders.find(o => o.id === id) : null;
   const allContacts = App.store.get('contacts', []);
-  const customersRaw = allContacts.filter(c => c.type === '客户');
+  const contactsArr = Array.isArray(allContacts) ? allContacts : [];
+  const customersRaw = contactsArr.filter(c => c.type === '客户');
   // 按客户名称去重（保留首个出现的）
   const seenNames = new Set();
   const customers = customersRaw.filter(c => {
@@ -560,8 +561,8 @@ function openForm(id) {
     seenNames.add(c.name);
     return true;
   });
-  const factories = allContacts.filter(c => c.type === '工厂');
-  const designers = allContacts.filter(c => c.type === '样衣师');
+  const factories = contactsArr.filter(c => c.type === '工厂');
+  const designers = contactsArr.filter(c => c.type === '样衣师');
 
   const defaultCustomerId = isEdit ? order.customerId : (customers.find(c => c.name === 'Castro Model LTD')?.id || '');
   const customerOptions = '<option value="">请选择客户</option>' +
@@ -2152,7 +2153,8 @@ function renderMaterialOrderFilter() {
   const orders = App.store.get('orders', []);
   const cur = sel.value;
   const opts = ['<option value="">全部订单</option>'];
-  orders
+  const ordersArr = Array.isArray(orders) ? orders : [];
+  ordersArr
     .slice()
     .sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''))
     .forEach(o => opts.push(`<option value="${o.orderNo}" ${o.orderNo === cur ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`));
