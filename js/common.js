@@ -535,23 +535,30 @@ const App = {
     if (!user) return 'none';
     const roleKey = user.role || 'user';
     const roleDef = this.roles[roleKey];
-    // 如果角色不存在于定义中，给管理员权限（兼容 Supabase 角色）
+
+    // 如果角色不存在于定义中，给管理员权限
     if (!roleDef) {
-      // 检查是否在管理员邮箱列表中
       const adminEmails = window.ADMIN_EMAILS || [];
       if (adminEmails.indexOf(user.email) >= 0) return 'write';
-      // 否则默认为管理员（Supabase 集成初期，避免权限配置缺失）
       return 'write';
     }
     // 管理员拥有全部读写权限
     if (roleDef.isAdmin) return 'write';
-    // 检查模块级权限
+
+    // 先检查 user_permissions 表（如果已从 Supabase 加载）
+    const userPerms = this._userModulePerms || {};
+    if (userPerms[moduleKey]) {
+      const p = userPerms[moduleKey];
+      if (p === 'write' || p === 'read' || p === 'none') return p;
+    }
+
+    // 再检查模块级权限配置
     const perms = this.store.get('permissions', {});
     const modulePerm = perms[moduleKey];
-    if (!modulePerm) return 'write'; // 无配置默认为读写（兼容新模块）
+    if (!modulePerm) return 'write'; // 无配置默认为读写
     const rolePerm = modulePerm[roleKey];
     if (!rolePerm) return 'write'; // 角色未配置默认为读写
-    return rolePerm; // 'write' | 'read' | 'none'
+    return rolePerm;
   },
 
   // ===== 判断当前用户对某模块是否有写权限 =====
@@ -569,7 +576,6 @@ const App = {
   enforcePagePermission(moduleKey) {
     const perm = this.getPermission(moduleKey);
     if (perm === 'none') {
-      // 无权限：隐藏主内容，显示无权限提示
       const content = document.querySelector('.app-content');
       if (content) {
         content.innerHTML = `
@@ -582,25 +588,46 @@ const App = {
       return false;
     }
     if (perm === 'read') {
-      // 只读模式：隐藏所有操作按钮
       setTimeout(() => {
-        document.querySelectorAll('.btn-primary, .btn-danger').forEach(btn => {
-          if (btn.closest('.table-toolbar-right') || btn.onclick?.toString().includes('delete') || btn.onclick?.toString().includes('openModal')) {
-            // 保留新增/编辑/删除按钮但禁用它们
-          }
-        });
-        // 全局标记只读模式
         document.body.classList.add('readonly-mode');
       }, 100);
       this.toast('当前为只读模式，如需修改请联系管理员', 'info', 3000);
     }
+    // 异步等待 Supabase 权限加载完成后重新判断
+    if (!window.__permWaitPromise) {
+      window.__permWaitPromise = new Promise(resolve => {
+        const check = () => {
+          if (window.App && window.App._userModulePerms) resolve();
+          else setTimeout(check, 200);
+        };
+        setTimeout(check, 200);
+      });
+    }
+    window.__permWaitPromise.then(() => {
+      const realPerm = this.getPermission(moduleKey);
+      if (realPerm !== perm) {
+        if (realPerm === 'write') {
+          document.body.classList.remove('readonly-mode');
+        } else if (realPerm === 'none') {
+          const content = document.querySelector('.app-content');
+          if (content) {
+            content.innerHTML = `
+              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
+                <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+                <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
+                <div style="font-size:14px;">您当前的角色无权访问此模块，请联系管理员开通权限</div>
+              </div>`;
+          }
+        }
+      }
+    });
     return true;
   }
 };
 
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
-  const DATA_VERSION = '6'; // 版本号变更时强制重置数据（v6: Supabase 集成后权限修复）
+  const DATA_VERSION = '7'; // v7: Supabase user_roles 权限系统
   const currentVersion = localStorage.getItem('dataVersion');
 
   // 版本变更或首次运行：重置业务样本数据

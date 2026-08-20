@@ -80,16 +80,15 @@
     if (!user) return null;
     const email = user.email || "";
     const meta = user.user_metadata || {};
-    // 检查是否为管理员邮箱
+    // 优先从 user_metadata 中读取角色（如果有设置）
     let role = meta.role || "user";
+    // 检查管理员邮箱列表（从 admin-config.js 暴露到 window）
     const adminEmails = window.ADMIN_EMAILS || [];
     if (adminEmails.indexOf(email) >= 0) {
       role = "admin";
     }
-    // 如果没有指定角色，给默认管理员权限（Supabase 集成初期）
-    if (!meta.role && adminEmails.indexOf(email) >= 0) {
-      role = "admin";
-    }
+    // 异步从 Supabase user_roles 表读取真实角色
+    // 如果 user_metadata 没有设置，会在异步守卫中更新
     return {
       id: user.id,
       username: meta.username || (email ? email.split("@")[0] : "用户"),
@@ -222,6 +221,58 @@
 
       const user = data.user;
       window.currentSupabaseUser = user;
+
+      // 从 Supabase user_roles 表加载用户真实角色
+      try {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+
+        if (!rolesError && rolesData && rolesData.length > 0) {
+          const roles = rolesData.map(r => r.role);
+          // 优先取 admin，其次 manager，最后取第一个角色
+          let finalRole = 'user';
+          if (roles.indexOf('admin') >= 0) finalRole = 'admin';
+          else if (roles.indexOf('manager') >= 0) finalRole = 'manager';
+          else finalRole = roles[0];
+
+          // 更新 App 用户信息
+          if (window.App && window.App._currentUser) {
+            window.App._currentUser.role = finalRole;
+          }
+          console.log('[auth-guard] 用户角色:', finalRole, '| 所有角色:', roles);
+
+          // 加载用户对各模块的权限
+          try {
+            const { data: permsData, error: permsError } = await supabase
+              .from('module_permissions')
+              .select('module, permission')
+              .in('role', roles);
+
+            if (!permsError && permsData) {
+              // 合并权限：取最高优先级
+              const priority = { write: 3, read: 2, none: 1 };
+              const merged = {};
+              permsData.forEach(p => {
+                const mod = p.module;
+                if (!merged[mod] || priority[p.permission] > priority[merged[mod]]) {
+                  merged[mod] = p.permission;
+                }
+              });
+              // 更新 App 的用户模块权限缓存
+              if (window.App) {
+                window.App._userModulePerms = merged;
+              }
+              console.log('[auth-guard] 模块权限已加载:', merged);
+            }
+          } catch (e) {
+            console.warn('[auth-guard] 加载模块权限失败:', e);
+          }
+        }
+      } catch (e) {
+        console.warn('[auth-guard] 加载角色失败，使用默认角色:', e);
+      }
 
       // 异步覆盖 App.logout 为更完整版本（调用 signOut）
       if (window.App) {
