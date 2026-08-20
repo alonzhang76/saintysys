@@ -400,7 +400,6 @@ async function _asyncWrite(key, value, retryCount) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      // 用户未登录，稍后重试（最多 3 次）
       if (retryCount < 3) {
         setTimeout(() => _asyncWrite(key, value, retryCount + 1), 1000 * (retryCount + 1));
       } else {
@@ -421,6 +420,9 @@ async function _asyncWrite(key, value, retryCount) {
     if (error) {
       console.warn('[SupabaseStore] setSync 写入失败，加入重试队列:', key, error);
       _addToPending(key, value);
+    } else {
+      const count = Array.isArray(value) ? value.length + ' 条' : typeof value;
+      console.log('[SupabaseStore] ✅ 已同步到云端:', key, count);
     }
   } catch (e) {
     console.warn('[SupabaseStore] setSync 异常，加入重试队列:', key, e);
