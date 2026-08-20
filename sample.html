@@ -586,15 +586,25 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .form-input, .sample-plan .form-select, .sample-plan .form-textarea,
 .sp-modal-overlay .form-input, .sp-modal-overlay .form-select, .sp-modal-overlay .form-textarea {
   border: 1px solid rgba(150,200,245,0.5); background: rgba(255,255,255,0.75); border-radius: 10px;
-  padding: 9px 13px; font-family: var(--sp-font); font-size: 13px; color: var(--sp-ink); outline: none;
+  padding: 0 13px; font-family: var(--sp-font); font-size: 13px; color: var(--sp-ink); outline: none;
   transition: all var(--sp-transition); box-shadow: inset 0 1px 2px rgba(120,170,220,0.04);
+  height: 34px; line-height: 34px; box-sizing: border-box;
+}
+.sample-plan .form-select,
+.sp-modal-overlay .form-select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233a5b7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
 }
 .sample-plan .form-input:focus, .sample-plan .form-select:focus, .sample-plan .form-textarea:focus,
 .sp-modal-overlay .form-input:focus, .sp-modal-overlay .form-select:focus, .sp-modal-overlay .form-textarea:focus {
   border-color: var(--sp-accent); box-shadow: 0 0 0 3px rgba(0,122,255,0.12), inset 0 1px 2px rgba(120,170,220,0.04); background: rgba(255,255,255,0.95);
 }
 .sample-plan .form-textarea,
-.sp-modal-overlay .form-textarea { resize: vertical; min-height: 60px; }
+.sp-modal-overlay .form-textarea { resize: vertical; min-height: 60px; height: auto; line-height: 1.5; padding: 8px 13px; }
 .sample-plan .form-footer,
 .sp-modal-overlay .form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(150,200,245,0.4); }
 
@@ -1974,7 +1984,7 @@ renderSampleTable();
     const styleNo = row['款号'] || '';
     const formats = ['jpg','jpeg','png','webp','gif'];
 
-    // 1) 优先加载 Supabase 上传的图片
+    // 1) 优先加载 Supabase 上传的图片（使用存储的 picture_path）
     if (row['picture_path']) {
       const ss = await ensureSupabase();
       if (ss) {
@@ -1989,19 +1999,60 @@ renderSampleTable();
               document.getElementById('sp_deletePicBtn').style.display = 'inline-flex';
             };
             img.onerror = () => {
-              console.warn('[SamplePlan] Supabase 图片加载失败，回退到本地');
-              tryLocalPicture(wrapper, styleNo, formats);
+              console.warn('[SamplePlan] Supabase 图片加载失败，尝试按款号匹配');
+              tryMatchSupabaseThenLocal(wrapper, styleNo, formats, row);
             };
             img.src = url;
             return;
           }
         } catch (e) {
-          console.warn('[SamplePlan] getFileUrl 失败，回退到本地:', e);
+          console.warn('[SamplePlan] getFileUrl 失败，尝试按款号匹配:', e);
         }
       }
     }
 
-    // 2) 回退：本地 picture 文件夹
+    // 2) picture_path 不存在或失效 → 按款号在 Supabase 中查找
+    tryMatchSupabaseThenLocal(wrapper, styleNo, formats, row);
+  }
+
+  // 先尝试在 Supabase 中按款号匹配文件，再回退本地
+  async function tryMatchSupabaseThenLocal(wrapper, styleNo, formats, row) {
+    const ss = await ensureSupabase();
+    if (ss && ss.findPictureByStyleNo) {
+      // 提取原始文件名中的扩展名用于精确匹配
+      const pictureName = row && row['picture_name'] ? row['picture_name'] : '';
+      let originalExt = null;
+      if (pictureName) {
+        const parts = pictureName.split('.');
+        if (parts.length >= 2) originalExt = parts.pop().toLowerCase();
+      }
+
+      try {
+        const matched = await ss.findPictureByStyleNo(styleNo, 'sample', originalExt);
+        if (matched && matched.signedUrl) {
+          const img = new Image();
+          img.onload = () => {
+            wrapper.innerHTML = '';
+            img.style.cssText = 'max-width:100%;max-height:480px;width:auto;height:auto;object-fit:contain;display:block;border-radius:4px;';
+            wrapper.appendChild(img);
+            // 自动补全 picture_path，避免下次再匹配
+            if (row && matched.path && row['picture_path'] !== matched.path) {
+              row['picture_path'] = matched.path;
+              saveData();
+            }
+          };
+          img.onerror = () => {
+            console.warn('[SamplePlan] 匹配到的 Supabase 图片加载失败，回退到本地');
+            tryLocalPicture(wrapper, styleNo, formats);
+          };
+          img.src = matched.signedUrl;
+          return;
+        }
+      } catch (e) {
+        console.warn('[SamplePlan] findPictureByStyleNo 失败:', e);
+      }
+    }
+    // 3) 最终回退：本地 picture 文件夹
     tryLocalPicture(wrapper, styleNo, formats);
   }
 
@@ -2102,6 +2153,7 @@ renderSampleTable();
 
     // 更新记录
     row['picture_path'] = result.path;
+    row['picture_name'] = result.fileName || file.name;
     saveData();
     showToast('图片上传成功', 'success');
     // 重新加载图片
@@ -2207,11 +2259,44 @@ renderSampleTable();
               document.getElementById('sp_formPictureImg').src = url;
               document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
               document.getElementById('sp_formPicturePreview').style.display = 'block';
+            } else if (ss.findPictureByStyleNo) {
+              // picture_path 失效 → 按款号匹配
+              const picName = row['picture_name'] || '';
+              let picExt = null;
+              if (picName) { const p = picName.split('.'); if (p.length >= 2) picExt = p.pop().toLowerCase(); }
+              ss.findPictureByStyleNo(row['款号'] || '', 'sample', picExt).then(function(matched) {
+                if (matched && matched.signedUrl) {
+                  document.getElementById('sp_formPictureImg').src = matched.signedUrl;
+                  document.getElementById('sp_f_picturePath').value = matched.path;
+                  row['picture_path'] = matched.path;
+                  saveData();
+                  document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
+                  document.getElementById('sp_formPicturePreview').style.display = 'block';
+                }
+              });
             }
           });
         });
       } else {
+        // picture_path 不存在 → 按款号在 Supabase 中查找
         SP.clearFormPicture();
+        const fPicName = row['picture_name'] || '';
+        let fPicExt = null;
+        if (fPicName) { const fp = fPicName.split('.'); if (fp.length >= 2) fPicExt = fp.pop().toLowerCase(); }
+        ensureSupabase().then(function(formSs) {
+          if (formSs && formSs.findPictureByStyleNo) {
+            formSs.findPictureByStyleNo(row['款号'] || '', 'sample', fPicExt).then(function(matched) {
+              if (matched && matched.signedUrl) {
+                document.getElementById('sp_formPictureImg').src = matched.signedUrl;
+                document.getElementById('sp_f_picturePath').value = matched.path;
+                row['picture_path'] = matched.path;
+                saveData();
+                document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
+                document.getElementById('sp_formPicturePreview').style.display = 'block';
+              }
+            });
+          }
+        });
       }
     } else {
       document.getElementById('sp_modalTitle').textContent = '添加样衣';
@@ -2249,6 +2334,7 @@ renderSampleTable();
     const pendingFile = state._pendingPictureFile;
     const existingPath = document.getElementById('sp_f_picturePath').value;
     let picturePath = existingPath || null;
+    let pictureName = null;
     const ss = pendingFile ? await ensureSupabase() : (typeof window.SupabaseSubmit !== 'undefined' ? window.SupabaseSubmit : null);
 
     if (pendingFile && ss) {
@@ -2260,9 +2346,15 @@ renderSampleTable();
           await ss.deletePicture(existingPath);
         }
         picturePath = result.path;
+        pictureName = result.fileName || pendingFile.name;
       }
     }
     record.picture_path = picturePath || undefined;
+    // 保留 picture_name：仅在上传新图片时更新
+    if (pendingFile && pictureName) {
+      record.picture_name = pictureName;
+    }
+    // 否则不设置 picture_name，让原有值通过 spread 保留
 
     if (id) {
       const idx = state.data.findIndex(r => r.id === id);
@@ -2368,10 +2460,28 @@ renderSampleTable();
     if (ss) {
       for (let i = 0; i < data.length; i++) {
         const r = data[i];
+        // 1) 优先使用 picture_path
         if (r['picture_path']) {
           try {
             const url = await ss.getFileUrl(r['picture_path'], 600); // 10分钟有效期
-            if (url) picUrlMap[r.id] = url;
+            if (url) { picUrlMap[r.id] = url; continue; }
+          } catch(e) {}
+        }
+        // 2) picture_path 缺失或失效 → 按款号匹配
+        if (ss.findPictureByStyleNo) {
+          try {
+            const picName = r['picture_name'] || '';
+            let picExt = null;
+            if (picName) { const p = picName.split('.'); if (p.length >= 2) picExt = p.pop().toLowerCase(); }
+            const matched = await ss.findPictureByStyleNo(r['款号'] || '', 'sample', picExt);
+            if (matched && matched.signedUrl) {
+              picUrlMap[r.id] = matched.signedUrl;
+              // 自动补全 picture_path
+              if (r['picture_path'] !== matched.path) {
+                r['picture_path'] = matched.path;
+                saveData();
+              }
+            }
           } catch(e) {}
         }
       }
