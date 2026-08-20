@@ -535,15 +535,22 @@ const App = {
     if (!user) return 'none';
     const roleKey = user.role || 'user';
     const roleDef = this.roles[roleKey];
-    if (!roleDef) return 'none';
+    // 如果角色不存在于定义中，给管理员权限（兼容 Supabase 角色）
+    if (!roleDef) {
+      // 检查是否在管理员邮箱列表中
+      const adminEmails = window.ADMIN_EMAILS || [];
+      if (adminEmails.indexOf(user.email) >= 0) return 'write';
+      // 否则默认为管理员（Supabase 集成初期，避免权限配置缺失）
+      return 'write';
+    }
     // 管理员拥有全部读写权限
     if (roleDef.isAdmin) return 'write';
     // 检查模块级权限
     const perms = this.store.get('permissions', {});
     const modulePerm = perms[moduleKey];
-    if (!modulePerm) return 'read'; // 无配置默认为只读
+    if (!modulePerm) return 'write'; // 无配置默认为读写（兼容新模块）
     const rolePerm = modulePerm[roleKey];
-    if (!rolePerm) return 'read';
+    if (!rolePerm) return 'write'; // 角色未配置默认为读写
     return rolePerm; // 'write' | 'read' | 'none'
   },
 
@@ -593,11 +600,23 @@ const App = {
 
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
-  const DATA_VERSION = '5'; // 版本号变更时强制重置数据
+  const DATA_VERSION = '6'; // 版本号变更时强制重置数据（v6: Supabase 集成后权限修复）
   const currentVersion = localStorage.getItem('dataVersion');
 
   // 版本变更或首次运行：重置业务样本数据
   if (currentVersion !== DATA_VERSION) {
+    // 同时清理 Supabase 中的旧数据（让 SupabaseStore 重新同步）
+    if (window.SupabaseStore) {
+      ['customers', 'styles', 'orders', 'samples', 'feedbacks',
+       'productions', 'invoices', 'payments', 'collections',
+       'contacts', 'favoriteContacts', 'users', 'permissions',
+       'washes', 'shippings', 'maintFabrics', 'maintAccessories',
+       'express_delivery_data_v2', 'pl_records_v1', 'pl_draft_v1',
+       'sht_sample_data_v2', 'sht_size_tables_v2', 'sizeSheets'
+      ].forEach(key => {
+        window.SupabaseStore.remove(key);
+      });
+    }
     App.store.set('customers', []);
     App.store.set('styles', []);
     App.store.set('orders', []);
@@ -638,19 +657,20 @@ App.initSampleData = function() {
   if (!existingPerms || Object.keys(existingPerms).length === 0) {
     const defaultPerms = {
       // 角色对各模块的默认权限：write=读写, read=只读, none=无权限
-      order:        { merchandiser: 'write', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'read' },
-      fabric:       { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'read' },
-      accessory:    { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'read' },
-      wash:         { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'read' },
-      sample:       { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'read' },
-      feedback:     { merchandiser: 'write', purchaser: 'read', designer: 'read', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'read' },
-      production:   { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'write', finance: 'read', documentary: 'read', manager: 'write', user: 'read' },
-      shipping:     { merchandiser: 'write', purchaser: 'read', designer: 'none', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'read' },
-      express:      { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'read' },
-      finance:      { merchandiser: 'read', purchaser: 'read', designer: 'none', qc: 'none', finance: 'write', documentary: 'read', manager: 'write', user: 'read' },
-      contacts:     { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'read' },
-      maintenance:  { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'read' },
-      settings:     { merchandiser: 'none', purchaser: 'none', designer: 'none', qc: 'none', finance: 'none', documentary: 'none', manager: 'read', user: 'none' },
+      // 注：admin 角色在 getPermission 中直接返回 write，不需要在表中配置
+      order:        { merchandiser: 'write', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
+      fabric:       { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
+      accessory:    { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
+      wash:         { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
+      sample:       { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
+      feedback:     { merchandiser: 'write', purchaser: 'read', designer: 'read', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
+      production:   { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'write', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
+      shipping:     { merchandiser: 'write', purchaser: 'read', designer: 'none', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
+      express:      { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
+      finance:      { merchandiser: 'read', purchaser: 'read', designer: 'none', qc: 'none', finance: 'write', documentary: 'read', manager: 'write', user: 'write' },
+      contacts:     { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
+      maintenance:  { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
+      settings:     { merchandiser: 'none', purchaser: 'none', designer: 'none', qc: 'none', finance: 'none', documentary: 'none', manager: 'read', user: 'write' },
     };
     App.store.set('permissions', defaultPerms);
   }

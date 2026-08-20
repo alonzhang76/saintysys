@@ -80,11 +80,21 @@
     if (!user) return null;
     const email = user.email || "";
     const meta = user.user_metadata || {};
+    // 检查是否为管理员邮箱
+    let role = meta.role || "user";
+    const adminEmails = window.ADMIN_EMAILS || [];
+    if (adminEmails.indexOf(email) >= 0) {
+      role = "admin";
+    }
+    // 如果没有指定角色，给默认管理员权限（Supabase 集成初期）
+    if (!meta.role && adminEmails.indexOf(email) >= 0) {
+      role = "admin";
+    }
     return {
       id: user.id,
       username: meta.username || (email ? email.split("@")[0] : "用户"),
       email: email,
-      role: meta.role || "user",
+      role: role,
       description: meta.description || "",
       status: "active",
       createDate: user.created_at ? String(user.created_at).slice(0, 10) : "",
