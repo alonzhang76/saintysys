@@ -14,8 +14,8 @@
  */
 
 // ===== Supabase 项目配置（请替换为你的真实值）=====
-export const SUPABASE_URL = "请替换成我的 Supabase Project URL";
-export const SUPABASE_PUBLISHABLE_KEY = "请替换成我的 Supabase Publishable key";
+export const SUPABASE_URL = "https://ugoyacuagslqhqguxyqe.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI";
 
 // ===== Storage Bucket 名称（私有 Bucket，不使用公开 URL）=====
 export const STORAGE_BUCKET = "app-photos";
