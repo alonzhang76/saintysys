@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>样衣管理 - 舜天汉唐服装外贸系统</title>
 <link rel="stylesheet" href="css/common.css?v=20260812">
-<script src="sample arrangement/_shared/js/xlsx.full.min.js"></script>
-<script src="sample arrangement/_shared/js/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 .form-section-title {
   font-size: 12px;
@@ -1646,8 +1645,16 @@ renderSampleTable();
 
   // ===== Storage =====
   function loadData() {
-    try { const saved = localStorage.getItem(STORAGE_KEY); state.data = saved ? JSON.parse(saved) : []; } catch(e) { state.data = []; }
-    try { const sizeSaved = localStorage.getItem(SIZE_TABLE_KEY); state.sizeTables = sizeSaved ? JSON.parse(sizeSaved) : []; } catch(e) { state.sizeTables = []; }
+    try { 
+      const saved = localStorage.getItem(STORAGE_KEY); 
+      const parsed = saved ? JSON.parse(saved) : [];
+      state.data = Array.isArray(parsed) ? parsed : []; 
+    } catch(e) { state.data = []; }
+    try { 
+      const sizeSaved = localStorage.getItem(SIZE_TABLE_KEY); 
+      const parsed = sizeSaved ? JSON.parse(sizeSaved) : [];
+      state.sizeTables = Array.isArray(parsed) ? parsed : []; 
+    } catch(e) { state.sizeTables = []; }
   }
 
   // ===== 样衣计划 → 头样/尺码样/产前样/船样/照片样 Tab 实时同步 =====
@@ -1664,11 +1671,13 @@ renderSampleTable();
       const PLAN_PREFIX = 'SPL_';                 // 同步生成的 id 前缀，稳定更新
       const MARKER = 'samplePlanId';              // 专属标记：仅带此 key 的记录会被同步逻辑替换
       const allSamples = App.store.get('samples', []);
+      if (!Array.isArray(allSamples)) return;
       // 1) 先移除之前同步过来的所有记录（保留用户手动建的）
       const preserved = allSamples.filter(s => !s[MARKER]);
       // 2) 按样衣类型重建同步记录；single/multiRound 分别按原系统字段规则
       const mapped = [];
-      (state.data || []).forEach(r => {
+      const srcData = Array.isArray(state.data) ? state.data : [];
+      srcData.forEach(r => {
         const stageName = r['样衣类型'] || '';
         const stageKey = typeToStageKey[stageName];
         if (stageKey === undefined || stageKey === null) return; // 类型未知则跳过
@@ -2136,10 +2145,14 @@ renderSampleTable();
   };
   SP.clearFormPicture = function() {
     state._pendingPictureFile = null;
-    document.getElementById('sp_formPictureImg').src = '';
-    document.getElementById('sp_formPicturePath').value = '';
-    document.getElementById('sp_formPicturePlaceholder').style.display = 'block';
-    document.getElementById('sp_formPicturePreview').style.display = 'none';
+    const img = document.getElementById('sp_formPictureImg');
+    if (img) img.src = '';
+    const path = document.getElementById('sp_f_picturePath');
+    if (path) path.value = '';
+    const ph = document.getElementById('sp_formPicturePlaceholder');
+    if (ph) ph.style.display = 'block';
+    const pv = document.getElementById('sp_formPicturePreview');
+    if (pv) pv.style.display = 'none';
   };
 
   SP.openSizeTableFromPreview = function() {
@@ -2160,11 +2173,13 @@ renderSampleTable();
   // ===== Form =====
   SP.openForm = function(id) {
     const overlay = document.getElementById('sp_modalOverlay');
+    if (!overlay) return;
     document.getElementById('sp_sampleForm').reset();
     document.getElementById('sp_editId').value = '';
     state._pendingPictureFile = null;
     if (id) {
-      const row = state.data.find(r => r.id === id);
+      const srcData = Array.isArray(state.data) ? state.data : [];
+      const row = srcData.find(r => r.id === id);
       if (!row) return;
       document.getElementById('sp_modalTitle').textContent = '编辑样衣';
       state.editingId = id;

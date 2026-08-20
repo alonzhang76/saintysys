@@ -66,6 +66,10 @@
 <script>
 // ===== 设置模块（函数定义在全局作用域） =====
 
+// 全局变量（跨函数共享）
+let currentUser = null;
+let canAccessSettings = false;
+
 // ===== 标签页切换 =====
 let currentTab = 'users';
 function switchTab(tab) {
@@ -513,8 +517,8 @@ App.checkLogin();
 App.initSampleData();
 
 // 只有管理员或有设置权限的用户才能访问
-const currentUser = App.getCurrentUser();
-const canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || App.getPermission('settings') !== 'none');
+currentUser = App.getCurrentUser();
+canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || App.getPermission('settings') !== 'none');
 if (!canAccessSettings) {
   document.querySelector('.app-content').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
