@@ -507,6 +507,50 @@ async function _flushSync() {
   }
 }
 
+/**
+ * 从云端刷新数据（定时调用，检测其他用户的更新）
+ * 只在数据实际变化时更新缓存并通知页面
+ * 返回已变更的 key 列表
+ */
+async function refreshFromCloud() {
+  if (!_initialized) return [];
+
+  try {
+    const { data, error } = await safeQuery(
+      supabase
+        .from('app_data_store')
+        .select('store_key, payload, updated_at')
+    );
+
+    if (error || !data) return [];
+
+    const changedKeys = [];
+    for (const row of data) {
+      const newVal = normalizePayload(row.payload);
+      const oldVal = _cache[row.store_key];
+      // 深比较：只有数据真正变化才更新
+      const oldStr = oldVal !== undefined ? JSON.stringify(oldVal) : '';
+      const newStr = JSON.stringify(newVal);
+      if (oldStr !== newStr) {
+        _cache[row.store_key] = newVal;
+        changedKeys.push(row.store_key);
+      }
+    }
+
+    if (changedKeys.length > 0) {
+      console.log('[SupabaseStore] 🔄 云端数据变更:', changedKeys.join(', '));
+      // 派发全局事件，通知页面刷新
+      window.dispatchEvent(new CustomEvent('cloud-data-updated', {
+        detail: { keys: changedKeys }
+      }));
+    }
+
+    return changedKeys;
+  } catch (e) {
+    return [];
+  }
+}
+
 // 导出 API
 export const SupabaseStore = {
   init,
@@ -518,6 +562,7 @@ export const SupabaseStore = {
   forceSync,
   getSync,
   setSync,
+  refreshFromCloud,
   _flushSync,
   _isInitialized: () => _initialized,
   LOCAL_KEYS,

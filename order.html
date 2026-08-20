@@ -174,7 +174,7 @@
 <script src="js/auth-guard.js?v=20260813"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260820"></script>
-<script type="module" src="js/supabase-store.js?v=20260820e"></script>
+<script type="module" src="js/supabase-store.js?v=20260820f"></script>
 <script type="module" src="js/localstorage-patch.js?v=20260820c"></script>
 <script type="module" src="js/supabase-bridge.js?v=20260820c"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
@@ -2814,6 +2814,20 @@ renderCustomerFilter();
 renderTable();
 // 初始化尺寸表搜索
 _sizeSheetSearch = '';
+
+// 监听云端数据变更（15秒自动刷新）
+window.addEventListener('cloud-data-updated', function(e) {
+  var keys = e.detail.keys || [];
+  var needRefresh = keys.some(function(k) {
+    return k === 'orders' || k === 'contacts' || k === 'customers' || k === 'styles';
+  });
+  if (needRefresh) {
+    console.log('[order.html] 云端数据变更，刷新页面数据');
+    renderStats();
+    renderCustomerFilter();
+    renderTable();
+  }
+});
 });
 </script>
 </body>

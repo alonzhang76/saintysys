@@ -73,4 +73,28 @@
     }
   }, 15000);
 
+  // ===== 15 秒定时刷新云端数据 =====
+  var _cloudRefreshTimer = null;
+  function startCloudRefresh() {
+    if (_cloudRefreshTimer) return;
+    _cloudRefreshTimer = setInterval(function() {
+      if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
+        window.SupabaseStore.refreshFromCloud().catch(function(e) {});
+      }
+    }, 15000); // 15 秒
+    // 页面隐藏时暂停，可见时立即刷新
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden && window.SupabaseStore && window.SupabaseStore._isInitialized()) {
+        window.SupabaseStore.refreshFromCloud().catch(function(e) {});
+      }
+    });
+  }
+
+  // SupabaseReady 后启动定时刷新
+  if (window.SupabaseReady) {
+    window.SupabaseReady.then(function() { startCloudRefresh(); }).catch(function() {});
+  } else {
+    startCloudRefresh();
+  }
+
 })(window);

@@ -736,7 +736,7 @@ table.data-table {
 <script src="js/auth-guard.js?v=20260813"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260820"></script>
-<script type="module" src="js/supabase-store.js?v=20260820e"></script>
+<script type="module" src="js/supabase-store.js?v=20260820f"></script>
 <script type="module" src="js/localstorage-patch.js?v=20260820c"></script>
 <script type="module" src="js/supabase-bridge.js?v=20260820c"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
@@ -2068,6 +2068,18 @@ App.initSampleData();
 App.enforcePagePermission('express');
 
 initExpress();
+
+// 监听云端数据变更（15秒自动刷新）
+window.addEventListener('cloud-data-updated', function(e) {
+  var keys = e.detail.keys || [];
+  var needRefresh = keys.some(function(k) {
+    return k === 'express_delivery_data_v2' || k === 'contacts';
+  });
+  if (needRefresh) {
+    console.log('[express.html] 云端数据变更，刷新页面数据');
+    initExpress();
+  }
+});
 });
 </script>
 </body>
