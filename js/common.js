@@ -80,6 +80,11 @@ function _mapSupabaseUser(user) {
   }
 })();
 
+// ===== 管理员邮箱配置 =====
+// 这些邮箱登录后拥有系统全部权限（包括修改角色权限）
+const ADMIN_EMAILS = ['alonzhang76@outlook.com'];
+window.ADMIN_EMAILS = ADMIN_EMAILS;
+
 const App = {
   // ===== 菜单配置 =====
   menuItems: [
@@ -533,13 +538,16 @@ const App = {
   getPermission(moduleKey) {
     const user = this.getCurrentUser();
     if (!user) return 'none';
+    
+    // 管理员邮箱用户始终拥有全部读写权限
+    const adminEmails = window.ADMIN_EMAILS || [];
+    if (adminEmails.indexOf(user.email) >= 0) return 'write';
+    
     const roleKey = user.role || 'user';
     const roleDef = this.roles[roleKey];
 
     // 如果角色不存在于定义中，给管理员权限
     if (!roleDef) {
-      const adminEmails = window.ADMIN_EMAILS || [];
-      if (adminEmails.indexOf(user.email) >= 0) return 'write';
       return 'write';
     }
     // 管理员拥有全部读写权限

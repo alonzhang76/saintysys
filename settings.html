@@ -66,9 +66,23 @@
 <script>
 // ===== 设置模块（函数定义在全局作用域） =====
 
+// 管理员邮箱列表（这些邮箱登录后拥有全部权限）
+const ADMIN_EMAILS = ['alonzhang76@outlook.com'];
+window.ADMIN_EMAILS = ADMIN_EMAILS;
+
 // 全局变量（跨函数共享）
 let currentUser = null;
 let canAccessSettings = false;
+
+// 辅助函数：检查当前用户是否为管理员（角色管理员或管理员邮箱）
+function isAdminUser() {
+  if (!currentUser) return false;
+  // 角色是管理员
+  if (App.roles[currentUser.role]?.isAdmin) return true;
+  // 邮箱在管理员列表中
+  if (ADMIN_EMAILS.indexOf(currentUser.email) >= 0) return true;
+  return false;
+}
 
 // ===== 标签页切换 =====
 let currentTab = 'users';
@@ -95,8 +109,7 @@ function saveUsers(users) {
 
 function renderUsers() {
   const users = getUsers();
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
-  const canEdit = isAdmin; // 只有管理员能增删改用户
+  const canEdit = isAdminUser(); // 只有管理员能增删改用户
 
   let html = `
     <div class="table-toolbar">
@@ -148,8 +161,7 @@ function renderUsers() {
 }
 
 function openUserModal(id) {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
-  if (!isAdmin) { App.toast('无权限', 'error'); return; }
+  if (!isAdminUser()) { App.toast('无权限', 'error'); return; }
 
   const users = getUsers();
   const user = id ? users.find(u => u.id === id) : {};
@@ -242,8 +254,7 @@ function saveUser(id) {
 }
 
 function toggleUserStatus(id) {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
-  if (!isAdmin) return;
+  if (!isAdminUser()) return;
   if (id === currentUser?.id) { App.toast('不能禁用自己', 'warning'); return; }
   const users = getUsers();
   const idx = users.findIndex(u => u.id === id);
@@ -254,8 +265,7 @@ function toggleUserStatus(id) {
 }
 
 function deleteUser(id) {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
-  if (!isAdmin) return;
+  if (!isAdminUser()) return;
   if (id === currentUser?.id) { App.toast('不能删除自己', 'warning'); return; }
   App.confirm('确定要删除该用户吗？', () => {
     const users = getUsers().filter(u => u.id !== id);
@@ -267,8 +277,7 @@ function deleteUser(id) {
 
 // ===== 用户组/权限管理 =====
 function renderRoles() {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
-  const canEdit = isAdmin;
+  const canEdit = isAdminUser();
 
   const roles = App.roles;
   const modules = App.modulePermissions;
@@ -518,7 +527,9 @@ App.initSampleData();
 
 // 只有管理员或有设置权限的用户才能访问
 currentUser = App.getCurrentUser();
-canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || App.getPermission('settings') !== 'none');
+// 检查是否为管理员（角色管理员或管理员邮箱）
+const isAdminEmail = currentUser && ADMIN_EMAILS.indexOf(currentUser.email) >= 0;
+canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || isAdminEmail || App.getPermission('settings') !== 'none');
 if (!canAccessSettings) {
   document.querySelector('.app-content').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
