@@ -49,8 +49,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 
 // 兼容性提示：当用户未替换占位符时给出明确警告
 if (
-  SUPABASE_URL.startsWith("请替换") ||
-  SUPABASE_PUBLISHABLE_KEY.startsWith("请替换")
+  SUPABASE_URL.startsWith("https://ugoyacuagslqhqguxyqe.supabase.co") ||
+  SUPABASE_PUBLISHABLE_KEY.startsWith("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI")
 ) {
   console.warn(
     "[supabase.js] 检测到 SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY 仍是占位符，请先在 js/supabase.js 中填写真实配置后再使用。"
