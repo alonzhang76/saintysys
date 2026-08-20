@@ -103,16 +103,15 @@ async function init() {
       return false;
     }
 
-    // 1) 迁移 localStorage 数据到 Supabase
-    await migrateFromLocalStorage(user.id);
+    // 1) 迁移 localStorage 数据到 Supabase（共享模式：不传 userId）
+    await migrateFromLocalStorage();
 
-    // 2) 从 Supabase 加载所有数据到缓存
+    // 2) 从 Supabase 加载所有数据到缓存（共享模式：不按 user_id 过滤）
     try {
       const { data, error } = await safeQuery(
         supabase
           .from('app_data_store')
           .select('store_key, payload')
-          .eq('user_id', user.id)
       );
 
       if (error) {
@@ -122,8 +121,6 @@ async function init() {
 
       if (data) {
         data.forEach(row => {
-          // 不要覆盖 init 完成前由 setSync 写入的缓存
-          // （setSync 写入的是最新数据，init 可能因网络延迟加载到旧数据）
           if (_cache[row.store_key] === undefined) {
             _cache[row.store_key] = normalizePayload(row.payload);
           }
@@ -131,7 +128,7 @@ async function init() {
       }
 
       _initialized = true;
-      console.log('[SupabaseStore] 初始化完成，已加载', Object.keys(_cache).length, '个数据集');
+      console.log('[SupabaseStore] 初始化完成，已加载', Object.keys(_cache).length, '个数据集（共享模式）');
       return true;
     } catch (e) {
       console.error('[SupabaseStore] 初始化异常:', e);
@@ -144,8 +141,9 @@ async function init() {
 
 /**
  * 将 localStorage 中存在但 Supabase 中没有的数据迁移过来
+ * 共享模式：不按 user_id 区分，所有数据共享一行
  */
-async function migrateFromLocalStorage(userId) {
+async function migrateFromLocalStorage() {
   let migratedCount = 0;
 
   for (const key of LOCAL_KEYS) {
@@ -155,12 +153,11 @@ async function migrateFromLocalStorage(userId) {
     const raw = localStorage.getItem(key);
     if (!raw) continue;
 
-    // 检查 Supabase 中是否已有此 key
+    // 检查 Supabase 中是否已有此 key（共享模式：只按 store_key 查询）
     const { data: existing, error: checkErr } = await safeQuery(
       supabase
         .from('app_data_store')
         .select('id')
-        .eq('user_id', userId)
         .eq('store_key', key)
         .limit(1)
     );
@@ -184,11 +181,12 @@ async function migrateFromLocalStorage(userId) {
         payload = raw;
       }
       payload = normalizePayload(payload);
+      const user = await getCurrentUser();
       const { error } = await safeQuery(
         supabase
           .from('app_data_store')
           .insert({
-            user_id: userId,
+            user_id: user ? user.id : null,
             store_key: key,
             payload: payload,
             updated_at: new Date().toISOString(),
@@ -224,7 +222,6 @@ async function forceSync() {
   let synced = 0;
   for (const key of LOCAL_KEYS) {
     if (['isLoggedIn', 'username', 'userRole', 'currentUserId', 'refDPR'].includes(key)) continue;
-    // 使用原始 localStorage 读取（绕过 patch，避免返回空缓存）
     const raw = origLS.getItem(key);
     if (!raw) continue;
 
@@ -236,7 +233,7 @@ async function forceSync() {
     }
     payload = normalizePayload(payload);
 
-    // upsert：如果 Supabase 已有则更新，没有则插入
+    // 共享模式：onConflict 用 store_key，user_id 仅记录
     const { error } = await safeQuery(
       supabase
         .from('app_data_store')
@@ -245,12 +242,14 @@ async function forceSync() {
           store_key: key,
           payload: payload,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id, store_key' })
+        }, { onConflict: 'store_key' })
     );
 
     if (!error) {
       _cache[key] = payload;
       synced++;
+    } else {
+      console.warn('[SupabaseStore] forceSync 失败:', key, error);
     }
   }
 
@@ -258,26 +257,21 @@ async function forceSync() {
 }
 
 /**
- * 获取数据
+ * 获取数据（共享模式：不按 user_id 过滤）
  */
 async function get(key, defaultVal) {
   if (!_initialized) await init();
 
   if (_cache[key] !== undefined) {
-    // 深拷贝返回，避免外部修改影响缓存
     return JSON.parse(JSON.stringify(_cache[key]));
   }
 
-  // 缓存未命中，从 Supabase 读取
-  const user = await getCurrentUser();
-  if (!user) return defaultVal;
-
+  // 缓存未命中，从 Supabase 读取（共享模式：只按 store_key 查询）
   try {
     const { data, error } = await safeQuery(
       supabase
         .from('app_data_store')
         .select('payload')
-        .eq('user_id', user.id)
         .eq('store_key', key)
         .limit(1)
     );
@@ -296,31 +290,27 @@ async function get(key, defaultVal) {
 }
 
 /**
- * 保存数据
+ * 保存数据（共享模式：onConflict 用 store_key）
  */
 async function set(key, value) {
   if (!_initialized) await init();
 
   const user = await getCurrentUser();
-  if (!user) {
-    console.warn('[SupabaseStore] 未登录，无法保存:', key);
-    return false;
-  }
 
   // 更新内存缓存
   _cache[key] = JSON.parse(JSON.stringify(value));
 
-  // 异步写入 Supabase（不阻塞 UI）
+  // 异步写入 Supabase
   try {
     const { error } = await safeQuery(
       supabase
         .from('app_data_store')
         .upsert({
-          user_id: user.id,
+          user_id: user ? user.id : null,
           store_key: key,
           payload: value,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id, store_key' })
+        }, { onConflict: 'store_key' })
     );
 
     if (error) {
@@ -335,13 +325,10 @@ async function set(key, value) {
 }
 
 /**
- * 删除数据
+ * 删除数据（共享模式：按 store_key 删除）
  */
 async function remove(key) {
   if (!_initialized) await init();
-
-  const user = await getCurrentUser();
-  if (!user) return false;
 
   delete _cache[key];
 
@@ -350,7 +337,6 @@ async function remove(key) {
       supabase
         .from('app_data_store')
         .delete()
-        .eq('user_id', user.id)
         .eq('store_key', key)
     );
 
@@ -362,19 +348,17 @@ async function remove(key) {
 }
 
 /**
- * 清除当前用户的所有数据（清空数据功能）
+ * 清除所有数据（清空数据功能）
+ * 共享模式：清空整个表（所有用户的数据）
  */
 async function clearAll() {
-  const user = await getCurrentUser();
-  if (!user) return false;
-
   Object.keys(_cache).forEach(k => delete _cache[k]);
 
   try {
     const { error } = await supabase
       .from('app_data_store')
       .delete()
-      .eq('user_id', user.id);
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // 删除所有行
 
     return !error;
   } catch (e) {
@@ -411,7 +395,7 @@ function setSync(key, value) {
   _asyncWrite(key, value, 0);
 }
 
-// 异步写入（支持重试）
+// 异步写入（支持重试）— 共享模式
 async function _asyncWrite(key, value, retryCount) {
   try {
     const user = await getCurrentUser();
@@ -420,7 +404,6 @@ async function _asyncWrite(key, value, retryCount) {
       if (retryCount < 3) {
         setTimeout(() => _asyncWrite(key, value, retryCount + 1), 1000 * (retryCount + 1));
       } else {
-        // 加入待处理队列
         _addToPending(key, value);
       }
       return;
@@ -433,7 +416,7 @@ async function _asyncWrite(key, value, retryCount) {
           store_key: key,
           payload: value,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id, store_key' })
+        }, { onConflict: 'store_key' })
     );
     if (error) {
       console.warn('[SupabaseStore] setSync 写入失败，加入重试队列:', key, error);
@@ -461,19 +444,17 @@ function _addToPending(key, value) {
   }
 }
 
-// 重试待处理队列
+// 重试待处理队列 — 共享模式
 async function _retryPending() {
   if (_pendingWrites.length === 0) {
     clearInterval(_retryTimer);
     _retryTimer = null;
     return;
   }
-  // 复制当前队列并清空
   const batch = [..._pendingWrites];
   _pendingWrites.length = 0;
   const user = await getCurrentUser();
   if (!user) {
-    // 用户仍未登录，放回队列
     batch.forEach(w => _pendingWrites.push(w));
     return;
   }
@@ -487,11 +468,11 @@ async function _retryPending() {
             store_key: item.key,
             payload: item.value,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id, store_key' })
+          }, { onConflict: 'store_key' })
       );
       if (error) {
         console.warn('[SupabaseStore] 重试仍失败:', item.key, error);
-        _pendingWrites.push(item); // 放回继续重试
+        _pendingWrites.push(item);
       }
     } catch (e) {
       _pendingWrites.push(item);
@@ -499,13 +480,12 @@ async function _retryPending() {
   }
 }
 
-// 立即刷新所有待处理写入（用于页面关闭前）
+// 立即刷新所有待处理写入（用于页面关闭前）— 共享模式
 async function _flushSync() {
   if (_pendingWrites.length === 0) return;
   const batch = [..._pendingWrites];
   _pendingWrites.length = 0;
   for (const item of batch) {
-    // 使用 fetch with keepalive 确保请求在页面关闭后仍能完成
     try {
       const user = await getCurrentUser();
       if (!user) { _pendingWrites.push(item); continue; }
@@ -517,7 +497,7 @@ async function _flushSync() {
             store_key: item.key,
             payload: item.value,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id, store_key' })
+          }, { onConflict: 'store_key' })
       );
     } catch(e) {
       _pendingWrites.push(item);
@@ -559,8 +539,7 @@ window.SupabaseReady.then(ok => {
 });
 
 /**
- * 从原始 localStorage 恢复数据
- * 当 Supabase 中的数据被清空但 localStorage 还保留时，自动恢复
+ * 从原始 localStorage 恢复数据（共享模式）
  */
 function recoverFromLocalStorage() {
   const recoveryKeys = ['orders', 'samples', 'contacts', 'shippings',
@@ -573,9 +552,8 @@ function recoverFromLocalStorage() {
   recoveryKeys.forEach(key => {
     if (_cache[key] !== undefined && _cache[key] !== null &&
         Array.isArray(_cache[key]) && _cache[key].length > 0) {
-      return; // 已有数据，跳过
+      return;
     }
-    // 从原始 localStorage 读取（绕过 patch）
     try {
       const origLS = window._origLocalStorage || window.localStorage;
       const raw = origLS.getItem(key);
@@ -583,18 +561,17 @@ function recoverFromLocalStorage() {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed) && parsed.length > 0) {
           _cache[key] = parsed;
-          // 异步保存到 Supabase
+          // 异步保存到 Supabase（共享模式）
           getCurrentUser().then(user => {
-            if (!user) return;
             safeQuery(
               supabase
                 .from('app_data_store')
                 .upsert({
-                  user_id: user.id,
+                  user_id: user ? user.id : null,
                   store_key: key,
                   payload: parsed,
                   updated_at: new Date().toISOString(),
-                }, { onConflict: 'user_id, store_key' })
+                }, { onConflict: 'store_key' })
             ).catch(e => console.warn('[SupabaseStore] 恢复保存失败:', key, e));
           });
           recovered++;
@@ -607,7 +584,6 @@ function recoverFromLocalStorage() {
 
   if (recovered > 0) {
     console.log('[SupabaseStore] 🔄 已从 localStorage 恢复', recovered, '个数据集');
-    // 刷新页面显示
     setTimeout(() => {
       if (window.App && window.App._onDataChanged) {
         window.App._onDataChanged();
