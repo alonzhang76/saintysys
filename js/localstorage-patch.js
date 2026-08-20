@@ -50,27 +50,16 @@ localStorage.getItem = function(key) {
     if (val !== undefined && val !== null) {
       return JSON.stringify(val);
     }
-    // 缓存未命中，从原始 localStorage 读取
-    const raw = _origGetItem(key);
-    if (raw !== null) {
-      // 解析并规范化数据
-      let parsed = null;
-      try {
-        parsed = JSON.parse(raw);
-        // 如果是 {data: [...]} 格式，提取 data
-        if (typeof parsed === 'object' && !Array.isArray(parsed) && parsed.data !== undefined) {
-          const normalized = parsed.data;
-          // 写回 SupabaseStore 缓存
-          window.SupabaseStore.setSync(key, normalized);
-          return JSON.stringify(normalized);
-        }
-      } catch (e) { /* 非 JSON 字符串，原样返回 */ }
-      // 写入 SupabaseStore 缓存
-      if (parsed !== null) {
-        window.SupabaseStore.setSync(key, parsed);
-      }
+
+    // SupabaseStore 已初始化完成但缓存中没有此 key
+    // 说明 Supabase 中确实没有此数据，返回 null（不回退到本地数据）
+    if (window.SupabaseStore._isInitialized && window.SupabaseStore._isInitialized()) {
+      return null;
     }
-    return raw;
+
+    // SupabaseStore 尚未初始化完成，临时从本地 localStorage 读取
+    // 但不写入缓存（避免污染后续 Supabase 加载）
+    return _origGetItem(key);
   }
   return _origGetItem(key);
 };

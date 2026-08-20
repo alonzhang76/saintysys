@@ -129,6 +129,7 @@ async function init() {
 
       _initialized = true;
       console.log('[SupabaseStore] 初始化完成，已加载', Object.keys(_cache).length, '个数据集（共享模式）');
+      console.log('[SupabaseStore] 缓存中的 keys:', Object.keys(_cache).join(', '));
       return true;
     } catch (e) {
       console.error('[SupabaseStore] 初始化异常:', e);
@@ -142,15 +143,17 @@ async function init() {
 /**
  * 将 localStorage 中存在但 Supabase 中没有的数据迁移过来
  * 共享模式：不按 user_id 区分，所有数据共享一行
+ * 重要：使用原始 localStorage（绕过 patch），避免读取被 patch 的 getItem
  */
 async function migrateFromLocalStorage() {
+  // 使用原始 localStorage（绕过 patch，避免循环依赖）
+  const origGetItem = (window._origLocalStorage && window._origLocalStorage.getItem) || localStorage.getItem.bind(localStorage);
   let migratedCount = 0;
 
   for (const key of LOCAL_KEYS) {
-    // 跳过临时会话数据
     if (['isLoggedIn', 'username', 'userRole', 'currentUserId', 'refDPR'].includes(key)) continue;
 
-    const raw = localStorage.getItem(key);
+    const raw = origGetItem(key);
     if (!raw) continue;
 
     // 检查 Supabase 中是否已有此 key（共享模式：只按 store_key 查询）
@@ -197,7 +200,7 @@ async function migrateFromLocalStorage() {
         console.warn('[SupabaseStore] 迁移失败:', key, error);
       } else {
         migratedCount++;
-        _cache[key] = payload;
+        // 不写入 _cache — 让后续 Supabase 加载来填充缓存
         console.log('[SupabaseStore] 已迁移:', key);
       }
     } catch (e) {
@@ -517,6 +520,7 @@ export const SupabaseStore = {
   getSync,
   setSync,
   _flushSync,
+  _isInitialized: () => _initialized,
   LOCAL_KEYS,
 };
 
