@@ -21,7 +21,11 @@ const bridgedStore = {
   get(key, defaultVal) {
     if (!window.SupabaseStore) return origStore ? origStore.get(key, defaultVal) : defaultVal;
     const val = window.SupabaseStore.getSync(key);
-    return val !== undefined && val !== null ? val : (defaultVal !== undefined ? defaultVal : []);
+    // 规范化：确保返回值类型正确
+    if (val === undefined || val === null) return defaultVal !== undefined ? defaultVal : [];
+    // 如果默认值是数组但返回值不是数组，返回默认值
+    if (Array.isArray(defaultVal) && !Array.isArray(val)) return defaultVal;
+    return val;
   },
 
   // 同步 set：更新内存缓存 + 异步写入云端

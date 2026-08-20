@@ -1005,7 +1005,10 @@ function stageTag(stageKey, extra = '') {
   if (!def) return '-';
   return `<span class="stage-tag stage-stage-${stageKey}">${extra}${def.name}${def.english ? ' · ' + def.english : ''}</span>`;
 }
-function getSamples() { return App.store.get('samples', []); }
+function getSamples() { 
+  const v = App.store.get('samples', []); 
+  return Array.isArray(v) ? v : []; 
+}
 function getStyles() {
   const orders = App.store.get('orders', []);
   const seen = new Set(); const list = [];

@@ -19,6 +19,28 @@
 
 import { supabase } from "./supabase.js";
 
+/**
+ * 安全的 Supabase 查询包装器
+ * 处理 Supabase v2 builder 的 thenable 问题
+ */
+function safeQuery(builder) {
+  // Supabase v2 的 builder 是 thenable，用 Promise.resolve 包装
+  return Promise.resolve(builder);
+}
+
+/**
+ * 验证并规范化 payload 数据
+ * 确保数据是数组或对象，避免 .filter 等方法报错
+ */
+function normalizePayload(payload) {
+  if (payload === null || payload === undefined) return null;
+  // 如果是对象且有 data 属性（Supabase 查询结果），提取 data
+  if (typeof payload === 'object' && !Array.isArray(payload) && payload.data !== undefined) {
+    return payload.data;
+  }
+  return payload;
+}
+
 // 本地缓存（避免每次读写都请求 Supabase）
 const _cache = {};
 let _initialized = false;
@@ -67,10 +89,12 @@ async function init() {
 
     // 2) 从 Supabase 加载所有数据到缓存
     try {
-      const { data, error } = await supabase
-        .from('app_data_store')
-        .select('store_key, payload')
-        .eq('user_id', user.id);
+      const { data, error } = await safeQuery(
+        supabase
+          .from('app_data_store')
+          .select('store_key, payload')
+          .eq('user_id', user.id)
+      );
 
       if (error) {
         console.error('[SupabaseStore] 加载数据失败:', error);
@@ -82,7 +106,7 @@ async function init() {
           // 不要覆盖 init 完成前由 setSync 写入的缓存
           // （setSync 写入的是最新数据，init 可能因网络延迟加载到旧数据）
           if (_cache[row.store_key] === undefined) {
-            _cache[row.store_key] = row.payload;
+            _cache[row.store_key] = normalizePayload(row.payload);
           }
         });
       }
@@ -113,12 +137,14 @@ async function migrateFromLocalStorage(userId) {
     if (!raw) continue;
 
     // 检查 Supabase 中是否已有此 key
-    const { data: existing, error: checkErr } = await supabase
-      .from('app_data_store')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('store_key', key)
-      .limit(1);
+    const { data: existing, error: checkErr } = await safeQuery(
+      supabase
+        .from('app_data_store')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('store_key', key)
+        .limit(1)
+    );
 
     if (checkErr) {
       console.warn('[SupabaseStore] 检查迁移状态失败:', key, checkErr);
@@ -132,16 +158,23 @@ async function migrateFromLocalStorage(userId) {
 
     // 迁移到 Supabase
     try {
-      const { data: parsed } = JSON.parse(raw);
-      const payload = typeof parsed !== 'undefined' ? parsed : raw;
-      const { error } = await supabase
-        .from('app_data_store')
-        .insert({
-          user_id: userId,
-          store_key: key,
-          payload: payload,
-          updated_at: new Date().toISOString(),
-        });
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (e) {
+        payload = raw;
+      }
+      payload = normalizePayload(payload);
+      const { error } = await safeQuery(
+        supabase
+          .from('app_data_store')
+          .insert({
+            user_id: userId,
+            store_key: key,
+            payload: payload,
+            updated_at: new Date().toISOString(),
+          })
+      );
 
       if (error) {
         console.warn('[SupabaseStore] 迁移失败:', key, error);
@@ -178,20 +211,23 @@ async function forceSync() {
 
     let payload;
     try {
-      ({ data: payload } = JSON.parse(raw));
+      payload = JSON.parse(raw);
     } catch (e) {
       payload = raw;
     }
+    payload = normalizePayload(payload);
 
     // upsert：如果 Supabase 已有则更新，没有则插入
-    const { error } = await supabase
-      .from('app_data_store')
-      .upsert({
-        user_id: user.id,
-        store_key: key,
-        payload: payload,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id, store_key' });
+    const { error } = await safeQuery(
+      supabase
+        .from('app_data_store')
+        .upsert({
+          user_id: user.id,
+          store_key: key,
+          payload: payload,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id, store_key' })
+    );
 
     if (!error) {
       _cache[key] = payload;
@@ -218,17 +254,20 @@ async function get(key, defaultVal) {
   if (!user) return defaultVal;
 
   try {
-    const { data, error } = await supabase
-      .from('app_data_store')
-      .select('payload')
-      .eq('user_id', user.id)
-      .eq('store_key', key)
-      .limit(1);
+    const { data, error } = await safeQuery(
+      supabase
+        .from('app_data_store')
+        .select('payload')
+        .eq('user_id', user.id)
+        .eq('store_key', key)
+        .limit(1)
+    );
 
     if (error) return defaultVal;
     if (data && data.length > 0) {
-      _cache[key] = data[0].payload;
-      return JSON.parse(JSON.stringify(data[0].payload));
+      const payload = normalizePayload(data[0].payload);
+      _cache[key] = payload;
+      return JSON.parse(JSON.stringify(payload));
     }
     return defaultVal;
   } catch (e) {
@@ -254,14 +293,16 @@ async function set(key, value) {
 
   // 异步写入 Supabase（不阻塞 UI）
   try {
-    const { error } = await supabase
-      .from('app_data_store')
-      .upsert({
-        user_id: user.id,
-        store_key: key,
-        payload: value,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id, store_key' });
+    const { error } = await safeQuery(
+      supabase
+        .from('app_data_store')
+        .upsert({
+          user_id: user.id,
+          store_key: key,
+          payload: value,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id, store_key' })
+    );
 
     if (error) {
       console.error('[SupabaseStore] set 失败:', key, error);
@@ -286,11 +327,13 @@ async function remove(key) {
   delete _cache[key];
 
   try {
-    const { error } = await supabase
-      .from('app_data_store')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('store_key', key);
+    const { error } = await safeQuery(
+      supabase
+        .from('app_data_store')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('store_key', key)
+    );
 
     if (error) return false;
     return true;
@@ -333,7 +376,12 @@ function reset() {
 // 这些方法操作内存缓存，适合同步代码路径
 function getSync(key, defaultVal) {
   if (_cache[key] !== undefined) {
-    return JSON.parse(JSON.stringify(_cache[key]));
+    let val = _cache[key];
+    // 如果默认值是数组但缓存不是数组，返回默认值
+    if (Array.isArray(defaultVal) && !Array.isArray(val)) {
+      return defaultVal;
+    }
+    return JSON.parse(JSON.stringify(val));
   }
   return defaultVal;
 }
@@ -343,15 +391,16 @@ function setSync(key, value) {
   // 异步写入 Supabase
   getCurrentUser().then(user => {
     if (!user) return;
-    supabase
-      .from('app_data_store')
-      .upsert({
-        user_id: user.id,
-        store_key: key,
-        payload: value,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id, store_key' })
-      .catch(e => console.error('[SupabaseStore] setSync 写入失败:', key, e));
+    safeQuery(
+      supabase
+        .from('app_data_store')
+        .upsert({
+          user_id: user.id,
+          store_key: key,
+          payload: value,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id, store_key' })
+    ).catch(e => console.error('[SupabaseStore] setSync 写入失败:', key, e));
   });
 }
 
@@ -415,15 +464,16 @@ function recoverFromLocalStorage() {
           // 异步保存到 Supabase
           getCurrentUser().then(user => {
             if (!user) return;
-            supabase
-              .from('app_data_store')
-              .upsert({
-                user_id: user.id,
-                store_key: key,
-                payload: parsed,
-                updated_at: new Date().toISOString(),
-              }, { onConflict: 'user_id, store_key' })
-              .catch(e => console.warn('[SupabaseStore] 恢复保存失败:', key, e));
+            safeQuery(
+              supabase
+                .from('app_data_store')
+                .upsert({
+                  user_id: user.id,
+                  store_key: key,
+                  payload: parsed,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'user_id, store_key' })
+            ).catch(e => console.warn('[SupabaseStore] 恢复保存失败:', key, e));
           });
           recovered++;
         }
