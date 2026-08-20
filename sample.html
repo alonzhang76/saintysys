@@ -973,7 +973,7 @@ input[type="number"] { -moz-appearance: textfield; }
 <script src="js/auth-guard.js?v=20260813"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260820"></script>
-<script type="module" src="js/supabase-store.js?v=20260820f"></script>
+<script type="module" src="js/supabase-store.js?v=20260820g"></script>
 <script type="module" src="js/localstorage-patch.js?v=20260820c"></script>
 <script type="module" src="js/supabase-bridge.js?v=20260820c"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
@@ -1597,14 +1597,14 @@ window.addEventListener('cloud-data-updated', function(e) {
   });
   if (needRefresh) {
     console.log('[sample.html] 云端数据变更，刷新页面数据');
-    loadData();
+    // 刷新样衣记录表格
     renderStats();
     renderTabs();
     renderFilterBar();
     renderSampleTable();
-    // 样衣计划也需要刷新
-    if (typeof SamplePlan !== 'undefined' && SamplePlan.renderAll) {
-      SamplePlan.renderAll();
+    // 刷新样衣计划模块
+    if (typeof SamplePlan !== 'undefined' && SamplePlan.init) {
+      SamplePlan.init();
     }
   }
 });

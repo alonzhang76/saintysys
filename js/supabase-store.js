@@ -389,8 +389,12 @@ function getSync(key, defaultVal) {
   return defaultVal;
 }
 
+// 最近写入记录（避免自己写入的数据触发刷新）
+var _recentWrites = {};
+
 function setSync(key, value) {
   _cache[key] = JSON.parse(JSON.stringify(value));
+  _recentWrites[key] = Date.now();
   // 异步写入 Supabase（带重试）
   _asyncWrite(key, value, 0);
 }
@@ -524,8 +528,14 @@ async function refreshFromCloud() {
 
     if (error || !data) return [];
 
+    const now = Date.now();
+    const SKIP_WINDOW = 20000; // 20秒内自己写入的 key 跳过刷新
     const changedKeys = [];
     for (const row of data) {
+      // 跳过自己最近写入的 key（避免反馈循环）
+      const lastWrite = _recentWrites[row.store_key] || 0;
+      if (now - lastWrite < SKIP_WINDOW) continue;
+
       const newVal = normalizePayload(row.payload);
       const oldVal = _cache[row.store_key];
       // 深比较：只有数据真正变化才更新
