@@ -66,10 +66,6 @@
 <script>
 // ===== 设置模块（函数定义在全局作用域） =====
 
-// 管理员邮箱列表（这些邮箱登录后拥有全部权限）
-const ADMIN_EMAILS = ['alonzhang76@outlook.com'];
-window.ADMIN_EMAILS = ADMIN_EMAILS;
-
 // 全局变量（跨函数共享）
 let currentUser = null;
 let canAccessSettings = false;
@@ -80,7 +76,8 @@ function isAdminUser() {
   // 角色是管理员
   if (App.roles[currentUser.role]?.isAdmin) return true;
   // 邮箱在管理员列表中
-  if (ADMIN_EMAILS.indexOf(currentUser.email) >= 0) return true;
+  const adminEmails = window.ADMIN_EMAILS || [];
+  if (adminEmails.indexOf(currentUser.email) >= 0) return true;
   return false;
 }
 
@@ -528,7 +525,8 @@ App.initSampleData();
 // 只有管理员或有设置权限的用户才能访问
 currentUser = App.getCurrentUser();
 // 检查是否为管理员（角色管理员或管理员邮箱）
-const isAdminEmail = currentUser && ADMIN_EMAILS.indexOf(currentUser.email) >= 0;
+const adminEmails = window.ADMIN_EMAILS || [];
+const isAdminEmail = currentUser && adminEmails.indexOf(currentUser.email) >= 0;
 canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || isAdminEmail || App.getPermission('settings') !== 'none');
 if (!canAccessSettings) {
   document.querySelector('.app-content').innerHTML = `
