@@ -54,10 +54,16 @@
 <script src="js/common.js?v=20260812"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260813"></script>
+<!-- Supabase 存储层：localStorage → Supabase -->
+<script type="module" src="js/supabase.js?v=20260820"></script>
+<script type="module" src="js/supabase-store.js?v=20260820"></script>
+<script type="module" src="js/localstorage-patch.js?v=20260820"></script>
+<script type="module" src="js/supabase-bridge.js?v=20260820"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script>
+(window.SupabaseReady || Promise.resolve()).then(function() {
 App.init('settings');
 App.checkLogin();
 App.initSampleData();
@@ -381,6 +387,7 @@ function renderAdvanced() {
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="btn btn-sm" onclick="exportData()">📤 导出所有数据</button>
           <button class="btn btn-sm" onclick="importData()">📥 导入数据</button>
+          <button class="btn btn-sm" onclick="syncToCloud()" style="background:#10b981;color:#fff;">☁️ 同步到云端</button>
           <button class="btn btn-sm" onclick="clearAllData()" style="color:#dc2626;">🗑️ 清空所有数据</button>
         </div>
       </div>
@@ -461,7 +468,12 @@ function importData() {
 }
 
 function clearAllData() {
-  App.confirm('确定要清空所有数据吗？此操作不可恢复！', () => {
+  App.confirm('确定要清空所有数据吗？此操作不可恢复！', async () => {
+    // 清空 Supabase 数据
+    if (window.SupabaseStore) {
+      await window.SupabaseStore.clearAll();
+      window.SupabaseStore.reset();
+    }
     localStorage.clear();
     sessionStorage.clear();
     App.toast('数据已清空，请重新登录', 'success');
@@ -477,11 +489,26 @@ function clearAllData() {
   });
 }
 
+async function syncToCloud() {
+  if (!window.SupabaseStore) {
+    App.toast('云端存储未连接', 'error');
+    return;
+  }
+  App.toast('正在同步...', 'info');
+  const result = await window.SupabaseStore.forceSync();
+  if (result.success) {
+    App.toast(`同步完成，共同步 ${result.synced} 个数据集`, 'success');
+  } else {
+    App.toast('同步失败：' + (result.message || '未知错误'), 'error');
+  }
+}
+
 // ===== 初始化 =====
 if (canAccessSettings) {
   document.getElementById('userName').textContent = currentUser?.username || '管理员';
   renderUsers();
 }
+});
 </script>
 </body>
 </html>

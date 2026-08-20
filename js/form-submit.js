@@ -470,6 +470,73 @@ const SupabaseSubmit = {
   // 管理员判断
   isAdmin,
   ADMIN_EMAILS,
+
+  /**
+   * 专用图片上传：直接上传到 Storage，返回 file_path
+   * 用于样衣计划等需要独立上传图片的场景
+   * @param {File} file 图片文件
+   * @param {string} subFolder 子文件夹路径（如 "sample"）
+   * @returns {Promise<{path:string, fileName:string}|null>}
+   */
+  async uploadPicture(file, subFolder) {
+    subFolder = subFolder || "uploads";
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return null;
+
+    // 校验文件类型
+    const isImage = ALLOWED_IMAGE_MIME.indexOf(file.type) >= 0;
+    if (!isImage) {
+      toast("仅支持图片格式（jpg/png/webp/gif/bmp/svg）", "error");
+      return null;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast("图片超过 5MB 限制", "error");
+      return null;
+    }
+
+    // 生成路径：{userId}/{subFolder}/{randomUUID}-{safeFileName}
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path =
+      user.id +
+      "/" +
+      subFolder +
+      "/" +
+      crypto.randomUUID() +
+      "-" +
+      safeFileName(file.name);
+
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file, {
+        contentType: file.type || "image/jpeg",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("[form-submit] uploadPicture error:", error);
+      toast("上传失败：" + (error.message || "请检查网络"), "error");
+      return null;
+    }
+
+    toast("上传成功", "success");
+    return { path: path, fileName: file.name };
+  },
+
+  /**
+   * 删除 Storage 中的图片
+   * @param {string} filePath Storage 文件路径
+   */
+  async deletePicture(filePath) {
+    if (!filePath) return false;
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+    if (error) {
+      console.error("[form-submit] deletePicture error:", error);
+      return false;
+    }
+    return true;
+  },
 };
 
 // 暴露到全局，便于非模块脚本调用
