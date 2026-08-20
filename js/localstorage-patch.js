@@ -54,8 +54,9 @@ localStorage.getItem = function(key) {
     const raw = _origGetItem(key);
     if (raw !== null) {
       // 解析并规范化数据
+      let parsed = null;
       try {
-        const parsed = JSON.parse(raw);
+        parsed = JSON.parse(raw);
         // 如果是 {data: [...]} 格式，提取 data
         if (typeof parsed === 'object' && !Array.isArray(parsed) && parsed.data !== undefined) {
           const normalized = parsed.data;
@@ -65,7 +66,9 @@ localStorage.getItem = function(key) {
         }
       } catch (e) { /* 非 JSON 字符串，原样返回 */ }
       // 写入 SupabaseStore 缓存
-      window.SupabaseStore.setSync(key, parsed);
+      if (parsed !== null) {
+        window.SupabaseStore.setSync(key, parsed);
+      }
     }
     return raw;
   }
