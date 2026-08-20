@@ -1,5 +1,63 @@
 /* ===== 舜天汉唐服装外贸系统 - 共享JS ===== */
 
+/* ===== Supabase 会话读取（同步，从 localStorage 读取，不伪造登录态）=====
+ * Supabase v2 客户端默认把会话写入 localStorage，键名形如 sb-<ref>-auth-token
+ * 真正的会话有效性校验由 js/auth-guard.js 调用 supabase.auth.getUser() 完成
+ * 这里仅做"是否存在会话令牌"的同步判断，供 App.checkLogin 同步使用
+ * 注意：不保存任何密码到 localStorage
+ */
+function _readSupabaseSessionSync() {
+  try {
+    var keys = Object.keys(localStorage);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') >= 0) {
+        var raw = localStorage.getItem(k);
+        if (!raw) continue;
+        try {
+          var parsed = JSON.parse(raw);
+          if (parsed && parsed.user) return parsed;
+        } catch (e) { /* 忽略解析失败 */ }
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+// 清理所有 Supabase 会话存储 + 旧本地登录态
+function _clearAllAuthState() {
+  try {
+    var keys = Object.keys(localStorage);
+    keys.forEach(function (k) {
+      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') >= 0) {
+        localStorage.removeItem(k);
+      }
+    });
+  } catch (e) {}
+  try {
+    ['isLoggedIn', 'currentUserId', 'username', 'userRole', 'refDPR'].forEach(function (k) {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+  } catch (e) {}
+}
+
+// 把 Supabase user 映射为系统原有用户结构（保持 App.* 方法兼容）
+function _mapSupabaseUser(user) {
+  if (!user) return null;
+  var email = user.email || '';
+  var meta = user.user_metadata || {};
+  return {
+    id: user.id,
+    username: meta.username || (email ? email.split('@')[0] : '用户'),
+    email: email,
+    role: meta.role || 'user',
+    description: meta.description || '',
+    status: 'active',
+    createDate: user.created_at ? String(user.created_at).slice(0, 10) : ''
+  };
+}
+
 /* ===== 浏览器缩放归一化 ===== */
 /* 解决Chrome/Edge为不同URL记住不同缩放级别导致页面大小不一致的问题 */
 /* 原理：以登录时的devicePixelRatio为基准，对比当前DPR，若差异超过5%则用CSS zoom反向校正 */
@@ -92,9 +150,23 @@ const App = {
     }
   },
 
-  // 加载用户信息
+  // 加载用户信息（Supabase 适配）
   loadUserInfo() {
-    const username = localStorage.getItem('username') || sessionStorage.getItem('username') || '管理员';
+    let username = '管理员';
+    try {
+      const cu = window.currentSupabaseUser;
+      if (cu) {
+        username = (cu.user_metadata && cu.user_metadata.username)
+          || (cu.email ? cu.email.split('@')[0] : '用户');
+      } else {
+        const session = _readSupabaseSessionSync();
+        if (session && session.user) {
+          const u = session.user;
+          username = (u.user_metadata && u.user_metadata.username)
+            || (u.email ? u.email.split('@')[0] : '用户');
+        }
+      }
+    } catch (e) {}
     const userEl = document.querySelector('.header-user .user-name');
     if (userEl) userEl.textContent = username;
   },
@@ -360,51 +432,42 @@ const App = {
     this.toast('数据备份成功', 'success');
   },
 
-  // ===== 登录检查 =====
+  // ===== 登录检查（Supabase 适配）=====
+  // 同步读取 localStorage 中的 Supabase 会话令牌
+  // 真正的会话有效性由 js/auth-guard.js 的 supabase.auth.getUser() 校验
+  // 这里只判断"是否存在会话"，不自行伪造登录状态
   checkLogin() {
-    // localStorage 与 sessionStorage 双重检查（file:// 下某些浏览器会锁 localStorage）
-    const isLoggedIn =
-      localStorage.getItem('isLoggedIn') === 'true' ||
-      sessionStorage.getItem('isLoggedIn') === 'true';
-    const uid =
-      localStorage.getItem('currentUserId') ||
-      sessionStorage.getItem('currentUserId');
-    if (!isLoggedIn || !uid) {
-      // 清除残留后跳登录
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem('currentUserId');
-      localStorage.removeItem('username');
-      localStorage.removeItem('userRole');
-      sessionStorage.removeItem('isLoggedIn');
-      sessionStorage.removeItem('currentUserId');
-      sessionStorage.removeItem('username');
-      sessionStorage.removeItem('userRole');
-      window.location.replace('login.html');
-      return false;
-    }
-    // 会话级的 sessionStorage 同步到 localStorage（如果可用）
-    if (sessionStorage.getItem('isLoggedIn') && !localStorage.getItem('isLoggedIn')) {
+    const session = _readSupabaseSessionSync();
+    if (!session || !session.user) {
+      _clearAllAuthState();
       try {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUserId', sessionStorage.getItem('currentUserId'));
-        localStorage.setItem('username', sessionStorage.getItem('username'));
-        localStorage.setItem('userRole', sessionStorage.getItem('userRole'));
-      } catch (e) { /* ignore */ }
+        window.location.replace('login.html');
+      } catch (e) {
+        window.location.href = 'login.html';
+      }
+      return false;
     }
     return true;
   },
 
-  // ===== 退出登录 =====
+  // ===== 退出登录（Supabase 适配）=====
+  // 清除本地会话 + 异步调用 supabase.auth.signOut() + 跳登录页
+  // 若 js/auth-guard.js 已加载，会以 auth-guard 的更完整版本覆盖此方法
   logout() {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('currentUserId');
-    sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('username');
-    sessionStorage.removeItem('userRole');
-    sessionStorage.removeItem('currentUserId');
-    window.location.replace('login.html');
+    _clearAllAuthState();
+    // 异步调用 signOut（动态 import，失败不影响跳转）
+    import('./supabase.js')
+      .then(function (mod) {
+        return mod.supabase.auth.signOut().catch(function () {});
+      })
+      .catch(function () {})
+      .finally(function () {
+        try {
+          window.location.replace('login.html');
+        } catch (e) {
+          window.location.href = 'login.html';
+        }
+      });
   },
 
   // ===== 角色定义 =====
@@ -449,14 +512,20 @@ const App = {
     settings:     '设置',
   },
 
-  // ===== 获取当前登录用户 =====
+  // ===== 获取当前登录用户（Supabase 适配）=====
+  // 优先使用 auth-guard 已校验的 window.currentSupabaseUser
+  // 否则同步从 localStorage 中的 Supabase 会话读取并映射为系统用户结构
   getCurrentUser() {
-    const userId =
-      localStorage.getItem('currentUserId') ||
-      sessionStorage.getItem('currentUserId');
-    if (!userId) return null;
-    const users = this.store.get('users', []);
-    return users.find(u => u.id === userId) || null;
+    try {
+      if (window.currentSupabaseUser) {
+        return _mapSupabaseUser(window.currentSupabaseUser);
+      }
+      const session = _readSupabaseSessionSync();
+      if (session && session.user) {
+        return _mapSupabaseUser(session.user);
+      }
+    } catch (e) {}
+    return null;
   },
 
   // ===== 检查当前用户对某模块的权限 =====

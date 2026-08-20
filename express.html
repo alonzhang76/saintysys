@@ -240,6 +240,7 @@ table.data-table {
 .badge.sto { background: #d1fae5; color: #065f46; }
 .badge.ems { background: #dbeafe; color: #1e40af; }
 .badge.dhl { background: #fef9c3; color: #d40511; font-weight: 700; }
+.badge.ups { background: #fef3c7; color: #78350f; font-weight: 700; }
 .badge.dbl { background: #f3e8ff; color: #6b21a8; }
 .badge.jt { background: #ffedd5; color: #9a3412; }
 .badge.other { background: #f1f5f9; color: var(--text-muted); }
@@ -731,6 +732,11 @@ table.data-table {
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="js/common.js?v=20260812"></script>
+<!-- Supabase 登录守卫 -->
+<script src="js/auth-guard.js?v=20260813"></script>
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260813"></script>
+<script type="module" src="js/logout.js?v=20260813"></script>
 <script>
 // ===== 系统初始化 =====
 App.init('express');
@@ -762,6 +768,8 @@ const COMPANIES = [
     products: ['EMS标准快递','EMS经济快递','e邮宝'] },
   { name: 'DHL国际快递', prefix: '', badge: 'dhl', international: true,
     products: ['DHL Express Worldwide','DHL Express 12:00','DHL Express 9:00','DHL Economy Select','DHL Medical Express','DHL Global Mail'] },
+  { name: 'UPS国际快递', prefix: '', badge: 'ups', international: true,
+    products: ['UPS Express','UPS Express 12:00','UPS Express Saver','UPS Expedited','UPS Ground','UPS Next Day Air'] },
   { name: '德邦快递', prefix: 'DBL', badge: 'dbl',
     products: ['德邦标快','德邦大件','德邦快运'] },
   { name: '极兔速递', prefix: 'JT', badge: 'jt',
@@ -782,6 +790,7 @@ const TRACKING_URLS = {
   '申通快递': 'https://www.sto.cn/track/{t}.html',
   'EMS': 'https://www.ems.com.cn/queryList?mailNum={t}',
   'DHL国际快递': 'https://www.dhl.com/cn-zh/home/tracking/tracking-express.html?submit=1&tracking-id={t}',
+  'UPS国际快递': 'https://www.ups.com/track?tracknum={t}',
   '德邦快递': 'https://www.deppon.com/dop/track/waybill?waybillNo={t}',
   '极兔速递': 'https://www.jtexpress.com/Track?id={t}',
 };

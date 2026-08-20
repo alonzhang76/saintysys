@@ -56,6 +56,14 @@
 </div>
 
 <script src="js/common.js?v=20260812"></script>
+<!-- Supabase 登录守卫（经典脚本，同步覆盖 App.checkLogin 等方法 + 异步 getUser 校验）-->
+<script src="js/auth-guard.js?v=20260813"></script>
+<!-- 管理员邮箱配置（仅控制界面显示，真正权限由 Supabase RLS 保证）-->
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<!-- 统一表单提交 + 文件上传 helper（提供 window.SupabaseSubmit，并自动绑定 data-supabase-form）-->
+<script type="module" src="js/form-submit.js?v=20260813"></script>
+<!-- 退出登录（兼容 #logout-button/#logout-btn/#logout；现有 onclick="App.logout()" 由 auth-guard 接管）-->
+<script type="module" src="js/logout.js?v=20260813"></script>
 <script>
 App.init('index');
 App.checkLogin();
