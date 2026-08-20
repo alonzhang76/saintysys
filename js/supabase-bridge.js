@@ -4,13 +4,14 @@
  * 所有通过 App.store.get/set 的调用会自动走 Supabase
  * 同步 get 返回内存缓存中的数据，set 同时更新缓存和云端
  *
+ * 注意：不直接 import supabase-store.js（避免模块重复加载）
+ * 而是使用 window.SupabaseStore（由 HTML 中的 supabase-store.js 设置）
+ *
  * 在需要 Supabase 存储的页面中引用：
  *   <script type="module" src="js/supabase-bridge.js"></script>
  *
  * 必须在 common.js 之后、业务脚本之前引用
  */
-
-import { SupabaseStore } from "./supabase-store.js";
 
 // 保存原始 App.store
 const origStore = window.App ? window.App.store : null;

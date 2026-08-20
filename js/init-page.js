@@ -65,12 +65,12 @@
     waitAndRun();
   }
 
-  // 超时兜底：3 秒后强制执行初始化（防止 SupabaseReady 永远不 resolve）
+  // 超时兜底：15 秒后强制执行初始化（防止 SupabaseReady 永远不 resolve）
   setTimeout(function() {
     if (!initialized) {
-      console.warn('[init-page] 超时，强制执行初始化');
+      console.warn('[init-page] 超时（15s），强制执行初始化');
       tryRunAll();
     }
-  }, 3000);
+  }, 15000);
 
 })(window);

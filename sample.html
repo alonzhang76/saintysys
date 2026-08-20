@@ -973,9 +973,9 @@ input[type="number"] { -moz-appearance: textfield; }
 <script src="js/auth-guard.js?v=20260813"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260820"></script>
-<script type="module" src="js/supabase-store.js?v=20260820c"></script>
-<script type="module" src="js/localstorage-patch.js?v=20260820b"></script>
-<script type="module" src="js/supabase-bridge.js?v=20260820"></script>
+<script type="module" src="js/supabase-store.js?v=20260820d"></script>
+<script type="module" src="js/localstorage-patch.js?v=20260820c"></script>
+<script type="module" src="js/supabase-bridge.js?v=20260820c"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
@@ -1655,15 +1655,21 @@ renderSampleTable();
 
   // ===== Storage =====
   function loadData() {
-    try { 
-      const saved = localStorage.getItem(STORAGE_KEY); 
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
       const parsed = saved ? JSON.parse(saved) : [];
-      state.data = Array.isArray(parsed) ? parsed : []; 
-    } catch(e) { state.data = []; }
-    try { 
-      const sizeSaved = localStorage.getItem(SIZE_TABLE_KEY); 
+      state.data = Array.isArray(parsed) ? parsed : [];
+      // 调试日志：帮助追踪数据来源
+      console.log('[SamplePlan] loadData: 从 getItem 获取', state.data.length, '条记录', 
+        saved ? '(有数据)' : '(null/空)');
+    } catch(e) {
+      console.error('[SamplePlan] loadData 异常:', e);
+      state.data = [];
+    }
+    try {
+      const sizeSaved = localStorage.getItem(SIZE_TABLE_KEY);
       const parsed = sizeSaved ? JSON.parse(sizeSaved) : [];
-      state.sizeTables = Array.isArray(parsed) ? parsed : []; 
+      state.sizeTables = Array.isArray(parsed) ? parsed : [];
     } catch(e) { state.sizeTables = []; }
   }
 

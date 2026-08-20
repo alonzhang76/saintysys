@@ -48,17 +48,22 @@ localStorage.getItem = function(key) {
   if (window.SupabaseStore) {
     const val = window.SupabaseStore.getSync(key);
     if (val !== undefined && val !== null) {
+      if (Array.isArray(val)) {
+        console.log('[LS-Patch] getItem(' + key + ') → Supabase缓存, ' + val.length + ' 条');
+      }
       return JSON.stringify(val);
     }
 
     // SupabaseStore 已初始化完成但缓存中没有此 key
     // 说明 Supabase 中确实没有此数据，返回 null（不回退到本地数据）
     if (window.SupabaseStore._isInitialized && window.SupabaseStore._isInitialized()) {
+      console.log('[LS-Patch] getItem(' + key + ') → null (Supabase无此数据)');
       return null;
     }
 
     // SupabaseStore 尚未初始化完成，临时从本地 localStorage 读取
     // 但不写入缓存（避免污染后续 Supabase 加载）
+    console.log('[LS-Patch] getItem(' + key + ') → 本地回退 (Supabase未初始化)');
     return _origGetItem(key);
   }
   return _origGetItem(key);

@@ -143,39 +143,35 @@ async function init() {
 /**
  * 将 localStorage 中存在但 Supabase 中没有的数据迁移过来
  * 共享模式：不按 user_id 区分，所有数据共享一行
- * 重要：使用原始 localStorage（绕过 patch），避免读取被 patch 的 getItem
+ * 优化：一次查询获取所有已存在的 keys，避免逐个查询
  */
 async function migrateFromLocalStorage() {
-  // 使用原始 localStorage（绕过 patch，避免循环依赖）
   const origGetItem = (window._origLocalStorage && window._origLocalStorage.getItem) || localStorage.getItem.bind(localStorage);
+
+  // 1. 一次性获取 Supabase 中所有已存在的 store_key
+  let existingKeys = new Set();
+  try {
+    const { data, error } = await safeQuery(
+      supabase.from('app_data_store').select('store_key')
+    );
+    if (!error && data) {
+      data.forEach(row => existingKeys.add(row.store_key));
+    }
+  } catch (e) {
+    console.warn('[SupabaseStore] 迁移：查询已有 keys 失败:', e);
+  }
+
+  // 2. 遍历 localStorage，只迁移 Supabase 中不存在的 key
   let migratedCount = 0;
+  const user = await getCurrentUser();
 
   for (const key of LOCAL_KEYS) {
     if (['isLoggedIn', 'username', 'userRole', 'currentUserId', 'refDPR'].includes(key)) continue;
+    if (existingKeys.has(key)) continue; // Supabase 已有，跳过
 
     const raw = origGetItem(key);
     if (!raw) continue;
 
-    // 检查 Supabase 中是否已有此 key（共享模式：只按 store_key 查询）
-    const { data: existing, error: checkErr } = await safeQuery(
-      supabase
-        .from('app_data_store')
-        .select('id')
-        .eq('store_key', key)
-        .limit(1)
-    );
-
-    if (checkErr) {
-      console.warn('[SupabaseStore] 检查迁移状态失败:', key, checkErr);
-      continue;
-    }
-
-    if (existing && existing.length > 0) {
-      // Supabase 已有此 key，跳过（不覆盖云端数据）
-      continue;
-    }
-
-    // 迁移到 Supabase
     try {
       let payload;
       try {
@@ -184,7 +180,7 @@ async function migrateFromLocalStorage() {
         payload = raw;
       }
       payload = normalizePayload(payload);
-      const user = await getCurrentUser();
+
       const { error } = await safeQuery(
         supabase
           .from('app_data_store')
@@ -200,7 +196,6 @@ async function migrateFromLocalStorage() {
         console.warn('[SupabaseStore] 迁移失败:', key, error);
       } else {
         migratedCount++;
-        // 不写入 _cache — 让后续 Supabase 加载来填充缓存
         console.log('[SupabaseStore] 已迁移:', key);
       }
     } catch (e) {
@@ -223,10 +218,11 @@ async function forceSync() {
 
   const origLS = window._origLocalStorage || window.localStorage;
   let synced = 0;
+  let skipped = 0;
   for (const key of LOCAL_KEYS) {
     if (['isLoggedIn', 'username', 'userRole', 'currentUserId', 'refDPR'].includes(key)) continue;
     const raw = origLS.getItem(key);
-    if (!raw) continue;
+    if (!raw) { skipped++; continue; }
 
     let payload;
     try {
@@ -256,6 +252,7 @@ async function forceSync() {
     }
   }
 
+  console.log('[SupabaseStore] forceSync 完成: 同步', synced, '个, 跳过', skipped, '个(本地无数据)');
   return { success: true, synced: synced };
 }
 
