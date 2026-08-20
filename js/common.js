@@ -627,38 +627,19 @@ const App = {
 
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
-  const DATA_VERSION = '7'; // v7: Supabase user_roles 权限系统
+  const DATA_VERSION = '8'; // v8: Supabase 集成（仅重置权限，不清空业务数据）
   const currentVersion = localStorage.getItem('dataVersion');
+  const isVersionChanged = currentVersion !== DATA_VERSION;
 
-  // 版本变更或首次运行：重置业务样本数据
-  if (currentVersion !== DATA_VERSION) {
-    // 同时清理 Supabase 中的旧数据（让 SupabaseStore 重新同步）
+  // 版本变更：仅重置权限配置，不清空业务数据
+  // 业务数据（订单、样衣等）已迁移到 Supabase，不应被清空
+  if (isVersionChanged) {
+    // 重置权限配置（从 Supabase user_roles/module_permissions 读取）
+    // 这里只清理旧的 permissions JSON，让系统从 Supabase 重新加载
     if (window.SupabaseStore) {
-      ['customers', 'styles', 'orders', 'samples', 'feedbacks',
-       'productions', 'invoices', 'payments', 'collections',
-       'contacts', 'favoriteContacts', 'users', 'permissions',
-       'washes', 'shippings', 'maintFabrics', 'maintAccessories',
-       'express_delivery_data_v2', 'pl_records_v1', 'pl_draft_v1',
-       'sht_sample_data_v2', 'sht_size_tables_v2', 'sizeSheets'
-      ].forEach(key => {
-        window.SupabaseStore.remove(key);
-      });
+      window.SupabaseStore.remove('permissions');
+      window.SupabaseStore.remove('users');
     }
-    App.store.set('customers', []);
-    App.store.set('styles', []);
-    App.store.set('orders', []);
-    App.store.set('fabrics', []);
-    App.store.set('accessories', []);
-    App.store.set('samples', []);
-    App.store.set('feedbacks', []);
-    App.store.set('productions', []);
-    App.store.set('washes', []);
-    App.store.set('shippings', []);
-    App.store.set('invoices', []);
-    App.store.set('payments', []);
-    App.store.set('collections', []);
-    App.store.set('contacts', []);
-    localStorage.removeItem('favoriteContacts');
     localStorage.setItem('dataVersion', DATA_VERSION);
   }
 

@@ -168,10 +168,12 @@ async function forceSync() {
   const user = await getCurrentUser();
   if (!user) return { success: false, message: '未登录' };
 
+  const origLS = window._origLocalStorage || window.localStorage;
   let synced = 0;
   for (const key of LOCAL_KEYS) {
     if (['isLoggedIn', 'username', 'userRole', 'currentUserId', 'refDPR'].includes(key)) continue;
-    const raw = localStorage.getItem(key);
+    // 使用原始 localStorage 读取（绕过 patch，避免返回空缓存）
+    const raw = origLS.getItem(key);
     if (!raw) continue;
 
     let payload;
@@ -375,6 +377,69 @@ window.SupabaseReady = init();
 
 // 自动初始化完成后标记
 window.SupabaseReady.then(ok => {
-  if (ok) console.log('[SupabaseStore] ✅ 已连接到云端存储');
-  else console.log('[SupabaseStore] ⚠️ 云端存储未就绪，使用本地缓存');
+  if (ok) {
+    console.log('[SupabaseStore] ✅ 已连接到云端存储');
+    // 自动恢复：检查是否有业务数据丢失但 localStorage 还保留
+    // 这处理了版本变更时误清空数据的情况
+    recoverFromLocalStorage();
+  } else {
+    console.log('[SupabaseStore] ⚠️ 云端存储未就绪，使用本地缓存');
+  }
 });
+
+/**
+ * 从原始 localStorage 恢复数据
+ * 当 Supabase 中的数据被清空但 localStorage 还保留时，自动恢复
+ */
+function recoverFromLocalStorage() {
+  const recoveryKeys = ['orders', 'samples', 'contacts', 'shippings',
+    'express_delivery_data_v2', 'sht_sample_data_v2', 'sht_size_tables_v2',
+    'sizeSheets', 'maintFabrics', 'maintAccessories', 'favoriteContacts',
+    'customers', 'styles', 'feedbacks', 'productions', 'washes',
+    'invoices', 'payments', 'collections', 'fabrics', 'accessories'];
+
+  let recovered = 0;
+  recoveryKeys.forEach(key => {
+    if (_cache[key] !== undefined && _cache[key] !== null &&
+        Array.isArray(_cache[key]) && _cache[key].length > 0) {
+      return; // 已有数据，跳过
+    }
+    // 从原始 localStorage 读取（绕过 patch）
+    try {
+      const origLS = window._origLocalStorage || window.localStorage;
+      const raw = origLS.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          _cache[key] = parsed;
+          // 异步保存到 Supabase
+          getCurrentUser().then(user => {
+            if (!user) return;
+            supabase
+              .from('app_data_store')
+              .upsert({
+                user_id: user.id,
+                store_key: key,
+                payload: parsed,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'user_id, store_key' })
+              .catch(e => console.warn('[SupabaseStore] 恢复保存失败:', key, e));
+          });
+          recovered++;
+        }
+      }
+    } catch (e) {
+      // 忽略解析错误
+    }
+  });
+
+  if (recovered > 0) {
+    console.log('[SupabaseStore] 🔄 已从 localStorage 恢复', recovered, '个数据集');
+    // 刷新页面显示
+    setTimeout(() => {
+      if (window.App && window.App._onDataChanged) {
+        window.App._onDataChanged();
+      }
+    }, 500);
+  }
+}

@@ -742,14 +742,8 @@ table.data-table {
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
+<script src="js/init-page.js"></script>
 <script>
-// ===== 系统初始化 =====
-(window.SupabaseReady || Promise.resolve()).then(function() {
-App.init('express');
-App.checkLogin();
-App.initSampleData();
-App.enforcePagePermission('express');
-
 // ===== Data =====
 const STORAGE_KEY = 'express_delivery_data_v2';
 let records = [];
@@ -2067,6 +2061,12 @@ function renderAll() {
 }
 
 // ===== Start =====
+_init(function() {
+App.init('express');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('express');
+
 initExpress();
 });
 </script>

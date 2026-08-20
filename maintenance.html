@@ -452,13 +452,8 @@
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
+<script src="js/init-page.js"></script>
 <script>
-(window.SupabaseReady || Promise.resolve()).then(function() {
-App.init('maintenance');
-App.checkLogin();
-App.initSampleData();
-App.enforcePagePermission('maintenance');
-
 // ===== 维护资料模块 =====
 const Maintenance = {
   currentTab: 'fabric',
@@ -2119,9 +2114,15 @@ const Maintenance = {
   }
 };
 
+// ===== 页面初始化 =====
+_init(function() {
+App.init('maintenance');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('maintenance');
+
 Maintenance.init();
 
-// 点击外部关闭操作下拉菜单
 document.addEventListener('click', (e) => {
   ['fabricActionDropdown', 'accessoryActionDropdown', 'termActionDropdown'].forEach(id => {
     const dd = document.getElementById(id);

@@ -494,13 +494,8 @@
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/init-page.js"></script>
 <script>
-(window.SupabaseReady || Promise.resolve()).then(function() {
-App.init('shipping');
-App.checkLogin();
-App.initSampleData();
-App.enforcePagePermission('shipping');
-
 // ==================== Main Tab Switching ====================
 function switchMainTab(tab, el) {
   const items = document.querySelectorAll('.app-content > .tabs .tab-item');
@@ -4376,6 +4371,12 @@ function loadOriginalSample() {
 }
 
 // ==================== Init ====================
+_init(function() {
+App.init('shipping');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('shipping');
+
 populateStyleList();
 lockBankFields();
 if (!loadDraft()) {

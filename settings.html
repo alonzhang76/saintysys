@@ -62,23 +62,9 @@
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
+<script src="js/init-page.js"></script>
 <script>
-(window.SupabaseReady || Promise.resolve()).then(function() {
-App.init('settings');
-App.checkLogin();
-App.initSampleData();
-
-// 只有管理员或有设置权限的用户才能访问
-const currentUser = App.getCurrentUser();
-const canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || App.getPermission('settings') !== 'none');
-if (!canAccessSettings) {
-  document.querySelector('.app-content').innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
-      <div style="font-size:64px;margin-bottom:16px;">🔒</div>
-      <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
-      <div style="font-size:14px;">您当前的角色无权访问设置模块，请联系管理员开通权限</div>
-    </div>`;
-}
+// ===== 设置模块（函数定义在全局作用域） =====
 
 // ===== 标签页切换 =====
 let currentTab = 'users';
@@ -388,6 +374,7 @@ function renderAdvanced() {
           <button class="btn btn-sm" onclick="exportData()">📤 导出所有数据</button>
           <button class="btn btn-sm" onclick="importData()">📥 导入数据</button>
           <button class="btn btn-sm" onclick="syncToCloud()" style="background:#10b981;color:#fff;">☁️ 同步到云端</button>
+          <button class="btn btn-sm" onclick="recoverFromLocal()" style="background:#f59e0b;color:#fff;">🔄 从本地恢复</button>
           <button class="btn btn-sm" onclick="clearAllData()" style="color:#dc2626;">🗑️ 清空所有数据</button>
         </div>
       </div>
@@ -503,11 +490,43 @@ async function syncToCloud() {
   }
 }
 
-// ===== 初始化 =====
-if (canAccessSettings) {
-  document.getElementById('userName').textContent = currentUser?.username || '管理员';
-  renderUsers();
+async function recoverFromLocal() {
+  if (!window.confirm('确定要从浏览器本地存储恢复数据吗？\n这将把 localStorage 中的旧数据重新保存到云端。')) return;
+  if (!window.SupabaseStore) {
+    App.toast('云端存储未连接', 'error');
+    return;
+  }
+  App.toast('正在从本地恢复数据...', 'info');
+  const result = await window.SupabaseStore.forceSync();
+  if (result.success) {
+    App.toast(`恢复完成，共恢复 ${result.synced} 个数据集，正在刷新页面...`, 'success');
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    App.toast('恢复失败', 'error');
+  }
 }
+
+// ===== 初始化 =====
+_init(function() {
+App.init('settings');
+App.checkLogin();
+App.initSampleData();
+
+// 只有管理员或有设置权限的用户才能访问
+const currentUser = App.getCurrentUser();
+const canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || App.getPermission('settings') !== 'none');
+if (!canAccessSettings) {
+  document.querySelector('.app-content').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
+      <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+      <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
+      <div style="font-size:14px;">您当前的角色无权访问设置模块，请联系管理员开通权限</div>
+    </div>`;
+  return;
+}
+
+document.getElementById('userName').textContent = currentUser?.username || '管理员';
+renderUsers();
 });
 </script>
 </body>

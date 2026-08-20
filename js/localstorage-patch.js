@@ -28,6 +28,13 @@ const _origGetItem = localStorage.getItem.bind(localStorage);
 const _origSetItem = localStorage.setItem.bind(localStorage);
 const _origRemoveItem = localStorage.removeItem.bind(localStorage);
 
+// 暴露原始方法，供数据恢复等场景使用
+window._origLocalStorage = {
+  getItem: _origGetItem,
+  setItem: _origSetItem,
+  removeItem: _origRemoveItem,
+};
+
 // 检查键是否需要走 Supabase
 function shouldUseSupabase(key) {
   return SUPERSET_KEYS.indexOf(key) >= 0 && SAFE_KEYS.indexOf(key) < 0;

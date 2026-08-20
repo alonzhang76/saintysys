@@ -361,13 +361,8 @@
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
+<script src="js/init-page.js"></script>
 <script>
-(window.SupabaseReady || Promise.resolve()).then(function() {
-App.init('contacts');
-App.checkLogin();
-App.initSampleData();
-App.enforcePagePermission('contacts');
-
 // ===== 通讯录模块 =====
 const Contacts = {
   currentPage: 1,
@@ -1166,6 +1161,13 @@ const Contacts = {
     this.renderCards();
   }
 };
+
+// ===== 页面初始化 =====
+_init(function() {
+App.init('contacts');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('contacts');
 
 Contacts.init();
 

@@ -180,14 +180,9 @@
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
+<script src="js/init-page.js"></script>
 <script>
-(window.SupabaseReady || Promise.resolve()).then(function() {
-App.init('order');
-App.checkLogin();
-App.initSampleData();
-App.enforcePagePermission('order');
-
-// ===== 工具函数 =====
+// ===== 工具函数（全局作用域，onclick 可访问） =====
 
 // 根据联系人ID获取客户公司名
 function getCustomerName(customerId) {
@@ -2805,7 +2800,13 @@ function deleteMaterial(id) {
   });
 }
 
-// ===== 页面初始化 =====
+// ===== 页面初始化（等待 Supabase 就绪后执行） =====
+_init(function() {
+App.init('order');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('order');
+
 renderStats();
 renderCustomerFilter();
 renderTable();
