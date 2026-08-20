@@ -543,6 +543,10 @@ const SupabaseSubmit = {
    * 上传后的文件名格式为：{uuid}-{原始文件名}
    * 例如：b54ef635-uuid-111222.jpg 匹配原始文件名 111222.jpg
    *
+   * 搜索策略：
+   *   1) 先在当前用户的 {userId}/sample/ 目录查找
+   *   2) 再扫描所有用户目录，跨用户查找（兼容历史数据/账号变更）
+   *
    * @param {string} styleNo 款号（如 "111222"）
    * @param {string} subFolder 子文件夹（如 "sample"）
    * @param {string} originalExt 可选：原始扩展名（如 "jpg"）
@@ -554,103 +558,134 @@ const SupabaseSubmit = {
     const user = await getCurrentUserOrRedirect();
     if (!user) return null;
 
-    const folderPath = user.id + "/" + subFolder;
     const targetName = String(styleNo).toLowerCase();
+    const formats = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
+    // UUID 正则：匹配以 UUID 开头的文件名
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
 
-    try {
-      // 列出用户子文件夹下的所有文件
-      const { data, error } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .list(folderPath, { limit: 100 });
+    // 匹配规则：从文件名中提取 UUID 后的原始文件名，与款号比对
+    function matchItem(item, targetName, originalExt) {
+      const name = item.name;
+      if (name.startsWith('.')) return false;
+      const lowerName = name.toLowerCase();
 
-      if (error) {
-        console.warn("[form-submit] findPictureByStyleNo list error:", error);
+      // 尝试去除 UUID 前缀
+      let afterUuid = name;
+      const uuidMatch = name.match(uuidRegex);
+      if (uuidMatch) {
+        afterUuid = name.substring(uuidMatch[0].length);
+      } else {
+        // 备选：用 indexOf 找到第4个 "-"（UUID 有4个 "-"）
+        let pos = -1;
+        for (let i = 0; i < 4; i++) {
+          pos = name.indexOf('-', pos + 1);
+          if (pos === -1) break;
+        }
+        if (pos >= 0) afterUuid = name.substring(pos + 1);
+      }
+
+      const lowerAfterUuid = afterUuid.toLowerCase();
+      const nameWithoutExt = lowerAfterUuid.replace(/\.[^.]+$/, '');
+
+      // 条件1：去除扩展名后，文件名等于款号 或 包含款号
+      const isNameMatch = nameWithoutExt === targetName || nameWithoutExt.includes(targetName);
+
+      // 条件2：如果指定了扩展名，优先检查
+      if (originalExt) {
+        const extMatch = lowerName.endsWith('.' + originalExt.toLowerCase());
+        if (isNameMatch && extMatch) return true;
+        // 文件名包含款号但扩展名不完全匹配 → 备选
+        if (isNameMatch) return true;
+        return false;
+      }
+
+      // 条件3：兜底：文件名直接以 {款号}.{扩展名} 结尾
+      if (!isNameMatch) {
+        for (const fmt of formats) {
+          if (lowerName.endsWith('-' + targetName + '.' + fmt) ||
+              lowerName.includes(targetName + '.' + fmt)) {
+            return true;
+          }
+        }
+      }
+
+      return isNameMatch;
+    }
+
+    // 尝试从指定目录列表中查找匹配文件
+    async function searchInFolder(folderPath) {
+      try {
+        const { data, error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .list(folderPath, { limit: 200 });
+
+        if (error || !data || !Array.isArray(data) || data.length === 0) return null;
+
+        for (const item of data) {
+          if (matchItem(item, targetName, originalExt)) {
+            const fullPath = folderPath + "/" + item.name;
+            // 获取签名 URL
+            const { data: urlData, error: urlError } = await supabase.storage
+              .from(STORAGE_BUCKET)
+              .createSignedUrl(fullPath, 300);
+
+            if (urlError) {
+              console.warn("[form-submit] findPictureByStyleNo signedUrl error:", urlError);
+              return { path: fullPath, signedUrl: null };
+            }
+
+            return {
+              path: fullPath,
+              signedUrl: urlData && urlData.signedUrl ? urlData.signedUrl : null
+            };
+          }
+        }
+        return null; // 没找到匹配
+      } catch (e) {
         return null;
       }
-      if (!data || !Array.isArray(data) || data.length === 0) return null;
+    }
 
-      // 匹配规则：文件名去除 UUID 前缀后，与款号匹配
-      // 文件命名格式：{uuid}-{safeFileName}
-      // UUID 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars)
-      // 例如：b54ef635-1b6a-4469-840c-01e2c70d3f27-111222.jpg → 111222.jpg
-      const formats = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
-      let matchedItem = null;
+    try {
+      // 策略1：先查当前用户的专属目录
+      const userFolder = user.id + "/" + subFolder;
+      const result1 = await searchInFolder(userFolder);
+      if (result1) return result1;
 
-      // UUID 正则：匹配以 UUID 开头的文件名
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
-
-      for (const item of data) {
-        if (item.name.startsWith('.')) continue;
-        const lowerName = item.name.toLowerCase();
-
-        // 尝试去除 UUID 前缀
-        let afterUuid = item.name;
-        const uuidMatch = item.name.match(uuidRegex);
-        if (uuidMatch) {
-          afterUuid = item.name.substring(uuidMatch[0].length); // 跳过 UUID + 结尾的 "-"
-        } else {
-          // 备选：用 indexOf 找到第4个 "-"（UUID 有4个 "-"）
-          let pos = -1;
-          for (let i = 0; i < 4; i++) {
-            pos = item.name.indexOf('-', pos + 1);
-            if (pos === -1) break;
-          }
-          if (pos >= 0) afterUuid = item.name.substring(pos + 1);
-        }
-
-        const lowerAfterUuid = afterUuid.toLowerCase();
-
-        // 匹配条件：
-        // 1. 去除扩展名后，文件名等于款号（如 111222.jpg → 111222）
-        // 2. 文件名包含款号（如 111222_blue.jpg 包含 111222）
-        const nameWithoutExt = lowerAfterUuid.replace(/\.[^.]+$/, '');
-        if (nameWithoutExt === targetName || nameWithoutExt.includes(targetName)) {
-          // 如果指定了扩展名，优先匹配
-          if (originalExt) {
-            const extMatch = lowerName.endsWith('.' + originalExt.toLowerCase());
-            if (extMatch) { matchedItem = item; break; }
-            // 不匹配扩展名也备选
-            if (!matchedItem) matchedItem = item;
-          } else if (!matchedItem) {
-            matchedItem = item;
-          }
-        }
-      }
-
-      // 如果没匹配到，再尝试：文件名（不含路径）直接包含款号
-      if (!matchedItem) {
-        for (const item of data) {
-          if (item.name.startsWith('.')) continue;
-          const lowerName = item.name.toLowerCase();
-          // 检查是否匹配 {uuid}-{styleNo}.{ext} 模式
-          for (const fmt of formats) {
-            const suffix = '-' + targetName + '.' + fmt;
-            if (lowerName.endsWith(suffix) || lowerName.includes(targetName + '.' + fmt)) {
-              matchedItem = item;
-              break;
-            }
-          }
-          if (matchedItem) break;
-        }
-      }
-
-      if (!matchedItem) return null;
-
-      const fullPath = folderPath + "/" + matchedItem.name;
-      // 获取签名 URL
-      const { data: urlData, error: urlError } = await supabase.storage
+      // 策略2：扫描根目录，获取所有用户子目录，逐个查找
+      // 这能兼容：userId 变更、跨账号数据迁移、历史数据等情况
+      const { data: rootData, error: rootError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .createSignedUrl(fullPath, 300);
+        .list('', { limit: 200 });
 
-      if (urlError) {
-        console.warn("[form-submit] findPictureByStyleNo signedUrl error:", urlError);
-        return { path: fullPath, signedUrl: null };
+      if (rootError) {
+        console.warn("[form-submit] findPictureByStyleNo root list error:", rootError);
+        return null;
+      }
+      if (!rootData || !Array.isArray(rootData)) return null;
+
+      // 筛选出目录（用户 ID 文件夹）
+      const userDirs = rootData.filter(item =>
+        !item.name.startsWith('.') &&
+        item.type === 'folder' &&
+        /^[0-9a-f]{8}-/i.test(item.name) // UUID 格式的目录
+      );
+
+      // 遍历每个用户目录，查找 {userId}/{subFolder}/ 下的文件
+      for (const dir of userDirs) {
+        const subFolderPath = dir.name + "/" + subFolder;
+        const result2 = await searchInFolder(subFolderPath);
+        if (result2) {
+          console.log("[form-submit] findPictureByStyleNo found in:", subFolderPath);
+          return result2;
+        }
       }
 
-      return {
-        path: fullPath,
-        signedUrl: urlData && urlData.signedUrl ? urlData.signedUrl : null
-      };
+      // 策略3：直接在 {subFolder}/ 目录下查找（兼容非用户隔离的旧数据）
+      const result3 = await searchInFolder(subFolder);
+      if (result3) return result3;
+
+      return null;
     } catch (e) {
       console.warn("[form-submit] findPictureByStyleNo exception:", e);
       return null;

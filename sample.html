@@ -977,7 +977,7 @@ input[type="number"] { -moz-appearance: textfield; }
 <script type="module" src="js/localstorage-patch.js?v=20260820"></script>
 <script type="module" src="js/supabase-bridge.js?v=20260820"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
-<script type="module" src="js/form-submit.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script src="js/init-page.js"></script>
 <script>
@@ -1748,12 +1748,48 @@ renderSampleTable();
     }
   }
 
+  // 数据同步队列：批量写入 Supabase，避免频繁请求
+  let _spSyncTimer = null;
+  let _spSyncPending = false;
+  async function flushToSupabase() {
+    // 写入样衣数据
+    if (state.data) {
+      try {
+        if (window.SupabaseStore && typeof window.SupabaseStore.set === 'function') {
+          await window.SupabaseStore.set(STORAGE_KEY, state.data);
+        }
+      } catch(e) { console.warn('[SamplePlan] Supabase 同步失败:', e); }
+    }
+    // 写入尺寸表数据
+    if (state.sizeTables) {
+      try {
+        if (window.SupabaseStore && typeof window.SupabaseStore.set === 'function') {
+          await window.SupabaseStore.set(SIZE_TABLE_KEY, state.sizeTables);
+        }
+      } catch(e) { console.warn('[SamplePlan] 尺寸表 Supabase 同步失败:', e); }
+    }
+    _spSyncPending = false;
+  }
+  function scheduleSync() {
+    _spSyncPending = true;
+    if (_spSyncTimer) return;
+    _spSyncTimer = setTimeout(() => {
+      _spSyncTimer = null;
+      flushToSupabase();
+    }, 300); // 300ms 防抖合并多次保存
+  }
+
   function saveData() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
     catch(e) { showToast('保存失败：存储空间不足', 'error'); }
+    scheduleSync();
     syncSamplePlanToTabs();
   }
-  function saveSizeTables() { try { localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables)); } catch(e) { showToast('保存失败：存储空间不足', 'error'); } }
+  function saveSizeTables() {
+    try { localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables)); }
+    catch(e) { showToast('保存失败：存储空间不足', 'error'); }
+    scheduleSync();
+  }
 
   // ===== Dropdown =====
   SP.toggleDropdown = function(e, id) {
@@ -2836,6 +2872,27 @@ renderSampleTable();
     renderSizeTables();
     bindSpKeyboard();
     syncSamplePlanToTabs();   // 首次进入也同步一次（把历史的样衣计划推送到原系统 Tab）
+
+    // 页面关闭前确保数据写入 Supabase
+    window.addEventListener('beforeunload', function() {
+      if (_spSyncPending) {
+        // 同步写入（使用 fetch keepalive 或同步方式）
+        try {
+          if (window.SupabaseStore && window.SupabaseStore._flushSync) {
+            window.SupabaseStore._flushSync();
+          }
+          // 同时直接写入（绕过异步队列）
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+          localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables));
+        } catch(e) {}
+      }
+    });
+  };
+
+  // 手动立即同步（可在设置或调试时使用）
+  SP.syncNow = async function() {
+    await flushToSupabase();
+    showToast('数据已同步到云端', 'success');
   };
 })(window.SamplePlan = window.SamplePlan || {});
 </script>

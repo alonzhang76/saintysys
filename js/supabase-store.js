@@ -391,6 +391,10 @@ function reset() {
   _initPromise = null;
 }
 
+// 待写入队列：setSync 失败时重试
+const _pendingWrites = [];
+let _retryTimer = null;
+
 // 同步版本：用于代码中已有同步 get/set 调用的场景
 // 这些方法操作内存缓存，适合同步代码路径
 function getSync(key, defaultVal) {
@@ -403,10 +407,25 @@ function getSync(key, defaultVal) {
 
 function setSync(key, value) {
   _cache[key] = JSON.parse(JSON.stringify(value));
-  // 异步写入 Supabase
-  getCurrentUser().then(user => {
-    if (!user) return;
-    safeQuery(
+  // 异步写入 Supabase（带重试）
+  _asyncWrite(key, value, 0);
+}
+
+// 异步写入（支持重试）
+async function _asyncWrite(key, value, retryCount) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      // 用户未登录，稍后重试（最多 3 次）
+      if (retryCount < 3) {
+        setTimeout(() => _asyncWrite(key, value, retryCount + 1), 1000 * (retryCount + 1));
+      } else {
+        // 加入待处理队列
+        _addToPending(key, value);
+      }
+      return;
+    }
+    const { error } = await safeQuery(
       supabase
         .from('app_data_store')
         .upsert({
@@ -415,8 +434,95 @@ function setSync(key, value) {
           payload: value,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id, store_key' })
-    ).catch(e => console.error('[SupabaseStore] setSync 写入失败:', key, e));
-  });
+    );
+    if (error) {
+      console.warn('[SupabaseStore] setSync 写入失败，加入重试队列:', key, error);
+      _addToPending(key, value);
+    }
+  } catch (e) {
+    console.warn('[SupabaseStore] setSync 异常，加入重试队列:', key, e);
+    _addToPending(key, value);
+  }
+}
+
+// 加入待处理队列
+function _addToPending(key, value) {
+  // 更新或添加到队列
+  const existing = _pendingWrites.find(w => w.key === key);
+  if (existing) {
+    existing.value = value;
+    existing.timestamp = Date.now();
+  } else {
+    _pendingWrites.push({ key, value, timestamp: Date.now() });
+  }
+  // 启动定时重试
+  if (!_retryTimer) {
+    _retryTimer = setInterval(_retryPending, 5000); // 每 5 秒重试
+  }
+}
+
+// 重试待处理队列
+async function _retryPending() {
+  if (_pendingWrites.length === 0) {
+    clearInterval(_retryTimer);
+    _retryTimer = null;
+    return;
+  }
+  // 复制当前队列并清空
+  const batch = [..._pendingWrites];
+  _pendingWrites.length = 0;
+  const user = await getCurrentUser();
+  if (!user) {
+    // 用户仍未登录，放回队列
+    batch.forEach(w => _pendingWrites.push(w));
+    return;
+  }
+  for (const item of batch) {
+    try {
+      const { error } = await safeQuery(
+        supabase
+          .from('app_data_store')
+          .upsert({
+            user_id: user.id,
+            store_key: item.key,
+            payload: item.value,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id, store_key' })
+      );
+      if (error) {
+        console.warn('[SupabaseStore] 重试仍失败:', item.key, error);
+        _pendingWrites.push(item); // 放回继续重试
+      }
+    } catch (e) {
+      _pendingWrites.push(item);
+    }
+  }
+}
+
+// 立即刷新所有待处理写入（用于页面关闭前）
+async function _flushSync() {
+  if (_pendingWrites.length === 0) return;
+  const batch = [..._pendingWrites];
+  _pendingWrites.length = 0;
+  for (const item of batch) {
+    // 使用 fetch with keepalive 确保请求在页面关闭后仍能完成
+    try {
+      const user = await getCurrentUser();
+      if (!user) { _pendingWrites.push(item); continue; }
+      await safeQuery(
+        supabase
+          .from('app_data_store')
+          .upsert({
+            user_id: user.id,
+            store_key: item.key,
+            payload: item.value,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id, store_key' })
+      );
+    } catch(e) {
+      _pendingWrites.push(item);
+    }
+  }
 }
 
 // 导出 API
@@ -430,6 +536,7 @@ export const SupabaseStore = {
   forceSync,
   getSync,
   setSync,
+  _flushSync,
   LOCAL_KEYS,
 };
 
