@@ -13,7 +13,7 @@
  *   - 可以配置多个管理员邮箱
  */
 
-export const ADMIN_EMAILS = ["请填写管理员邮箱"];
+export const ADMIN_EMAILS = ["alonzhang76@outlook.com"];
 
 /**
  * 判断当前 Supabase 用户是否为管理员
