@@ -60,20 +60,23 @@ function _mapSupabaseUser(user) {
   // 关键修复：从本地 users 列表按邮箱匹配角色（不区分大小写）
   // 设置页面的用户列表（users key）是管理员配置的权威角色来源，
   // 优先于 Supabase user_metadata.role 和 SQL user_roles 表
-  if (adminEmails.indexOf(email) < 0 && window.App) {
+  // 重要：不依赖 window.App，直接用 _origLocalStorage.getItem 读原始数据（绕过 patch 和 SupabaseStore）
+  if (adminEmails.indexOf(email) < 0) {
     try {
-      var localUsers = App.store.get('users', []);
+      // 使用 _origLocalStorage 直接读原始 localStorage，完全绕过 patch/SupabaseStore
+      var usersRaw = null;
+      if (window._origLocalStorage && typeof window._origLocalStorage.getItem === 'function') {
+        usersRaw = window._origLocalStorage.getItem('users');
+      } else {
+        // 兜底：直接用 localStorage（可能被 patch 覆盖）
+        usersRaw = localStorage.getItem('users');
+      }
+      var localUsers = [];
+      if (usersRaw) {
+        try { localUsers = JSON.parse(usersRaw); } catch(_) {}
+      }
       var emailLower = (email || '').toLowerCase().trim();
-      console.log('[common] _mapSupabaseUser调试: email=' + emailLower + ', users数组长度=' + localUsers.length + ', window.App存在=' + !!window.App);
-      if (emailLower) {
-        // 打印每个本地用户的 email 用于排查
-        var emails = [];
-        for (var ei = 0; ei < localUsers.length; ei++) {
-          if (localUsers[ei] && localUsers[ei].email) {
-            emails.push(localUsers[ei].email.toLowerCase().trim());
-          }
-        }
-        console.log('[common] 本地用户邮箱列表:', emails.join(', '));
+      if (emailLower && localUsers && localUsers.length > 0) {
         var localUser = null;
         for (var i = 0; i < localUsers.length; i++) {
           var u = localUsers[i];
@@ -86,14 +89,14 @@ function _mapSupabaseUser(user) {
           role = localUser.role;
           console.log('[common] 本地用户匹配成功: username=' + localUser.username + ', email=' + localUser.email + ', role=' + role);
         } else {
-          console.log('[common] 本地用户未匹配: email=' + emailLower + ', 本地用户数=' + localUsers.length + ', 匹配结果=' + (localUser ? '找到但无role' : '未找到'));
+          console.log('[common] 本地用户未匹配: email=' + emailLower + ', 本地用户数=' + localUsers.length + ', 匹配结果=' + (localUser ? '找到但无role(role=' + localUser.role + ')' : '未找到'));
         }
+      } else {
+        console.log('[common] 本地用户列表为空或邮箱为空: email=' + emailLower + ', users长度=' + (localUsers ? localUsers.length : 0));
       }
     } catch(e) {
       console.warn('[common] 读取本地 users 失败:', e);
     }
-  } else if (adminEmails.indexOf(email) < 0 && !window.App) {
-    console.log('[common] _mapSupabaseUser: window.App不存在，跳过本地匹配');
   } else {
     console.log('[common] _mapSupabaseUser: admin邮箱，role=admin');
   }
