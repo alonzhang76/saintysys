@@ -251,23 +251,62 @@
 
         // 关键修复：从本地 users 列表按邮箱匹配角色（不区分大小写）
         // 设置页面的用户列表（users key）是管理员配置的权威角色来源
+        // 若本地 users 列表尚未从云端同步（空或无匹配），启动重试轮询直到找到匹配或超时
         let localUserRole = null;
-        try {
-          if (window.App) {
+        const emailLower = (user.email || '').toLowerCase().trim();
+        const tryMatchLocalUser = (doLog) => {
+          try {
+            if (!window.App || !emailLower) return null;
             const localUsers = window.App.store.get('users', []);
-            const emailLower = (user.email || '').toLowerCase().trim();
-            if (emailLower) {
-              const localUser = localUsers.find(u => u.email && u.email.toLowerCase().trim() === emailLower);
-              if (localUser && localUser.role) {
-                localUserRole = localUser.role;
-                console.log('[auth-guard] 异步: 本地用户匹配成功 username=' + localUser.username + ', email=' + localUser.email + ', role=' + localUserRole);
-              } else {
-                console.log('[auth-guard] 异步: 本地用户未匹配 email=' + emailLower + ', 本地用户数=' + localUsers.length);
-              }
+            const localUser = localUsers.find(u => u.email && u.email.toLowerCase().trim() === emailLower);
+            if (localUser && localUser.role) {
+              if (doLog) console.log('[auth-guard] 异步: 本地用户匹配成功 username=' + localUser.username + ', email=' + localUser.email + ', role=' + localUser.role);
+              return localUser.role;
             }
+            if (doLog) console.log('[auth-guard] 异步: 本地用户未匹配 email=' + emailLower + ', 本地用户数=' + localUsers.length);
+            return null;
+          } catch(e) {
+            console.warn('[auth-guard] 异步: 读取本地 users 失败:', e);
+            return null;
           }
-        } catch(e) {
-          console.warn('[auth-guard] 异步: 读取本地 users 失败:', e);
+        };
+        localUserRole = tryMatchLocalUser(true);
+
+        // 如果第一次没匹配到，启动重试轮询（15秒内每1秒查一次），匹配到就立即刷新权限
+        // 解决 users/permissions 从 Supabase 同步晚于 auth-guard 异步守卫导致角色错误的问题
+        if (!localUserRole) {
+          let retryCount = 0;
+          const retryMatch = () => {
+            if (retryCount >= 15) return;
+            retryCount++;
+            const matched = tryMatchLocalUser(false);
+            if (matched) {
+              console.log('[auth-guard] 重试#' + retryCount + ': 本地用户匹配成功 role=' + matched);
+              // 更新角色
+              const adminEmails = window.ADMIN_EMAILS || [];
+              if (adminEmails.indexOf(user.email || '') < 0) {
+                if (window.currentSupabaseUser) {
+                  if (!window.currentSupabaseUser.user_metadata) window.currentSupabaseUser.user_metadata = {};
+                  window.currentSupabaseUser.user_metadata.role = matched;
+                }
+                if (window.App && window.App._currentUser) {
+                  window.App._currentUser.role = matched;
+                }
+              }
+              // 重新应用页面权限 + 派发事件
+              try {
+                if (typeof App.enforcePagePermission === 'function' && window._currentPageModule) {
+                  App.enforcePagePermission(window._currentPageModule);
+                }
+                window.dispatchEvent(new CustomEvent('auth-role-updated', {
+                  detail: { role: matched, email: user.email, userId: user.id }
+                }));
+              } catch(e) {}
+              return;
+            }
+            setTimeout(retryMatch, 1000);
+          };
+          setTimeout(retryMatch, 1000);
         }
 
         // 合并角色：本地 users 列表角色 + SQL user_roles 角色去重

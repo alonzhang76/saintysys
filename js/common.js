@@ -648,63 +648,92 @@ const App = {
   // ===== 页面权限守卫 =====
   // 在每个模块页面调用，根据权限显示只读模式提示
   enforcePagePermission(moduleKey) {
-    // 记录当前页面模块，供 auth-guard.js 异步加载角色后重新检查
+    // 记录当前页面模块，供后续异步事件重新检查
     window._currentPageModule = moduleKey;
-    const perm = this.getPermission(moduleKey);
-    // 'hidden'（不显示）和 'none'（无权限）都阻止访问（防止通过URL直接进入）
-    if (perm === 'none' || perm === 'hidden') {
+    // 关键修复：封装"应用权限到DOM"的函数，重复调用保证幂等
+    const applyPermToDom = (perm, showToast) => {
       const content = document.querySelector('.app-content');
-      if (content) {
-        content.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
-            <div style="font-size:64px;margin-bottom:16px;">🔒</div>
-            <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
-            <div style="font-size:14px;">您当前的角色无权访问此模块，请联系管理员开通权限</div>
-          </div>`;
+      if (perm === 'none' || perm === 'hidden') {
+        document.body.classList.remove('readonly-mode');
+        if (content) {
+          content.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
+              <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+              <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
+              <div style="font-size:14px;">您当前的角色无权访问此模块，请联系管理员开通权限</div>
+            </div>`;
+        }
+        return false;
       }
-      return false;
-    }
-    if (perm === 'read') {
-      setTimeout(() => {
+      if (perm === 'read') {
         document.body.classList.add('readonly-mode');
-      }, 100);
-      this.toast('当前为只读模式，如需修改请联系管理员', 'info', 3000);
-    }
-    // 异步等待 Supabase 权限加载完成后重新判断
+        if (showToast) this.toast('当前为只读模式，如需修改请联系管理员', 'info', 3000);
+      } else if (perm === 'write') {
+        document.body.classList.remove('readonly-mode');
+      }
+      return true;
+    }.bind(this);
+
+    const initPerm = this.getPermission(moduleKey);
+    applyPermToDom(initPerm, true);
+
+    // 关键修复：等待3条异步渠道任一完成后重查
+    // 1) auth-guard 异步守卫 (设置 _userModulePerms)
+    // 2) SupabaseStore 云端同步 users/permissions key (cloud-data-updated)
+    // 3) 超时兜底
     if (!window.__permWaitPromise) {
       window.__permWaitPromise = new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        // 超时 10 秒兜底
+        setTimeout(finish, 10000);
+        // 轮询 auth-guard 的 _userModulePerms
         let elapsed = 0;
-        const check = () => {
-          // 权限已加载 或 超时(8秒) 都视为完成
-          if ((window.App && window.App._userModulePerms) || elapsed >= 8000) resolve();
-          else { elapsed += 200; setTimeout(check, 200); }
+        const poll = () => {
+          if (done) return;
+          if (window.App && window.App._userModulePerms) { finish(); return; }
+          elapsed += 200;
+          if (elapsed >= 10000) return;
+          setTimeout(poll, 200);
         };
-        setTimeout(check, 200);
+        setTimeout(poll, 200);
+        // 云端同步 users/permissions 完成（最关键：角色在 users key 中）
+        const onCloudUpdate = (e) => {
+          if (done) return;
+          const keys = (e && e.detail && e.detail.keys) || [];
+          if (keys.indexOf('users') >= 0 || keys.indexOf('permissions') >= 0) {
+            console.log('[权限] 收到云端同步:' + keys.join(','));
+            finish();
+          }
+        };
+        window.addEventListener('cloud-data-updated', onCloudUpdate, { once: false });
+        // promise 完成后清理监听器（防止内存泄漏）
+        setTimeout(() => window.removeEventListener('cloud-data-updated', onCloudUpdate), 10500);
       });
     }
-    window.__permWaitPromise.then(() => {
+
+    // 每次 promise resolve 后重查权限（getCurrentUser 会从 users 列表重新映射最新角色）
+    const recheck = () => {
       const realPerm = this.getPermission(moduleKey);
-      if (realPerm !== perm) {
-        if (realPerm === 'write') {
-          document.body.classList.remove('readonly-mode');
-        } else if (realPerm === 'read') {
-          // 关键修复：权限从 write 降为 read 时，必须添加 readonly-mode
-          document.body.classList.add('readonly-mode');
-          this.toast('当前为只读模式，如需修改请联系管理员', 'info', 3000);
-        } else if (realPerm === 'none' || realPerm === 'hidden') {
-          const content = document.querySelector('.app-content');
-          if (content) {
-            content.innerHTML = `
-              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
-                <div style="font-size:64px;margin-bottom:16px;">🔒</div>
-                <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
-                <div style="font-size:14px;">您当前的角色无权访问此模块，请联系管理员开通权限</div>
-              </div>`;
-          }
-        }
+      console.log('[权限] 异步重查 module=' + moduleKey + ', 最终权限=' + realPerm);
+      applyPermToDom(realPerm, false);
+      // 权限更新后也要重新注入侧边栏，过滤掉"不显示"的模块
+      if (App._currentPageKey) {
+        try { App.injectSidebar(App._currentPageKey); } catch(e) {}
+      }
+    };
+    window.__permWaitPromise.then(recheck);
+    // auth-role-updated 再查一次
+    window.addEventListener('auth-role-updated', recheck);
+    // 每次 users/permissions 云端更新都重新应用权限（本地 localStorage 已有同步写入）
+    window.addEventListener('cloud-data-updated', function(e) {
+      const keys = (e && e.detail && e.detail.keys) || [];
+      if (keys.indexOf('users') >= 0 || keys.indexOf('permissions') >= 0) {
+        recheck();
       }
     });
-    return true;
+
+    return initPerm !== 'none' && initPerm !== 'hidden';
   }
 };
 
