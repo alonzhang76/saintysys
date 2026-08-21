@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+.login-btn-wrap { text-align:center; margin-top:4px; }
+.login-btn { padding:6px 36px;font-size:13px; }
+/* 登录提示区域 */
+#login-message {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  text-align: center;
+  color: #6b7280;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+/* 调试面板 */
+#debug-panel {
+  margin-top: 12px;
+  padding: 8px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #92400e;
+  max-height: 120px;
+  overflow-y: auto;
+  display: none;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+</style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">👔</div>
+    </div>
+    <div class="login-title">舜天汉唐服装外贸系统</div>
+    <div class="login-subtitle">Sainty Hantang Garment Trade System</div>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label" for="email">邮箱</label>
+        <input type="email" class="form-input" id="email" name="email" placeholder="请输入 Supabase 账户邮箱" autocomplete="email" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">密码</label>
+        <input type="password" class="form-input" id="password" name="password" placeholder="请输入密码" autocomplete="current-password" required>
+      </div>
+      <div class="login-btn-wrap">
+        <button type="submit" class="btn btn-primary login-btn" id="loginBtn">登 录</button>
+      </div>
+      <!-- 登录提示区域 -->
+      <div id="login-message" role="status" aria-live="polite"></div>
+      <!-- 调试面板（出错时显示） -->
+      <div id="debug-panel"></div>
+    </form>
+  </div>
+</div>
+<!-- 保留 common.js，便于复用 App.toast 等基础工具 -->
+<script src="js/common.js?v=20260812"></script>
+<!-- Supabase 登录逻辑 -->
+<script type="module" src="js/login.js?v=20260814"></script>
+<!-- 保底：如果 module 加载失败（CDN 问题），显示错误提示 -->
+<script>
+// 检测 handleLogin 是否成功挂载到 window
+(function checkLoginReady() {
+  var tries = 0;
+  var timer = setInterval(function () {
+    tries++;
+    if (typeof window.handleLogin === 'function') {
+      clearInterval(timer);
+      return;
+    }
+    if (tries > 30) { // 3秒后仍未就绪
+      clearInterval(timer);
+      var msg = document.getElementById('login-message');
+      var dbg = document.getElementById('debug-panel');
+      if (msg) {
+        msg.style.color = '#dc2626';
+        msg.textContent = '❌ 登录模块加载失败，请检查网络连接后刷新页面';
+      }
+      if (dbg) {
+        dbg.style.display = 'block';
+        dbg.textContent = '调试信息：\n' +
+          '1. 确认 Supabase URL 和 anon key 已正确填入 js/supabase.js\n' +
+          '2. 打开浏览器控制台（F12）查看具体错误\n' +
+          '3. 尝试访问 https://esm.sh/@supabase/supabase-js@2 是否可达';
+      }
+    }
+  }, 100);
+})();
+</script>
+</body>
+</html>

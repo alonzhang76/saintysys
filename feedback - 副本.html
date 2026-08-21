@@ -1,0 +1,496 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客户意见 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">客户意见</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 标签页 -->
+      <div class="tabs" id="tabs">
+        <div class="tab-item active" data-tab="all" onclick="Feedback.switchTab('all')">全部</div>
+        <div class="tab-item" data-tab="unresolved" onclick="Feedback.switchTab('unresolved')">未解决</div>
+        <div class="tab-item" data-tab="resolved" onclick="Feedback.switchTab('resolved')">已解决</div>
+      </div>
+
+      <!-- 卡片区域 -->
+      <div class="card">
+        <!-- 筛选栏 -->
+        <div class="filter-bar">
+          <div class="search-input">
+            <input type="text" class="form-input" id="searchInput" placeholder="按款号/内容搜索" oninput="Feedback.render()">
+          </div>
+          <select class="form-select" id="typeFilter" onchange="Feedback.render()">
+            <option value="">全部类型</option>
+            <option value="版型">版型</option>
+            <option value="尺寸">尺寸</option>
+            <option value="工艺">工艺</option>
+            <option value="面料">面料</option>
+            <option value="颜色">颜色</option>
+            <option value="其他">其他</option>
+          </select>
+          <select class="form-select" id="priorityFilter" onchange="Feedback.render()">
+            <option value="">全部优先级</option>
+            <option value="高">高</option>
+            <option value="中">中</option>
+            <option value="低">低</option>
+          </select>
+        </div>
+        <!-- 工具栏 -->
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <span class="card-title">客户意见列表</span>
+          </div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary" onclick="Feedback.openAdd()" title="新增">➕</button>
+          </div>
+        </div>
+        <!-- 表格容器 -->
+        <div id="feedbackTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/common.js?v=20260812"></script>
+<!-- Supabase 登录守卫 -->
+<script src="js/localstorage-patch.js?v=20260822g"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260822g"></script>
+
+<script src="js/auth-guard.js?v=20260813"></script>
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260813"></script>
+<script type="module" src="js/logout.js?v=20260813"></script>
+<script>
+// ===== 云端同步：提前注册监听器 =====
+var PageDataSyncGuard = {
+  inited: false, pending: false,
+  watchKeys: ["feedbacks","contacts","samples","orders"],
+  emptyCheckKeys: ["feedbacks"],
+  afterInit: function() {
+    var self = this; this.inited = true;
+    function doRefresh() { try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {} }
+    if (self.pending) setTimeout(doRefresh, 200);
+    setTimeout(function() {
+      var allEmpty = self.emptyCheckKeys.every(function(k){
+        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
+      });
+      if (allEmpty) doRefresh();
+    }, 2000);
+  }
+};
+window.addEventListener('cloud-data-updated', function(e){
+  var keys = (e.detail&&e.detail.keys)||[];
+  var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
+  if (need) {
+    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    try { if (typeof window.renderAll==='function') window.renderAll(); } catch(e){}
+  }
+});
+
+App.init('feedback');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('feedback');
+  setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
+
+// ===== 客户意见模块 =====
+// 来源阶段 → 打样阶段Key映射
+const FB_STAGE_KEY_MAP = { '头样': 0, '尺码样': 1, '产前样': 2, '船样': 3, '照片样': 4 };
+// 支持多轮的阶段Key（尺码样、产前样）
+const FB_MULTI_ROUND_KEYS = [1, 2];
+
+const Feedback = {
+  currentTab: 'all',
+
+  // 获取数据
+  getData() {
+    return App.store.get('feedbacks', []);
+  },
+
+  // 根据客户ID获取客户名
+  getCustomerName(customerId) {
+    const contacts = App.store.get('contacts', []);
+    const c = contacts.find(c => c.id === customerId);
+    return c ? c.name : customerId || '-';
+  },
+
+  // 渲染统计卡片
+  renderStats() {
+    const list = this.getData();
+    const unresolved = list.filter(f => !f.resolved);
+    const resolved = list.filter(f => f.resolved);
+    const highUnresolved = unresolved.filter(f => f.priority === '高');
+
+    const cards = [
+      { icon: '💬', bg: '#e8f1f5', color: '#004D6D', label: '意见总数', value: list.length, sub: '全部客户意见' },
+      { icon: '⚠️', bg: '#fef2f2', color: '#d44848', label: '未解决', value: unresolved.length, sub: '待处理意见' },
+      { icon: '✅', bg: '#ecfdf5', color: '#2d9d5f', label: '已解决', value: resolved.length, sub: '已处理意见' },
+      { icon: '🔴', bg: '#fff8ed', color: '#d9883a', label: '高优先级未解决', value: highUnresolved.length, sub: '紧急待处理' },
+    ];
+
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+        <div class="stat-info">
+          <div class="stat-label">${c.label}</div>
+          <div class="stat-value" style="color:${c.color};">${c.value}</div>
+          <div class="stat-sub">${c.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  // 切换标签页
+  switchTab(tab) {
+    this.currentTab = tab;
+    document.querySelectorAll('#tabs .tab-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    this.render();
+  },
+
+  // 过滤数据
+  getFiltered() {
+    let list = this.getData();
+    // 标签页过滤
+    if (this.currentTab === 'unresolved') {
+      list = list.filter(f => !f.resolved);
+    } else if (this.currentTab === 'resolved') {
+      list = list.filter(f => f.resolved);
+    }
+    // 搜索过滤（按款号/内容）
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (search) {
+      list = list.filter(f =>
+        (f.styleNo || '').toLowerCase().includes(search) ||
+        (f.content || '').toLowerCase().includes(search)
+      );
+    }
+    // 意见类型过滤
+    const type = document.getElementById('typeFilter').value;
+    if (type) {
+      list = list.filter(f => f.feedbackType === type);
+    }
+    // 优先级过滤
+    const priority = document.getElementById('priorityFilter').value;
+    if (priority) {
+      list = list.filter(f => f.priority === priority);
+    }
+    // 按意见日期倒序（空值排末尾）
+    return App.utils.sortByDateDesc(list, ['feedbackDate', 'resolvedDate']);
+  },
+
+  // 渲染表格
+  render() {
+    const list = this.getFiltered();
+    App.renderTable('feedbackTable', {
+      columns: [
+        { key: 'styleNo', title: '款号', width: '160px' },
+        { key: 'customerId', title: '客户', width: '120px', render: (v) => App.utils.escapeHtml(this.getCustomerName(v)) },
+        { key: 'feedbackDate', title: '意见日期', width: '110px' },
+        { key: 'fromStage', title: '来源阶段', width: '90px' },
+        { key: 'feedbackType', title: '类型', width: '80px', render: (v) => v ? `<span class="tag tag-blue">${v}</span>` : '<span class="text-muted">-</span>' },
+        { key: 'content', title: '意见内容', render: (v) => App.utils.escapeHtml(v).replace(/\n/g, '<br>') },
+        { key: 'priority', title: '优先级', width: '80px', render: (v) => App.statusTag(v) },
+        { key: 'resolved', title: '状态', width: '80px', render: (v) => v ? '<span class="tag tag-green">已解决</span>' : '<span class="tag tag-red">未解决</span>' },
+        { key: 'resolvedDate', title: '解决日期', width: '110px', render: (v) => v || '<span class="text-muted">-</span>' },
+      ],
+      data: list,
+      actions: (row) => {
+        let html = '';
+        // 解决按钮仅未解决时显示
+        if (!row.resolved) {
+          html += `<button class="btn btn-sm btn-success" onclick="Feedback.openResolve('${row.id}')" title="解决">✔</button>`;
+        }
+        html += `<button class="btn btn-sm" onclick="Feedback.openEdit('${row.id}')" title="编辑">✏</button>`;
+        html += `<button class="btn btn-sm btn-danger" onclick="Feedback.remove('${row.id}')" title="删除">🗑</button>`;
+        return html;
+      }
+    });
+  },
+
+  // 构建新增/编辑表单
+  buildForm(data = {}) {
+    const samples = App.store.get('samples', []);
+    const customers = App.store.get('contacts', []).filter(c => c.type === '客户');
+    // 款号选项来自样衣管理（去重）
+    const styleNoSet = new Set();
+    samples.forEach(s => { if (s.styleNo) styleNoSet.add(s.styleNo); });
+    const styleOptions = [...styleNoSet].map(sn => `<option value="${sn}">`).join('');
+    const customerOptions = customers.map(c => `<option value="${c.id}" ${data.customerId === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+    const stages = ['头样', '尺码样', '产前样', '船样', '照片样'];
+    const priorities = ['高', '中', '低'];
+
+    return `
+      <div class="form-row" style="grid-template-columns:1fr 1.5fr 1.5fr 1fr;">
+        <div class="form-group">
+          <label class="form-label">日期<span class="required">*</span></label>
+          <input type="date" class="form-input" id="fb_feedbackDate" value="${data.feedbackDate || App.utils.today()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">款号<span class="required">*</span></label>
+          <input type="text" class="form-input" id="fb_styleNo" list="fb_styleNoList" value="${data.styleNo || ''}" placeholder="输入或选择款号" oninput="Feedback.onStyleNoChange()">
+          <datalist id="fb_styleNoList">${styleOptions}</datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">客户<span class="required">*</span></label>
+          <select class="form-select" id="fb_customerId">
+            <option value="">请选择客户</option>
+            ${customerOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">来源阶段</label>
+          <select class="form-select" id="fb_fromStage">
+            ${stages.map(s => `<option value="${s}" ${data.fromStage === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">面辅料等意见</label>
+        <textarea class="form-textarea" id="fb_contentFabric" placeholder="请输入面辅料等意见">${data.contentFabric || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">尺寸或设计改动意见</label>
+        <textarea class="form-textarea" id="fb_contentSize" placeholder="请输入尺寸或设计改动意见">${data.contentSize || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">做工意见</label>
+        <textarea class="form-textarea" id="fb_contentCraft" placeholder="请输入做工意见">${data.contentCraft || ''}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">优先级</label>
+          <select class="form-select" id="fb_priority">
+            ${priorities.map(p => `<option value="${p}" ${data.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">解决日期</label>
+          <input type="date" class="form-input" id="fb_resolvedDate" value="${data.resolvedDate || ''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">解决方案</label>
+        <textarea class="form-textarea" id="fb_resolution" placeholder="请输入解决方案">${data.resolution || ''}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">
+            <input type="checkbox" id="fb_resolved" ${data.resolved ? 'checked' : ''}> 是否已落实解决措施
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            <input type="checkbox" id="fb_sampleConfirmed" ${data.sampleConfirmed ? 'checked' : ''}> 样衣是否已确认
+          </label>
+        </div>
+      </div>
+    `;
+  },
+
+  // 款号变更时自动填充客户
+  onStyleNoChange() {
+    const styleNo = document.getElementById('fb_styleNo').value.trim();
+    const orders = App.store.get('orders', []);
+    const order = orders.find(o => o.styleNo === styleNo);
+    if (order && order.customerId) {
+      document.getElementById('fb_customerId').value = order.customerId;
+    }
+  },
+
+  // 打开新增模态框
+  openAdd() {
+    App.modal.open({
+      title: '新增客户意见',
+      body: this.buildForm(),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Feedback.save()">保存</button>`,
+      size: 'lg',
+      closeOnOverlay: false
+    });
+  },
+
+  // 打开编辑模态框
+  openEdit(id) {
+    const list = this.getData();
+    const item = list.find(f => f.id === id);
+    if (!item) return;
+    App.modal.open({
+      title: '编辑客户意见',
+      body: this.buildForm(item),
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" onclick="Feedback.save('${id}')">保存</button>`,
+      size: 'lg',
+      closeOnOverlay: false
+    });
+  },
+
+  // 保存（新增或编辑）
+  save(id) {
+    const styleNo = document.getElementById('fb_styleNo').value.trim();
+    const customerId = document.getElementById('fb_customerId').value;
+    const feedbackDate = document.getElementById('fb_feedbackDate').value;
+    const contentFabric = document.getElementById('fb_contentFabric').value.trim();
+    const contentSize = document.getElementById('fb_contentSize').value.trim();
+    const contentCraft = document.getElementById('fb_contentCraft').value.trim();
+
+    // 校验必填字段
+    if (!styleNo) { App.toast('请输入款号', 'error'); return; }
+    if (!customerId) { App.toast('请选择客户', 'error'); return; }
+    if (!feedbackDate) { App.toast('请选择日期', 'error'); return; }
+    if (!contentFabric && !contentSize && !contentCraft) { App.toast('请至少填写一项意见内容', 'error'); return; }
+
+    const resolution = document.getElementById('fb_resolution').value.trim();
+    const resolved = document.getElementById('fb_resolved').checked;
+    const resolvedDate = document.getElementById('fb_resolvedDate').value;
+    const sampleConfirmed = document.getElementById('fb_sampleConfirmed').checked;
+    const fromStage = document.getElementById('fb_fromStage').value;
+    const priority = document.getElementById('fb_priority').value;
+
+    // 组合意见内容（用于表格显示）
+    const parts = [];
+    if (contentFabric) parts.push('【面辅料】' + contentFabric);
+    if (contentSize) parts.push('【尺寸设计】' + contentSize);
+    if (contentCraft) parts.push('【做工】' + contentCraft);
+    const content = parts.join('\n');
+
+    const list = this.getData();
+    if (id) {
+      // 编辑更新
+      const idx = list.findIndex(f => f.id === id);
+      if (idx > -1) {
+        list[idx] = { ...list[idx], styleNo, customerId, feedbackDate, content,
+          contentFabric, contentSize, contentCraft,
+          fromStage: fromStage, priority,
+          resolution, resolved, resolvedDate, sampleConfirmed };
+      }
+      App.toast('修改成功', 'success');
+    } else {
+      // 新增
+      list.push({
+        id: App.utils.genId('FB'),
+        styleNo, customerId, feedbackDate, content,
+        contentFabric, contentSize, contentCraft,
+        fromStage: fromStage, priority,
+        resolution, resolved, resolvedDate, sampleConfirmed
+      });
+      App.toast('新增成功', 'success');
+    }
+    App.store.set('feedbacks', list);
+
+    // 勾选"样衣是否已确认"时，更新样衣管理中对应阶段样衣的状态为"已确认"
+    if (sampleConfirmed) {
+      this.updateSampleStatus(styleNo, fromStage);
+    }
+
+    App.modal.close();
+    this.renderStats();
+    this.render();
+  },
+
+  // 更新样衣管理中对应款号+阶段的样衣状态为"已确认"
+  updateSampleStatus(styleNo, fromStage) {
+    const stageKey = FB_STAGE_KEY_MAP[fromStage];
+    if (stageKey === undefined) return;
+    const samples = App.store.get('samples', []);
+    const sample = samples.find(s => s.styleNo === styleNo && Number(s.stageKey) === stageKey);
+    if (!sample) {
+      App.toast('未找到对应的样衣记录，样衣状态未更新', 'info');
+      return;
+    }
+    if (FB_MULTI_ROUND_KEYS.includes(stageKey)) {
+      // 多轮阶段：更新最后一轮的状态
+      if (sample.rounds && sample.rounds.length > 0) {
+        sample.rounds[sample.rounds.length - 1].status = '已确认';
+      }
+    } else {
+      // 单轮阶段：直接更新 status
+      sample.status = '已确认';
+    }
+    App.store.set('samples', samples);
+    App.toast('已更新样衣管理中该阶段样衣状态为"已确认"', 'success');
+  },
+
+  // 打开解决模态框
+  openResolve(id) {
+    const list = this.getData();
+    const item = list.find(f => f.id === id);
+    if (!item) return;
+    App.modal.open({
+      title: '解决客户意见',
+      body: `
+        <div class="form-group">
+          <label class="form-label">意见内容</label>
+          <div class="text-muted" style="padding:8px;background:#f9fafb;border-radius:4px;white-space:pre-wrap;">${App.utils.escapeHtml(item.content)}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">解决方案<span class="required">*</span></label>
+          <textarea class="form-textarea" id="rs_resolution" placeholder="请输入解决方案"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">解决日期<span class="required">*</span></label>
+          <input type="date" class="form-input" id="rs_resolvedDate" value="${App.utils.today()}">
+        </div>
+      `,
+      footer: `<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-success" onclick="Feedback.confirmResolve('${id}')">确认解决</button>`,
+      size: 'sm'
+    });
+  },
+
+  // 确认解决
+  confirmResolve(id) {
+    const resolution = document.getElementById('rs_resolution').value.trim();
+    const resolvedDate = document.getElementById('rs_resolvedDate').value;
+    if (!resolution) { App.toast('请输入解决方案', 'error'); return; }
+    if (!resolvedDate) { App.toast('请选择解决日期', 'error'); return; }
+
+    const list = this.getData();
+    const idx = list.findIndex(f => f.id === id);
+    if (idx > -1) {
+      list[idx].resolved = true;
+      list[idx].resolution = resolution;
+      list[idx].resolvedDate = resolvedDate;
+    }
+    App.store.set('feedbacks', list);
+    App.modal.close();
+    App.toast('已标记为已解决', 'success');
+    this.renderStats();
+    this.render();
+  },
+
+  // 删除
+  remove(id) {
+    App.confirm('确定要删除这条客户意见吗？', () => {
+      let list = this.getData();
+      list = list.filter(f => f.id !== id);
+      App.store.set('feedbacks', list);
+      App.toast('删除成功', 'success');
+      this.renderStats();
+      this.render();
+    });
+  }
+};
+
+// 初始化渲染
+Feedback.renderStats();
+Feedback.render();
+</script>
+</body>
+</html>

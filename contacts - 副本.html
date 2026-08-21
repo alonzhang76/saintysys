@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通讯录 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+/* ===== 通讯录卡片样式 ===== */
+.contact-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.contact-card {
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+  width: calc(25% - 8px);
+  padding: 10px 12px;
+  position: relative;
+}
+.contact-card:hover {
+  border-color: var(--primary);
+}
+.contact-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.contact-person-name {
+  font-size: 13px;
+  font-weight: bold;
+}
+.contact-badges {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.contact-badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+}
+.contact-company-name {
+  font-weight: bold;
+  margin-bottom: 6px;
+  padding: 3px 6px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.contact-company-name:hover {
+  background-color: #e8f1f5;
+}
+.contact-company-name .company-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.same-company-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 600;
+  background: #e8f1f5;
+  color: #004D6D;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+/* 同公司联系人弹窗列表 */
+.same-company-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.same-company-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: #f9fafb;
+  transition: background 0.2s;
+}
+.same-company-item:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+.same-company-item .sc-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.same-company-item .sc-info {
+  flex: 1;
+  min-width: 0;
+}
+.same-company-item .sc-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+.same-company-item .sc-detail {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.same-company-item .sc-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.contact-info {
+  margin-bottom: 2px;
+  font-size: 11px;
+  color: var(--ink-secondary);
+}
+.contact-info .info-label {
+  color: var(--muted);
+  font-size: 10px;
+  margin-right: 3px;
+}
+.contact-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.contact-favorite {
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.contact-favorite.active {
+  color: #d44848;
+}
+.contact-favorite.inactive {
+  color: var(--border);
+}
+@media (max-width: 1200px) {
+  .contact-card { width: calc(33.333% - 7px); }
+}
+@media (max-width: 768px) {
+  .contact-card { width: calc(50% - 5px); }
+}
+@media (max-width: 480px) {
+  .contact-card { width: 100%; }
+}
+/* 分页 */
+.contact-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+.contact-pagination .page-btn {
+  min-width: 24px; height: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.contact-pagination .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+.contact-pagination .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.contact-pagination .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.contact-pagination .page-info { font-size: 11px; color: var(--muted); margin-right: 8px; }
+/* 表单分区标题 */
+.form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 5px 0 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.form-section-title:first-child { padding-top: 0; }
+/* 通讯录表单加高 */
+.modal-lg .modal-body { max-height: calc(60vh + 30mm); }
+/* 操作下拉菜单 */
+.action-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.action-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.action-dropdown-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.action-dropdown-btn .arrow {
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+.action-dropdown.open .action-dropdown-btn .arrow {
+  transform: rotate(180deg);
+}
+.action-dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 150px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 200;
+  overflow: hidden;
+}
+.action-dropdown.open .action-dropdown-menu {
+  display: block;
+}
+.action-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.action-dropdown-item:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.action-dropdown-item.danger:hover {
+  background: #fef2f2;
+  color: var(--error);
+}
+.action-dropdown-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0;
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">通讯录</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 筛选与工具栏 -->
+      <div class="card">
+        <div class="flex-between mb-16" style="flex-wrap:wrap;gap:12px;">
+          <div class="flex gap-12" style="flex-wrap:wrap;align-items:center;">
+            <div class="search-input">
+              <input type="text" id="searchInput" class="form-input" placeholder="搜索联系人" oninput="Contacts.onFilterChange()">
+            </div>
+            <select id="typeFilter" class="form-select" style="width:auto;" onchange="Contacts.onFilterChange()">
+              <option value="">全部类型</option>
+            </select>
+            <select id="statusFilter" class="form-select" style="width:auto;" onchange="Contacts.onFilterChange()">
+              <option value="">全部状态</option>
+            </select>
+            <select id="favoriteFilter" class="form-select" style="width:auto;" onchange="Contacts.onFilterChange()">
+              <option value="">全部收藏</option>
+              <option value="favorite">已收藏</option>
+              <option value="unfavorite">未收藏</option>
+            </select>
+            <select id="companyFilter" class="form-select" style="width:auto;" onchange="Contacts.onFilterChange()">
+              <option value="">全部公司</option>
+            </select>
+            <span class="text-muted font-sm" id="totalCount">共 0 个联系人</span>
+          </div>
+          <div class="flex gap-8">
+            <div class="action-dropdown" id="actionDropdown">
+              <button class="action-dropdown-btn" onclick="Contacts.toggleActionMenu()">
+                <span>⚙️</span>
+                <span>操作</span>
+                <span class="arrow">▼</span>
+              </button>
+              <div class="action-dropdown-menu">
+                <div class="action-dropdown-item" onclick="Contacts.importExcel()">
+                  <span>📥</span><span>导入Excel</span>
+                </div>
+                <div class="action-dropdown-item" onclick="Contacts.exportExcel()">
+                  <span>📤</span><span>导出Excel</span>
+                </div>
+                <div class="action-dropdown-divider"></div>
+                <div class="action-dropdown-item danger" onclick="Contacts.clearAll()">
+                  <span>🗑️</span><span>清空全部</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="Contacts.openForm()">➕</button>
+          </div>
+        </div>
+
+        <!-- 卡片区 -->
+        <div class="contact-cards" id="contactCards"></div>
+
+        <!-- 分页 -->
+        <div class="contact-pagination" id="pagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/common.js?v=20260812"></script>
+<!-- Supabase 登录守卫 -->
+<script src="js/localstorage-patch.js?v=20260822g"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260822g"></script>
+<script src="js/auth-guard.js?v=20260813"></script>
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260813"></script>
+<script type="module" src="js/logout.js?v=20260813"></script>
+<script>
+// ===== 云端同步：提前注册监听器 =====
+var PageDataSyncGuard = {
+  inited: false, pending: false,
+  watchKeys: ["contacts"],
+  emptyCheckKeys: ["contacts"],
+  afterInit: function() {
+    var self = this; this.inited = true;
+    function doRefresh() { try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {} }
+    if (self.pending) setTimeout(doRefresh, 200);
+    setTimeout(function() {
+      var allEmpty = self.emptyCheckKeys.every(function(k){
+        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
+      });
+      if (allEmpty) doRefresh();
+    }, 2000);
+  }
+};
+window.addEventListener('cloud-data-updated', function(e){
+  var keys = (e.detail&&e.detail.keys)||[];
+  var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
+  if (need) {
+    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    try { if (typeof window.renderAll==='function') window.renderAll(); } catch(e){}
+  }
+});
+
+window.renderAll = function() { try { Contacts.init(); } catch(e) {} };
+
+App.init('contacts');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('contacts');
+  setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
+
+// ===== 通讯录模块 =====
+const Contacts = {
+  currentPage: 1,
+  pageSize: 12,
+
+  // 类型选项（合并原类型与业务类型）
+  typeOptions: ['客户', '面里衬厂', '水洗厂', '辅料厂', '服装厂', '货代', '同事', '样衣师', '其他'],
+
+  // 类型颜色映射
+  typeColors: {
+    '客户': '#004D6D',
+    '面里衬厂': '#6d28d9',
+    '水洗厂': '#d9883a',
+    '辅料厂': '#0d9488',
+    '服装厂': '#2d9d5f',
+    '货代': '#d44848',
+    '同事': '#6b7280',
+    '其他': '#9ca3af',
+  },
+
+  // ===== 获取收藏列表 =====
+  getFavorites() {
+    try {
+      const data = localStorage.getItem('favoriteContacts');
+      return new Set(data ? JSON.parse(data) : []);
+    } catch (e) { return new Set(); }
+  },
+  setFavorites(favSet) {
+    localStorage.setItem('favoriteContacts', JSON.stringify([...favSet]));
+  },
+  toggleFavorite(id) {
+    const fav = this.getFavorites();
+    if (fav.has(id)) fav.delete(id);
+    else fav.add(id);
+    this.setFavorites(fav);
+    this.renderCards();
+    this.renderStats();
+    this.updateFilterCounts();
+  },
+
+  // ===== 检查是否在订单/生产中出现过（合作状态） =====
+  isCooperating(name) {
+    if (!name) return false;
+    const orders = App.store.get('orders', []);
+    const fabrics = App.store.get('fabrics', []);
+    const accessories = App.store.get('accessories', []);
+    const productions = App.store.get('productions', []);
+    const customers = App.store.get('customers', []);
+
+    // 检查客户表
+    if (customers.some(c => c.name === name)) return true;
+    // 检查面料供应商
+    if (fabrics.some(f => f.supplier === name)) return true;
+    // 检查辅料供应商
+    if (accessories.some(a => a.supplier === name)) return true;
+    // 检查生产工厂
+    if (productions.some(p => p.factoryName === name)) return true;
+    return false;
+  },
+
+  // ===== 获取筛选数据 =====
+  getFiltered() {
+    const contacts = App.store.get('contacts', []);
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+    const type = document.getElementById('typeFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const favFilter = document.getElementById('favoriteFilter').value;
+    const companyFilter = document.getElementById('companyFilter').value;
+    const favorites = this.getFavorites();
+
+    return contacts.filter(c => {
+      // 搜索
+      if (search) {
+        const fields = [c.name, c.contactPerson, c.position, c.phone, c.email, c.address, c.website,
+          c.bankAccount, c.bankCode, c.bankAddress, c.taxNo, c.type, c.description];
+        const matches = fields.some(v => (v || '').toString().toLowerCase().includes(search));
+        if (!matches) return false;
+      }
+      // 类型筛选
+      if (type && c.type !== type) return false;
+      // 公司筛选
+      if (companyFilter && c.name !== companyFilter) return false;
+      // 合作状态筛选
+      if (status) {
+        const isCoop = this.isCooperating(c.name);
+        if (status === 'cooperating' && !isCoop) return false;
+        if (status === 'developing' && isCoop) return false;
+      }
+      // 收藏筛选
+      if (favFilter) {
+        const isFav = favorites.has(c.id);
+        if (favFilter === 'favorite' && !isFav) return false;
+        if (favFilter === 'unfavorite' && isFav) return false;
+      }
+      return true;
+    });
+  },
+
+  // ===== 渲染统计卡片 =====
+  renderStats() {
+    const contacts = App.store.get('contacts', []);
+    const total = contacts.length;
+    const customerCount = contacts.filter(c => c.type === '客户').length;
+    const factoryCount = contacts.filter(c => ['面里衬厂', '辅料厂', '服装厂', '水洗厂'].includes(c.type)).length;
+    const favCount = this.getFavorites().size;
+
+    const cards = [
+      { icon: '📞', bg: '#e8f1f5', color: '#004D6D', label: '总联系数', value: total, sub: '全部联系人' },
+      { icon: '🤝', bg: '#ecfdf5', color: '#2d9d5f', label: '客户数', value: customerCount, sub: '客户类型' },
+      { icon: '🏭', bg: '#fff8ed', color: '#d9883a', label: '工厂数', value: factoryCount, sub: '面料/辅料/服装/水洗' },
+      { icon: '⭐', bg: '#fef2f2', color: '#d44848', label: '已收藏', value: favCount, sub: '星标联系人' },
+    ];
+
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+        <div class="stat-info">
+          <div class="stat-label">${c.label}</div>
+          <div class="stat-value" style="color:${c.color};">${c.value}</div>
+          <div class="stat-sub">${c.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  // ===== 更新筛选下拉选项和计数 =====
+  updateFilterCounts() {
+    const contacts = App.store.get('contacts', []);
+    const favorites = this.getFavorites();
+
+    // 类型筛选
+    const typeSelect = document.getElementById('typeFilter');
+    const currentType = typeSelect.value;
+    let typeHtml = '<option value="">全部类型</option>';
+    this.typeOptions.forEach(t => {
+      const count = contacts.filter(c => c.type === t).length;
+      typeHtml += `<option value="${t}">${t} (${count})</option>`;
+    });
+    typeSelect.innerHTML = typeHtml;
+    typeSelect.value = currentType;
+
+    // 状态筛选
+    const statusSelect = document.getElementById('statusFilter');
+    const currentStatus = statusSelect.value;
+    const coopCount = contacts.filter(c => this.isCooperating(c.name)).length;
+    statusSelect.innerHTML = `
+      <option value="">全部状态</option>
+      <option value="cooperating">合作中 (${coopCount})</option>
+      <option value="developing">待开发 (${contacts.length - coopCount})</option>
+    `;
+    statusSelect.value = currentStatus;
+
+    // 收藏筛选
+    const favSelect = document.getElementById('favoriteFilter');
+    const currentFav = favSelect.value;
+    favSelect.innerHTML = `
+      <option value="">全部收藏</option>
+      <option value="favorite">已收藏 (${favorites.size})</option>
+      <option value="unfavorite">未收藏</option>
+    `;
+    favSelect.value = currentFav;
+
+    // 公司筛选
+    const companySelect = document.getElementById('companyFilter');
+    const currentCompany = companySelect.value;
+    const companyMap = {};
+    contacts.forEach(c => {
+      if (c.name) companyMap[c.name] = (companyMap[c.name] || 0) + 1;
+    });
+    const sortedCompanies = Object.keys(companyMap).sort();
+    let companyHtml = '<option value="">全部公司</option>';
+    sortedCompanies.forEach(name => {
+      companyHtml += `<option value="${App.utils.escapeHtml(name)}">${App.utils.escapeHtml(name)} (${companyMap[name]}人)</option>`;
+    });
+    companySelect.innerHTML = companyHtml;
+    companySelect.value = currentCompany;
+  },
+
+  // ===== 筛选变化时重置页码并重新渲染 =====
+  onFilterChange() {
+    this.currentPage = 1;
+    this.renderCards();
+  },
+
+  // ===== 渲染卡片 =====
+  renderCards() {
+    const filtered = this.getFiltered();
+    const favorites = this.getFavorites();
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / this.pageSize));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    const pageData = filtered.slice(startIndex, startIndex + this.pageSize);
+
+    // 更新计数
+    document.getElementById('totalCount').textContent = `共 ${total} 个联系人`;
+
+    if (pageData.length === 0) {
+      document.getElementById('contactCards').innerHTML = `
+        <div style="text-align:center;padding:30px;width:100%;">
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-text">没有找到联系人</div>
+          </div>
+        </div>`;
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
+    document.getElementById('contactCards').innerHTML = pageData.map(c => {
+      const isCoop = this.isCooperating(c.name);
+      const isFav = favorites.has(c.id);
+      const typeColor = this.typeColors[c.type] || '#9ca3af';
+      const sameCompanyCount = this.getSameCompanyCount(c.name, c.id);
+
+      let badges = '';
+      if (c.type) {
+        badges += `<span class="contact-badge" style="background:${typeColor};">${App.utils.escapeHtml(c.type)}</span>`;
+      }
+      badges += `<span class="contact-badge" style="background:${isCoop ? '#2d9d5f' : '#d9883a'};">${isCoop ? '合作中' : '待开发'}</span>`;
+
+      let infoHtml = '';
+      if (c.position) infoHtml += `<div class="contact-info"><span class="info-label">职位:</span>${App.utils.escapeHtml(c.position)}</div>`;
+      infoHtml += `<div class="contact-info"><span class="info-label">电话:</span>${App.utils.escapeHtml(c.phone || '-')}</div>`;
+      infoHtml += `<div class="contact-info"><span class="info-label">邮箱:</span>${App.utils.escapeHtml(c.email || '-')}</div>`;
+      infoHtml += `<div class="contact-info"><span class="info-label">地址:</span>${App.utils.escapeHtml(c.address || '-')}</div>`;
+      if (c.website) infoHtml += `<div class="contact-info"><span class="info-label">网址:</span>${App.utils.escapeHtml(c.website)}</div>`;
+      if (c.bankAccount) infoHtml += `<div class="contact-info"><span class="info-label">银行账号:</span>${App.utils.escapeHtml(c.bankAccount)}</div>`;
+      if (c.bankAddress) infoHtml += `<div class="contact-info"><span class="info-label">开户行:</span>${App.utils.escapeHtml(c.bankAddress)}</div>`;
+      if (c.bankCode) infoHtml += `<div class="contact-info"><span class="info-label">行号:</span>${App.utils.escapeHtml(c.bankCode)}</div>`;
+      if (c.taxNo) infoHtml += `<div class="contact-info"><span class="info-label">税号:</span>${App.utils.escapeHtml(c.taxNo)}</div>`;
+      if (c.description) infoHtml += `<div class="contact-info"><span class="info-label">备注:</span>${App.utils.escapeHtml(c.description)}</div>`;
+
+      const sameCompanyBadge = sameCompanyCount > 0
+        ? `<span class="same-company-badge" title="同公司还有 ${sameCompanyCount} 位联系人">👥 ${sameCompanyCount + 1}人</span>`
+        : '';
+
+      return `
+        <div class="contact-card">
+          <div class="contact-card-header">
+            <div class="contact-person-name">${App.utils.escapeHtml(c.contactPerson || '未填写')}</div>
+            <div class="contact-badges">${badges}</div>
+          </div>
+          <div class="contact-company-name" onclick="Contacts.viewSameCompany('${c.id}')" title="点击查看同公司联系人">
+            <span class="company-text">${App.utils.escapeHtml(c.name)}${sameCompanyBadge}</span>
+            <span class="contact-favorite ${isFav ? 'active' : 'inactive'}" onclick="event.stopPropagation(); Contacts.toggleFavorite('${c.id}')">${isFav ? '⭐' : '☆'}</span>
+          </div>
+          ${infoHtml}
+          <div class="contact-actions">
+            <button class="btn btn-sm btn-success" title="编辑" onclick="Contacts.openForm('${c.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Contacts.deleteContact('${c.id}')">🗑️</button>
+            <button class="btn btn-sm" title="查看同公司联系人" onclick="Contacts.viewSameCompany('${c.id}')">👥</button>
+            <button class="btn btn-sm btn-primary" title="添加同公司联系人" onclick="Contacts.openForm(null, '${c.id}')">➕</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    this.renderPagination(total, totalPages);
+  },
+
+  // ===== 渲染分页 =====
+  renderPagination(total, totalPages) {
+    const container = document.getElementById('pagination');
+    if (total <= this.pageSize) {
+      container.innerHTML = `<span class="page-info">共 ${total} 个联系人</span>`;
+      return;
+    }
+
+    let html = `<span class="page-info">共 ${total} 个联系人，第 ${this.currentPage}/${totalPages} 页</span>`;
+    // 上一页
+    html += `<button class="page-btn" ${this.currentPage <= 1 ? 'disabled' : ''} onclick="Contacts.goPage(${this.currentPage - 1})">‹</button>`;
+    // 页码
+    const start = Math.max(1, this.currentPage - 2);
+    const end = Math.min(totalPages, this.currentPage + 2);
+    if (start > 1) html += `<button class="page-btn" onclick="Contacts.goPage(1)">1</button>`;
+    if (start > 2) html += `<span class="page-info">...</span>`;
+    for (let i = start; i <= end; i++) {
+      html += `<button class="page-btn ${i === this.currentPage ? 'active' : ''}" onclick="Contacts.goPage(${i})">${i}</button>`;
+    }
+    if (end < totalPages - 1) html += `<span class="page-info">...</span>`;
+    if (end < totalPages) html += `<button class="page-btn" onclick="Contacts.goPage(${totalPages})">${totalPages}</button>`;
+    // 下一页
+    html += `<button class="page-btn" ${this.currentPage >= totalPages ? 'disabled' : ''} onclick="Contacts.goPage(${this.currentPage + 1})">›</button>`;
+    container.innerHTML = html;
+  },
+
+  goPage(page) {
+    this.currentPage = page;
+    this.renderCards();
+  },
+
+  // ===== 新增/编辑/同公司新增 表单 =====
+  openForm(id, sameCompanyId) {
+    const isEdit = !!id;
+    const isSameCompany = !!sameCompanyId;
+    const contacts = App.store.get('contacts', []);
+    const contact = isEdit ? contacts.find(c => c.id === id) : null;
+    const sameCompany = isSameCompany ? contacts.find(c => c.id === sameCompanyId) : null;
+
+    // 生成类型选项
+    const typeOpts = this.typeOptions.map(t =>
+      `<option value="${t}">${t}</option>`).join('');
+
+    // 同公司模式：预填公司信息，联系人/职位/电话/邮箱留空
+    const v = (field) => {
+      if (isEdit && contact) return contact[field] || '';
+      if (isSameCompany && sameCompany) return sameCompany[field] || '';
+      return '';
+    };
+    const companyDisabled = isSameCompany ? 'disabled' : '';
+
+    const body = `
+      ${isSameCompany && sameCompany ? `
+        <div style="margin-bottom:12px;padding:8px 12px;background:#e8f1f5;border:1px solid #b3d4e0;border-radius:6px;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:14px;">🏢</span>
+          <div>
+            <div style="font-weight:600;color:var(--primary);">正在为「${App.utils.escapeHtml(sameCompany.name)}」添加新联系人</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">公司信息已自动带入，只需填写新的联系人资料</div>
+          </div>
+        </div>
+      ` : ''}
+      <div class="form-section-title">👤 联系人信息</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:3;min-width:200px;">
+          <label class="form-label">单位名称<span class="required">*</span></label>
+          <input type="text" id="f_name" class="form-input" value="${App.utils.escapeHtml(v('name'))}" placeholder="请输入单位名称" ${companyDisabled}>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">类型</label>
+          <select id="f_type" class="form-select" ${companyDisabled}>${typeOpts}</select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">联系人</label>
+          <input type="text" id="f_contactPerson" class="form-input" value="${App.utils.escapeHtml(isSameCompany ? '' : v('contactPerson'))}" placeholder="请输入联系人姓名">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label class="form-label">职位</label>
+          <input type="text" id="f_position" class="form-input" value="${App.utils.escapeHtml(isSameCompany ? '' : v('position'))}" placeholder="请输入职位">
+        </div>
+        <div class="form-group" style="flex:1;min-width:130px;">
+          <label class="form-label">电话</label>
+          <input type="text" id="f_phone" class="form-input" value="${App.utils.escapeHtml(isSameCompany ? '' : v('phone'))}" placeholder="请输入电话号码">
+        </div>
+        <div class="form-group" style="flex:2;min-width:180px;">
+          <label class="form-label">邮箱</label>
+          <input type="email" id="f_email" class="form-input" value="${App.utils.escapeHtml(isSameCompany ? '' : v('email'))}" placeholder="请输入邮箱地址">
+        </div>
+      </div>
+
+      <div class="form-section-title">📍 地址信息</div>
+      <div class="form-group">
+        <label class="form-label">地址</label>
+        <input type="text" id="f_address" class="form-input" value="${App.utils.escapeHtml(v('address'))}" placeholder="请输入地址" ${companyDisabled}>
+      </div>
+      <div class="form-group">
+        <label class="form-label">公司网址</label>
+        <input type="text" id="f_website" class="form-input" value="${App.utils.escapeHtml(v('website'))}" placeholder="https://" ${companyDisabled}>
+      </div>
+
+      <div class="form-section-title">🏦 银行信息</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1.5;">
+          <label class="form-label">银行账号</label>
+          <input type="text" id="f_bankAccount" class="form-input" value="${App.utils.escapeHtml(v('bankAccount'))}" placeholder="请输入银行账号" ${companyDisabled}>
+        </div>
+        <div class="form-group">
+          <label class="form-label">开户行</label>
+          <input type="text" id="f_bankAddress" class="form-input" value="${App.utils.escapeHtml(v('bankAddress'))}" placeholder="请输入开户行" ${companyDisabled}>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">行号</label>
+          <input type="text" id="f_bankCode" class="form-input" value="${App.utils.escapeHtml(v('bankCode'))}" placeholder="请输入行号" ${companyDisabled}>
+        </div>
+        <div class="form-group">
+          <label class="form-label">税号</label>
+          <input type="text" id="f_taxNo" class="form-input" value="${App.utils.escapeHtml(v('taxNo'))}" placeholder="请输入税号" ${companyDisabled}>
+        </div>
+      </div>
+
+      <div class="form-section-title">📝 其他信息</div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea id="f_description" class="form-textarea" rows="2" placeholder="请输入备注" ${companyDisabled}>${App.utils.escapeHtml(v('description'))}</textarea>
+      </div>
+    `;
+
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️</button>
+      <button class="btn btn-primary" onclick="Contacts.saveForm('${id || ''}')">💾</button>
+    `;
+
+    let title = '新增联系人';
+    if (isEdit) title = '编辑联系人';
+    else if (isSameCompany && sameCompany) title = `添加同公司联系人 - ${sameCompany.name}`;
+
+    App.modal.open({ title, body, footer, size: 'lg', closeOnOverlay: false });
+
+    // 回填下拉框
+    if (v('type')) document.getElementById('f_type').value = v('type');
+  },
+
+  // ===== 保存 =====
+  saveForm(id) {
+    const name = document.getElementById('f_name').value.trim();
+    if (!name) { App.toast('请输入单位名称', 'error'); return; }
+
+    const data = {
+      name,
+      type: document.getElementById('f_type').value,
+      contactPerson: document.getElementById('f_contactPerson').value.trim(),
+      position: document.getElementById('f_position').value.trim(),
+      phone: document.getElementById('f_phone').value.trim(),
+      email: document.getElementById('f_email').value.trim(),
+      address: document.getElementById('f_address').value.trim(),
+      website: document.getElementById('f_website').value.trim(),
+      bankAccount: document.getElementById('f_bankAccount').value.trim(),
+      bankCode: document.getElementById('f_bankCode').value.trim(),
+      bankAddress: document.getElementById('f_bankAddress').value.trim(),
+      taxNo: document.getElementById('f_taxNo').value.trim(),
+      description: document.getElementById('f_description').value.trim(),
+    };
+
+    const contacts = App.store.get('contacts', []);
+
+    if (id) {
+      const idx = contacts.findIndex(c => c.id === id);
+      if (idx >= 0) {
+        contacts[idx] = { ...contacts[idx], ...data };
+      }
+      App.toast('联系人更新成功', 'success');
+    } else {
+      contacts.push({ id: App.utils.genId('CT'), ...data });
+      App.toast('联系人创建成功', 'success');
+    }
+
+    App.store.set('contacts', contacts);
+    App.modal.close();
+    this.renderStats();
+    this.updateFilterCounts();
+    this.renderCards();
+  },
+
+  // ===== 删除 =====
+  deleteContact(id) {
+    App.confirm('确定要删除此联系人吗？删除后不可恢复。', () => {
+      let contacts = App.store.get('contacts', []);
+      contacts = contacts.filter(c => c.id !== id);
+      App.store.set('contacts', contacts);
+      // 同时删除收藏
+      const fav = this.getFavorites();
+      fav.delete(id);
+      this.setFavorites(fav);
+      App.toast('联系人已删除', 'success');
+      this.renderStats();
+      this.updateFilterCounts();
+      this.renderCards();
+    });
+  },
+
+  // ===== 获取同公司联系人数量（排除自己） =====
+  getSameCompanyCount(companyName, currentId) {
+    if (!companyName) return 0;
+    const contacts = App.store.get('contacts', []);
+    return contacts.filter(c => c.name === companyName && c.id !== currentId).length;
+  },
+
+  // ===== 获取同公司所有联系人 =====
+  getSameCompanyContacts(companyName, currentId) {
+    if (!companyName) return [];
+    const contacts = App.store.get('contacts', []);
+    return contacts.filter(c => c.name === companyName && c.id !== currentId);
+  },
+
+  // ===== 查看同公司联系人 =====
+  viewSameCompany(id) {
+    const contacts = App.store.get('contacts', []);
+    const contact = contacts.find(c => c.id === id);
+    if (!contact) return;
+
+    const sameList = this.getSameCompanyContacts(contact.name, id);
+    const allCount = sameList.length + 1;
+
+    let listHtml = '';
+    if (sameList.length === 0) {
+      listHtml = `
+        <div style="text-align:center;padding:24px;color:var(--muted);">
+          <div style="font-size:24px;margin-bottom:6px;">👤</div>
+          <div>该公司目前只有这一位联系人</div>
+        </div>`;
+    } else {
+      listHtml = '<div class="same-company-list">';
+      // 当前联系人排在第一位
+      listHtml += this.renderSameCompanyItem(contact, true);
+      sameList.forEach(c => {
+        listHtml += this.renderSameCompanyItem(c, false);
+      });
+      listHtml += '</div>';
+    }
+
+    const body = `
+      <div style="margin-bottom:10px;padding:8px 10px;background:#e8f1f5;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <span style="font-weight:600;color:var(--primary);">${App.utils.escapeHtml(contact.name)}</span>
+          <span style="color:var(--muted);margin-left:8px;">共 ${allCount} 位联系人</span>
+        </div>
+      </div>
+      ${listHtml}
+    `;
+
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️</button>
+      <button class="btn btn-primary" onclick="App.modal.close(); Contacts.openForm(null, '${id}')">➕ 添加同公司联系人</button>
+    `;
+
+    App.modal.open({ title: '同公司联系人', body, footer, size: 'lg' });
+  },
+
+  // ===== 渲染同公司联系人条目 =====
+  renderSameCompanyItem(c, isCurrent) {
+    const initial = (c.contactPerson || c.name || '?').charAt(0).toUpperCase();
+    const details = [];
+    if (c.position) details.push(c.position);
+    if (c.phone) details.push(c.phone);
+    if (c.email) details.push(c.email);
+    const detailText = details.join(' · ') || '无联系方式';
+
+    return `
+      <div class="same-company-item" ${isCurrent ? 'style="border-color:var(--primary);background:#e8f1f5;"' : ''}>
+        <div class="sc-avatar">${App.utils.escapeHtml(initial)}</div>
+        <div class="sc-info">
+          <div class="sc-name">${App.utils.escapeHtml(c.contactPerson || '未填写')}${isCurrent ? ' <span style="font-size:9px;color:var(--primary);font-weight:normal;">（当前）</span>' : ''}</div>
+          <div class="sc-detail">${App.utils.escapeHtml(detailText)}</div>
+        </div>
+        <div class="sc-actions">
+          <button class="btn btn-sm btn-success" title="编辑" onclick="Contacts.openForm('${c.id}')">✏️</button>
+          ${!isCurrent ? `<button class="btn btn-sm btn-danger" title="删除" onclick="Contacts.deleteContact('${c.id}')">🗑️</button>` : ''}
+        </div>
+      </div>`;
+  },
+
+  // ===== 按公司筛选 =====
+  filterByCompany(companyName) {
+    document.getElementById('companyFilter').value = companyName;
+    this.currentPage = 1;
+    this.renderCards();
+  },
+
+  // ===== 操作下拉菜单 =====
+  toggleActionMenu() {
+    const dd = document.getElementById('actionDropdown');
+    dd.classList.toggle('open');
+  },
+
+  closeActionMenu() {
+    document.getElementById('actionDropdown').classList.remove('open');
+  },
+
+  // ===== 导出Excel =====
+  exportExcel() {
+    this.closeActionMenu();
+    const contacts = App.store.get('contacts', []);
+    if (contacts.length === 0) {
+      App.toast('没有联系人可导出', 'error');
+      return;
+    }
+
+    // 中英文表头映射
+    const headerMap = {
+      name: '单位名称',
+      type: '类型',
+      contactPerson: '联系人',
+      position: '职位',
+      phone: '电话',
+      email: '邮箱',
+      address: '地址',
+      website: '公司网址',
+      bankAccount: '银行账号',
+      bankAddress: '开户行',
+      bankCode: '行号',
+      taxNo: '税号',
+      description: '备注'
+    };
+    const keys = Object.keys(headerMap);
+
+    const data = contacts.map(c => {
+      const row = {};
+      keys.forEach(k => { row[headerMap[k]] = c[k] || ''; });
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data, { header: keys.map(k => headerMap[k]) });
+    // 设置列宽
+    ws['!cols'] = [
+      { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 12 },
+      { wch: 18 }, { wch: 26 }, { wch: 30 }, { wch: 22 }, { wch: 24 },
+      { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 30 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '通讯录');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `通讯录_${dateStr}.xlsx`);
+    App.toast(`已导出 ${contacts.length} 条联系人`, 'success');
+  },
+
+  // ===== 导入Excel =====
+  importExcel() {
+    this.closeActionMenu();
+    // 创建隐藏的文件选择框
+    const existing = document.getElementById('importFileInput');
+    if (existing) existing.remove();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'importFileInput';
+    input.accept = '.xlsx,.xls,.csv';
+    input.style.display = 'none';
+    input.onchange = (e) => this.handleFileImport(e);
+    document.body.appendChild(input);
+    input.click();
+  },
+
+  handleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('importFileInput').remove();
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (rows.length === 0) {
+          App.toast('Excel文件中没有数据', 'error');
+          return;
+        }
+
+        // 中文表头反向映射
+        const reverseMap = {
+          '单位名称': 'name', '类型': 'type',
+          '联系人': 'contactPerson', '职位': 'position', '电话': 'phone',
+          '邮箱': 'email', '地址': 'address', '公司网址': 'website',
+          '银行账号': 'bankAccount', '开户行': 'bankAddress', '行号': 'bankCode',
+          '税号': 'taxNo', '备注': 'description'
+        };
+
+        const contacts = App.store.get('contacts', []);
+        let importCount = 0;
+        let skipCount = 0;
+
+        // 导入时的类型映射（支持旧类型名称）
+        const importTypeMap = {
+          '面料厂': '面里衬厂', '面料商': '面里衬厂',
+          '辅料厂': '辅料厂', '辅料商': '辅料厂',
+          '服装厂': '服装厂', '打样厂': '服装厂',
+          '水洗厂': '水洗厂',
+          '客户': '客户', '品牌商': '客户', '贸易商': '客户',
+          '货代': '货代', '物流': '货代',
+          '同事': '同事', '打样师': '样衣师',
+          '供应商': '其他', '客户/供应商': '其他', '其他': '其他',
+        };
+
+        rows.forEach(row => {
+          const obj = {};
+          let hasName = false;
+          Object.keys(row).forEach(header => {
+            const field = reverseMap[header.trim()];
+            if (field && row[header]) {
+              obj[field] = String(row[header]).trim();
+              if (field === 'name') hasName = true;
+            }
+          });
+
+          if (!hasName) { skipCount++; return; }
+
+          // 处理类型：先做旧类型映射，再验证
+          if (obj.type) {
+            if (importTypeMap[obj.type]) {
+              obj.type = importTypeMap[obj.type];
+            } else if (!this.typeOptions.includes(obj.type)) {
+              obj.type = '';
+            }
+          }
+
+          // 检查是否已存在相同单位名称+联系人
+          const exists = contacts.some(c =>
+            c.name === obj.name && c.contactPerson === obj.contactPerson && obj.contactPerson
+          );
+          if (exists) { skipCount++; return; }
+
+          contacts.push({ id: App.utils.genId('CT'), ...obj });
+          importCount++;
+        });
+
+        App.store.set('contacts', contacts);
+        this.renderStats();
+        this.updateFilterCounts();
+        this.renderCards();
+
+        let msg = `导入完成：成功 ${importCount} 条`;
+        if (skipCount > 0) msg += `，跳过 ${skipCount} 条（无单位名称或重复）`;
+        App.toast(msg, 'success');
+      } catch (err) {
+        console.error('导入失败:', err);
+        App.toast('导入失败，请检查文件格式', 'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  },
+
+  // ===== 清空全部 =====
+  clearAll() {
+    this.closeActionMenu();
+    const contacts = App.store.get('contacts', []);
+    if (contacts.length === 0) {
+      App.toast('通讯录已是空的', 'error');
+      return;
+    }
+
+    App.confirm(`确定要清空全部 ${contacts.length} 条联系人吗？此操作不可恢复！`, () => {
+      App.store.set('contacts', []);
+      // 清空收藏
+      localStorage.removeItem('favoriteContacts');
+      App.toast('通讯录已清空', 'success');
+      this.renderStats();
+      this.updateFilterCounts();
+      this.renderCards();
+    });
+  },
+
+  // ===== 数据迁移：合并旧 type + businessType 为新 type =====
+  migrateContacts() {
+    const contacts = App.store.get('contacts', []);
+    if (contacts.length === 0) return;
+
+    // 旧 businessType → 新 type 映射
+    const bizMap = {
+      '面料商': '面里衬厂', '辅料商': '辅料厂', '服装厂': '服装厂',
+      '水洗厂': '水洗厂', '打样厂': '服装厂', '品牌商': '客户',
+      '贸易商': '客户', '物流': '货代', '其他': '其他',
+    };
+    // 旧 type → 新 type 映射
+    const oldTypeMap = {
+      '客户': '客户', '供应商': '其他', '客户/供应商': '其他',
+      '物流': '货代', '其他': '其他',
+      '面料厂': '面里衬厂', // 旧名称迁移
+      '面料商': '面里衬厂',
+      '打样师': '样衣师',
+    };
+
+    // 检查是否需要迁移（存在 businessType 字段 或 存在旧类型值）
+    const needsMigration = contacts.some(c => 
+      c.businessType !== undefined || (c.type && oldTypeMap[c.type] && oldTypeMap[c.type] !== c.type)
+    );
+    if (!needsMigration) return;
+
+    let changed = false;
+    contacts.forEach(c => {
+      // 优先使用 businessType 映射（工厂/物流类更精确）
+      if (c.businessType && bizMap[c.businessType]) {
+        if (c.type !== bizMap[c.businessType]) {
+          c.type = bizMap[c.businessType];
+          changed = true;
+        }
+      } else if (c.type && oldTypeMap[c.type] && oldTypeMap[c.type] !== c.type) {
+        c.type = oldTypeMap[c.type];
+        changed = true;
+      } else if (!c.type) {
+        c.type = '其他';
+        changed = true;
+      }
+      if (c.businessType !== undefined) {
+        delete c.businessType;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      App.store.set('contacts', contacts);
+    }
+  },
+
+  // ===== 初始化 =====
+  init() {
+    this.migrateContacts();
+    this.renderStats();
+    this.updateFilterCounts();
+    this.renderCards();
+  }
+};
+
+Contacts.init();
+
+// 点击外部关闭操作下拉菜单
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('actionDropdown');
+  if (dd && !dd.contains(e.target)) {
+    dd.classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,745 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>辅料管理 - 舜天汉唐服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+.form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 5px 0 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.form-section-title:first-child { padding-top: 0; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">辅料管理</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <!-- 统计卡片 -->
+      <div class="stat-grid" id="statCards"></div>
+
+      <!-- 标签页 -->
+      <div class="tabs" id="tabsBar"></div>
+
+      <!-- 辅料列表 -->
+      <div class="table-wrap">
+        <div class="filter-bar" id="filterBar"></div>
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <span class="card-title">辅料列表</span>
+          </div>
+          <div class="table-toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="openAccessoryModal()" title="新增辅料">➕</button>
+          </div>
+        </div>
+        <div id="accessoryTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/common.js?v=20260812"></script>
+<!-- Supabase 登录守卫 -->
+<script src="js/localstorage-patch.js?v=20260822g"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260822g"></script>
+
+<script src="js/auth-guard.js?v=20260813"></script>
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260813"></script>
+<script type="module" src="js/logout.js?v=20260813"></script>
+<script>
+// ===== 云端同步：提前注册监听器 =====
+var PageDataSyncGuard = {
+  inited: false, pending: false,
+  watchKeys: ["accessories","contacts","maintAccessories","styles"],
+  emptyCheckKeys: ["accessories"],
+  afterInit: function() {
+    var self = this; this.inited = true;
+    function doRefresh() { try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {} }
+    if (self.pending) setTimeout(doRefresh, 200);
+    setTimeout(function() {
+      var allEmpty = self.emptyCheckKeys.every(function(k){
+        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
+      });
+      if (allEmpty) doRefresh();
+    }, 2000);
+  }
+};
+window.addEventListener('cloud-data-updated', function(e){
+  var keys = (e.detail&&e.detail.keys)||[];
+  var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
+  if (need) {
+    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    try { if (typeof window.renderAll==='function') window.renderAll(); } catch(e){}
+  }
+});
+
+App.init('accessory');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('accessory');
+  setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
+
+// ===== 状态变量 =====
+let filterState = { search: '', status: '' };
+let currentTab = '全部';
+let editingId = null;
+let _accessorySelectedIds = new Set();
+
+// ===== 工作流状态定义 =====
+// 待打样 → 寄样中 → (需修改→再寄样) → 已确认 → 采购合同 → 发货中 → 已到货
+const STATUS_FLOW = ['待打样', '寄样中', '需修改', '已确认', '采购合同', '发货中', '已到货'];
+
+const TAB_STATUS_MAP = {
+  '全部': null,
+  '待打样': ['待打样'],
+  '寄样中': ['寄样中', '需修改'],
+  '已确认': ['已确认'],
+  '采购合同': ['采购合同'],
+  '发货中': ['发货中'],
+  '已到货': ['已到货'],
+};
+
+// ===== 数据获取 =====
+function getAccessories() {
+  return App.store.get('accessories', []);
+}
+
+function getStyles() {
+  return App.store.get('styles', []);
+}
+
+// 获取辅料供应商（从通讯录中筛选类型为辅料厂的）
+function getAccessorySuppliers() {
+  return App.store.get('contacts', []).filter(c => c.type === '辅料厂');
+}
+
+// 获取发货目标工厂（服装厂）
+function getShipFactories() {
+  return App.store.get('contacts', []).filter(c => c.type === '服装厂');
+}
+
+// 获取维护资料中的辅料信息
+function getMaintAccessories() {
+  return App.store.get('maintAccessories', []);
+}
+
+// ===== 数据迁移：旧状态映射到新工作流 =====
+function migrateStatuses() {
+  const accessories = getAccessories();
+  let changed = false;
+  accessories.forEach(a => {
+    if (!a.status || a.status === '询价') { a.status = '待打样'; changed = true; }
+    else if (a.status === '已下单') { a.status = '采购合同'; changed = true; }
+
+    // 根据已填日期自动推进状态
+    const currentIdx = STATUS_FLOW.indexOf(a.status);
+    if (a.arrivalDate) {
+      const idx = STATUS_FLOW.indexOf('已到货');
+      if (idx > currentIdx) { a.status = '已到货'; changed = true; }
+    } else if (a.shipDate) {
+      const idx = STATUS_FLOW.indexOf('发货中');
+      if (idx > currentIdx) { a.status = '发货中'; changed = true; }
+    }
+  });
+  if (changed) App.store.set('accessories', accessories);
+}
+
+// ===== 渲染统计卡片 =====
+function renderStats() {
+  const accessories = getAccessories();
+  const total = accessories.length;
+  const sampling = accessories.filter(a => ['寄样中', '需修改'].includes(a.status)).length;
+  const confirmed = accessories.filter(a => a.status === '已确认').length;
+  const arrived = accessories.filter(a => a.status === '已到货').length;
+
+  const cards = [
+    { icon: '🔩', bg: '#e8f1f5', color: '#004D6D', label: '辅料总数', value: total, sub: '全部辅料记录' },
+    { icon: '✂️', bg: '#fff8ed', color: '#d9883a', label: '寄样中', value: sampling, sub: '待客人确认' },
+    { icon: '✅', bg: '#ecfdf5', color: '#2d9d5f', label: '已确认', value: confirmed, sub: '待下采购合同' },
+    { icon: '🏭', bg: '#f0f9ff', color: '#0284c7', label: '已到货', value: arrived, sub: '已到工厂' },
+  ];
+
+  document.getElementById('statCards').innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+      <div class="stat-info">
+        <div class="stat-label">${c.label}</div>
+        <div class="stat-value" style="color:${c.color};">${c.value}</div>
+        <div class="stat-sub">${c.sub}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== 渲染标签页 =====
+function renderTabs() {
+  const tabs = Object.keys(TAB_STATUS_MAP);
+  document.getElementById('tabsBar').innerHTML = tabs.map(t => `
+    <div class="tab-item ${currentTab === t ? 'active' : ''}" onclick="switchTab('${t}')">${t}</div>
+  `).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  renderTabs();
+  renderAccessoryTable();
+}
+
+// ===== 渲染筛选栏 =====
+function renderFilterBar() {
+  document.getElementById('filterBar').innerHTML = `
+    <div class="search-input">
+      <input type="text" class="form-input" id="searchInput" placeholder="搜索辅料名/款号/供应商" value="${App.utils.escapeHtml(filterState.search)}">
+    </div>
+    <select class="form-select" id="statusFilter">
+      <option value="">全部状态</option>
+      ${STATUS_FLOW.map(s => `<option value="${s}" ${filterState.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+    </select>
+    <button class="btn btn-sm" onclick="resetFilter()" title="重置筛选">🔄</button>
+  `;
+
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    filterState.search = e.target.value;
+    renderAccessoryTable();
+  });
+  document.getElementById('statusFilter').addEventListener('change', function(e) {
+    filterState.status = e.target.value;
+    renderAccessoryTable();
+  });
+  document.getElementById('statusFilter').value = filterState.status;
+}
+
+// ===== 筛选辅料数据 =====
+function getFilteredAccessories() {
+  let accessories = getAccessories();
+  const { search, status } = filterState;
+
+  // 按标签页筛选
+  const tabStatuses = TAB_STATUS_MAP[currentTab];
+  if (tabStatuses) {
+    accessories = accessories.filter(a => tabStatuses.includes(a.status));
+  }
+
+  // 按关键词搜索
+  if (search) {
+    const s = search.toLowerCase();
+    accessories = accessories.filter(a =>
+      (a.accessoryName && a.accessoryName.toLowerCase().includes(s)) ||
+      (a.styleNo && a.styleNo.toLowerCase().includes(s)) ||
+      (a.supplier && a.supplier.toLowerCase().includes(s))
+    );
+  }
+
+  // 按状态筛选
+  if (status) {
+    accessories = accessories.filter(a => a.status === status);
+  }
+
+  // 按日期倒序（取所有日期中的最大值，空值排末尾）
+  return App.utils.sortByDateDesc(accessories, ['sampleSentDate', 'confirmedDate', 'contractDate', 'shipDate', 'arrivalDate']);
+}
+
+// ===== 复选框操作 =====
+function toggleSelectAll(checked) {
+  const data = getFilteredAccessories();
+  if (checked) {
+    data.forEach(a => _accessorySelectedIds.add(a.id));
+  } else {
+    data.forEach(a => _accessorySelectedIds.delete(a.id));
+  }
+  renderAccessoryTable();
+}
+
+function toggleSelect(id, checked) {
+  if (checked) {
+    _accessorySelectedIds.add(id);
+  } else {
+    _accessorySelectedIds.delete(id);
+  }
+  renderAccessoryTable();
+}
+
+// ===== 渲染辅料表格 =====
+function renderAccessoryTable() {
+  const accessories = getFilteredAccessories();
+  const container = document.getElementById('accessoryTable');
+
+  const allChecked = accessories.length > 0 && accessories.every(a => _accessorySelectedIds.has(a.id));
+  const selectAllChecked = allChecked ? 'checked' : '';
+
+  const thead = `<thead><tr>
+    <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="toggleSelectAll(this.checked)"></th>
+    <th style="width:100px;">款号</th>
+    <th>辅料名称</th>
+    <th style="width:90px;">使用部位</th>
+    <th style="width:120px;">供应商</th>
+    <th style="width:100px;">规格</th>
+    <th style="width:70px;">颜色</th>
+    <th style="width:80px;">单价</th>
+    <th style="width:80px;">数量</th>
+    <th style="width:90px;">金额</th>
+    <th style="width:50px;">轮次</th>
+    <th style="width:80px;">状态</th>
+    <th style="width:90px;">寄样日期</th>
+    <th style="width:90px;">确认日期</th>
+    <th style="width:90px;">发货日期</th>
+    <th style="width:90px;">到货日期</th>
+    <th style="width:100px;">发货工厂</th>
+    <th style="width:70px;white-space:nowrap;">操作</th>
+  </tr></thead>`;
+
+  let tbody;
+  if (accessories.length === 0) {
+    tbody = `<tbody><tr><td colspan="18" style="text-align:center;padding:20px;color:#999;">暂无辅料数据</td></tr></tbody>`;
+  } else {
+    tbody = '<tbody>' + accessories.map(a => {
+      const cbChecked = _accessorySelectedIds.has(a.id) ? 'checked' : '';
+      const amount = (Number(a.unitPrice) || 0) * (Number(a.qtyOrdered) || 0);
+      return `
+      <tr>
+        <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${a.id}', this.checked)"></td>
+        <td>${App.utils.escapeHtml(a.styleNo || '-')}</td>
+        <td>${App.utils.escapeHtml(a.accessoryName || '-')}</td>
+        <td>${App.utils.escapeHtml(a.usagePart || '-')}</td>
+        <td>${App.utils.escapeHtml(a.supplier || '-')}</td>
+        <td>${App.utils.escapeHtml(a.spec || '-')}</td>
+        <td>${App.utils.escapeHtml(a.color || '-')}</td>
+        <td>${App.utils.formatMoney(a.unitPrice)}</td>
+        <td>${a.qtyOrdered || 0} ${a.unit || ''}</td>
+        <td>${App.utils.formatMoney(amount)}</td>
+        <td style="text-align:center;">${a.sampleRounds || '-'}</td>
+        <td>${App.statusTag(a.status || '待打样')}</td>
+        <td>${App.utils.escapeHtml(a.sampleSentDate || '-')}</td>
+        <td>${App.utils.escapeHtml(a.confirmedDate || '-')}</td>
+        <td>${App.utils.escapeHtml(a.shipDate || '-')}</td>
+        <td>${App.utils.escapeHtml(a.arrivalDate || '-')}</td>
+        <td>${App.utils.escapeHtml(a.shipFactory || '-')}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-text btn-sm" onclick="viewAccessoryDetail('${a.id}')" title="查看详情">👁️</button>
+          <button class="btn btn-text btn-sm" onclick="openAccessoryModal('${a.id}')" title="编辑">✏️</button>
+          <button class="btn btn-text btn-sm" onclick="deleteAccessory('${a.id}')" title="删除">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('') + '</tbody>';
+  }
+
+  container.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+}
+
+// ===== 打开新增/编辑模态框 =====
+function openAccessoryModal(id) {
+  editingId = id || null;
+  const accessory = id ? getAccessories().find(a => a.id === id) : {};
+  const styles = getStyles();
+  const suppliers = getAccessorySuppliers();
+  const garmentFactories = getShipFactories();
+  const maintAccessories = getMaintAccessories();
+
+  // 款号选项
+  const styleOptions = styles.map(s =>
+    `<option value="${s.styleNo}" ${accessory.styleNo === s.styleNo ? 'selected' : ''}>${s.styleNo} - ${App.utils.escapeHtml(s.styleName)}</option>`
+  ).join('');
+
+  // 供应商选项
+  const supplierOptions = suppliers.map(s =>
+    `<option value="${App.utils.escapeHtml(s.name)}" ${accessory.supplier === s.name ? 'selected' : ''}>${App.utils.escapeHtml(s.name)}</option>`
+  ).join('');
+
+  // 编号选项（来源：维护资料-辅料信息）
+  const maintCodeOptions = maintAccessories.map(a => `<option value="${App.utils.escapeHtml(a.code || '')}">`).join('');
+  window._maintAccessoriesData = maintAccessories;
+
+  // 服装厂选项（发货目标）
+  const factoryOptions = garmentFactories.map(f =>
+    `<option value="${App.utils.escapeHtml(f.name)}" ${accessory.shipFactory === f.name ? 'selected' : ''}>${App.utils.escapeHtml(f.name)}</option>`
+  ).join('');
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const body = `
+    <div class="form-section-title">📋 基本信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label">款号</label>
+        <select class="form-select" id="m_styleNo">
+          <option value="">请选择款号</option>
+          ${styleOptions}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">编号</label>
+        <input type="text" class="form-input" id="m_accessoryCode" list="maintCodeList" value="${App.utils.escapeHtml(accessory.accessoryCode || '')}" placeholder="选择或输入编号">
+        <datalist id="maintCodeList">${maintCodeOptions}</datalist>
+      </div>
+      <div class="form-group" style="flex:2;min-width:160px;">
+        <label class="form-label">辅料名称<span class="required">*</span></label>
+        <input type="text" class="form-input" id="m_accessoryName" value="${App.utils.escapeHtml(accessory.accessoryName || '')}" placeholder="如 拉链/纽扣/织标">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">使用部位</label>
+        <input type="text" class="form-input" id="m_usagePart" value="${App.utils.escapeHtml(accessory.usagePart || '')}" placeholder="如 前片/领子/袖口">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">供应商</label>
+        <select class="form-select" id="m_supplier">
+          <option value="">请选择供应商</option>
+          ${supplierOptions}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section-title">🔩 辅料参数</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">规格</label>
+        <input type="text" class="form-input" id="m_spec" value="${App.utils.escapeHtml(accessory.spec || '')}" placeholder="请输入规格">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">颜色</label>
+        <input type="text" class="form-input" id="m_color" value="${App.utils.escapeHtml(accessory.color || '')}" placeholder="请输入颜色">
+      </div>
+    </div>
+
+    <div class="form-section-title">✂️ 打样确认</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="m_status">
+          ${STATUS_FLOW.map(s => `<option value="${s}" ${accessory.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">打样轮次</label>
+        <input type="number" class="form-input" id="m_sampleRounds" value="${accessory.sampleRounds || 1}" min="1" placeholder="1">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">寄样日期</label>
+        <input type="date" class="form-input" id="m_sampleSentDate" value="${accessory.sampleSentDate || ''}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">确认日期</label>
+        <input type="date" class="form-input" id="m_confirmedDate" value="${accessory.confirmedDate || ''}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">客人意见</label>
+      <textarea class="form-textarea" id="m_customerFeedback" rows="2" placeholder="客人对打样的意见反馈">${App.utils.escapeHtml(accessory.customerFeedback || '')}</textarea>
+    </div>
+
+    <div class="form-section-title">📝 采购合同</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">合同编号</label>
+        <input type="text" class="form-input" id="m_contractNo" value="${App.utils.escapeHtml(accessory.contractNo || '')}" placeholder="采购合同编号">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">合同日期</label>
+        <input type="date" class="form-input" id="m_contractDate" value="${accessory.contractDate || ''}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">单价</label>
+        <input type="text" class="form-input" id="m_unitPrice" value="${accessory.unitPrice || ''}" placeholder="单价" inputmode="decimal">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">订单数量</label>
+        <input type="text" class="form-input" id="m_qtyOrdered" value="${accessory.qtyOrdered || ''}" placeholder="数量" inputmode="numeric">
+      </div>
+      <div class="form-group" style="flex:1;min-width:80px;">
+        <label class="form-label">单位</label>
+        <select class="form-select" id="m_unit">
+          <option value="个" ${accessory.unit === '个' ? 'selected' : ''}>个</option>
+          <option value="条" ${accessory.unit === '条' ? 'selected' : ''}>条</option>
+          <option value="套" ${accessory.unit === '套' ? 'selected' : ''}>套</option>
+          <option value="包" ${accessory.unit === '包' ? 'selected' : ''}>包</option>
+          <option value="米" ${accessory.unit === '米' ? 'selected' : ''}>米</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label class="form-label">金额（自动计算）</label>
+        <input type="text" class="form-input" id="m_amount" readonly style="background:#f9fafb;" value="">
+      </div>
+    </div>
+
+    <div class="form-section-title">🚚 发货信息</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:160px;">
+        <label class="form-label">发货工厂（服装厂）</label>
+        <select class="form-select" id="m_shipFactory">
+          <option value="">请选择服装厂</option>
+          ${factoryOptions}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">发货日期</label>
+        <input type="date" class="form-input" id="m_shipDate" value="${accessory.shipDate || ''}">
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label class="form-label">到货日期</label>
+        <input type="date" class="form-input" id="m_arrivalDate" value="${accessory.arrivalDate || ''}">
+      </div>
+    </div>
+
+    <div class="form-section-title">📝 备注</div>
+    <div class="form-group">
+      <input type="text" class="form-input" id="m_remark" value="${App.utils.escapeHtml(accessory.remark || '')}" placeholder="备注">
+    </div>
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="saveAccessory()">💾</button>
+  `;
+
+  App.modal.open({
+    title: id ? '编辑辅料' : '新增辅料',
+    body: body,
+    footer: footer,
+    size: 'lg',
+    closeOnOverlay: false
+  });
+
+  // 编号选择后自动填充辅料名称和参数
+  document.getElementById('m_accessoryCode').addEventListener('change', function() {
+    const code = this.value.trim();
+    if (!code) return;
+    const maint = (window._maintAccessoriesData || []).find(a => a.code === code);
+    if (maint) {
+      if (maint.name) document.getElementById('m_accessoryName').value = maint.name;
+      if (maint.spec) document.getElementById('m_spec').value = maint.spec;
+      if (maint.color) document.getElementById('m_color').value = maint.color;
+      App.toast('已从辅料信息表自动填充参数', 'success');
+    }
+  });
+
+  // 状态切换时自动填充对应日期
+  document.getElementById('m_status').addEventListener('change', function() {
+    const status = this.value;
+    const fillDate = (id) => { if (!document.getElementById(id).value) document.getElementById(id).value = today; };
+    if (status === '寄样中') fillDate('m_sampleSentDate');
+    if (status === '已确认') fillDate('m_confirmedDate');
+    if (status === '采购合同') fillDate('m_contractDate');
+    if (status === '发货中') fillDate('m_shipDate');
+    if (status === '已到货') fillDate('m_arrivalDate');
+  });
+
+  // 填写日期时自动推进状态（仅在当前状态更靠前时才推进）
+  const statusSelect = document.getElementById('m_status');
+  const advanceStatus = (targetStatus) => {
+    const currentIdx = STATUS_FLOW.indexOf(statusSelect.value);
+    const targetIdx = STATUS_FLOW.indexOf(targetStatus);
+    if (targetIdx > currentIdx) {
+      statusSelect.value = targetStatus;
+    }
+  };
+  document.getElementById('m_sampleSentDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('寄样中');
+  });
+  document.getElementById('m_confirmedDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('已确认');
+  });
+  document.getElementById('m_contractDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('采购合同');
+  });
+  document.getElementById('m_shipDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('发货中');
+  });
+  document.getElementById('m_arrivalDate').addEventListener('change', function() {
+    if (this.value) advanceStatus('已到货');
+  });
+
+  // 绑定金额自动计算
+  const updateAmount = () => {
+    const price = Number(document.getElementById('m_unitPrice').value) || 0;
+    const qty = Number(document.getElementById('m_qtyOrdered').value) || 0;
+    document.getElementById('m_amount').value = App.utils.formatMoney(price * qty);
+  };
+  document.getElementById('m_unitPrice').addEventListener('input', updateAmount);
+  document.getElementById('m_qtyOrdered').addEventListener('input', updateAmount);
+  updateAmount();
+}
+
+// ===== 保存辅料 =====
+function saveAccessory() {
+  const accessoryName = document.getElementById('m_accessoryName').value.trim();
+  if (!accessoryName) {
+    App.toast('请输入辅料名称', 'warning');
+    return;
+  }
+
+  const data = {
+    styleNo: document.getElementById('m_styleNo').value,
+    accessoryCode: document.getElementById('m_accessoryCode').value.trim(),
+    accessoryName: accessoryName,
+    usagePart: document.getElementById('m_usagePart').value.trim(),
+    supplier: document.getElementById('m_supplier').value,
+    spec: document.getElementById('m_spec').value.trim(),
+    color: document.getElementById('m_color').value.trim(),
+    status: document.getElementById('m_status').value,
+    sampleRounds: Number(document.getElementById('m_sampleRounds').value) || 1,
+    sampleSentDate: document.getElementById('m_sampleSentDate').value,
+    customerFeedback: document.getElementById('m_customerFeedback').value.trim(),
+    confirmedDate: document.getElementById('m_confirmedDate').value,
+    contractNo: document.getElementById('m_contractNo').value.trim(),
+    contractDate: document.getElementById('m_contractDate').value,
+    unitPrice: Number(document.getElementById('m_unitPrice').value) || 0,
+    qtyOrdered: Number(document.getElementById('m_qtyOrdered').value) || 0,
+    unit: document.getElementById('m_unit').value,
+    shipFactory: document.getElementById('m_shipFactory').value,
+    shipDate: document.getElementById('m_shipDate').value,
+    arrivalDate: document.getElementById('m_arrivalDate').value,
+    remark: document.getElementById('m_remark').value.trim(),
+  };
+
+  // 根据已填日期自动推进状态（处理编辑已有记录时日期已存在但状态未更新的情况）
+  const currentIdx = STATUS_FLOW.indexOf(data.status);
+  if (data.arrivalDate) {
+    const idx = STATUS_FLOW.indexOf('已到货');
+    if (idx > currentIdx) data.status = '已到货';
+  } else if (data.shipDate) {
+    const idx = STATUS_FLOW.indexOf('发货中');
+    if (idx > currentIdx) data.status = '发货中';
+  } else if (data.contractDate) {
+    const idx = STATUS_FLOW.indexOf('采购合同');
+    if (idx > currentIdx) data.status = '采购合同';
+  } else if (data.confirmedDate) {
+    const idx = STATUS_FLOW.indexOf('已确认');
+    if (idx > currentIdx) data.status = '已确认';
+  } else if (data.sampleSentDate) {
+    const idx = STATUS_FLOW.indexOf('寄样中');
+    if (idx > currentIdx) data.status = '寄样中';
+  }
+
+  const accessories = getAccessories();
+  if (editingId) {
+    const idx = accessories.findIndex(a => a.id === editingId);
+    if (idx !== -1) {
+      accessories[idx] = { ...accessories[idx], ...data };
+    }
+    App.toast('辅料信息已更新', 'success');
+  } else {
+    data.id = App.utils.genId('A');
+    accessories.push(data);
+    App.toast('辅料已添加', 'success');
+  }
+
+  App.store.set('accessories', accessories);
+  App.modal.close();
+  renderStats();
+  renderAccessoryTable();
+}
+
+// ===== 查看辅料详情 =====
+function viewAccessoryDetail(id) {
+  const a = getAccessories().find(x => x.id === id);
+  if (!a) { App.toast('记录不存在', 'error'); return; }
+  const amount = (Number(a.unitPrice) || 0) * (Number(a.qtyOrdered) || 0);
+
+  const field = (label, val) => `
+    <div class="detail-item">
+      <div class="detail-label">${label}</div>
+      <div class="detail-value">${val || '-'}</div>
+    </div>`;
+
+  const body = `
+    <div class="detail-grid">
+      ${field('款号', App.utils.escapeHtml(a.styleNo))}
+      ${field('编号', App.utils.escapeHtml(a.accessoryCode))}
+      ${field('辅料名称', App.utils.escapeHtml(a.accessoryName))}
+      ${field('使用部位', App.utils.escapeHtml(a.usagePart))}
+      ${field('供应商', App.utils.escapeHtml(a.supplier))}
+      ${field('规格', App.utils.escapeHtml(a.spec))}
+      ${field('颜色', App.utils.escapeHtml(a.color))}
+    </div>
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">✂️ 打样确认流程</div>
+      <div class="detail-grid">
+        ${field('状态', App.statusTag(a.status || '待打样'))}
+        ${field('打样轮次', a.sampleRounds ? '第 ' + a.sampleRounds + ' 轮' : '-')}
+        ${field('寄样日期', App.utils.escapeHtml(a.sampleSentDate))}
+        ${field('确认日期', App.utils.escapeHtml(a.confirmedDate))}
+      </div>
+      <div class="detail-label mb-8 mt-8">客人意见</div>
+      <div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:36px;">
+        ${App.utils.escapeHtml(a.customerFeedback) || '<span class="text-muted">暂无</span>'}
+      </div>
+    </div>
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">📝 采购合同</div>
+      <div class="detail-grid">
+        ${field('合同编号', App.utils.escapeHtml(a.contractNo))}
+        ${field('合同日期', App.utils.escapeHtml(a.contractDate))}
+        ${field('单价', App.utils.formatMoney(a.unitPrice))}
+        ${field('订单数量', (a.qtyOrdered || 0) + ' ' + (a.unit || ''))}
+        ${field('金额', App.utils.formatMoney(amount))}
+      </div>
+    </div>
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">🚚 发货信息</div>
+      <div class="detail-grid">
+        ${field('发货工厂', App.utils.escapeHtml(a.shipFactory))}
+        ${field('发货日期', App.utils.escapeHtml(a.shipDate))}
+        ${field('到货日期', App.utils.escapeHtml(a.arrivalDate))}
+      </div>
+    </div>
+    ${a.remark ? `
+    <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;">
+      <div class="detail-label mb-8">📝 备注</div>
+      <div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;">
+        ${App.utils.escapeHtml(a.remark)}
+      </div>
+    </div>` : ''}
+  `;
+
+  const footer = `
+    <button class="btn" onclick="App.modal.close()">✖️</button>
+    <button class="btn btn-primary" onclick="App.modal.close(); openAccessoryModal('${a.id}')">✏️</button>
+  `;
+
+  App.modal.open({ title: '辅料详情', body, footer, size: 'lg' });
+}
+
+// ===== 删除辅料 =====
+function deleteAccessory(id) {
+  App.confirm('确定要删除这条辅料记录吗？', () => {
+    const accessories = getAccessories().filter(a => a.id !== id);
+    App.store.set('accessories', accessories);
+    _accessorySelectedIds.delete(id);
+    App.toast('辅料已删除', 'success');
+    renderStats();
+    renderAccessoryTable();
+  });
+}
+
+// ===== 重置筛选 =====
+function resetFilter() {
+  filterState = { search: '', status: '' };
+  renderFilterBar();
+  renderAccessoryTable();
+}
+
+// ===== 初始化页面 =====
+migrateStatuses();
+renderStats();
+renderTabs();
+renderFilterBar();
+renderAccessoryTable();
+</script>
+</body>
+</html>

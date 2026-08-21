@@ -1,0 +1,742 @@
+/* ===== 统一表单提交 + 文件上传 form-submit.js =====
+ *
+ * 对应数据表：
+ *   - app_submissions(id, user_id, form_type, payload, status, created_at, updated_at)
+ *   - submission_files(id, submission_id, user_id, bucket_name, file_path,
+ *                      file_name, mime_type, file_size, created_at)
+ *
+ * Storage Bucket：app-photos（私有 Bucket，不使用公开 URL）
+ *
+ * 使用方式：
+ *   1) 自动绑定：给 <form> 加属性 data-supabase-form="<form_type>"
+ *      本模块会在 DOMContentLoaded 时自动绑定 submit 事件，
+ *      已有 onsubmit 的表单（如 loginForm / sp_sampleForm）不会被重复绑定。
+ *
+ *   2) 手动调用：
+ *      const res = await SupabaseSubmit.submit('contacts', dataObj, [file1, file2]);
+ *      const list = await SupabaseSubmit.list('contacts');
+ *      await SupabaseSubmit.update(id, dataObj);
+ *      await SupabaseSubmit.remove(id);
+ *
+ * 安全说明：
+ *   - 不把 password 字段写入 app_submissions
+ *   - 不保存 Supabase session 到数据库
+ *   - 不把任何密钥写入数据库
+ *   - 不把 service_role key 放到前端
+ *   - 不把私有 Bucket 改成公开 Bucket
+ *   - 查看图片使用 createSignedUrl，不拼接公开 URL
+ *   - 普通用户页面始终限制 user_id = 当前用户 id
+ */
+
+import { supabase, STORAGE_BUCKET, MAX_FILE_SIZE, ALLOWED_IMAGE_MIME } from "./supabase.js";
+import { ADMIN_EMAILS, isAdmin } from "./admin-config.js";
+
+/* ---------- form_type 映射 ---------- */
+const PAGE_TO_FORM_TYPE = {
+  "index.html": "index",
+  "order.html": "order",
+  "contacts.html": "contacts",
+  "feedback.html": "feedback",
+  "shipping.html": "shipping",
+  "express.html": "express",
+  "shipping documents.html": "shipping_documents",
+  "production.html": "production",
+  "wash.html": "wash",
+  "accessory.html": "accessory",
+  "fabric.html": "fabric",
+  "maintenance.html": "maintenance",
+  "finance.html": "finance",
+  "sample.html": "sample",
+  "settings.html": "settings",
+};
+
+// 中文提示
+const MSG = {
+  notLogin: "请先登录",
+  saveFail: "保存失败，请稍后重试",
+  uploadFail: "上传失败，请检查文件类型和大小",
+  network: "请检查网络连接",
+  success: "提交成功",
+  submitting: "正在提交…",
+  forbidden: "无权限修改该记录",
+  deleteConfirm: "确定删除该记录吗？删除后无法恢复。",
+};
+
+/* ---------- 工具函数 ---------- */
+function toast(msg, type) {
+  if (typeof App !== "undefined" && App.toast) {
+    App.toast(msg, type || "info", 2500);
+  } else if (window.console) {
+    console.log("[form-submit]", type || "info", msg);
+  }
+}
+
+// 安全文件名：去除特殊路径字符
+function safeFileName(name) {
+  if (!name) return "file";
+  return String(name)
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_{2,}/g, "_")
+    .slice(0, 120);
+}
+
+// 根据当前页面推断 form_type
+function getFormTypeFromPage() {
+  const path = (location.pathname || "").split("/").pop() || "index.html";
+  // 处理空格（%20）编码
+  const decoded = decodeURIComponent(path);
+  return PAGE_TO_FORM_TYPE[decoded] || decoded.replace(/\.html$/i, "");
+}
+
+// 获取当前登录用户（异步，权威校验）
+async function getCurrentUserOrRedirect() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data || !data.user) {
+    toast(MSG.notLogin, "warning");
+    try {
+      window.location.replace("login.html");
+    } catch (e) {
+      window.location.href = "login.html";
+    }
+    return null;
+  }
+  return data.user;
+}
+
+// 收集表单字段（按规则）
+function collectFormData(rootEl) {
+  const data = {};
+  if (!rootEl) return data;
+
+  // 1) input[type="text"], email, number, tel, url, date, time, datetime-local, search, hidden
+  rootEl.querySelectorAll("input").forEach(function (inp) {
+    const type = (inp.type || "text").toLowerCase();
+    if (type === "file") return; // 文件单独处理
+    if (type === "password") return; // 不保存密码
+    if (type === "submit" || type === "button" || type === "reset" || type === "image") return;
+
+    const key = inp.name || inp.id;
+    if (!key) return;
+
+    if (type === "checkbox") {
+      // 同名 checkbox 收集成数组
+      if (data[key] === undefined) data[key] = [];
+      if (Array.isArray(data[key])) {
+        if (inp.checked) data[key].push(inp.value || "on");
+      } else {
+        data[key] = inp.checked;
+      }
+      return;
+    }
+    if (type === "radio") {
+      if (inp.checked) data[key] = inp.value;
+      return;
+    }
+    data[key] = inp.value;
+  });
+
+  // 2) select
+  rootEl.querySelectorAll("select").forEach(function (sel) {
+    const key = sel.name || sel.id;
+    if (!key) return;
+    if (sel.multiple) {
+      data[key] = Array.from(sel.selectedOptions).map(function (o) {
+        return o.value;
+      });
+    } else {
+      data[key] = sel.value;
+    }
+  });
+
+  // 3) textarea
+  rootEl.querySelectorAll("textarea").forEach(function (ta) {
+    const key = ta.name || ta.id;
+    if (!key) return;
+    data[key] = ta.value;
+  });
+
+  return data;
+}
+
+// 收集文件输入
+function collectFileInputs(rootEl) {
+  const result = [];
+  if (!rootEl) return result;
+  rootEl.querySelectorAll('input[type="file"]').forEach(function (inp) {
+    const key = inp.name || inp.id;
+    if (inp.files && inp.files.length) {
+      for (let i = 0; i < inp.files.length; i++) {
+        result.push({ field: key, file: inp.files[i] });
+      }
+    }
+  });
+  return result;
+}
+
+// 单个文件校验与上传
+async function uploadOneFile(file, userId, submissionId) {
+  // 大小校验
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("文件超过 5MB 限制：" + file.name);
+  }
+
+  // 类型校验：默认只允许图片；除非页面 input 带 data-accept-pdf 或 accept 中含 pdf
+  // 这里按 input 的 accept 属性判断
+  // 调用方可在 options.allowNonImage=true 时放行非图片
+  const isImage = ALLOWED_IMAGE_MIME.indexOf(file.type) >= 0;
+  if (!isImage) {
+    // 非图片：仅当明确允许时放行（见 submit 方法的 options.allowNonImage）
+    // 在 uploadOneFile 内抛错由调用方决定
+  }
+
+  const path =
+    userId + "/" + submissionId + "/" + crypto.randomUUID() + "-" + safeFileName(file.name);
+
+  const upRes = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+
+  if (upRes.error) {
+    console.error("[form-submit] storage.upload error:", upRes.error);
+    throw upRes.error;
+  }
+
+  // 插入 submission_files
+  const insRes = await supabase.from("submission_files").insert({
+    submission_id: submissionId,
+    user_id: userId,
+    bucket_name: STORAGE_BUCKET,
+    file_path: path,
+    file_name: file.name,
+    mime_type: file.type,
+    file_size: file.size,
+  });
+
+  if (insRes.error) {
+    console.error("[form-submit] submission_files insert error:", insRes.error);
+    throw insRes.error;
+  }
+
+  return { path: path, file_name: file.name, mime_type: file.type, file_size: file.size };
+}
+
+/* ---------- 主 API ---------- */
+const SupabaseSubmit = {
+  // 根据当前页面推断 form_type
+  getFormType: getFormTypeFromPage,
+
+  // 收集表单数据（暴露供外部使用）
+  collect: collectFormData,
+
+  /**
+   * 提交表单数据
+   * @param {string} formType
+   * @param {object} formData
+   * @param {File[]|{file:File,field:string}[]} [files=[]]
+   * @param {object} [options] {allowNonImage?:boolean, keepForm?:boolean, status?:string, btn?:HTMLElement, btnLabel?:string}
+   * @returns {Promise<{submission:object, files:array}|null>}
+   */
+  async submit(formType, formData, files, options) {
+    options = options || {};
+    files = files || [];
+
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return null;
+
+    // 防重复提交
+    if (options.btn) {
+      if (options.btn.dataset.submitting === "1") return null;
+      options.btn.dataset.submitting = "1";
+      options.btn._origLabel = options.btn.textContent;
+      options.btn.disabled = true;
+      options.btn.textContent = options.btnLabel || MSG.submitting;
+    }
+
+    try {
+      // 1) 创建 app_submissions 记录
+      const insRes = await supabase
+        .from("app_submissions")
+        .insert({
+          user_id: user.id,
+          form_type: formType,
+          payload: formData,
+          status: options.status || "submitted",
+        })
+        .select();
+
+      if (insRes.error) {
+        console.error("[form-submit] app_submissions insert error:", insRes.error);
+        toast(MSG.saveFail, "error");
+        return null;
+      }
+
+      const row = (insRes.data && insRes.data[0]) || null;
+      if (!row) {
+        toast(MSG.saveFail, "error");
+        return null;
+      }
+
+      // 2) 上传文件（如果有）
+      const uploadedFiles = [];
+      if (files.length) {
+        const fileList = files.map(function (f) {
+          return f instanceof File || f instanceof Blob ? { field: "file", file: f } : f;
+        });
+
+        for (let i = 0; i < fileList.length; i++) {
+          const { field, file } = fileList[i];
+          try {
+            // 非图片且未明确允许：报错
+            const isImage = ALLOWED_IMAGE_MIME.indexOf(file.type) >= 0;
+            if (!isImage && !options.allowNonImage) {
+              toast("仅允许上传图片：" + file.name, "error");
+              continue;
+            }
+            const meta = await uploadOneFile(file, user.id, row.id);
+            uploadedFiles.push(meta);
+          } catch (e) {
+            console.error("[form-submit] 文件上传失败:", e, file && file.name);
+            toast(MSG.uploadFail + "（" + (file && file.name) + "）", "error");
+          }
+        }
+      }
+
+      toast(MSG.success, "success");
+      return { submission: row, files: uploadedFiles };
+    } catch (e) {
+      console.error("[form-submit] submit 异常:", e);
+      const msg =
+        e && e.message
+          ? e.message.toLowerCase().indexOf("fetch") >= 0
+            ? MSG.network
+            : MSG.saveFail
+          : MSG.saveFail;
+      toast(msg, "error");
+      return null;
+    } finally {
+      if (options.btn) {
+        options.btn.dataset.submitting = "0";
+        options.btn.disabled = false;
+        if (options.btn._origLabel !== undefined) {
+          options.btn.textContent = options.btn._origLabel;
+        }
+      }
+    }
+  },
+
+  /**
+   * 查询当前用户的某 form_type 记录
+   * @param {string} formType
+   * @param {object} [options] {limit?:number, status?:string}
+   */
+  async list(formType, options) {
+    options = options || {};
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return [];
+
+    let q = supabase
+      .from("app_submissions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("form_type", formType)
+      .order("created_at", { ascending: false });
+
+    if (options.status) q = q.eq("status", options.status);
+    if (options.limit) q = q.limit(options.limit);
+
+    const { data, error } = await q;
+    if (error) {
+      console.error("[form-submit] list error:", error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * 修改记录（仅允许当前用户自己的记录）
+   */
+  async update(submissionId, formData, options) {
+    options = options || {};
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return null;
+
+    // 仅更新自己的记录（user_id 限制 + id 限制双重保险）
+    const upRes = await supabase
+      .from("app_submissions")
+      .update({
+        payload: formData,
+        status: options.status || "updated",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", submissionId)
+      .eq("user_id", user.id)
+      .select();
+
+    if (upRes.error) {
+      console.error("[form-submit] update error:", upRes.error);
+      if (upRes.error.code === "PGRST116" || (upRes.error.message || "").indexOf("0 rows") >= 0) {
+        toast(MSG.forbidden, "error");
+      } else {
+        toast(MSG.saveFail, "error");
+      }
+      return null;
+    }
+    return (upRes.data && upRes.data[0]) || null;
+  },
+
+  /**
+   * 删除记录（删除前确认；级联删除 submission_files + 删除 Storage 文件）
+   */
+  async remove(submissionId, options) {
+    options = options || {};
+    if (!options.skipConfirm) {
+      const ok = window.confirm(MSG.deleteConfirm);
+      if (!ok) return false;
+    }
+
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return false;
+
+    // 1) 先查询关联文件，删除 Storage 文件
+    try {
+      const { data: files, error: fErr } = await supabase
+        .from("submission_files")
+        .select("file_path")
+        .eq("submission_id", submissionId)
+        .eq("user_id", user.id);
+      if (!fErr && files && files.length) {
+        const paths = files.map(function (f) { return f.file_path; });
+        if (paths.length) {
+          await supabase.storage.from(STORAGE_BUCKET).remove(paths);
+        }
+      }
+    } catch (e) {
+      console.error("[form-submit] remove storage files error:", e);
+    }
+
+    // 2) 删除 app_submissions（依赖数据库外键级联删除 submission_files）
+    const delRes = await supabase
+      .from("app_submissions")
+      .delete()
+      .eq("id", submissionId)
+      .eq("user_id", user.id);
+
+    if (delRes.error) {
+      console.error("[form-submit] delete error:", delRes.error);
+      toast(MSG.saveFail, "error");
+      return false;
+    }
+    toast("删除成功", "success");
+    return true;
+  },
+
+  /**
+   * 通过 createSignedUrl 获取私有 Bucket 文件的临时访问 URL
+   * 不拼接公开 URL
+   */
+  async getFileUrl(filePath, expiresInSec) {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(filePath, expiresInSec || 60);
+    if (error) {
+      console.error("[form-submit] createSignedUrl error:", error);
+      return null;
+    }
+    return data && data.signedUrl ? data.signedUrl : null;
+  },
+
+  /**
+   * 查询某条 submission 关联的文件列表
+   */
+  async listFiles(submissionId) {
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("submission_files")
+      .select("*")
+      .eq("submission_id", submissionId)
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("[form-submit] listFiles error:", error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // 管理员判断
+  isAdmin,
+  ADMIN_EMAILS,
+
+  /**
+   * 专用图片上传：直接上传到 Storage，返回 file_path
+   * 用于样衣计划等需要独立上传图片的场景
+   * @param {File} file 图片文件
+   * @param {string} subFolder 子文件夹路径（如 "sample"）
+   * @returns {Promise<{path:string, fileName:string}|null>}
+   */
+  async uploadPicture(file, subFolder) {
+    subFolder = subFolder || "uploads";
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return null;
+
+    // 校验文件类型
+    const isImage = ALLOWED_IMAGE_MIME.indexOf(file.type) >= 0;
+    if (!isImage) {
+      toast("仅支持图片格式（jpg/png/webp/gif/bmp/svg）", "error");
+      return null;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast("图片超过 5MB 限制", "error");
+      return null;
+    }
+
+    // 生成路径：{userId}/{subFolder}/{randomUUID}-{safeFileName}
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path =
+      user.id +
+      "/" +
+      subFolder +
+      "/" +
+      crypto.randomUUID() +
+      "-" +
+      safeFileName(file.name);
+
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file, {
+        contentType: file.type || "image/jpeg",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("[form-submit] uploadPicture error:", error);
+      toast("上传失败：" + (error.message || "请检查网络"), "error");
+      return null;
+    }
+
+    toast("上传成功", "success");
+    return { path: path, fileName: file.name };
+  },
+
+  /**
+   * 删除 Storage 中的图片
+   * @param {string} filePath Storage 文件路径
+   */
+  async deletePicture(filePath) {
+    if (!filePath) return false;
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+    if (error) {
+      console.error("[form-submit] deletePicture error:", error);
+      return false;
+    }
+    return true;
+  },
+
+  /**
+   * 根据款号/原始文件名在 Supabase Storage 中查找上传的图片
+   * 上传后的文件名格式为：{uuid}-{原始文件名}
+   * 例如：b54ef635-uuid-111222.jpg 匹配原始文件名 111222.jpg
+   *
+   * 搜索策略：
+   *   1) 先在当前用户的 {userId}/sample/ 目录查找
+   *   2) 再扫描所有用户目录，跨用户查找（兼容历史数据/账号变更）
+   *
+   * @param {string} styleNo 款号（如 "111222"）
+   * @param {string} subFolder 子文件夹（如 "sample"）
+   * @param {string} originalExt 可选：原始扩展名（如 "jpg"）
+   * @returns {Promise<{path:string, signedUrl:string}|null>}
+   */
+  async findPictureByStyleNo(styleNo, subFolder, originalExt) {
+    if (!styleNo) return null;
+    subFolder = subFolder || "sample";
+    const user = await getCurrentUserOrRedirect();
+    if (!user) return null;
+
+    const targetName = String(styleNo).toLowerCase();
+    const formats = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
+    // UUID 正则：匹配以 UUID 开头的文件名
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
+
+    // 匹配规则：从文件名中提取 UUID 后的原始文件名，与款号比对
+    function matchItem(item, targetName, originalExt) {
+      const name = item.name;
+      if (name.startsWith('.')) return false;
+      const lowerName = name.toLowerCase();
+
+      // 尝试去除 UUID 前缀
+      let afterUuid = name;
+      const uuidMatch = name.match(uuidRegex);
+      if (uuidMatch) {
+        afterUuid = name.substring(uuidMatch[0].length);
+      } else {
+        // 备选：用 indexOf 找到第4个 "-"（UUID 有4个 "-"）
+        let pos = -1;
+        for (let i = 0; i < 4; i++) {
+          pos = name.indexOf('-', pos + 1);
+          if (pos === -1) break;
+        }
+        if (pos >= 0) afterUuid = name.substring(pos + 1);
+      }
+
+      const lowerAfterUuid = afterUuid.toLowerCase();
+      const nameWithoutExt = lowerAfterUuid.replace(/\.[^.]+$/, '');
+
+      // 条件1：去除扩展名后，文件名等于款号 或 包含款号
+      const isNameMatch = nameWithoutExt === targetName || nameWithoutExt.includes(targetName);
+
+      // 条件2：如果指定了扩展名，优先检查
+      if (originalExt) {
+        const extMatch = lowerName.endsWith('.' + originalExt.toLowerCase());
+        if (isNameMatch && extMatch) return true;
+        // 文件名包含款号但扩展名不完全匹配 → 备选
+        if (isNameMatch) return true;
+        return false;
+      }
+
+      // 条件3：兜底：文件名直接以 {款号}.{扩展名} 结尾
+      if (!isNameMatch) {
+        for (const fmt of formats) {
+          if (lowerName.endsWith('-' + targetName + '.' + fmt) ||
+              lowerName.includes(targetName + '.' + fmt)) {
+            return true;
+          }
+        }
+      }
+
+      return isNameMatch;
+    }
+
+    // 尝试从指定目录列表中查找匹配文件
+    async function searchInFolder(folderPath) {
+      try {
+        const { data, error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .list(folderPath, { limit: 200 });
+
+        if (error || !data || !Array.isArray(data) || data.length === 0) return null;
+
+        for (const item of data) {
+          if (matchItem(item, targetName, originalExt)) {
+            const fullPath = folderPath + "/" + item.name;
+            // 获取签名 URL
+            const { data: urlData, error: urlError } = await supabase.storage
+              .from(STORAGE_BUCKET)
+              .createSignedUrl(fullPath, 300);
+
+            if (urlError) {
+              console.warn("[form-submit] findPictureByStyleNo signedUrl error:", urlError);
+              return { path: fullPath, signedUrl: null };
+            }
+
+            return {
+              path: fullPath,
+              signedUrl: urlData && urlData.signedUrl ? urlData.signedUrl : null
+            };
+          }
+        }
+        return null; // 没找到匹配
+      } catch (e) {
+        return null;
+      }
+    }
+
+    try {
+      // 策略1：先查当前用户的专属目录
+      const userFolder = user.id + "/" + subFolder;
+      const result1 = await searchInFolder(userFolder);
+      if (result1) return result1;
+
+      // 策略2：扫描根目录，获取所有用户子目录，逐个查找
+      // 这能兼容：userId 变更、跨账号数据迁移、历史数据等情况
+      const { data: rootData, error: rootError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .list('', { limit: 200 });
+
+      if (rootError) {
+        console.warn("[form-submit] findPictureByStyleNo root list error:", rootError);
+        return null;
+      }
+      if (!rootData || !Array.isArray(rootData)) return null;
+
+      // 筛选出目录（用户 ID 文件夹）
+      const userDirs = rootData.filter(item =>
+        !item.name.startsWith('.') &&
+        item.type === 'folder' &&
+        /^[0-9a-f]{8}-/i.test(item.name) // UUID 格式的目录
+      );
+
+      // 遍历每个用户目录，查找 {userId}/{subFolder}/ 下的文件
+      for (const dir of userDirs) {
+        const subFolderPath = dir.name + "/" + subFolder;
+        const result2 = await searchInFolder(subFolderPath);
+        if (result2) {
+          console.log("[form-submit] findPictureByStyleNo found in:", subFolderPath);
+          return result2;
+        }
+      }
+
+      // 策略3：直接在 {subFolder}/ 目录下查找（兼容非用户隔离的旧数据）
+      const result3 = await searchInFolder(subFolder);
+      if (result3) return result3;
+
+      return null;
+    } catch (e) {
+      console.warn("[form-submit] findPictureByStyleNo exception:", e);
+      return null;
+    }
+  },
+};
+
+// 暴露到全局，便于非模块脚本调用
+window.SupabaseSubmit = SupabaseSubmit;
+
+/* ---------- 自动绑定：data-supabase-form ---------- */
+function autoBindForms() {
+  const forms = document.querySelectorAll("form[data-supabase-form]");
+  forms.forEach(function (form) {
+    // 避免重复绑定
+    if (form.dataset.supabaseBound === "1") return;
+    form.dataset.supabaseBound = "1";
+
+    // 已有 onsubmit 的表单跳过，避免重复提交事件
+    const hasOnSubmitAttr = form.getAttribute("onsubmit");
+    if (hasOnSubmitAttr) {
+      console.warn(
+        "[form-submit] 表单 " +
+          (form.id || "?") +
+          " 已有 onsubmit，已跳过自动绑定（如需使用 Supabase 提交，请删除 onsubmit 或手动调用 SupabaseSubmit.submit）"
+      );
+      return;
+    }
+
+    const submitBtn = form.querySelector('[type="submit"]');
+
+    form.addEventListener("submit", async function (ev) {
+      ev.preventDefault();
+
+      const formType = form.getAttribute("data-supabase-form");
+      const formData = collectFormData(form);
+      const fileList = collectFileInputs(form);
+
+      // 如果表单上有 data-allow-non-image，放行非图片
+      const allowNonImage = form.getAttribute("data-allow-non-image") === "true";
+
+      await SupabaseSubmit.submit(formType, formData, fileList, {
+        allowNonImage: allowNonImage,
+        btn: submitBtn || undefined,
+      });
+    });
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", autoBindForms);
+} else {
+  autoBindForms();
+}

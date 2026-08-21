@@ -1,0 +1,2805 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>装箱单管理系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f1f5f9;--card-bg:#fff;
+  --border:#cbd5e1;--text:#1e293b;--text-light:#64748b;--success:#16a34a;
+  --danger:#dc2626;--warning:#d97706;--header-yellow:#ffff00;
+}
+body{font-family:Arial,sans-serif;font-size:13px;background:var(--bg);color:var(--text);}
+/* Tab Bar */
+.tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.tab-btn{flex:1;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tab-btn:hover{background:#f8fafc;color:var(--text);}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);background:#eff6ff;}
+.tab-btn .icon{font-size:15px;}
+/* Tab Content */
+.tab-content{display:none;padding:16px;max-width:1400px;margin:0 auto;}
+.tab-content.active{display:block;}
+/* Form Sections */
+.section{background:var(--card-bg);border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.section-title{font-size:13px;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+.form-group{display:flex;flex-direction:column;gap:3px;}
+.form-group label{font-size:11px;font-weight:600;color:var(--text-light);}
+.form-group input,.form-group select,.form-group textarea{padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(37,99,235,.1);}
+.form-group input[readonly]{background:#f8fafc;color:var(--text-light);}
+.form-group input.input-empty,.form-group textarea.input-empty{background:#fffbeb;border-color:#fcd34d;}
+/* Buttons */
+.btn{padding:6px 12px;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{background:#15803d;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{background:#b91c1c;}
+.btn-warning{background:var(--warning);color:#fff;}
+.btn-warning:hover{background:#b45309;}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{background:#f8fafc;border-color:var(--primary);}
+.btn-sm{padding:3px 8px;font-size:11px;}
+.btn-icon{padding:4px 7px;font-size:13px;line-height:1;}
+/* Carton Table */
+.table-wrap{overflow-x:auto;}
+.data-table{width:100%;border-collapse:collapse;font-size:11px;}
+.data-table th{background:#f1f5f9;padding:4px 6px;text-align:center;border:1px solid var(--border);font-weight:600;white-space:nowrap;}
+.data-table td{padding:4px 6px;border:1px solid var(--border);text-align:center;}
+.data-table td input{width:100%;padding:3px 4px;border:1px solid transparent;border-radius:3px;font-size:11px;text-align:center;font-family:inherit;background:transparent;}
+.data-table td input:focus{outline:none;border-color:var(--primary);background:#fff;}
+.data-table td input[readonly]{font-weight:600;color:var(--primary);}
+.data-table .col-del{width:30px;}
+.data-table .total-row td{background:#eff6ff;font-weight:700;}
+/* Size Manager */
+.size-manager{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+.size-tag{display:inline-flex;align-items:center;gap:4px;background:#e0e7ff;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;}
+.size-tag .remove{cursor:pointer;color:var(--danger);font-weight:bold;}
+.size-input{width:50px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;text-align:center;}
+/* Order Qty Table */
+.order-qty-table{width:100%;border-collapse:collapse;font-size:11px;}
+.order-qty-table th{background:#f1f5f9;padding:5px;border:1px solid var(--border);text-align:center;}
+.order-qty-table td{padding:5px;border:1px solid var(--border);text-align:center;}
+.order-qty-table td input{width:100%;padding:3px;border:1px solid transparent;text-align:center;font-size:11px;font-family:inherit;background:transparent;}
+.order-qty-table td input:focus{outline:none;border-color:var(--primary);background:#fff;}
+/* Cards */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+.record-card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 2px 4px rgba(0,0,0,.06);border:1px solid var(--border);transition:box-shadow .2s;cursor:pointer;position:relative;}
+.record-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1);}
+.record-card .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.record-card .card-style{font-size:15px;font-weight:700;color:var(--primary);}
+.record-card .card-date{font-size:10px;color:var(--text-light);}
+.record-card .card-info{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;}
+.record-card .card-info .label{color:var(--text-light);font-size:11px;}
+.record-card .card-info .value{font-weight:600;}
+.record-card .card-stats{display:flex;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.record-card .stat{flex:1;text-align:center;}
+.record-card .stat .num{font-size:16px;font-weight:700;color:var(--primary);}
+.record-card .stat .lbl{font-size:10px;color:var(--text-light);}
+.record-card .card-actions{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.record-card .card-actions .btn{flex:1;justify-content:center;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-light);}
+.empty-state .icon{font-size:48px;margin-bottom:12px;}
+/* PL Document */
+.pl-toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center;}
+.pl-select{padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;min-width:300px;}
+.pl-preview{background:#fff;border:1px solid var(--border);border-radius:4px;overflow:auto;}
+/* PL Table (Excel replica) */
+.pl-table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;margin:0 auto;}
+.pl-table td,.pl-table th{border:1px solid #000;padding:1px 3px;}
+.pl-table .company-name{background:var(--header-yellow);font-size:20pt;font-weight:bold;text-align:center;vertical-align:middle;padding:4px;}
+.pl-table .info-label{font-weight:bold;text-align:left;font-size:10pt;padding:1px 5px;}
+.pl-table .info-value{text-align:center;font-size:10pt;padding:1px 5px;}
+.pl-table .info-value.bold{font-weight:bold;}
+.pl-table .section-header{font-size:14pt;font-weight:bold;text-align:left;padding:2px 5px;}
+.pl-table .col-header{font-weight:bold;text-align:center;vertical-align:middle;font-size:10pt;padding:2px 3px;}
+.pl-table .col-sub{text-align:center;font-size:10pt;padding:1px 3px;}
+.pl-table .data-cell{text-align:center;font-size:10pt;padding:1px 3px;}
+.pl-table .data-cell.right{text-align:right;}
+.pl-table .data-cell.center{text-align:center;}
+.pl-table .total-cell{font-weight:bold;text-align:center;font-size:10pt;padding:1px 3px;}
+.pl-table .total-label{font-weight:bold;text-align:left;font-size:10pt;padding:1px 5px;}
+.pl-table .summary-label{font-weight:bold;text-align:left;font-size:10pt;padding:1px 5px;}
+.pl-table .summary-cell{text-align:center;font-size:10pt;padding:1px 3px;}
+.pl-table .summary-cell.bold{font-weight:bold;}
+/* Remove number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
+input[type="number"]{ -moz-appearance:textfield; }
+/* Invoice Table */
+.inv-table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:11pt;margin:0 auto;width:100%;}
+.inv-table td{border:1px solid #000;padding:2px 5px;}
+.inv-table .inv-company{font-family:Arial,sans-serif;font-size:18pt;font-weight:bold;text-align:center;padding:6px;}
+.inv-table .inv-addr{font-family:Arial,sans-serif;font-size:12pt;text-align:center;padding:2px 5px;}
+.inv-table .inv-title{font-family:Arial,sans-serif;font-size:12pt;text-align:center;padding:2px 5px;}
+.inv-table .inv-label{text-align:right;font-size:10pt;padding:1px 5px;white-space:nowrap;}
+.inv-table .inv-val{text-align:left;font-size:11pt;padding:1px 5px;}
+.inv-table .inv-text{font-size:11pt;padding:1px 5px;text-align:left;}
+.inv-table .inv-header{text-align:center;font-size:12pt;padding:3px 5px;font-weight:normal;}
+.inv-table .inv-cell{text-align:center;font-size:12pt;padding:2px 5px;}
+.inv-table .inv-cell.left{text-align:left;}
+.inv-table .inv-cell.right{text-align:right;}
+.inv-table .inv-terms{text-align:center;font-size:12pt;padding:1px 5px;}
+.inv-table .inv-total{text-align:right;font-size:12pt;padding:2px 5px;}
+.inv-table .inv-ttl-label{text-align:right;font-size:12pt;padding:2px 5px;}
+.inv-table .inv-remark{font-family:Arial,sans-serif;font-size:9pt;text-align:left;padding:1px 5px;border:none;}
+.inv-table .inv-remark-label{font-family:Arial,sans-serif;font-size:9pt;text-align:right;padding:1px 5px;border:none;}
+.inv-table .inv-noborder{border:none;padding:1px 5px;}
+.inv-table .inv-section-label{font-family:Arial,sans-serif;font-size:9pt;text-align:right;padding:1px 5px;border:none;}
+/* Customs Table (with borders) */
+.cus-table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:12pt;margin:0 auto;width:100%;}
+.cus-table td{border:1px solid #000;padding:4px 6px;font-size:12pt;}
+/* Customs Declaration Table */
+.cus-decl-table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;margin:0 auto;width:100%;}
+.cus-decl-table td{border:1px solid #000;padding:3px 5px;font-size:10pt;line-height:1.6;}
+/* Customs Invoice Form (borderless, left-aligned) */
+.cus-form{font-family:Arial,sans-serif;font-size:10pt;margin:0 auto;width:100%;border-collapse:collapse;}
+.cus-form td{padding:3px 5px;font-size:10pt;border:none;vertical-align:top;line-height:1.5;}
+.cus-form .ctr{text-align:center;}
+.cus-form .rgt{text-align:right;}
+.cus-form .b{font-weight:bold;}
+.cus-form .l{font-size:16pt;font-weight:bold;padding:6px 5px;}
+.cus-form .m{font-size:14pt;font-weight:bold;padding:4px 5px;}
+.cus-form .s{font-size:10pt;padding:3px 5px;}
+.cus-form .bt{border-top:1px solid #000;}
+.cus-form .bb{border-bottom:1px solid #000;}
+.cus-form .bl{border-left:1px solid #000;}
+.cus-form .br{border-right:1px solid #000;}
+.cus-form .gap{height:14px;border:none;}
+/* Customs PL Form */
+.cus-pl-form{font-family:Arial,sans-serif;font-size:12pt;margin:0 auto;width:100%;border-collapse:collapse;}
+.cus-pl-form td{padding:4px 6px;font-size:12pt;border:none;vertical-align:top;line-height:1.5;}
+.cus-pl-form .ctr{text-align:center;}
+.cus-pl-form .rgt{text-align:right;}
+.cus-pl-form .b{font-weight:bold;}
+.cus-pl-form .kt{font-family:Arial,sans-serif;font-size:14pt;font-weight:bold;}
+.cus-pl-form .en{font-family:Arial,sans-serif;font-size:12pt;}
+.cus-pl-form .gap{height:24px;border:none;}
+/* Declaration Elements Form (no borders, no header) */
+.cus-elem-form{font-family:Arial,sans-serif;font-size:14pt;margin:0 auto;width:100%;border-collapse:collapse;}
+.cus-elem-form td{padding:5px 8px;font-size:14pt;border:none;vertical-align:top;line-height:1.5;}
+.cus-elem-form .label{font-family:Arial,sans-serif;font-size:14pt;}
+.cus-elem-form .value{font-family:Arial,sans-serif;font-size:14pt;}
+/* Doc Cards */
+.doc-cards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center;}
+.doc-card{background:#fff;border:2px solid var(--border);border-radius:4px;padding:4px 8px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:4px;height:10mm;min-width:20mm;font-size:11px;font-weight:600;white-space:nowrap;}
+.doc-card:hover{border-color:var(--primary);box-shadow:0 1px 4px rgba(37,99,235,.1);}
+.doc-card.active{border-color:var(--primary);background:#eff6ff;}
+.doc-card .doc-icon{font-size:14px;}
+.doc-card .doc-name{font-size:11px;font-weight:600;}
+.doc-print-btn{background:var(--primary);color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;height:10mm;display:inline-flex;align-items:center;gap:4px;transition:background .15s;}
+.doc-print-btn:hover{background:var(--primary-dark);}
+/* Print */
+@media print{
+  .tab-bar,.tab-content,.pl-toolbar,.doc-cards,.doc-print-btn,.doc-print-group{display:none!important;}
+  #printArea{display:block!important;}
+  body{background:#fff;}
+  @page landscape-page{size:A4 landscape;margin:5mm;}
+  @page portrait-page{size:A4 portrait;margin:10mm;}
+  .print-doc-landscape{page:landscape-page;}
+  .print-doc-portrait{page:portrait-page;}
+  .page-break{page-break-after:always;}
+}
+#printArea{display:none;}
+@media print{
+  #printArea.pl-print{page:landscape-page;}
+  #printArea.inv-print{page:portrait-page;}
+}
+/* Scrollbar */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:#f1f5f9;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:8px;padding:20px;max-width:400px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,.15);}
+.modal h3{margin-bottom:12px;font-size:15px;}
+.modal p{font-size:13px;color:var(--text-light);margin-bottom:16px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+</style>
+</head>
+<body>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('entry')"><span class="icon">✏</span>数据录入</button>
+  <button class="tab-btn" onclick="switchTab('records')"><span class="icon">📋</span>数据记录</button>
+  <button class="tab-btn" onclick="switchTab('docs')"><span class="icon">📄</span>报关和清关文件</button>
+</div>
+
+<!-- Tab 1: Data Entry -->
+<div id="tab-entry" class="tab-content active">
+  <div class="section">
+    <div class="section-title">📌 基本信息</div>
+    <div class="form-grid">
+      <div class="form-group"><label>款号 (Style) - 可多个，逗号分隔</label><input id="f-style" list="styleList" placeholder="如: 1110577 或 1110577, 1110584" onchange="onStyleChange()"><datalist id="styleList"></datalist></div>
+      <div class="form-group"><label>订单号 (PO No.) - 自动填充，可手动添加</label><input id="f-poNo" placeholder="自动填充，多个订单号用逗号分隔" style="background:#fff;" oninput="onPoNoChange()"></div>
+      <div class="form-group"><label>商品描述</label><input id="f-itemDesc" placeholder="自动填充，可手动修改" style="background:#fff;"></div>
+      <div class="form-group"><label>总订单数量 (PC)</label><input id="f-totalOrder" type="number" readonly style="background:#f0fdf4;color:var(--success);font-weight:700;"></div>
+      <div class="form-group"><label>总实际数量 (PC)</label><input id="f-totalActual" type="number" readonly style="background:#f0fdf4;color:var(--success);font-weight:700;"></div>
+      <div class="form-group"><label>差异数量 (Variation)</label><input id="f-variation" type="number" readonly style="background:#fef3c7;color:var(--warning);font-weight:700;"></div>
+      <div class="form-group"><label>差异比例 (%)</label><input id="f-variationPct" type="number" step="0.1" readonly style="background:#fef3c7;color:var(--warning);font-weight:700;"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 发票与贸易信息</div>
+    <div class="form-grid">
+      <div class="form-group"><label>发票号 (Invoice No.)</label><input id="f-invoiceNo" placeholder="如: S26X0070027"></div>
+      <div class="form-group"><label>发票日期 (Invoice Date)</label><input id="f-invoiceDate" type="date"></div>
+      <div class="form-group"><label>公司地址 (Company Addr)</label><input id="f-companyAddr" placeholder="如: ROOM 317 3F MACHINERY BUILDING..."></div>
+      <div class="form-group"><label>买方全称 (Buyer Full Name)</label><input id="f-buyerFull" placeholder="如: CASTRO MODEL LTD"></div>
+      <div class="form-group"><label>买方地址 (Buyer Address)</label><input id="f-buyerAddr" placeholder="如: 31 ORT ISRAEL ST.BAT YAM 59590 ISRAEL"></div>
+      <div class="form-group"><label>船名航次 (Ship per)</label><input id="f-shipPer" placeholder="如: ZIM RUBY/V 9W BY SEA"></div>
+      <div class="form-group"><label>ETD</label><input id="f-etd" type="date"></div>
+      <div class="form-group"><label>起运港 (From)</label><input id="f-fromPort" placeholder="如: SHANGHAI,CHINA"></div>
+      <div class="form-group"><label>目的港 (To)</label><input id="f-toPort" placeholder="如: ASHDOD,ISRAEL"></div>
+      <div class="form-group"><label>详细商品描述 (Full Desc)</label><input id="f-fullDesc" placeholder="如: 62% Polyester 22% Wool..."></div>
+      <div class="form-group"><label>单价 USD (Unit Price)</label><input id="f-unitPrice" type="number" step="0.01" placeholder="如: 19.2" oninput="calcInvoiceAmount()"></div>
+      <div class="form-group"><label>衣架费 USD/件 (Hanging Fee)</label><input id="f-hangingFee" type="number" step="0.01" placeholder="如: 1.1" oninput="calcInvoiceAmount()"></div>
+      <div class="form-group"><label>价格条款 (Price Terms)</label><input id="f-priceTerms" placeholder="如: FOB SHANGHAI"></div>
+      <div class="form-group"><label>商品总金额 USD</label><input id="f-goodsAmount" type="number" readonly style="background:#f0fdf4;color:var(--success);font-weight:700;"></div>
+      <div class="form-group"><label>衣架费总额 USD</label><input id="f-hangingTotal" type="number" readonly style="background:#f0fdf4;color:var(--success);font-weight:700;"></div>
+      <div class="form-group"><label>发票总金额 USD</label><input id="f-invoiceTotal" type="number" readonly style="background:#eff6ff;color:var(--primary);font-weight:700;font-size:14px;"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🚢 出运信息</div>
+    <div class="form-grid">
+      <div class="form-group"><label>运输方式</label><select id="f-shipMethod"><option value="海运">海运</option><option value="空运">空运</option><option value="陆运">陆运</option></select></div>
+      <div class="form-group"><label>货代公司</label><input id="f-forwarder" placeholder="如: 货代公司名称"></div>
+      <div class="form-group"><label>集装箱号</label><input id="f-containerNo" placeholder="如: MSCU1234567"></div>
+      <div class="form-group"><label>提单号 (B/L No)</label><input id="f-blNo" placeholder="提单号"></div>
+      <div class="form-group"><label>报关单号</label><input id="f-customsNo" placeholder="海关报关单号"></div>
+      <div class="form-group"><label>装柜日期</label><input id="f-loadingDate" type="date"></div>
+      <div class="form-group"><label>预计到港 (ETA)</label><input id="f-eta" type="date"></div>
+      <div class="form-group"><label>实际到港</label><input id="f-actualArrival" type="date"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏦 银行信息 <button class="btn btn-outline btn-sm" id="bankEditBtn" onclick="toggleBankEdit()" style="margin-left:auto;">修改</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>付款方式</label><input id="f-paymentTerms" value="T/T payment" readonly style="background:#f8fafc;color:var(--text-light);"></div>
+      <div class="form-group"><label>收款公司 (Company)</label><input id="f-bankCompany" placeholder="如: JIANGSU SAINTY HANTANG TRADING CO.,LTD" readonly style="background:#f8fafc;color:var(--text-light);"></div>
+      <div class="form-group"><label>收款地址 (Address)</label><input id="f-bankAddr" placeholder="如: ROOM 317 3F..." readonly style="background:#f8fafc;color:var(--text-light);"></div>
+      <div class="form-group"><label>银行名称 (Bank)</label><input id="f-bankName" placeholder="如: BANK OF NINGBO" readonly style="background:#f8fafc;color:var(--text-light);"></div>
+      <div class="form-group"><label>银行地址 (Bank Address)</label><input id="f-bankAddr2" placeholder="如: NO.6 FINANCIAL..." readonly style="background:#f8fafc;color:var(--text-light);"></div>
+      <div class="form-group"><label>SWIFT</label><input id="f-swift" placeholder="如: BKNBCN2N" readonly style="background:#f8fafc;color:var(--text-light);"></div>
+      <div class="form-group"><label>账号 (A/C No.)</label><input id="f-acctNo" placeholder="如: 78012025000055858" readonly style="background:#f8fafc;color:var(--text-light);"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📝 备注信息</div>
+    <div class="form-group" style="grid-column:1/-1;">
+      <label>备注 (Remarks, 每行一条)</label>
+      <textarea id="f-remarks" rows="3" placeholder="GOODS ARE OF FIRST QUALITY;&#10;GOODS ARE OF CHINA ORIGIN.&#10;HEBREW LABELS ARE ATTACHED TO EACH GARMENT" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🛃 报关信息</div>
+    <div class="form-grid">
+      <div class="form-group"><label>合约号码 (Contract No.)</label><input id="f-contractNo" placeholder="如: 26GNX007027"></div>
+      <div class="form-group"><label>统一社会信用代码</label><input id="f-creditCode" placeholder="如: 9132020073440096X6"></div>
+      <div class="form-group"><label>HS商品编号</label><input id="f-hsCode" placeholder="如: 6204.3990.00"></div>
+      <div class="form-group"><label>中文商品名称</label><input id="f-cnName" placeholder="如: 女上衣"></div>
+      <div class="form-group"><label>报关单价 USD</label><input id="f-customsPrice" type="number" step="0.01" placeholder="如: 20.3" oninput="calcCustomsAmount()"></div>
+      <div class="form-group"><label>报关总金额 USD</label><input id="f-customsTotal" type="number" readonly style="background:#f0fdf4;color:var(--success);font-weight:700;"></div>
+      <div class="form-group"><label>包装种类</label><input id="f-packType" value="CTNS"></div>
+      <div class="form-group"><label>监管方式</label><input id="f-supervision" value="一般贸易"></div>
+      <div class="form-group"><label>征免性质</label><input id="f-taxNature" value="一般征税"></div>
+      <div class="form-group"><label>贸易国(地区)</label><input id="f-tradeCountry" placeholder="如: 以色列"></div>
+      <div class="form-group"><label>运抵国(地区)</label><input id="f-destCountry" placeholder="如: ISRAEL"></div>
+      <div class="form-group"><label>指运港</label><input id="f-destPort" placeholder="如: ASHDOD"></div>
+      <div class="form-group"><label>离境口岸</label><input id="f-exitPort" placeholder="如: SHANGHAI"></div>
+      <div class="form-group"><label>原产国</label><input id="f-originCountry" value="中国"></div>
+      <div class="form-group"><label>最终目的国</label><input id="f-finalCountry" placeholder="如: 以色列"></div>
+      <div class="form-group"><label>境地货源地</label><input id="f-sourcePlace" placeholder="如: 宿迁"></div>
+      <div class="form-group"><label>征免</label><input id="f-taxType" value="照章征税"></div>
+      <div class="form-group"><label>出口日期</label><input id="f-exportDate" type="date"></div>
+      <div class="form-group"><label>唛码 (Marks)</label><input id="f-marks" placeholder="如: TO:CASTRO MODEL LTD."></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 申报要素</div>
+    <div class="form-grid">
+      <div class="form-group"><label>品牌类型</label><input id="f-brandType" value="境外品牌（贴牌生产）"></div>
+      <div class="form-group"><label>出口享惠情况</label><input id="f-exportPref" value="出口货物不能确定在最终目的国（地区）享受优惠关税"></div>
+      <div class="form-group"><label>织造方法</label><input id="f-weaveMethod" placeholder="如: 机织"></div>
+      <div class="form-group"><label>种类</label><input id="f-category" placeholder="如: 女上衣"></div>
+      <div class="form-group"><label>类别</label><input id="f-gender" placeholder="如: 女式"></div>
+      <div class="form-group"><label>成分含量(中文)</label><input id="f-compositionCn" placeholder="如: 64%涤纶 32%粘胶 4%氨纶"></div>
+      <div class="form-group"><label>是否全开襟</label><select id="f-fullOpen"><option value="是">是</option><option value="否">否</option></select></div>
+      <div class="form-group"><label>是否有拉链</label><select id="f-hasZipper"><option value="否">否</option><option value="是">是</option></select></div>
+      <div class="form-group"><label>品牌</label><input id="f-brand" placeholder="如: CASTRO"></div>
+      <div class="form-group"><label>货号(报关用)</label><input id="f-customsItemNo" placeholder="如: 1110584"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📏 尺码与订单数量</div>
+    <div class="size-manager">
+      <span style="font-size:11px;font-weight:600;color:var(--text-light);">尺码列:</span>
+      <div id="size-tags" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"></div>
+      <input id="newSize" class="size-input" placeholder="新增尺码" onkeydown="if(event.key==='Enter')addSize()">
+      <button class="btn btn-outline btn-sm" onclick="addSize()">＋</button>
+    </div>
+    <table class="order-qty-table" id="orderQtyTable">
+      <thead><tr><th>订单数量 (Order Qty PC)</th></tr></thead>
+      <tbody><tr><td>请先添加尺码</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📦 装箱明细 (Carton Details)
+      <button class="btn btn-primary btn-sm" onclick="addCartonRow()" style="margin-left:auto;">＋ 添加行</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;">
+      <label style="font-weight:600;white-space:nowrap;">每个纸箱重量：</label>
+      <input type="number" step="0.01" id="f-cartonWeight" placeholder="如: 0.5" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+      <span style="color:var(--text-light);">KG</span>
+      <button class="btn btn-outline btn-sm" onclick="applyCartonWeight()" title="将每行的Gross W = Net W + 每个纸箱重量">批量修改毛重</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="cartonTable">
+        <thead></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px;">
+    <button class="btn btn-success" onclick="saveRecord()" style="padding:8px 24px;font-size:14px;">💾 保存到数据记录</button>
+    <button class="btn btn-primary" onclick="saveDraft()" style="padding:8px 16px;font-size:14px;">📝 保存草稿</button>
+    <button class="btn btn-outline" onclick="loadOriginalSample()" style="padding:8px 16px;font-size:14px;">📋 加载示例数据</button>
+    <button class="btn btn-outline" onclick="clearForm()" style="padding:8px 16px;font-size:14px;">🔄 清空</button>
+  </div>
+</div>
+
+<!-- Tab 2: Data Records -->
+<div id="tab-records" class="tab-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h2 style="font-size:16px;">数据记录</h2>
+    <button class="btn btn-primary btn-sm" onclick="switchTab('entry')">＋ 新建</button>
+  </div>
+  <div id="recordsContainer"></div>
+</div>
+
+<!-- Tab 3: Customs Documents -->
+<div id="tab-docs" class="tab-content">
+  <div class="section">
+    <div class="section-title">📄 选择文件类型</div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:6px;">客户文件 (Customer Documents)</div>
+    <div class="doc-cards">
+      <div class="doc-card active" onclick="selectDocType('pl',this)">
+        <span class="doc-icon">📦</span><span class="doc-name">装箱单</span>
+      </div>
+      <div class="doc-card" onclick="selectDocType('invoice',this)">
+        <span class="doc-icon">💰</span><span class="doc-name">商业发票</span>
+      </div>
+      <button class="doc-print-btn doc-print-group" onclick="printClearancePDF()">🖨 打印PDF</button>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-light);margin:10px 0 6px;">报关文件 (Customs Documents)</div>
+    <div class="doc-cards">
+      <div class="doc-card" onclick="selectDocType('cusInv',this)">
+        <span class="doc-icon">🧾</span><span class="doc-name">报关发票</span>
+      </div>
+      <div class="doc-card" onclick="selectDocType('cusPL',this)">
+        <span class="doc-icon">📋</span><span class="doc-name">报关箱单</span>
+      </div>
+      <div class="doc-card" onclick="selectDocType('cusDecl',this)">
+        <span class="doc-icon">📝</span><span class="doc-name">报关单</span>
+      </div>
+      <div class="doc-card" onclick="selectDocType('cusElem',this)">
+        <span class="doc-icon">📑</span><span class="doc-name">申报要素</span>
+      </div>
+      <div class="doc-card" onclick="selectDocType('contract',this)">
+        <span class="doc-icon">✍</span><span class="doc-name">合同</span>
+      </div>
+      <button class="doc-print-btn doc-print-group" onclick="printCustomsPDF()">🖨 打印PDF</button>
+    </div>
+  </div>
+  <div class="pl-toolbar">
+    <select id="plSelect" class="pl-select" onchange="loadPLPreview()">
+      <option value="">-- 选择数据记录 --</option>
+    </select>
+    <button class="btn btn-primary" onclick="printPL()">🖨 打印</button>
+    <button class="btn btn-success" onclick="downloadDoc()">📥 下载Excel</button>
+    <button class="btn btn-outline" onclick="loadPLPreview()">🔄 刷新预览</button>
+  </div>
+  <div id="plPreviewArea" class="pl-preview"></div>
+</div>
+
+<!-- Print Area (hidden, only for printing) -->
+<div id="printArea"></div>
+
+<!-- Confirm Modal -->
+<div id="modalOverlay" class="modal-overlay">
+  <div class="modal">
+    <h3 id="modalTitle">确认</h3>
+    <p id="modalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-danger" id="modalConfirmBtn">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase 登录守卫（本页面为独立页面，不加载 common.js；auth-guard 自带同步预检 + 异步 getUser 校验）-->
+<script src="js/auth-guard.js?v=20260813"></script>
+<!-- 管理员邮箱配置 -->
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<!-- 统一表单提交 helper -->
+<script type="module" src="js/form-submit.js?v=20260813"></script>
+<!-- 退出登录 -->
+<script type="module" src="js/logout.js?v=20260813"></script>
+<script>
+// ==================== State Management ====================
+const STORAGE_KEY = 'pl_records_v1';
+let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let currentSizes = ['34','36','38','40','42','44'];
+let editingId = null;
+let currentDocType = 'pl';
+// 硬编码公司信息
+const COMPANY_EN = 'JIANGSU SAINTY HANTANG TRADING CO., LTD.';
+const COMPANY_CN = '江苏舜天汉唐贸易有限公司';
+// 银行信息字段ID列表
+const BANK_FIELD_IDS = ['f-paymentTerms','f-bankCompany','f-bankAddr','f-bankName','f-bankAddr2','f-swift','f-acctNo'];
+
+// ==================== Tab Switching ====================
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['entry','records','docs'][i] === tabId);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+tabId).classList.add('active');
+  if (tabId === 'records') renderRecords();
+  if (tabId === 'docs') populatePLSelect();
+}
+
+// ==================== Style Lookup (from Order Management) ====================
+function getOrders() {
+  try { return JSON.parse(localStorage.getItem('orders') || '[]'); }
+  catch(e) { return []; }
+}
+
+function sortSizes(sizes) {
+  const order = {'XXXS':-3,'XXS':-2,'XS':-1,'S':0,'M':1,'L':2,'XL':3,'XXL':4,'XXXL':5,'XXXXL':6,'2XL':4,'3XL':5,'4XL':6,'5XL':7,'FREE':999};
+  const getKey = (s) => {
+    if (!s) return 9999;
+    const up = String(s).trim().toUpperCase();
+    const num = parseFloat(up);
+    if (!isNaN(num) && up.match(/^\d+(\.\d+)?$/)) return num;
+    if (order[up] !== undefined) return 1000 + order[up];
+    if (!isNaN(num)) return num;
+    return 9000;
+  };
+  return [...sizes].sort((a, b) => getKey(a) - getKey(b));
+}
+
+function populateStyleList() {
+  const orders = getOrders();
+  const styleSet = new Set();
+  orders.forEach(o => { if (o.styleNo) styleSet.add(o.styleNo); });
+  const dl = document.getElementById('styleList');
+  if (dl) dl.innerHTML = Array.from(styleSet).map(s => `<option value="${s}">`).join('');
+}
+
+function onStyleChange() {
+  const styleRaw = document.getElementById('f-style').value.trim();
+  const poEl = document.getElementById('f-poNo');
+  const descEl = document.getElementById('f-itemDesc');
+  const totalEl = document.getElementById('f-totalOrder');
+  
+  if (!styleRaw) {
+    poEl.value = '';
+    descEl.value = '';
+    totalEl.value = '';
+    recalculateAll();
+    return;
+  }
+  
+  // 解析多个款号（逗号分隔）
+  const styles = styleRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  if (styles.length === 0) {
+    poEl.value = '';
+    descEl.value = '';
+    totalEl.value = '';
+    recalculateAll();
+    return;
+  }
+  
+  const orders = getOrders();
+  let allPoNos = [];
+  let totalQty = 0;
+  let firstDesc = '';
+  let firstUnitPrice = 0;
+  let mergedSizes = new Set();
+  let mergedQty = {};
+
+  styles.forEach(style => {
+    const matched = orders.filter(o => o.styleNo === style);
+    if (matched.length === 0) {
+      showToast('未在订单管理中找到款号: ' + style, 'error');
+    } else {
+      matched.forEach(o => {
+        if (o.orderNo && !allPoNos.includes(o.orderNo)) {
+          allPoNos.push(o.orderNo);
+        }
+        totalQty += parseInt(o.quantity) || 0;
+        if (!firstDesc && o.styleDescription) {
+          firstDesc = o.styleDescription;
+        }
+        if (!firstUnitPrice && o.unitPrice) {
+          firstUnitPrice = parseFloat(o.unitPrice) || 0;
+        }
+        // 收集尺码和数量
+        if (o.sizeMatrix && o.sizeMatrix.sizes) {
+          o.sizeMatrix.sizes.forEach(s => mergedSizes.add(s));
+        }
+        if (o.sizeMatrix && o.sizeMatrix.rows) {
+          const isSolid = (o.type === 'SOLID');
+          o.sizeMatrix.rows.forEach(row => {
+            if (row.quantities) {
+              const ctns = isSolid ? 1 : (parseInt(row.noOfCartons) || 1);
+              Object.keys(row.quantities).forEach(size => {
+                mergedSizes.add(size);
+                mergedQty[size] = (mergedQty[size] || 0) + (parseInt(row.quantities[size]) || 0) * ctns;
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+
+  // 填充订单号（去重）
+  poEl.value = allPoNos.join(', ');
+  // 填充商品描述（取第一个匹配的）
+  if (firstDesc) descEl.value = firstDesc;
+  // 填充总订单数量
+  totalEl.value = totalQty;
+  // 填充发票信息 - 单价
+  const upEl = document.getElementById('f-unitPrice');
+  if (upEl && firstUnitPrice) upEl.value = firstUnitPrice;
+  // 填充尺码和订单数量
+  if (mergedSizes.size > 0) {
+    currentSizes = sortSizes(Array.from(mergedSizes));
+    // 更新 orderQty 数据
+    if (typeof currentOrderQty === 'undefined') { window.currentOrderQty = {}; }
+    currentOrderQty = mergedQty;
+    renderSizeTags();
+    renderOrderQtyTable();
+    renderCartonTable();
+    // renderOrderQtyTable 从 DOM 读取数量，渲染后需写入 DOM 以正确显示
+    currentSizes.forEach((s, i) => {
+      const el = document.getElementById('orderQty-' + i);
+      if (el && mergedQty[s] !== undefined) el.value = mergedQty[s];
+    });
+  }
+  recalculateAll();
+}
+
+function onPoNoChange() {
+  const poRaw = document.getElementById('f-poNo').value.trim();
+  const totalEl = document.getElementById('f-totalOrder');
+  
+  if (!poRaw) {
+    totalEl.value = '';
+    recalculateAll();
+    return;
+  }
+  
+  // 解析多个订单号（逗号分隔）
+  const poNos = poRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  if (poNos.length === 0) {
+    totalEl.value = '';
+    recalculateAll();
+    return;
+  }
+  
+  const orders = getOrders();
+  let totalQty = 0;
+  let matchedAny = false;
+  
+  poNos.forEach(poNo => {
+    const order = orders.find(o => o.orderNo === poNo);
+    if (order) {
+      totalQty += parseInt(order.quantity) || 0;
+      matchedAny = true;
+    }
+  });
+  
+  if (matchedAny) {
+    totalEl.value = totalQty;
+  }
+  // 如果没有匹配的订单号，保留用户输入的值不变（可能用户想手动控制）
+  recalculateAll();
+}
+
+// ==================== Bank Info Edit (Password Protected) ====================
+function toggleBankEdit() {
+  const btn = document.getElementById('bankEditBtn');
+  if (btn.textContent === '修改') {
+    const pwd = prompt('请输入密码以修改银行信息：');
+    if (pwd === null) return;
+    if (pwd !== '2601') { showToast('密码错误', 'error'); return; }
+    BANK_FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.removeAttribute('readonly'); el.style.background = ''; el.style.color = ''; }
+    });
+    btn.textContent = '锁定';
+    btn.classList.remove('btn-outline');
+    btn.classList.add('btn-warning');
+  } else {
+    lockBankFields();
+  }
+}
+
+function lockBankFields() {
+  const btn = document.getElementById('bankEditBtn');
+  BANK_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.setAttribute('readonly', ''); el.style.background = '#f8fafc'; el.style.color = 'var(--text-light)'; }
+  });
+  if (btn) { btn.textContent = '修改'; btn.classList.remove('btn-warning'); btn.classList.add('btn-outline'); }
+}
+
+// ==================== Size Management ====================
+function renderSizeTags() {
+  const c = document.getElementById('size-tags');
+  c.innerHTML = '';
+  currentSizes.forEach((s,i) => {
+    const tag = document.createElement('span');
+    tag.className = 'size-tag';
+    tag.innerHTML = `${s} <span class="remove" onclick="removeSize(${i})">×</span>`;
+    c.appendChild(tag);
+  });
+}
+
+function addSize() {
+  const inp = document.getElementById('newSize');
+  const val = inp.value.trim();
+  if (val && !currentSizes.includes(val)) {
+    currentSizes.push(val);
+    inp.value = '';
+    renderSizeTags();
+    renderOrderQtyTable();
+    renderCartonTable();
+  }
+}
+
+function removeSize(idx) {
+  currentSizes.splice(idx,1);
+  renderSizeTags();
+  renderOrderQtyTable();
+  renderCartonTable();
+  recalculateAll();
+}
+
+// ==================== Order Qty Table ====================
+function renderOrderQtyTable() {
+  const tbl = document.getElementById('orderQtyTable');
+  let html = '<thead><tr><th>订单数量 (Order Qty PC)</th>';
+  currentSizes.forEach(s => html += `<th>${s}</th>`);
+  html += '<th>合计</th></tr></thead><tbody><tr>';
+  html += '<td style="font-weight:600;text-align:left;padding-left:8px;">Order Qty PC</td>';
+  currentSizes.forEach((s,i) => {
+    html += `<td><input type="number" id="orderQty-${i}" value="${getOrderQty(i)}" oninput="recalculateAll()" min="0"></td>`;
+  });
+  html += '<td><input type="number" id="orderQtyTotal" readonly style="font-weight:700;background:#eff6ff;"></td>';
+  html += '</tr></tbody>';
+  tbl.innerHTML = html;
+  try { recalculateAll(); } catch(e) {}
+}
+
+function getOrderQty(idx) {
+  const el = document.getElementById('orderQty-'+idx);
+  return el ? el.value : '';
+}
+
+// ==================== Carton Table ====================
+function renderCartonTable() {
+  const tbl = document.getElementById('cartonTable');
+  // Header
+  let hdr = '<thead><tr>';
+  hdr += '<th rowspan="2">Carton no.<br>From</th>';
+  hdr += '<th rowspan="2">Carton no.<br>To</th>';
+  hdr += '<th rowspan="2">Code</th>';
+  hdr += '<th rowspan="2">Color</th>';
+  hdr += '<th colspan="'+currentSizes.length+'">SIZES</th>';
+  hdr += '<th rowspan="2">Qty per<br>ctn (PC)</th>';
+  hdr += '<th rowspan="2">Qty of<br>ctn (CTN)</th>';
+  hdr += '<th rowspan="2">Total qty<br>(PC)</th>';
+  hdr += '<th colspan="2">Per ctn.</th>';
+  hdr += '<th colspan="2">Total</th>';
+  hdr += '<th colspan="3">Dimension (cm)</th>';
+  hdr += '<th rowspan="2">Volume<br>(CBM)</th>';
+  hdr += '<th rowspan="2"></th>';
+  hdr += '</tr><tr>';
+  currentSizes.forEach(s => hdr += `<th>${s}</th>`);
+  hdr += '<th>Gross W<br>(KG)</th>';
+  hdr += '<th>Net W<br>(KG)</th>';
+  hdr += '<th>Gross W<br>(KG)</th>';
+  hdr += '<th>Net W<br>(KG)</th>';
+  hdr += '<th>L</th><th>W</th><th>H</th>';
+  hdr += '</tr></thead>';
+  // Body
+  let body = '<tbody id="cartonBody"></tbody>';
+  // Footer (totals)
+  let foot = '<tfoot><tr class="total-row"><td colspan="4" style="text-align:right;font-weight:700;">Total:</td>';
+  currentSizes.forEach((s,i) => {
+    foot += `<td id="totalSize-${i}">0</td>`;
+  });
+  foot += '<td></td>'; // qty per ctn
+  foot += '<td id="totalCtn">0</td>';
+  foot += '<td id="totalQty">0</td>';
+  foot += '<td></td><td></td>'; // per ctn gross/net
+  foot += '<td id="totalGrossW">0</td>';
+  foot += '<td id="totalNetW">0</td>';
+  foot += '<td colspan="3"></td>'; // dimensions
+  foot += '<td id="totalVolume">0</td>';
+  foot += '<td></td>';
+  foot += '</tr></tfoot>';
+  tbl.innerHTML = hdr + body + foot;
+  // Add default rows if empty
+  const bodyEl = document.getElementById('cartonBody');
+  if (bodyEl.children.length === 0) {
+    addCartonRow();
+  }
+}
+
+function applyCartonWeight() {
+  const weightInp = document.getElementById('f-cartonWeight');
+  if (!weightInp) return;
+  const cartonWt = parseFloat(weightInp.value) || 0;
+  if (cartonWt <= 0) {
+    showToast('请输入有效的纸箱重量', 'error');
+    return;
+  }
+  const body = document.querySelector('#cartonTable tbody');
+  if (!body) return;
+  let count = 0;
+  body.querySelectorAll('tr').forEach(row => {
+    const netInp = row.querySelector('.ctn-net');
+    const grossInp = row.querySelector('.ctn-gross');
+    if (netInp && grossInp) {
+      const netVal = parseFloat(netInp.value) || 0;
+      grossInp.value = (netVal + cartonWt).toFixed(2);
+      count++;
+    }
+  });
+  if (count > 0) {
+    recalculateAll();
+    showToast('已更新 ' + count + ' 行毛重（净重 + ' + cartonWt + 'kg）', 'success');
+  } else {
+    showToast('没有可更新的装箱行', 'error');
+  }
+}
+
+function addCartonRow(data) {
+  const body = document.getElementById('cartonBody');
+  const rowIdx = body.children.length;
+  const tr = document.createElement('tr');
+  tr.dataset.idx = rowIdx;
+  let html = '';
+  html += '<td><input type="number" class="ctn-from" value="'+(data?.from||'')+'" oninput="recalculateAll()" placeholder="1"></td>';
+  html += '<td><input type="number" class="ctn-to" value="'+(data?.to||'')+'" oninput="recalculateAll()" placeholder="9"></td>';
+  html += '<td><input type="text" class="ctn-code" value="'+(data?.code||'')+'" oninput="recalculateAll()" placeholder="代码"></td>';
+  html += '<td><input type="text" class="ctn-color" value="'+(data?.color||'')+'" oninput="recalculateAll()" placeholder="颜色"></td>';
+  currentSizes.forEach((s,i) => {
+    const v = data?.sizes ? (data.sizes[s]||'') : '';
+    html += `<td><input type="number" class="ctn-size" data-size="${s}" value="${v}" oninput="recalculateAll()" placeholder="0" min="0"></td>`;
+  });
+  html += '<td><input type="number" class="ctn-per" readonly style="font-weight:600;color:var(--primary);"></td>';
+  html += '<td><input type="number" class="ctn-num" value="'+(data?.ctnNum||'')+'" oninput="recalculateAll()" placeholder="0" min="0"></td>';
+  html += '<td><input type="number" class="ctn-total" readonly style="font-weight:600;color:var(--primary);"></td>';
+  html += '<td><input type="number" step="0.01" class="ctn-gross" value="'+(data?.grossPer||'')+'" oninput="recalculateAll()" placeholder="0" min="0"></td>';
+  html += '<td><input type="number" step="0.01" class="ctn-net" value="'+(data?.netPer||'')+'" oninput="recalculateAll()" placeholder="0" min="0"></td>';
+  html += '<td><input type="number" step="0.01" class="ctn-gross-total" readonly style="font-weight:600;color:var(--primary);"></td>';
+  html += '<td><input type="number" step="0.01" class="ctn-net-total" readonly style="font-weight:600;color:var(--primary);"></td>';
+  html += '<td><input type="number" step="0.1" class="ctn-dimL" value="'+(data?.dimL||'')+'" oninput="recalculateAll()" placeholder="0" min="0"></td>';
+  html += '<td><input type="number" step="0.1" class="ctn-dimW" value="'+(data?.dimW||'')+'" oninput="recalculateAll()" placeholder="0" min="0"></td>';
+  html += '<td><input type="number" step="0.1" class="ctn-dimH" value="'+(data?.dimH||'')+'" oninput="recalculateAll()" placeholder="0" min="0"></td>';
+  html += '<td><input type="number" step="0.001" class="ctn-vol" readonly style="font-weight:600;color:var(--primary);"></td>';
+  html += '<td class="col-del"><button class="btn btn-danger btn-icon" onclick="removeCartonRow(this)">×</button></td>';
+  tr.innerHTML = html;
+  body.appendChild(tr);
+  recalculateAll();
+}
+
+function removeCartonRow(btn) {
+  btn.closest('tr').remove();
+  recalculateAll();
+}
+
+// ==================== Auto Calculations ====================
+function recalculateAll() {
+  if (!document.getElementById('cartonBody')) return;
+  const sizes = currentSizes;
+  const sizeTotals = {};
+  sizes.forEach(s => sizeTotals[s] = 0);
+  let totalCtn = 0, totalQty = 0, totalGross = 0, totalNet = 0, totalVol = 0;
+
+  const rows = document.querySelectorAll('#cartonBody tr');
+  rows.forEach(row => {
+    // Qty per ctn = sum of size qtys
+    let perCtn = 0;
+    row.querySelectorAll('.ctn-size').forEach(inp => {
+      const v = parseFloat(inp.value) || 0;
+      perCtn += v;
+      sizeTotals[inp.dataset.size] = (sizeTotals[inp.dataset.size]||0) + v * (parseFloat(row.querySelector('.ctn-num').value)||0);
+    });
+    row.querySelector('.ctn-per').value = perCtn || '';
+
+    const ctnNum = parseFloat(row.querySelector('.ctn-num').value) || 0;
+    const totalQ = perCtn * ctnNum;
+    row.querySelector('.ctn-total').value = totalQ || '';
+
+    const grossPer = parseFloat(row.querySelector('.ctn-gross').value) || 0;
+    const netPer = parseFloat(row.querySelector('.ctn-net').value) || 0;
+    const grossTotal = grossPer * ctnNum;
+    const netTotal = netPer * ctnNum;
+    row.querySelector('.ctn-gross-total').value = +(grossTotal.toFixed(2)) || '';
+    row.querySelector('.ctn-net-total').value = +(netTotal.toFixed(2)) || '';
+
+    const dimL = parseFloat(row.querySelector('.ctn-dimL').value) || 0;
+    const dimW = parseFloat(row.querySelector('.ctn-dimW').value) || 0;
+    const dimH = parseFloat(row.querySelector('.ctn-dimH').value) || 0;
+    const vol = (dimL * dimW * dimH / 1000000) * ctnNum;
+    row.querySelector('.ctn-vol').value = vol ? +(vol.toFixed(4)) : '';
+
+    totalCtn += ctnNum;
+    totalQty += totalQ;
+    totalGross += grossTotal;
+    totalNet += netTotal;
+    totalVol += vol;
+  });
+
+  // Update totals footer
+  sizes.forEach((s,i) => {
+    const el = document.getElementById('totalSize-'+i);
+    if (el) el.textContent = sizeTotals[s] || '';
+  });
+  const setTxt = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  const setVal = (id,val) => { const el=document.getElementById(id); if(el) el.value=val; };
+  setTxt('totalCtn', totalCtn || '');
+  setTxt('totalQty', totalQty || '');
+  setTxt('totalGrossW', totalGross ? +totalGross.toFixed(2) : '');
+  setTxt('totalNetW', totalNet ? +totalNet.toFixed(2) : '');
+  setTxt('totalVolume', totalVol ? +totalVol.toFixed(2) : '');
+
+  // Order qty total
+  let orderTotal = 0;
+  sizes.forEach((s,i) => {
+    const v = parseFloat(document.getElementById('orderQty-'+i)?.value) || 0;
+    orderTotal += v;
+  });
+  setVal('orderQtyTotal', orderTotal || '');
+
+  // Header totals
+  setVal('f-totalOrder', orderTotal || '');
+  setVal('f-totalActual', totalQty || '');
+  const variation = totalQty - orderTotal;
+  setVal('f-variation', variation || '');
+  const variationPct = orderTotal > 0 ? (variation / orderTotal * 100) : 0;
+  setVal('f-variationPct', variationPct ? +variationPct.toFixed(1) : '');
+  calcInvoiceAmount();
+}
+
+// ==================== Save Record ====================
+function collectFormData() {
+  const sizes = currentSizes;
+  const orderQty = {};
+  sizes.forEach((s,i) => {
+    orderQty[s] = parseInt(document.getElementById('orderQty-'+i)?.value) || 0;
+  });
+  const cartons = [];
+  document.querySelectorAll('#cartonBody tr').forEach(row => {
+    const sizesData = {};
+    row.querySelectorAll('.ctn-size').forEach(inp => {
+      sizesData[inp.dataset.size] = parseInt(inp.value) || 0;
+    });
+    cartons.push({
+      from: parseInt(row.querySelector('.ctn-from').value) || 0,
+      to: parseInt(row.querySelector('.ctn-to').value) || 0,
+      code: row.querySelector('.ctn-code').value,
+      color: row.querySelector('.ctn-color').value,
+      sizes: sizesData,
+      perCtn: parseInt(row.querySelector('.ctn-per').value) || 0,
+      ctnNum: parseInt(row.querySelector('.ctn-num').value) || 0,
+      totalQty: parseInt(row.querySelector('.ctn-total').value) || 0,
+      grossPer: parseFloat(row.querySelector('.ctn-gross').value) || 0,
+      netPer: parseFloat(row.querySelector('.ctn-net').value) || 0,
+      grossTotal: parseFloat(row.querySelector('.ctn-gross-total').value) || 0,
+      netTotal: parseFloat(row.querySelector('.ctn-net-total').value) || 0,
+      dimL: parseFloat(row.querySelector('.ctn-dimL').value) || 0,
+      dimW: parseFloat(row.querySelector('.ctn-dimW').value) || 0,
+      dimH: parseFloat(row.querySelector('.ctn-dimH').value) || 0,
+      volume: parseFloat(row.querySelector('.ctn-vol').value) || 0,
+    });
+  });
+  return {
+    id: editingId || ('pl_' + Date.now()),
+    createdAt: editingId ? (records.find(r=>r.id===editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    company: COMPANY_EN,
+    companyCn: COMPANY_CN,
+    buyer: '',
+    style: document.getElementById('f-style').value,
+    poNo: document.getElementById('f-poNo').value,
+    itemDesc: document.getElementById('f-itemDesc').value,
+    sizes: [...sizes],
+    orderQty: orderQty,
+    cartons: cartons,
+    totalOrderQty: parseInt(document.getElementById('f-totalOrder').value) || 0,
+    totalActualQty: parseInt(document.getElementById('f-totalActual').value) || 0,
+    variation: parseInt(document.getElementById('f-variation').value) || 0,
+    variationPct: parseFloat(document.getElementById('f-variationPct').value) || 0,
+    // Invoice & Trade info
+    invoiceNo: document.getElementById('f-invoiceNo').value,
+    invoiceDate: document.getElementById('f-invoiceDate').value,
+    companyAddr: document.getElementById('f-companyAddr').value,
+    buyerFull: document.getElementById('f-buyerFull').value,
+    buyerAddr: document.getElementById('f-buyerAddr').value,
+    shipPer: document.getElementById('f-shipPer').value,
+    etd: document.getElementById('f-etd').value,
+    fromPort: document.getElementById('f-fromPort').value,
+    toPort: document.getElementById('f-toPort').value,
+    fullDesc: document.getElementById('f-fullDesc').value,
+    unitPrice: parseFloat(document.getElementById('f-unitPrice').value) || 0,
+    hangingFee: parseFloat(document.getElementById('f-hangingFee').value) || 0,
+    priceTerms: document.getElementById('f-priceTerms').value,
+    goodsAmount: parseFloat(document.getElementById('f-goodsAmount').value) || 0,
+    hangingTotal: parseFloat(document.getElementById('f-hangingTotal').value) || 0,
+    invoiceTotal: parseFloat(document.getElementById('f-invoiceTotal').value) || 0,
+    // Shipping info
+    shipMethod: document.getElementById('f-shipMethod').value,
+    forwarder: document.getElementById('f-forwarder').value,
+    containerNo: document.getElementById('f-containerNo').value,
+    blNo: document.getElementById('f-blNo').value,
+    customsNo: document.getElementById('f-customsNo').value,
+    loadingDate: document.getElementById('f-loadingDate').value,
+    eta: document.getElementById('f-eta').value,
+    actualArrival: document.getElementById('f-actualArrival').value,
+    // Bank info
+    paymentTerms: document.getElementById('f-paymentTerms').value,
+    bankCompany: document.getElementById('f-bankCompany').value,
+    bankAddr: document.getElementById('f-bankAddr').value,
+    bankName: document.getElementById('f-bankName').value,
+    bankAddr2: document.getElementById('f-bankAddr2').value,
+    swift: document.getElementById('f-swift').value,
+    acctNo: document.getElementById('f-acctNo').value,
+    // Remarks
+    remarks: document.getElementById('f-remarks').value,
+    // Customs info
+    contractNo: document.getElementById('f-contractNo').value,
+    creditCode: document.getElementById('f-creditCode').value,
+    hsCode: document.getElementById('f-hsCode').value,
+    cnName: document.getElementById('f-cnName').value,
+    customsPrice: parseFloat(document.getElementById('f-customsPrice').value) || 0,
+    customsTotal: parseFloat(document.getElementById('f-customsTotal').value) || 0,
+    packType: document.getElementById('f-packType').value,
+    supervision: document.getElementById('f-supervision').value,
+    taxNature: document.getElementById('f-taxNature').value,
+    tradeCountry: document.getElementById('f-tradeCountry').value,
+    destCountry: document.getElementById('f-destCountry').value,
+    destPort: document.getElementById('f-destPort').value,
+    exitPort: document.getElementById('f-exitPort').value,
+    originCountry: document.getElementById('f-originCountry').value,
+    finalCountry: document.getElementById('f-finalCountry').value,
+    sourcePlace: document.getElementById('f-sourcePlace').value,
+    taxType: document.getElementById('f-taxType').value,
+    exportDate: document.getElementById('f-exportDate').value,
+    marks: document.getElementById('f-marks').value,
+    // Declaration elements
+    brandType: document.getElementById('f-brandType').value,
+    exportPref: document.getElementById('f-exportPref').value,
+    weaveMethod: document.getElementById('f-weaveMethod').value,
+    declCategory: document.getElementById('f-category').value,
+    declGender: document.getElementById('f-gender').value,
+    compositionCn: document.getElementById('f-compositionCn').value,
+    fullOpen: document.getElementById('f-fullOpen').value,
+    hasZipper: document.getElementById('f-hasZipper').value,
+    declBrand: document.getElementById('f-brand').value,
+    customsItemNo: document.getElementById('f-customsItemNo').value,
+  };
+}
+
+function saveRecord() {
+  const data = collectFormData();
+  if (!data.style) { showToast('请填写款号 (Style)', 'error'); return; }
+  if (data.cartons.length === 0) { showToast('请至少添加一行装箱明细', 'error'); return; }
+
+  // 发票号不能与出运记录重复（非空时检查）
+  if (data.invoiceNo && data.invoiceNo.trim()) {
+    const invNo = data.invoiceNo.trim();
+    const dup = records.find(r => r.id !== editingId && r.invoiceNo && r.invoiceNo.trim() === invNo);
+    if (dup) { showToast('发票号 "' + invNo + '" 在出运记录中已存在，不能重复！', 'error'); return; }
+  }
+
+  if (editingId) {
+    const idx = records.findIndex(r => r.id === editingId);
+    if (idx >= 0) records[idx] = data;
+  } else {
+    records.push(data);
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  editingId = null;
+  lockBankFields();
+  showToast('保存成功！', 'success');
+  switchTab('records');
+  clearForm();
+}
+
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed;top:60px;right:20px;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;color:#fff;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,.15);transition:opacity .3s;background:${type==='success'?'#16a34a':type==='error'?'#dc2626':'#2563eb'};`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(), 300); }, 2000);
+}
+
+// ==================== Empty Input Highlight ====================
+function refreshEmptyHighlight() {
+  document.querySelectorAll('.form-group input[id^="f-"], .form-group textarea[id^="f-"]').forEach(el => {
+    if (el.readOnly || el.type === 'hidden') return;
+    if (!el.value || el.value.trim() === '') {
+      el.classList.add('input-empty');
+    } else {
+      el.classList.remove('input-empty');
+    }
+  });
+}
+document.addEventListener('input', function(e) {
+  if (e.target.matches('.form-group input[id^="f-"], .form-group textarea[id^="f-"]')) {
+    if (e.target.value && e.target.value.trim()) {
+      e.target.classList.remove('input-empty');
+    } else {
+      e.target.classList.add('input-empty');
+    }
+  }
+});
+
+// ==================== Draft (草稿) ====================
+const DRAFT_KEY = 'pl_draft_v1_sd';
+
+function saveDraft() {
+  const draft = {
+    savedAt: new Date().toISOString(),
+    fields: {},
+    sizes: [...currentSizes],
+    cartonData: []
+  };
+  // 收集所有表单字段
+  const fieldIds = ['f-style','f-poNo','f-itemDesc','f-totalOrder','f-invoiceNo','f-invoiceDate','f-companyAddr','f-buyerFull','f-buyerAddr','f-shipPer','f-etd','f-fromPort','f-toPort','f-fullDesc','f-unitPrice','f-hangingFee','f-priceTerms','f-goodsAmount','f-hangingTotal','f-invoiceTotal','f-forwarder','f-containerNo','f-blNo','f-customsNo','f-loadingDate','f-eta','f-actualArrival','f-paymentTerms','f-bankCompany','f-bankAddr','f-bankName','f-bankAddr2','f-swift','f-acctNo','f-remarks','f-contractNo','f-creditCode','f-hsCode','f-cnName','f-customsPrice','f-customsTotal','f-packType','f-supervision','f-taxNature','f-tradeCountry','f-destCountry','f-destPort','f-exitPort','f-originCountry','f-finalCountry','f-sourcePlace','f-taxType','f-exportDate','f-marks','f-brandType','f-exportPref','f-weaveMethod','f-category','f-gender','f-compositionCn','f-fullOpen','f-hasZipper','f-brand','f-customsItemNo'];
+  fieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) draft.fields[id] = el.value;
+  });
+  // 收装箱明细数据
+  const cartonBody = document.getElementById('cartonBody');
+  if (cartonBody) {
+    cartonBody.querySelectorAll('tr').forEach(row => {
+      const data = {};
+      const fromInp = row.querySelector('.ctn-from'); if (fromInp) data.from = fromInp.value;
+      const toInp = row.querySelector('.ctn-to'); if (toInp) data.to = toInp.value;
+      const codeInp = row.querySelector('.ctn-code'); if (codeInp) data.code = codeInp.value;
+      const colorInp = row.querySelector('.ctn-color'); if (colorInp) data.color = colorInp.value;
+      data.sizes = {};
+      row.querySelectorAll('.ctn-size').forEach(inp => {
+        data.sizes[inp.dataset.size] = inp.value;
+      });
+      const numInp = row.querySelector('.ctn-num'); if (numInp) data.ctnNum = numInp.value;
+      const grossInp = row.querySelector('.ctn-gross'); if (grossInp) data.grossPer = grossInp.value;
+      const netInp = row.querySelector('.ctn-net'); if (netInp) data.netPer = netInp.value;
+      const dimLInp = row.querySelector('.ctn-dimL'); if (dimLInp) data.dimL = dimLInp.value;
+      const dimWInp = row.querySelector('.ctn-dimW'); if (dimWInp) data.dimW = dimWInp.value;
+      const dimHInp = row.querySelector('.ctn-dimH'); if (dimHInp) data.dimH = dimHInp.value;
+      draft.cartonData.push(data);
+    });
+  }
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  showToast('草稿已保存', 'success');
+}
+
+function loadDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return false;
+  try {
+    const draft = JSON.parse(raw);
+    // 恢复表单字段
+    Object.keys(draft.fields || {}).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = draft.fields[id];
+    });
+    // 恢复尺码
+    if (draft.sizes && draft.sizes.length > 0) {
+      currentSizes = [...draft.sizes];
+    }
+    renderSizeTags();
+    renderOrderQtyTable();
+    renderCartonTable();
+    // 恢复装箱明细
+    if (draft.cartonData && draft.cartonData.length > 0) {
+      draft.cartonData.forEach(data => addCartonRow(data));
+    }
+    recalculateAll();
+    lockBankFields();
+    const savedTime = draft.savedAt ? new Date(draft.savedAt).toLocaleString('zh-CN') : '';
+    showToast('已恢复草稿数据' + (savedTime ? '（' + savedTime + '）' : ''), 'success');
+    refreshEmptyHighlight();
+    return true;
+  } catch(e) {
+    console.error('Load draft error:', e);
+    return false;
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+function clearForm() {
+  editingId = null;
+  const ids = ['f-style','f-poNo','f-itemDesc','f-totalOrder','f-invoiceNo','f-invoiceDate','f-companyAddr','f-buyerFull','f-buyerAddr','f-shipPer','f-etd','f-fromPort','f-toPort','f-fullDesc','f-unitPrice','f-hangingFee','f-priceTerms','f-goodsAmount','f-hangingTotal','f-invoiceTotal','f-forwarder','f-containerNo','f-blNo','f-customsNo','f-loadingDate','f-eta','f-actualArrival','f-paymentTerms','f-bankCompany','f-bankAddr','f-bankName','f-bankAddr2','f-swift','f-acctNo','f-remarks','f-contractNo','f-creditCode','f-hsCode','f-cnName','f-customsPrice','f-customsTotal','f-packType','f-supervision','f-taxNature','f-tradeCountry','f-destCountry','f-destPort','f-exitPort','f-originCountry','f-finalCountry','f-sourcePlace','f-taxType','f-exportDate','f-marks','f-brandType','f-exportPref','f-weaveMethod','f-category','f-gender','f-compositionCn','f-fullOpen','f-hasZipper','f-brand','f-customsItemNo'];
+  // 重置出运方式下拉框
+  const shipMethodEl = document.getElementById('f-shipMethod'); if (shipMethodEl) shipMethodEl.value = '海运';
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cartonBody').innerHTML = '';
+  currentSizes = ['34','36','38','40','42','44'];
+  renderSizeTags();
+  renderOrderQtyTable();
+  renderCartonTable();
+  recalculateAll();
+  // 恢复硬代码字段（不被清空）
+  const setDef = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setDef('f-packType', 'CTNS');
+  setDef('f-supervision', '一般贸易');
+  setDef('f-taxNature', '一般征税');
+  setDef('f-invoiceDate', App.utils.today());
+  setDef('f-companyAddr', 'ROOM 317 3F MACHINERY BUILDING 151 FUXING ROAD WUXI CHINA');
+  setDef('f-buyerFull', 'CASTRO MODEL LTD');
+  setDef('f-buyerAddr', '31 ORT ISRAEL ST.BAT YAM 59590 ISRAEL');
+  setDef('f-fromPort', 'SHANGHAI,CHINA');
+  setDef('f-toPort', 'ASHDOD,ISRAEL');
+  setDef('f-priceTerms', 'FOB SHANGHAI');
+  setDef('f-paymentTerms', 'T/T payment');
+  setDef('f-bankCompany', 'JIANGSU SAINTY HANTANG TRADING CO.,LTD');
+  setDef('f-bankAddr', 'ROOM 317 3F MACHINERY BUILDING 151 FUXING ROAD WUXI CHINA');
+  setDef('f-bankName', 'BANK OF NINGBO');
+  setDef('f-bankAddr2', 'NO.6 FINANCIAL THIRD STREET,TAI HU XIN CHENG,WUXI,JIANGSU,P.R.CHINA, 214000');
+  setDef('f-swift', 'BKNBCN2N');
+  setDef('f-acctNo', '78012025000055858');
+  setDef('f-remarks', 'GOODS ARE OF FIRST QUALITY;\nGOODS ARE OF CHINA ORIGIN.\nHEBREW LABELS ARE ATTACHED TO EACH GARMENT');
+  setDef('f-creditCode', '9132020073440096X6');
+  setDef('f-tradeCountry', '以色列');
+  setDef('f-destCountry', 'ISRAEL');
+  setDef('f-destPort', 'ASHDOD');
+  setDef('f-exitPort', 'SHANGHAI');
+  setDef('f-originCountry', '中国');
+  setDef('f-finalCountry', '以色列');
+  setDef('f-taxType', '照章征税');
+  setDef('f-marks', 'TO:CASTRO MODEL LTD.\n31 ORT ISRAEL ST.\nBAT-YAM, ISRAEL\nMADE IN CHINA');
+  setDef('f-brandType', '境外品牌（贴牌生产）');
+  setDef('f-exportPref', '出口货物不能确定在最终目的国（地区）享受优惠关税');
+  lockBankFields();
+  populateStyleList();
+  refreshEmptyHighlight();
+}
+
+function loadRecordForEdit(id) {
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  editingId = id;
+  // Set basic info
+  document.getElementById('f-style').value = rec.style || '';
+  document.getElementById('f-poNo').value = rec.poNo || '';
+  document.getElementById('f-itemDesc').value = rec.itemDesc || '';
+  document.getElementById('f-totalOrder').value = rec.totalOrderQty || '';
+  // Set invoice & trade info
+  const invFields = ['invoiceNo:f-invoiceNo','invoiceDate:f-invoiceDate','companyAddr:f-companyAddr','buyerFull:f-buyerFull','buyerAddr:f-buyerAddr','shipPer:f-shipPer','etd:f-etd','fromPort:f-fromPort','toPort:f-toPort','fullDesc:f-fullDesc','unitPrice:f-unitPrice','hangingFee:f-hangingFee','priceTerms:f-priceTerms','shipMethod:f-shipMethod','forwarder:f-forwarder','containerNo:f-containerNo','blNo:f-blNo','customsNo:f-customsNo','loadingDate:f-loadingDate','eta:f-eta','actualArrival:f-actualArrival','paymentTerms:f-paymentTerms','bankCompany:f-bankCompany','bankAddr:f-bankAddr','bankName:f-bankName','bankAddr2:f-bankAddr2','swift:f-swift','acctNo:f-acctNo','remarks:f-remarks','contractNo:f-contractNo','creditCode:f-creditCode','hsCode:f-hsCode','cnName:f-cnName','customsPrice:f-customsPrice','customsTotal:f-customsTotal','packType:f-packType','supervision:f-supervision','taxNature:f-taxNature','tradeCountry:f-tradeCountry','destCountry:f-destCountry','destPort:f-destPort','exitPort:f-exitPort','originCountry:f-originCountry','finalCountry:f-finalCountry','sourcePlace:f-sourcePlace','taxType:f-taxType','exportDate:f-exportDate','marks:f-marks','brandType:f-brandType','exportPref:f-exportPref','weaveMethod:f-weaveMethod','declCategory:f-category','declGender:f-gender','compositionCn:f-compositionCn','fullOpen:f-fullOpen','hasZipper:f-hasZipper','declBrand:f-brand','customsItemNo:f-customsItemNo'];
+  invFields.forEach(pair => {
+    const [key, elId] = pair.split(':');
+    const el = document.getElementById(elId);
+    if (el) el.value = rec[key] || '';
+  });
+  // Set sizes
+  currentSizes = rec.sizes ? [...rec.sizes] : ['34','36','38','40','42','44'];
+  renderSizeTags();
+  renderOrderQtyTable();
+  // Set order qty
+  currentSizes.forEach((s,i) => {
+    const el = document.getElementById('orderQty-'+i);
+    if (el && rec.orderQty) el.value = rec.orderQty[s] || '';
+  });
+  // Set cartons
+  document.getElementById('cartonBody').innerHTML = '';
+  renderCartonTable();
+  document.getElementById('cartonBody').innerHTML = '';
+  if (rec.cartons && rec.cartons.length > 0) {
+    rec.cartons.forEach(c => addCartonRow(c));
+  }
+  recalculateAll();
+  lockBankFields();
+  populateStyleList();
+  switchTab('entry');
+  refreshEmptyHighlight();
+}
+
+// ==================== Render Records (Cards) ====================
+function renderRecords() {
+  const container = document.getElementById('recordsContainer');
+  if (records.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无数据记录</p><p style="font-size:12px;margin-top:6px;">请到"数据录入"页面添加记录</p></div>';
+    return;
+  }
+  container.innerHTML = '<div class="cards-grid">';
+  records.forEach(rec => {
+    const date = new Date(rec.createdAt).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    let colorSet = new Set();
+    rec.cartons.forEach(c => { if(c.color) colorSet.add(c.color); });
+    const colors = Array.from(colorSet).join(', ') || '-';
+    const card = document.createElement('div');
+    card.className = 'record-card';
+    card.innerHTML = `
+      <div class="card-header">
+        <div>
+          <div class="card-style">${rec.style || '未命名'}</div>
+          <div style="font-size:11px;color:var(--text-light);margin-top:2px;">${rec.buyerFull || rec.buyer || ''} · ${rec.poNo || ''}</div>
+        </div>
+        <div class="card-date">${date}</div>
+      </div>
+      <div class="card-info">
+        <div><div class="label">商品描述</div><div class="value">${rec.itemDesc || '-'}</div></div>
+        <div><div class="label">颜色</div><div class="value">${colors}</div></div>
+        <div><div class="label">尺码</div><div class="value">${(rec.sizes||[]).join(', ')}</div></div>
+        <div><div class="label">箱数</div><div class="value">${rec.cartons.length} 行</div></div>
+      </div>
+      <div class="card-stats">
+        <div class="stat"><div class="num">${rec.totalOrderQty||0}</div><div class="lbl">订单数量</div></div>
+        <div class="stat"><div class="num">${rec.totalActualQty||0}</div><div class="lbl">实际数量</div></div>
+        <div class="stat"><div class="num" style="color:var(--warning);">${rec.variation||0}</div><div class="lbl">差异</div></div>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();generateDoc('${rec.id}')">📄 生成PL</button>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();loadRecordForEdit('${rec.id}')">✏ 编辑</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRecord('${rec.id}')">🗑</button>
+      </div>
+    `;
+    container.querySelector('.cards-grid').appendChild(card);
+  });
+}
+
+function deleteRecord(id) {
+  showConfirm('删除记录','确认删除此条数据记录？此操作不可撤销。', () => {
+    records = records.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    renderRecords();
+    populatePLSelect();
+  });
+}
+
+function generateDoc(id) {
+  switchTab('docs');
+  populatePLSelect();
+  const sel = document.getElementById('plSelect');
+  sel.value = id;
+  loadPLPreview();
+}
+
+// ==================== Invoice Generation ====================
+function formatDateStr(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${d.getDate()}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(2)}`;
+  } catch { return dateStr; }
+}
+
+function generateInvoiceTable(rec) {
+  const qty = rec.totalActualQty || 0;
+  const unitPrice = rec.unitPrice || 0;
+  const hangingFee = rec.hangingFee || 0;
+  const goodsAmt = +(qty * unitPrice).toFixed(2);
+  const hangingTotal = +(qty * hangingFee).toFixed(2);
+  const invTotal = +(goodsAmt + hangingTotal).toFixed(2);
+  const invDate = formatDateStr(rec.invoiceDate);
+  const etdStr = formatDateStr(rec.etd);
+  const remarks = (rec.remarks || '').split('\n').filter(r => r.trim());
+
+  let html = '<table class="inv-table">';
+
+  // Company name
+  html += `<tr><td colspan="6" class="inv-company">${rec.company || ''}</td></tr>`;
+  // Company address
+  html += `<tr><td colspan="6" class="inv-addr">${rec.companyAddr || ''}</td></tr>`;
+  // INVOICE title
+  html += `<tr><td colspan="6" class="inv-title">   INVOICE</td></tr>`;
+  // Empty
+  html += `<tr><td colspan="6" class="inv-noborder" style="height:8px;"></td></tr>`;
+  // Invoice No.
+  html += `<tr><td colspan="2" class="inv-noborder"></td><td class="inv-label">INVOICE No.</td><td class="inv-val">${rec.invoiceNo || ''}</td><td colspan="2" class="inv-noborder"></td></tr>`;
+  // Date
+  html += `<tr><td colspan="2" class="inv-noborder"></td><td class="inv-label">Date:</td><td class="inv-val">${invDate}</td><td colspan="2" class="inv-noborder"></td></tr>`;
+  // Empty
+  html += `<tr><td colspan="6" class="inv-noborder" style="height:8px;"></td></tr>`;
+  // Invoice of / by / address / from / as per order / ship per / from-to
+  html += `<tr><td colspan="6" class="inv-text">INVOICE of As below</td></tr>`;
+  html += `<tr><td colspan="6" class="inv-text">by  ${rec.buyerFull || rec.buyer || ''}</td></tr>`;
+  html += `<tr><td colspan="6" class="inv-text">${rec.buyerAddr || ''}</td></tr>`;
+  html += `<tr><td colspan="6" class="inv-text">from    ${rec.company || ''}</td></tr>`;
+  html += `<tr><td colspan="6" class="inv-text">as per order accepted on     </td></tr>`;
+  html += `<tr><td colspan="6" class="inv-text">to be shipped per ${rec.shipPer || ''}  ETD ${etdStr}</td></tr>`;
+  html += `<tr><td colspan="6" class="inv-text">from  ${rec.fromPort || ''}          to    ${rec.toPort || ''}       via          by the undersigned.</td></tr>`;
+  // Empty
+  html += `<tr><td colspan="6" class="inv-noborder" style="height:8px;"></td></tr>`;
+
+  // Table header
+  html += `<tr>`;
+  html += `<td class="inv-header">Quantity<br>（PCS）</td>`;
+  html += `<td class="inv-header">Full Description of Goods</td>`;
+  html += `<td class="inv-header">Style No.</td>`;
+  html += `<td class="inv-header">PO</td>`;
+  html += `<td class="inv-header">Unit Price(USD)</td>`;
+  html += `<td class="inv-header">Total Amount(USD)</td>`;
+  html += `</tr>`;
+  // Price terms
+  html += `<tr><td colspan="4" class="inv-noborder"></td><td class="inv-terms">${rec.priceTerms || ''}</td><td class="inv-noborder"></td></tr>`;
+  // Data row - goods
+  html += `<tr>`;
+  html += `<td class="inv-cell">${qty}</td>`;
+  html += `<td class="inv-cell left">${rec.fullDesc || rec.itemDesc || ''}</td>`;
+  html += `<td class="inv-cell">${rec.style || ''}</td>`;
+  html += `<td class="inv-cell">${rec.poNo || ''}</td>`;
+  html += `<td class="inv-cell">${unitPrice}</td>`;
+  html += `<td class="inv-cell">${goodsAmt}</td>`;
+  html += `</tr>`;
+  // Hanging fee row
+  if (hangingFee > 0) {
+    html += `<tr>`;
+    html += `<td class="inv-noborder"></td>`;
+    html += `<td class="inv-cell left">Hanging Fee</td>`;
+    html += `<td colspan="2" class="inv-noborder"></td>`;
+    html += `<td class="inv-cell">${hangingFee}</td>`;
+    html += `<td class="inv-cell">${hangingTotal}</td>`;
+    html += `</tr>`;
+  }
+  // TTL row
+  html += `<tr>`;
+  html += `<td class="inv-ttl-label">TTL:</td>`;
+  html += `<td colspan="4" class="inv-noborder"></td>`;
+  html += `<td class="inv-total">${invTotal}</td>`;
+  html += `</tr>`;
+
+  // Remarks section
+  html += `<tr><td colspan="6" class="inv-noborder" style="height:6px;"></td></tr>`;
+  html += `<tr><td class="inv-remark-label">REMARKS:</td><td colspan="5" class="inv-noborder"></td></tr>`;
+  remarks.forEach(r => {
+    html += `<tr><td class="inv-noborder"></td><td colspan="5" class="inv-remark">${r}</td></tr>`;
+  });
+
+  // Bank details section
+  html += `<tr><td colspan="6" class="inv-noborder" style="height:6px;"></td></tr>`;
+  html += `<tr><td colspan="6" class="inv-section-label" style="text-align:left;">Bank details:</td></tr>`;
+  html += `<tr><td class="inv-remark-label">${rec.paymentTerms || ''}</td><td colspan="5" class="inv-noborder"></td></tr>`;
+  const bankLines = [
+    rec.bankCompany ? `COMPANY: ${rec.bankCompany}` : '',
+    rec.bankAddr ? `ADDRESS: ${rec.bankAddr}` : '',
+    rec.bankName ? `BANK: ${rec.bankName}` : '',
+    rec.bankAddr2 ? `ADDRESS: ${rec.bankAddr2}` : '',
+    rec.swift ? `SWIFT: ${rec.swift}` : '',
+    rec.acctNo ? `A/C NO.: ${rec.acctNo}` : '',
+  ].filter(l => l);
+  bankLines.forEach(line => {
+    html += `<tr><td class="inv-noborder"></td><td colspan="5" class="inv-remark">${line}</td></tr>`;
+  });
+
+  html += '</table>';
+  return html;
+}
+
+// ==================== PL Document Generation ====================
+function populatePLSelect() {
+  const sel = document.getElementById('plSelect');
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">-- 选择数据记录 --</option>';
+  records.forEach(rec => {
+    const opt = document.createElement('option');
+    opt.value = rec.id;
+    opt.textContent = `${rec.style || '未命名'} - ${rec.buyerFull||rec.buyer||''} (PO: ${rec.poNo||'-'})`;
+    sel.appendChild(opt);
+  });
+  if (curVal) sel.value = curVal;
+}
+
+function selectDocType(type, el) {
+  const validTypes = ['pl','invoice','cusInv','cusPL','cusDecl','cusElem','contract'];
+  if (!validTypes.includes(type)) return;
+  currentDocType = type;
+  document.querySelectorAll('.doc-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  loadPLPreview();
+}
+
+function loadPLPreview() {
+  const id = document.getElementById('plSelect').value;
+  const area = document.getElementById('plPreviewArea');
+  if (!id) { area.innerHTML = '<div class="empty-state"><div class="icon">📄</div><p>请选择一条数据记录以预览文件</p></div>'; return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) { area.innerHTML = '<p>记录未找到</p>'; return; }
+  const generators = {
+    'pl': generatePLTableV2,
+    'invoice': generateInvoiceTable,
+    'cusInv': generateCustomsInvoice,
+    'cusPL': generateCustomsPL,
+    'cusDecl': generateCustomsDecl,
+    'cusElem': generateDeclElements,
+    'contract': generateContract,
+  };
+  const fn = generators[currentDocType] || generatePLTableV2;
+  area.innerHTML = fn(rec);
+}
+
+function calcInvoiceAmount() {
+  const qty = parseFloat(document.getElementById('f-totalActual')?.value) || 0;
+  const unitPrice = parseFloat(document.getElementById('f-unitPrice')?.value) || 0;
+  const hangingFee = parseFloat(document.getElementById('f-hangingFee')?.value) || 0;
+  const goodsAmt = qty * unitPrice;
+  const hangingTotal = qty * hangingFee;
+  const invoiceTotal = goodsAmt + hangingTotal;
+  const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v; };
+  setV('f-goodsAmount', goodsAmt ? +goodsAmt.toFixed(2) : '');
+  setV('f-hangingTotal', hangingTotal ? +hangingTotal.toFixed(2) : '');
+  setV('f-invoiceTotal', invoiceTotal ? +invoiceTotal.toFixed(2) : '');
+  calcCustomsAmount();
+}
+
+function calcCustomsAmount() {
+  const qty = parseFloat(document.getElementById('f-totalActual')?.value) || 0;
+  const customsPrice = parseFloat(document.getElementById('f-customsPrice')?.value) || 0;
+  const total = qty * customsPrice;
+  const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v; };
+  setV('f-customsTotal', total ? +total.toFixed(2) : '');
+}
+
+function generatePLTableV2(rec) {
+  const sizes = rec.sizes || ['34','36','38','40','42','44'];
+  const cartons = rec.cartons || [];
+
+  // Calculate total columns: From(1)+To(1)+Code(1)+Color(1)+sizes(n)+perCtn(1)+ctnNum(1)+totalQty(1)+grossPer(1)+netPer(1)+grossTotal(1)+netTotal(1)+dimL(1)+dimW(1)+dimH(1)+vol(1) = n+16
+  const n = sizes.length;
+  const tc = n + 14; // total columns: 3(from~to,code,color) + n(sizes) + 11(perCtn,ctnNum,totalQty,grossPer,netPer,grossTotal,netTotal,dimL,dimW,dimH,vol)
+
+  let html = '<table class="pl-table">';
+
+  // Row 1: Company name
+  html += `<tr><td colspan="${tc}" class="company-name">${rec.company || ''}</td></tr>`;
+  // Empty
+  html += `<tr><td colspan="${tc}" style="border:none;height:6px;"></td></tr>`;
+
+  // Info rows: label(colspan=2) + value(colspan=2) + rest empty
+  const infos = [
+    ['Buyer', rec.buyerFull || rec.buyer, false],
+    ['Style', rec.style, false],
+    ['PO No.', rec.poNo, false],
+    ['Item description', rec.itemDesc, false],
+    ['Total order Qty PC', rec.totalOrderQty, false],
+    ['Total actual Qty PC', rec.totalActualQty, true],
+  ];
+  infos.forEach(([label,val,bold]) => {
+    html += `<tr><td colspan="2" class="info-label">${label}</td><td colspan="2" class="info-value${bold?' bold':''}">${val??''}</td><td colspan="${tc-4}" style="border:none;"></td></tr>`;
+  });
+
+  // Variation row (special: has value + percentage)
+  const pctStr = rec.variationPct ? (rec.variationPct.toFixed(1) + '%') : '';
+  html += `<tr>`;
+  html += `<td colspan="2" class="info-label">Variation on Order</td>`;
+  html += `<td colspan="2" class="info-value bold">${rec.variation??''}</td>`;
+  html += `<td class="info-value bold">${pctStr}</td>`;
+  html += `<td colspan="${tc-5}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  // Empty
+  html += `<tr><td colspan="${tc}" style="border:none;height:6px;"></td></tr>`;
+
+  // Detail section header row ("Detail:" + "Per ctn." + "Total")
+  // Positions (1-indexed): 1-2=From/To, 3=Code, 4=Color, 5..5+n-1=sizes, 5+n=perCtn, 6+n=ctnNum, 7+n=totalQty, 8+n=grossPer, 9+n=netPer, 10+n=grossTotal, 11+n=netTotal, 12+n=dimL, 13+n=dimW, 14+n=dimH, 15+n=vol
+  // "Per ctn." spans grossPer+netPer = cols (8+n) to (9+n) = 2 cols
+  // "Total" spans grossTotal+netTotal = cols (10+n) to (11+n) = 2 cols
+  html += `<tr>`;
+  html += `<td colspan="3" style="font-weight:bold;border-left:1px solid #000;border-top:1px solid #000;padding:1px 5px;">Detail:</td>`;
+  // sizes area - no border on top for these
+  html += `<td colspan="${n}" style="border:none;"></td>`;
+  // ctnNum, totalQty - no top border
+  html += `<td colspan="3" style="border:none;"></td>`;
+  // Per ctn. header
+  html += `<td colspan="2" style="font-weight:bold;border:1px solid #000;padding:1px 3px;text-align:left;">Per ctn.</td>`;
+  // Total header
+  html += `<td colspan="2" style="font-weight:bold;border:1px solid #000;padding:1px 3px;text-align:left;">Total</td>`;
+  // dimensions + vol - no top border
+  html += `<td colspan="4" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  // Header row 1 (row 12)
+  html += `<tr>`;
+  html += `<td rowspan="2" class="col-header">Carton no.</td>`;
+  html += `<td rowspan="2" class="col-header">Code:</td>`;
+  html += `<td rowspan="2" class="col-header">Color</td>`;
+  html += `<td colspan="${n}" class="col-header">SIZES</td>`;
+  html += `<td class="col-header">Qty per<br>ctn.</td>`;
+  html += `<td class="col-header">Qty of<br>ctn</td>`;
+  html += `<td class="col-header">Total<br>qty</td>`;
+  html += `<td class="col-header">Gross W</td>`;
+  html += `<td class="col-header">Net W</td>`;
+  html += `<td class="col-header">Gross W</td>`;
+  html += `<td class="col-header">Net W</td>`;
+  html += `<td colspan="3" class="col-header">Dimension of ctn, mm</td>`;
+  html += `<td class="col-header">Volume</td>`;
+  html += `</tr>`;
+
+  // Header row 2 (row 13 - sub headers)
+  html += `<tr>`;
+  sizes.forEach(s => html += `<td class="col-sub">${s}</td>`);
+  html += `<td class="col-sub">PC</td>`;
+  html += `<td class="col-sub">CTN</td>`;
+  html += `<td class="col-sub">PC</td>`;
+  html += `<td class="col-sub">KG</td>`;
+  html += `<td class="col-sub">KG</td>`;
+  html += `<td class="col-sub">KG</td>`;
+  html += `<td class="col-sub">KG</td>`;
+  html += `<td class="col-sub">L</td>`;
+  html += `<td class="col-sub">W</td>`;
+  html += `<td class="col-sub">H</td>`;
+  html += `<td class="col-sub">CBM</td>`;
+  html += `</tr>`;
+
+  // Data rows (cartons)
+  // Check if all cartons have same dimensions (for merging)
+  const allSameDim = cartons.length > 0 && cartons.every(c =>
+    c.dimL === cartons[0].dimL && c.dimW === cartons[0].dimW && c.dimH === cartons[0].dimH
+  );
+
+  // Also check if all have same code and color
+  const allSameCode = cartons.length > 0 && cartons.every(c => c.code === cartons[0].code);
+  const allSameColor = cartons.length > 0 && cartons.every(c => c.color === cartons[0].color);
+
+  cartons.forEach((c, idx) => {
+    html += `<tr>`;
+    // Carton no.
+    html += `<td class="data-cell center">${(c.from && c.to) ? (c.from === c.to ? c.from : c.from + '~' + c.to) : (c.from||c.to||'')}</td>`;
+    // Code (merge if all same)
+    if (allSameCode) {
+      if (idx === 0) html += `<td rowspan="${cartons.length}" class="data-cell">${c.code||''}</td>`;
+    } else {
+      html += `<td class="data-cell">${c.code||''}</td>`;
+    }
+    // Color (merge if all same)
+    if (allSameColor) {
+      if (idx === 0) html += `<td rowspan="${cartons.length}" class="data-cell">${c.color||''}</td>`;
+    } else {
+      html += `<td class="data-cell">${c.color||''}</td>`;
+    }
+    // Sizes
+    sizes.forEach(s => {
+      const v = c.sizes ? c.sizes[s] : 0;
+      html += `<td class="data-cell">${v||''}</td>`;
+    });
+    // Qty per ctn
+    html += `<td class="data-cell">${c.perCtn||''}</td>`;
+    // Qty of ctn
+    html += `<td class="data-cell">${c.ctnNum||''}</td>`;
+    // Total qty
+    html += `<td class="data-cell" style="font-size:11pt;">${c.totalQty||''}</td>`;
+    // Gross W per ctn
+    html += `<td class="data-cell">${c.grossPer||''}</td>`;
+    // Net W per ctn
+    html += `<td class="data-cell">${c.netPer||''}</td>`;
+    // Gross W total
+    html += `<td class="data-cell">${c.grossTotal ? +c.grossTotal.toFixed(2) : ''}</td>`;
+    // Net W total
+    html += `<td class="data-cell">${c.netTotal ? +c.netTotal.toFixed(2) : ''}</td>`;
+    // Dimensions (merge if all same)
+    if (allSameDim) {
+      if (idx === 0) {
+        html += `<td rowspan="${cartons.length}" class="data-cell">${c.dimL||''}</td>`;
+        html += `<td rowspan="${cartons.length}" class="data-cell">${c.dimW||''}</td>`;
+        html += `<td rowspan="${cartons.length}" class="data-cell">${c.dimH||''}</td>`;
+        // Volume (also merged)
+        const totalVol = cartons.reduce((s,cc) => s + (cc.volume||0), 0);
+        html += `<td rowspan="${cartons.length}" class="data-cell">${totalVol ? +totalVol.toFixed(2) : ''}</td>`;
+      }
+    } else {
+      html += `<td class="data-cell">${c.dimL||''}</td>`;
+      html += `<td class="data-cell">${c.dimW||''}</td>`;
+      html += `<td class="data-cell">${c.dimH||''}</td>`;
+      html += `<td class="data-cell">${c.volume ? +c.volume.toFixed(4) : ''}</td>`;
+    }
+    html += `</tr>`;
+  });
+
+  // Total row
+  const totals = calculateTotals(rec);
+  html += `<tr>`;
+  html += `<td colspan="3" class="total-label">Total:</td>`;
+  sizes.forEach(s => {
+    html += `<td class="total-cell">${totals.sizeTotals[s]||0}</td>`;
+  });
+  html += `<td></td>`; // per ctn
+  html += `<td class="total-cell">${totals.ctnNum}</td>`;
+  html += `<td class="total-cell">${totals.totalQty}</td>`;
+  html += `<td></td><td></td>`; // per ctn gross/net
+  html += `<td class="total-cell">${totals.grossTotal.toFixed(2)}</td>`;
+  html += `<td class="total-cell">${totals.netTotal.toFixed(2)}</td>`;
+  html += `<td colspan="3"></td>`; // dimensions
+  if (!allSameDim) {
+    html += `<td class="total-cell">${totals.volume.toFixed(2)}</td>`;
+  } else {
+    html += `<td></td>`;
+  }
+  html += `</tr>`;
+
+  // Empty
+  html += `<tr><td colspan="${tc}" style="border:none;height:6px;"></td></tr>`;
+
+  // Summary section
+  html += `<tr><td colspan="${tc}" class="section-header">Summary:</td></tr>`;
+
+  // Summary header row 1
+  // In original: A27:B28 merged (empty), C27:C28="Color", D27:J27="Sizes", K27:K28="Total:"
+  // Map to our columns: label(2) + Color(1) + Sizes(n) + Total(1) = n+4
+  // Rest are empty
+  html += `<tr>`;
+  html += `<td rowspan="2" style="border:1px solid #000;"></td>`;
+  html += `<td rowspan="2" class="col-header">Color</td>`;
+  html += `<td colspan="${n}" class="col-header">Sizes</td>`;
+  html += `<td rowspan="2" class="col-header">Total:</td>`;
+  html += `<td colspan="${tc - n - 3}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  // Summary header row 2 (size numbers)
+  html += `<tr>`;
+  sizes.forEach(s => html += `<td class="col-sub">${s}</td>`);
+  html += `<td colspan="${tc - n - 3}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  // Summary data rows (by color)
+  const colors = getColorsFromCartons(cartons);
+  const summaryRows = ['Order Qty PC', 'Actual Qty PC', 'Excess Qty', '% of order'];
+  const summaryData = calculateSummaryByColor(rec, sizes, colors);
+
+  summaryRows.forEach((rowLabel, rowIdx) => {
+    html += `<tr>`;
+    html += `<td class="summary-label">${rowLabel}</td>`;
+    if (rowIdx === 0) {
+      // Color column merged for all 4 rows
+      colors.forEach((color, ci) => {
+        if (ci === 0) {
+          html += `<td rowspan="4" class="summary-cell bold">${color}</td>`;
+        }
+      });
+    } else {
+      // Color already rendered via rowspan
+    }
+    // If no colors, still need the cell
+    if (colors.length === 0 && rowIdx === 0) {
+      html += `<td rowspan="4" class="summary-cell"></td>`;
+    }
+
+    if (colors.length === 0) {
+      sizes.forEach(s => html += `<td class="summary-cell"></td>`);
+      html += `<td class="summary-cell"></td>`;
+    } else {
+      const color = colors[0]; // First (and typically only) color
+      sizes.forEach(s => {
+        let val = '';
+        if (rowIdx === 0) val = (summaryData.orderQty[color] && summaryData.orderQty[color][s]) || '';
+        else if (rowIdx === 1) val = (summaryData.actualQty[color] && summaryData.actualQty[color][s]) || '';
+        else if (rowIdx === 2) val = (summaryData.excessQty[color] && summaryData.excessQty[color][s]) || '';
+        else if (rowIdx === 3) {
+          const pct = (summaryData.actualQty[color] && summaryData.actualQty[color][s] && summaryData.orderQty[color] && summaryData.orderQty[color][s]) ?
+            (summaryData.actualQty[color][s] / summaryData.orderQty[color][s]) : 0;
+          val = pct ? (pct * 100).toFixed(1) + '%' : '';
+        }
+        html += `<td class="summary-cell${rowIdx===1?' bold':''}">${val}</td>`;
+      });
+      // Total column
+      let totalVal = '';
+      if (rowIdx === 0) totalVal = (summaryData.orderQtyTotal[color]) || '';
+      else if (rowIdx === 1) totalVal = (summaryData.actualQtyTotal[color]) || '';
+      else if (rowIdx === 2) totalVal = (summaryData.excessQtyTotal[color]) || '';
+      else if (rowIdx === 3) {
+        const pct = (summaryData.actualQtyTotal[color] && summaryData.orderQtyTotal[color]) ?
+          (summaryData.actualQtyTotal[color] / summaryData.orderQtyTotal[color]) : 0;
+        totalVal = pct ? (pct * 100).toFixed(1) + '%' : '';
+      }
+      html += `<td class="summary-cell">${totalVal}</td>`;
+    }
+    html += `<td colspan="${tc - n - 3}" style="border:none;"></td>`;
+    html += `</tr>`;
+  });
+
+  // Empty
+  html += `<tr><td colspan="${tc}" style="border:none;height:6px;"></td></tr>`;
+
+  // Total order section
+  html += `<tr><td colspan="${tc}" class="section-header">Total order:</td></tr>`;
+
+  // Total order header
+  // In original: A35:B36 merged, C35:K35="Sizes", then C36-H36 are size numbers, K36="Total:"
+  // Map: label(2) + "Sizes" header(1) + sizes(n) ... hmm
+  // Actually original has: A35:B36 (empty), C35:K35="Sizes" (merged), then row 36 has size numbers
+  // But K column is "Total:" in K27:K28. In the total order section, K35:K36 should also be "Total:"? Let me check...
+  // C35:K35 = "Sizes", C36=34, D36=36,... H36=44, K36="Total:"
+  // So: empty(2) + Sizes(merged across color+sizes) ... hmm this is different.
+  // Actually C35:K35 is merged = "Sizes", and K is part of this merge. Then K36="Total:"
+  // Wait, that's contradictory. C35:K35 is merged, but K36 is separate.
+  // Let me re-read: C35:K35 merged = "Sizes". K36 = "Total:".
+  // So in row 35: cols C-K are merged as "Sizes". In row 36: C-H are size numbers, I-J are empty, K="Total:"
+  // Hmm, but that means K is split in row 36. The merge C35:K35 covers row 35 only.
+
+  // For our HTML, let's do:
+  // Row 1: empty(2) + "Sizes"(colspan=n+1, covering color col + size cols) ... no
+  // Actually, let me map it differently. In the total order section, there's no color column.
+  // Layout: empty(2) + Sizes(n) + Total(1) + rest empty
+  // Row 35: empty(2) + "Sizes"(colspan=n) + "Total:"(1, rowspan 2) ... hmm
+
+  // Let me simplify: match the original layout
+  // Row 35-36: A:B merged (empty, rowspan 2), C35:?? = "Sizes" (row 35), C36-H36 = size numbers (row 36), then "Total:" at the end
+  // In original: A35:B36 merged, C35:K35="Sizes", C36=34,...,H36=44, K36="Total:"
+  // Since C35:K35 is merged, it spans C through K. K36 is "Total:".
+  // But our column mapping is different. Let me just do:
+  // empty(2, rowspan 2) + "Sizes"(n cols, row 35) + "Total:"(1, rowspan 2) + rest empty
+  // Row 36: size numbers (n cols) + [total already covered by rowspan]
+
+  html += `<tr>`;
+  html += `<td rowspan="2" style="border:1px solid #000;"></td>`;
+  html += `<td colspan="${n}" class="col-header">Sizes</td>`;
+  html += `<td rowspan="2" class="col-header">Total:</td>`;
+  html += `<td colspan="${tc - n - 2}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  html += `<tr>`;
+  sizes.forEach(s => html += `<td class="col-sub">${s}</td>`);
+  html += `<td colspan="${tc - n - 2}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  // Total order data rows
+  const totalOrderData = calculateTotalOrderSummary(rec, sizes);
+  const orderRows = ['Order Qty PC', 'Actual Qty PC', 'Excess Qty', '% of order'];
+  orderRows.forEach((label, rowIdx) => {
+    html += `<tr>`;
+    html += `<td class="summary-label">${label}</td>`;
+    sizes.forEach(s => {
+      let val = '';
+      if (rowIdx === 0) val = totalOrderData.orderQty[s] || '';
+      else if (rowIdx === 1) val = totalOrderData.actualQty[s] || '';
+      else if (rowIdx === 2) val = totalOrderData.excessQty[s] || '';
+      else if (rowIdx === 3) {
+        const pct = totalOrderData.actualQty[s] && totalOrderData.orderQty[s] ?
+          (totalOrderData.actualQty[s] / totalOrderData.orderQty[s]) : 0;
+        val = pct ? (pct * 100).toFixed(1) + '%' : '';
+      }
+      html += `<td class="summary-cell${rowIdx===1?' bold':''}">${val}</td>`;
+    });
+    // Total
+    let totalVal = '';
+    if (rowIdx === 0) totalVal = totalOrderData.orderQtyTotal || '';
+    else if (rowIdx === 1) totalVal = totalOrderData.actualQtyTotal || '';
+    else if (rowIdx === 2) totalVal = totalOrderData.excessQtyTotal || '';
+    else if (rowIdx === 3) {
+      const pct = totalOrderData.actualQtyTotal && totalOrderData.orderQtyTotal ?
+        (totalOrderData.actualQtyTotal / totalOrderData.orderQtyTotal) : 0;
+      totalVal = pct ? (pct * 100).toFixed(1) + '%' : '';
+    }
+    html += `<td class="summary-cell">${totalVal}</td>`;
+    html += `<td colspan="${tc - n - 2}" style="border:none;"></td>`;
+    html += `</tr>`;
+  });
+
+  html += '</table>';
+  return html;
+}
+
+// ==================== Calculation Helpers ====================
+function calculateTotals(rec) {
+  const sizes = rec.sizes || [];
+  const cartons = rec.cartons || [];
+  const sizeTotals = {};
+  sizes.forEach(s => sizeTotals[s] = 0);
+  let ctnNum = 0, totalQty = 0, grossTotal = 0, netTotal = 0, volume = 0;
+
+  cartons.forEach(c => {
+    ctnNum += c.ctnNum || 0;
+    totalQty += c.totalQty || 0;
+    grossTotal += c.grossTotal || 0;
+    netTotal += c.netTotal || 0;
+    volume += c.volume || 0;
+    if (c.sizes) {
+      sizes.forEach(s => {
+        sizeTotals[s] += (c.sizes[s] || 0) * (c.ctnNum || 0);
+      });
+    }
+  });
+
+  return { sizeTotals, ctnNum, totalQty, grossTotal, netTotal, volume };
+}
+
+function getColorsFromCartons(cartons) {
+  const colors = [];
+  cartons.forEach(c => {
+    if (c.color && !colors.includes(c.color)) colors.push(c.color);
+  });
+  return colors;
+}
+
+function calculateSummaryByColor(rec, sizes, colors) {
+  const orderQty = {};
+  const actualQty = {};
+  const excessQty = {};
+  const orderQtyTotal = {};
+  const actualQtyTotal = {};
+  const excessQtyTotal = {};
+
+  colors.forEach(color => {
+    orderQty[color] = {};
+    actualQty[color] = {};
+    excessQty[color] = {};
+    orderQtyTotal[color] = 0;
+    actualQtyTotal[color] = 0;
+    excessQtyTotal[color] = 0;
+
+    sizes.forEach(s => {
+      // Order qty per size (from the order qty data, attributed to this color)
+      // If only one color, all order qty goes to it
+      // If multiple colors, we distribute proportionally or just use total
+      const oq = (rec.orderQty && rec.orderQty[s]) || 0;
+      if (colors.length === 1) {
+        orderQty[color][s] = oq;
+      } else {
+        // For multiple colors, calculate actual qty per color per size
+        // and use the same order qty for all colors (not ideal but functional)
+        orderQty[color][s] = oq;
+      }
+
+      // Actual qty: sum of carton size qtys for this color
+      let aq = 0;
+      rec.cartons.forEach(c => {
+        if (c.color === color && c.sizes) {
+          aq += (c.sizes[s] || 0) * (c.ctnNum || 0);
+        }
+      });
+      actualQty[color][s] = aq;
+      excessQty[color][s] = aq - orderQty[color][s];
+
+      orderQtyTotal[color] += orderQty[color][s];
+      actualQtyTotal[color] += actualQty[color][s];
+      excessQtyTotal[color] += excessQty[color][s];
+    });
+  });
+
+  return { orderQty, actualQty, excessQty, orderQtyTotal, actualQtyTotal, excessQtyTotal };
+}
+
+function calculateTotalOrderSummary(rec, sizes) {
+  const orderQty = {};
+  const actualQty = {};
+  const excessQty = {};
+  let orderQtyTotal = 0, actualQtyTotal = 0, excessQtyTotal = 0;
+
+  sizes.forEach(s => {
+    orderQty[s] = (rec.orderQty && rec.orderQty[s]) || 0;
+    let aq = 0;
+    rec.cartons.forEach(c => {
+      if (c.sizes) aq += (c.sizes[s] || 0) * (c.ctnNum || 0);
+    });
+    actualQty[s] = aq;
+    excessQty[s] = aq - orderQty[s];
+    orderQtyTotal += orderQty[s];
+    actualQtyTotal += aq;
+    excessQtyTotal += excessQty[s];
+  });
+
+  return { orderQty, actualQty, excessQty, orderQtyTotal, actualQtyTotal, excessQtyTotal };
+}
+
+// ==================== Print & Export ====================
+function printPL() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const printArea = document.getElementById('printArea');
+  const landscapeTypes = ['pl','cusPL'];
+  const portraitTypes = ['invoice','cusInv','cusDecl','cusElem','contract'];
+  printArea.className = landscapeTypes.includes(currentDocType) ? 'pl-print' : 'inv-print';
+  const generators = {
+    'pl': generatePLTableV2, 'invoice': generateInvoiceTable,
+    'cusInv': generateCustomsInvoice, 'cusPL': generateCustomsPL,
+    'cusDecl': generateCustomsDecl, 'cusElem': generateDeclElements,
+    'contract': generateContract,
+  };
+  const fn = generators[currentDocType] || generatePLTableV2;
+  printArea.innerHTML = fn(rec);
+  printArea.style.display = 'block';
+  window.print();
+  printArea.style.display = 'none';
+}
+
+function printClearancePDF() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const printArea = document.getElementById('printArea');
+  printArea.className = '';
+  let html = '';
+  html += '<div class="print-doc-landscape">' + generatePLTableV2(rec) + '</div>';
+  html += '<div class="page-break"></div>';
+  html += '<div class="print-doc-portrait">' + generateInvoiceTable(rec) + '</div>';
+  printArea.innerHTML = html;
+  printArea.style.display = 'block';
+  const etdDate = rec.etd ? rec.etd.replace(/-/g, '') : '';
+  const origTitle = document.title;
+  document.title = etdDate + 'clearance doc';
+  window.print();
+  document.title = origTitle;
+  printArea.style.display = 'none';
+  printArea.innerHTML = '';
+}
+
+function printCustomsPDF() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const printArea = document.getElementById('printArea');
+  printArea.className = '';
+  const docs = [
+    { orient: 'portrait', gen: generateCustomsInvoice },
+    { orient: 'landscape', gen: generateCustomsPL },
+    { orient: 'portrait', gen: generateCustomsDecl },
+    { orient: 'portrait', gen: generateDeclElements },
+    { orient: 'portrait', gen: generateContract },
+  ];
+  let html = '';
+  docs.forEach((d, i) => {
+    html += '<div class="print-doc-' + d.orient + '">' + d.gen(rec) + '</div>';
+    if (i < docs.length - 1) html += '<div class="page-break"></div>';
+  });
+  printArea.innerHTML = html;
+  printArea.style.display = 'block';
+  const etdDate = rec.etd ? rec.etd.replace(/-/g, '') : '';
+  const origTitle = document.title;
+  document.title = etdDate + 'Customs doc';
+  window.print();
+  document.title = origTitle;
+  printArea.style.display = 'none';
+  printArea.innerHTML = '';
+}
+
+function downloadPLExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+
+  const sizes = rec.sizes || ['34','36','38','40','42','44'];
+  const cartons = rec.cartons || [];
+  const n = sizes.length;
+  const tc = n + 14;
+
+  // Build Excel-compatible HTML
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>PL</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+  html += '<body><table border="1" style="font-family:Arial;font-size:10pt;border-collapse:collapse;">';
+
+  // Row 1: Company
+  html += `<tr><td colspan="${tc}" style="background:#ffff00;font-size:20pt;font-weight:bold;text-align:center;border:1px solid #000;">${rec.company||''}</td></tr>`;
+  html += `<tr><td colspan="${tc}" style="border:none;"></td></tr>`;
+
+  // Info rows
+  const infos = [
+    ['Buyer', rec.buyerFull || rec.buyer, false],
+    ['Style', rec.style, false],
+    ['PO No.', rec.poNo, false],
+    ['Item description', rec.itemDesc, false],
+    ['Total order Qty PC', rec.totalOrderQty, false],
+    ['Total actual Qty PC', rec.totalActualQty, true],
+  ];
+  infos.forEach(([label,val,bold]) => {
+    html += `<tr><td colspan="2" style="font-weight:bold;border:1px solid #000;">${label}</td><td colspan="2" style="text-align:center;border:1px solid #000;${bold?'font-weight:bold;':''}">${val??''}</td><td colspan="${tc-4}" style="border:none;"></td></tr>`;
+  });
+
+  // Variation row
+  const pctStr = rec.variationPct ? (rec.variationPct.toFixed(1) + '%') : '';
+  html += `<tr><td colspan="2" style="font-weight:bold;border:1px solid #000;">Variation on Order</td><td colspan="2" style="text-align:center;font-weight:bold;border:1px solid #000;">${rec.variation??''}</td><td style="text-align:center;font-weight:bold;border:1px solid #000;">${pctStr}</td><td colspan="${tc-5}" style="border:none;"></td></tr>`;
+  html += `<tr><td colspan="${tc}" style="border:none;"></td></tr>`;
+
+  // Detail header
+  html += `<tr><td colspan="3" style="font-weight:bold;border:1px solid #000;">Detail:</td><td colspan="${n}" style="border:none;"></td><td colspan="3" style="border:none;"></td><td colspan="2" style="font-weight:bold;border:1px solid #000;">Per ctn.</td><td colspan="2" style="font-weight:bold;border:1px solid #000;">Total</td><td colspan="4" style="border:none;"></td></tr>`;
+
+  // Header row 1
+  html += `<tr>`;
+  html += `<td rowspan="2" style="font-weight:bold;text-align:center;border:1px solid #000;">Carton no.</td>`;
+  html += `<td rowspan="2" style="font-weight:bold;text-align:center;border:1px solid #000;">Code:</td>`;
+  html += `<td rowspan="2" style="font-weight:bold;text-align:center;border:1px solid #000;">Color</td>`;
+  html += `<td colspan="${n}" style="font-weight:bold;text-align:center;border:1px solid #000;">SIZES</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Qty per ctn.</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Qty of ctn</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Total qty</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Gross W</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Net W</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Gross W</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Net W</td>`;
+  html += `<td colspan="3" style="font-weight:bold;text-align:center;border:1px solid #000;">Dimension of ctn, mm</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">Volume</td>`;
+  html += `</tr>`;
+
+  // Header row 2
+  html += `<tr>`;
+  sizes.forEach(s => html += `<td style="text-align:center;border:1px solid #000;">${s}</td>`);
+  html += `<td style="text-align:center;border:1px solid #000;">PC</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">CTN</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">PC</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">KG</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">KG</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">KG</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">KG</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">L</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">W</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">H</td>`;
+  html += `<td style="text-align:center;border:1px solid #000;">CBM</td>`;
+  html += `</tr>`;
+
+  // Data rows
+  const allSameDim = cartons.length > 0 && cartons.every(c => c.dimL === cartons[0].dimL && c.dimW === cartons[0].dimW && c.dimH === cartons[0].dimH);
+  const allSameCode = cartons.length > 0 && cartons.every(c => c.code === cartons[0].code);
+  const allSameColor = cartons.length > 0 && cartons.every(c => c.color === cartons[0].color);
+
+  cartons.forEach((c, idx) => {
+    html += `<tr>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${(c.from && c.to) ? (c.from === c.to ? c.from : c.from + '~' + c.to) : (c.from||c.to||'')}</td>`;
+    if (allSameCode) {
+      if (idx === 0) html += `<td rowspan="${cartons.length}" style="text-align:center;border:1px solid #000;">${c.code||''}</td>`;
+    } else {
+      html += `<td style="text-align:center;border:1px solid #000;">${c.code||''}</td>`;
+    }
+    if (allSameColor) {
+      if (idx === 0) html += `<td rowspan="${cartons.length}" style="text-align:center;border:1px solid #000;">${c.color||''}</td>`;
+    } else {
+      html += `<td style="text-align:center;border:1px solid #000;">${c.color||''}</td>`;
+    }
+    sizes.forEach(s => {
+      const v = c.sizes ? c.sizes[s] : 0;
+      html += `<td style="text-align:center;border:1px solid #000;">${v||''}</td>`;
+    });
+    html += `<td style="text-align:center;border:1px solid #000;">${c.perCtn||''}</td>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${c.ctnNum||''}</td>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${c.totalQty||''}</td>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${c.grossPer||''}</td>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${c.netPer||''}</td>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${c.grossTotal?+c.grossTotal.toFixed(2):''}</td>`;
+    html += `<td style="text-align:center;border:1px solid #000;">${c.netTotal?+c.netTotal.toFixed(2):''}</td>`;
+    if (allSameDim) {
+      if (idx === 0) {
+        html += `<td rowspan="${cartons.length}" style="text-align:center;border:1px solid #000;">${c.dimL||''}</td>`;
+        html += `<td rowspan="${cartons.length}" style="text-align:center;border:1px solid #000;">${c.dimW||''}</td>`;
+        html += `<td rowspan="${cartons.length}" style="text-align:center;border:1px solid #000;">${c.dimH||''}</td>`;
+        const totalVol = cartons.reduce((s,cc) => s + (cc.volume||0), 0);
+        html += `<td rowspan="${cartons.length}" style="text-align:center;border:1px solid #000;">${totalVol?+totalVol.toFixed(2):''}</td>`;
+      }
+    } else {
+      html += `<td style="text-align:center;border:1px solid #000;">${c.dimL||''}</td>`;
+      html += `<td style="text-align:center;border:1px solid #000;">${c.dimW||''}</td>`;
+      html += `<td style="text-align:center;border:1px solid #000;">${c.dimH||''}</td>`;
+      html += `<td style="text-align:center;border:1px solid #000;">${c.volume?+c.volume.toFixed(4):''}</td>`;
+    }
+    html += `</tr>`;
+  });
+
+  // Total row
+  const totals = calculateTotals(rec);
+  html += `<tr>`;
+  html += `<td colspan="3" style="font-weight:bold;border:1px solid #000;">Total:</td>`;
+  sizes.forEach(s => html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">${totals.sizeTotals[s]||0}</td>`);
+  html += `<td style="border:1px solid #000;"></td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">${totals.ctnNum}</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">${totals.totalQty}</td>`;
+  html += `<td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">${totals.grossTotal.toFixed(2)}</td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">${totals.netTotal.toFixed(2)}</td>`;
+  html += `<td colspan="3" style="border:1px solid #000;"></td>`;
+  html += `<td style="font-weight:bold;text-align:center;border:1px solid #000;">${totals.volume.toFixed(2)}</td>`;
+  html += `</tr>`;
+
+  // Empty
+  html += `<tr><td colspan="${tc}" style="border:none;"></td></tr>`;
+
+  // Summary section
+  html += `<tr><td colspan="${tc}" style="font-size:14pt;font-weight:bold;">Summary:</td></tr>`;
+  html += `<tr>`;
+  html += `<td rowspan="2" style="border:1px solid #000;"></td>`;
+  html += `<td rowspan="2" style="font-weight:bold;text-align:center;border:1px solid #000;">Color</td>`;
+  html += `<td colspan="${n}" style="font-weight:bold;text-align:center;border:1px solid #000;">Sizes</td>`;
+  html += `<td rowspan="2" style="font-weight:bold;text-align:center;border:1px solid #000;">Total:</td>`;
+  html += `<td colspan="${tc-n-3}" style="border:none;"></td>`;
+  html += `</tr>`;
+  html += `<tr>`;
+  sizes.forEach(s => html += `<td style="text-align:center;border:1px solid #000;">${s}</td>`);
+  html += `<td colspan="${tc-n-3}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  // Summary data
+  const colors = getColorsFromCartons(cartons);
+  const summaryData = calculateSummaryByColor(rec, sizes, colors);
+  const summaryRows = ['Order Qty PC', 'Actual Qty PC', 'Excess Qty', '% of order'];
+  summaryRows.forEach((rowLabel, rowIdx) => {
+    html += `<tr>`;
+    html += `<td style="font-weight:bold;border:1px solid #000;">${rowLabel}</td>`;
+    if (rowIdx === 0 && colors.length > 0) {
+      html += `<td rowspan="4" style="font-weight:bold;text-align:center;border:1px solid #000;">${colors[0]}</td>`;
+    } else if (rowIdx === 0) {
+      html += `<td rowspan="4" style="border:1px solid #000;"></td>`;
+    }
+    if (colors.length > 0) {
+      const color = colors[0];
+      sizes.forEach(s => {
+        let val = '';
+        if (rowIdx === 0) val = (summaryData.orderQty[color] && summaryData.orderQty[color][s]) || '';
+        else if (rowIdx === 1) val = (summaryData.actualQty[color] && summaryData.actualQty[color][s]) || '';
+        else if (rowIdx === 2) val = (summaryData.excessQty[color] && summaryData.excessQty[color][s]) || '';
+        else if (rowIdx === 3) {
+          const pct = (summaryData.actualQty[color] && summaryData.actualQty[color][s] && summaryData.orderQty[color] && summaryData.orderQty[color][s]) ?
+            (summaryData.actualQty[color][s] / summaryData.orderQty[color][s]) : 0;
+          val = pct ? (pct * 100).toFixed(1) + '%' : '';
+        }
+        html += `<td style="text-align:center;border:1px solid #000;${rowIdx===1?'font-weight:bold;':''}">${val}</td>`;
+      });
+      let totalVal = '';
+      if (rowIdx === 0) totalVal = summaryData.orderQtyTotal[colors[0]] || '';
+      else if (rowIdx === 1) totalVal = summaryData.actualQtyTotal[colors[0]] || '';
+      else if (rowIdx === 2) totalVal = summaryData.excessQtyTotal[colors[0]] || '';
+      else if (rowIdx === 3) {
+        const pct = (summaryData.actualQtyTotal[colors[0]] && summaryData.orderQtyTotal[colors[0]]) ?
+          (summaryData.actualQtyTotal[colors[0]] / summaryData.orderQtyTotal[colors[0]]) : 0;
+        totalVal = pct ? (pct * 100).toFixed(1) + '%' : '';
+      }
+      html += `<td style="text-align:center;border:1px solid #000;">${totalVal}</td>`;
+    } else {
+      sizes.forEach(s => html += `<td style="border:1px solid #000;"></td>`);
+      html += `<td style="border:1px solid #000;"></td>`;
+    }
+    html += `<td colspan="${tc-n-3}" style="border:none;"></td>`;
+    html += `</tr>`;
+  });
+
+  // Empty
+  html += `<tr><td colspan="${tc}" style="border:none;"></td></tr>`;
+
+  // Total order section
+  html += `<tr><td colspan="${tc}" style="font-size:14pt;font-weight:bold;">Total order:</td></tr>`;
+  html += `<tr>`;
+  html += `<td rowspan="2" style="border:1px solid #000;"></td>`;
+  html += `<td colspan="${n}" style="font-weight:bold;text-align:center;border:1px solid #000;">Sizes</td>`;
+  html += `<td rowspan="2" style="font-weight:bold;text-align:center;border:1px solid #000;">Total:</td>`;
+  html += `<td colspan="${tc-n-2}" style="border:none;"></td>`;
+  html += `</tr>`;
+  html += `<tr>`;
+  sizes.forEach(s => html += `<td style="text-align:center;border:1px solid #000;">${s}</td>`);
+  html += `<td colspan="${tc-n-2}" style="border:none;"></td>`;
+  html += `</tr>`;
+
+  const totalOrderData = calculateTotalOrderSummary(rec, sizes);
+  const orderRows2 = ['Order Qty PC', 'Actual Qty PC', 'Excess Qty', '% of order'];
+  orderRows2.forEach((label, rowIdx) => {
+    html += `<tr>`;
+    html += `<td style="font-weight:bold;border:1px solid #000;">${label}</td>`;
+    sizes.forEach(s => {
+      let val = '';
+      if (rowIdx === 0) val = totalOrderData.orderQty[s] || '';
+      else if (rowIdx === 1) val = totalOrderData.actualQty[s] || '';
+      else if (rowIdx === 2) val = totalOrderData.excessQty[s] || '';
+      else if (rowIdx === 3) {
+        const pct = totalOrderData.actualQty[s] && totalOrderData.orderQty[s] ?
+          (totalOrderData.actualQty[s] / totalOrderData.orderQty[s]) : 0;
+        val = pct ? (pct * 100).toFixed(1) + '%' : '';
+      }
+      html += `<td style="text-align:center;border:1px solid #000;${rowIdx===1?'font-weight:bold;':''}">${val}</td>`;
+    });
+    let totalVal = '';
+    if (rowIdx === 0) totalVal = totalOrderData.orderQtyTotal || '';
+    else if (rowIdx === 1) totalVal = totalOrderData.actualQtyTotal || '';
+    else if (rowIdx === 2) totalVal = totalOrderData.excessQtyTotal || '';
+    else if (rowIdx === 3) {
+      const pct = totalOrderData.actualQtyTotal && totalOrderData.orderQtyTotal ?
+        (totalOrderData.actualQtyTotal / totalOrderData.orderQtyTotal) : 0;
+      totalVal = pct ? (pct * 100).toFixed(1) + '%' : '';
+    }
+    html += `<td style="text-align:center;border:1px solid #000;">${totalVal}</td>`;
+    html += `<td colspan="${tc-n-2}" style="border:none;"></td>`;
+    html += `</tr>`;
+  });
+
+  html += '</table></body></html>';
+
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `PL_${rec.style||'unnamed'}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadDoc() {
+  const downloaders = {
+    'pl': downloadPLExcel, 'invoice': downloadInvoiceExcel,
+    'cusInv': downloadCustomsInvoiceExcel, 'cusPL': downloadCustomsPLExcel,
+    'cusDecl': downloadCustomsDeclExcel, 'cusElem': downloadDeclElementsExcel,
+    'contract': downloadContractExcel,
+  };
+  const fn = downloaders[currentDocType] || downloadPLExcel;
+  fn();
+}
+
+function downloadInvoiceExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+
+  const qty = rec.totalActualQty || 0;
+  const unitPrice = rec.unitPrice || 0;
+  const hangingFee = rec.hangingFee || 0;
+  const goodsAmt = +(qty * unitPrice).toFixed(2);
+  const hangingTotal = +(qty * hangingFee).toFixed(2);
+  const invTotal = +(goodsAmt + hangingTotal).toFixed(2);
+  const invDate = formatDateStr(rec.invoiceDate);
+  const etdStr = formatDateStr(rec.etd);
+  const remarks = (rec.remarks || '').split('\n').filter(r => r.trim());
+  const s = 'border:1px solid #000;';
+
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Invoice</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+  html += '<body><table border="1" style="font-family:Arial;font-size:11pt;border-collapse:collapse;">';
+
+  html += `<tr><td colspan="6" style="font-family:Arial;font-size:18pt;font-weight:bold;text-align:center;${s}">${rec.company||''}</td></tr>`;
+  html += `<tr><td colspan="6" style="font-family:Arial;font-size:12pt;text-align:center;${s}">${rec.companyAddr||''}</td></tr>`;
+  html += `<tr><td colspan="6" style="font-family:Arial;font-size:12pt;text-align:center;${s}">   INVOICE</td></tr>`;
+  html += `<tr><td colspan="6" style="border:none;"></td></tr>`;
+  html += `<tr><td colspan="2" style="border:none;"></td><td style="text-align:right;font-size:10pt;${s}">INVOICE No.</td><td style="text-align:left;font-size:11pt;${s}">${rec.invoiceNo||''}</td><td colspan="2" style="border:none;"></td></tr>`;
+  html += `<tr><td colspan="2" style="border:none;"></td><td style="text-align:right;font-size:10pt;${s}">Date:</td><td style="text-align:left;font-size:11pt;${s}">${invDate}</td><td colspan="2" style="border:none;"></td></tr>`;
+  html += `<tr><td colspan="6" style="border:none;"></td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">INVOICE of As below</td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">by  ${rec.buyerFull||rec.buyer||''}</td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">${rec.buyerAddr||''}</td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">from    ${rec.company||''}</td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">as per order accepted on     </td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">to be shipped per ${rec.shipPer||''}  ETD ${etdStr}</td></tr>`;
+  html += `<tr><td colspan="6" style="text-align:left;font-size:11pt;${s}">from  ${rec.fromPort||''}          to    ${rec.toPort||''}       via          by the undersigned.</td></tr>`;
+  html += `<tr><td colspan="6" style="border:none;"></td></tr>`;
+
+  // Header
+  html += `<tr>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">Quantity<br>（PCS）</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">Full Description of Goods</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">Style No.</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">PO</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">Unit Price(USD)</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">Total Amount(USD)</td>`;
+  html += `</tr>`;
+  html += `<tr><td colspan="4" style="border:none;"></td><td style="text-align:center;font-size:12pt;${s}">${rec.priceTerms||''}</td><td style="border:none;"></td></tr>`;
+  // Goods row
+  html += `<tr>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">${qty}</td>`;
+  html += `<td style="text-align:left;font-size:12pt;${s}">${rec.fullDesc||rec.itemDesc||''}</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">${rec.style||''}</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">${rec.poNo||''}</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">${unitPrice}</td>`;
+  html += `<td style="text-align:center;font-size:12pt;${s}">${goodsAmt}</td>`;
+  html += `</tr>`;
+  // Hanging fee
+  if (hangingFee > 0) {
+    html += `<tr><td style="border:none;"></td><td style="text-align:left;font-size:12pt;${s}">Hanging Fee</td><td colspan="2" style="border:none;"></td><td style="text-align:center;font-size:12pt;${s}">${hangingFee}</td><td style="text-align:center;font-size:12pt;${s}">${hangingTotal}</td></tr>`;
+  }
+  // TTL
+  html += `<tr><td style="text-align:right;font-size:12pt;${s}">TTL:</td><td colspan="4" style="border:none;"></td><td style="text-align:right;font-size:12pt;${s}">${invTotal}</td></tr>`;
+  html += `<tr><td colspan="6" style="border:none;"></td></tr>`;
+
+  // Remarks
+  html += `<tr><td style="font-family:Arial;font-size:9pt;text-align:right;${s}">REMARKS:</td><td colspan="5" style="border:none;"></td></tr>`;
+  remarks.forEach(r => {
+    html += `<tr><td style="border:none;"></td><td colspan="5" style="font-family:Arial;font-size:9pt;text-align:left;${s}">${r}</td></tr>`;
+  });
+
+  // Bank details
+  html += `<tr><td colspan="6" style="border:none;"></td></tr>`;
+  html += `<tr><td colspan="6" style="font-family:Arial;font-size:9pt;text-align:left;${s}">Bank details:</td></tr>`;
+  html += `<tr><td style="font-family:Arial;font-size:9pt;text-align:right;${s}">${rec.paymentTerms||''}</td><td colspan="5" style="border:none;"></td></tr>`;
+  const bankLines = [
+    rec.bankCompany ? `COMPANY: ${rec.bankCompany}` : '',
+    rec.bankAddr ? `ADDRESS: ${rec.bankAddr}` : '',
+    rec.bankName ? `BANK: ${rec.bankName}` : '',
+    rec.bankAddr2 ? `ADDRESS: ${rec.bankAddr2}` : '',
+    rec.swift ? `SWIFT: ${rec.swift}` : '',
+    rec.acctNo ? `A/C NO.: ${rec.acctNo}` : '',
+  ].filter(l => l);
+  bankLines.forEach(line => {
+    html += `<tr><td style="border:none;"></td><td colspan="5" style="font-family:Arial;font-size:9pt;text-align:left;${s}">${line}</td></tr>`;
+  });
+
+  html += '</table></body></html>';
+
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `INV_${rec.style||'unnamed'}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+// ==================== Customs Document Generation ====================
+function generateCustomsInvoice(rec) {
+  const qty = rec.totalActualQty || 0;
+  const unitPrice = rec.customsPrice || 0;
+  const total = +(qty * unitPrice).toFixed(2);
+  const invDate = formatDateStr(rec.invoiceDate);
+  const etdDate = formatDateStr(rec.etd);
+  const marks = (rec.marks || '').split('\n').filter(r => r.trim());
+  const buyerLines = (rec.buyerAddr || '').split('\n').filter(r => r.trim());
+  const ns = 'border:none;';
+  const med = 'border-bottom:1.5px solid #000;';
+
+  let html = '<table class="cus-form">';
+  // Company header - LEFT-aligned with leading spaces (matching original)
+  html += `<tr><td colspan="10" class="l" style="${ns}">             ${rec.companyCn||'江苏舜天汉唐贸易有限公司'}</td></tr>`;
+  html += `<tr><td colspan="10" class="m" style="${ns}">  ${rec.company||''}</td></tr>`;
+  html += `<tr><td colspan="10" class="s" style="${ns}">      ${rec.companyAddr||''}</td></tr>`;
+  // Title - LEFT-aligned with leading spaces (not centered)
+  html += `<tr><td colspan="10" class="l" style="${ns}">                      发   票</td></tr>`;
+  html += `<tr><td colspan="10" class="m" style="${ns}">                  INVOICE</td></tr>`;
+  // Invoice No. (right side, cols 7-9)
+  html += `<tr><td colspan="7" style="${ns}"></td><td style="${ns}">发 票 号 码</td><td colspan="2" style="${ns}">${rec.invoiceNo||''}</td></tr>`;
+  html += `<tr><td colspan="7" style="${ns}"></td><td colspan="3" style="${ns}"> INVOICE NO.</td></tr>`;
+  // TO: buyer info (left) | 合约号码 (right)
+  html += `<tr><td colspan="7" style="${ns}">TO： M/S.</td><td style="${ns}">合 约 号 码</td><td colspan="2" style="${ns}">${rec.contractNo||''}</td></tr>`;
+  html += `<tr><td colspan="7" style="${ns}">${rec.buyerFull||rec.buyer||''}</td><td colspan="3" style="${ns}"> S/C NO.</td></tr>`;
+  // Buyer address lines
+  buyerLines.forEach(line => {
+    html += `<tr><td colspan="7" style="${ns}">${line}</td></tr>`;
+  });
+  // 日期 (right) - with bottom border (medium line separator)
+  html += `<tr><td colspan="7" class="bb" style="${ns}"></td><td class="bb" style="${ns}">日          期</td><td colspan="2" class="bb" style="${ns}">${invDate}</td></tr>`;
+  html += `<tr><td colspan="7" style="${ns}"></td><td colspan="3" style="${ns}"> DATE</td></tr>`;
+  // 船期 / 付款方式 / 运输方式 - with top border and vertical separators
+  html += `<tr><td class="bt bl" style="${ns}">船期：</td><td colspan="2" class="bt" style="${ns}">${etdDate}</td><td class="bt bl" style="${ns}">付款方式</td><td colspan="3" class="bt" style="${ns}">${rec.paymentTerms||'T/T'}</td><td class="bt bl" style="${ns}">运输方式：</td><td colspan="2" class="bt" style="${ns}">BY SEA</td></tr>`;
+  html += `<tr><td colspan="3" class="b bb bl" style="${ns}"> Sailing date:</td><td colspan="4" class="b bb" style="${ns}"> Term of payment:</td><td colspan="3" class="b bb" style="${ns}"> Mode of transport:</td></tr>`;
+  // 船名 / 原产地 / 目的国 - with top border
+  html += `<tr><td class="bt bl" style="${ns}">船名：</td><td colspan="2" class="bt" style="${ns}">${rec.shipPer||''}</td><td class="bt bl" style="${ns}">原产地：</td><td colspan="2" class="bt" style="${ns}">${rec.originCountry||'CHINA'}</td><td class="bt bl" style="${ns}">目的国：</td><td colspan="3" class="bt" style="${ns}">${rec.toPort||''}</td></tr>`;
+  html += `<tr><td colspan="3" class="b bb bl" style="${ns}"> Vessel name:</td><td colspan="3" class="b bb" style="${ns}"> Country of origin:</td><td colspan="4" class="b bb" style="${ns}"> Final destination:</td></tr>`;
+  // Price terms
+  html += `<tr><td colspan="7" style="${ns}"></td><td colspan="3" style="${ns}">${rec.priceTerms||'FOB SHANGHAI'}</td></tr>`;
+  html += '</table>';
+
+  // Product table (with borders) - matching original column merge pattern
+  html += '<table class="cus-table">';
+  // Header row
+  html += `<tr><td colspan="3" style="text-align:center;">DESCRIPTION</td><td colspan="2" style="text-align:center;">STYLE NO.</td><td colspan="2" style="text-align:center;">ORDER NO.</td><td style="text-align:center;">PIECES</td><td style="text-align:center;">PRICE</td><td style="text-align:center;">ORDER SUM</td></tr>`;
+  // Data row (tall, with wrap)
+  html += `<tr style="height:48px;"><td colspan="3" style="text-align:left;">${rec.fullDesc||rec.itemDesc||''}</td><td colspan="2" class="b" style="text-align:center;">${rec.style||''}</td><td colspan="2" class="b" style="text-align:center;">${rec.poNo||''}</td><td style="text-align:center;">${qty}</td><td style="text-align:center;">${unitPrice}</td><td style="text-align:center;">${total}</td></tr>`;
+  // TTL row
+  html += `<tr style="height:34px;"><td colspan="2" style="border:none;"></td><td colspan="2" class="b" style="text-align:right;border:none;border-bottom:1px solid #000;">TTL:</td><td colspan="2" style="border:none;border-bottom:1px solid #000;"></td><td class="b" style="text-align:center;">${qty}</td><td style="border:none;border-bottom:1px solid #000;"></td><td class="b" style="text-align:center;">${total}</td></tr>`;
+  html += '</table>';
+
+  // Shipping marks (borderless)
+  html += '<table class="cus-form">';
+  html += `<tr class="gap"><td colspan="10"></td></tr>`;
+  html += `<tr><td colspan="10" style="${ns}">Shipping Marker:</td></tr>`;
+  marks.forEach(m => {
+    html += `<tr><td colspan="10" style="${ns}">${m}</td></tr>`;
+  });
+  html += `<tr class="gap"><td colspan="10"></td></tr>`;
+  html += `<tr><td colspan="10" style="${ns}">HS Code: ${rec.hsCode||''}</td></tr>`;
+  html += `<tr><td colspan="10" style="${ns}">中文品名: ${rec.cnName||''}</td></tr>`;
+  html += `<tr class="gap"><td colspan="10"></td></tr>`;
+  html += `<tr><td colspan="10" class="rgt" style="${ns}">${rec.company||''}</td></tr>`;
+  html += '</table>';
+  return html;
+}
+
+function generateCustomsPL(rec) {
+  const cartons = rec.cartons || [];
+  const totalCtn = cartons.reduce((s,c) => s + (c.ctnNum||0), 0);
+  const totalQty = rec.totalActualQty || 0;
+  const totalGross = cartons.reduce((s,c) => s + (c.grossTotal||0), 0);
+  const totalNet = cartons.reduce((s,c) => s + (c.netTotal||0), 0);
+  const totalVol = cartons.reduce((s,c) => s + (c.volume||0), 0);
+  const invDate = formatDateStr(rec.invoiceDate);
+  const s = 'border:1px solid #000;';
+  const ns = 'border:none;';
+
+  let html = '<table class="cus-pl-form">';
+  // Company name - positioned at right side (cols 1+), 楷体 font, bold
+  html += `<tr><td style="${ns}">&nbsp;</td><td colspan="6" class="kt" style="${ns}">       ${rec.companyCn||'江苏舜天汉唐贸易有限公司'}</td></tr>`;
+  html += `<tr><td style="${ns}">&nbsp;</td><td colspan="6" class="en" style="${ns}"> ${rec.company||''}</td></tr>`;
+  // 2 blank rows
+  html += `<tr class="gap"><td colspan="7"></td></tr>`;
+  html += `<tr class="gap"><td colspan="7"></td></tr>`;
+  // Info fields (right side, cols 5-6, right-aligned labels)
+  html += `<tr><td colspan="5" style="${ns}"></td><td class="rgt" style="${ns}">发票号码</td><td style="${ns}">${rec.invoiceNo||''}</td></tr>`;
+  html += `<tr><td colspan="5" style="${ns}"></td><td class="rgt" style="${ns}">合约号码</td><td style="${ns}">${rec.contractNo||''}</td></tr>`;
+  html += `<tr><td colspan="5" style="${ns}"></td><td class="rgt" style="${ns}">日        期</td><td style="${ns}">${invDate}</td></tr>`;
+  html += `<tr><td colspan="5" style="${ns}"></td><td class="rgt" style="${ns}">页        数</td><td style="${ns}" style="text-align:center;">1-1</td></tr>`;
+  // Title (centered at col 3)
+  html += `<tr><td colspan="3" style="${ns}"></td><td colspan="3" class="kt ctr" style="${ns}">装    箱    单</td><td style="${ns}"></td></tr>`;
+  html += `<tr><td colspan="3" style="${ns}"></td><td colspan="3" class="en ctr b" style="${ns}"> PACKING WEIGHT &amp; MEASUREMENT LIST </td><td style="${ns}"></td></tr>`;
+  // 1 blank row before table
+  html += `<tr class="gap"><td colspan="7"></td></tr>`;
+  html += '</table>';
+
+  // Data table (with borders) - 7 columns
+  html += '<table class="cus-table">';
+  // Header
+  html += `<tr><td class="b" style="text-align:center;">货号</td><td class="b" style="text-align:center;">箱号</td><td class="b" style="text-align:center;">箱数</td><td class="b" style="text-align:center;">共计数量(件/套)</td><td class="b" style="text-align:center;">总毛重（KGS）</td><td class="b" style="text-align:center;">总净重（KGS）</td><td class="b" style="text-align:center;">体积（CBM）</td></tr>`;
+  // Data row
+  html += `<tr><td class="b">${rec.style||''}</td><td class="b" style="text-align:center;">1-${totalCtn}</td><td class="b" style="text-align:center;">${totalCtn}</td><td class="b" style="text-align:center;">${totalQty}</td><td class="b" style="text-align:center;">${+totalGross.toFixed(1)}</td><td class="b" style="text-align:center;">${+totalNet.toFixed(1)}</td><td class="b" style="text-align:center;">${+totalVol.toFixed(2)}</td></tr>`;
+  // 4 blank rows (with borders)
+  for (let i = 0; i < 4; i++) {
+    html += `<tr style="height:22px;"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  }
+  // Total row
+  html += `<tr><td colspan="2" class="b">总计TOTAL</td><td class="b" style="text-align:center;">${totalCtn}</td><td class="b" style="text-align:center;">${totalQty}</td><td class="b" style="text-align:center;">${+totalGross.toFixed(1)}</td><td class="b" style="text-align:center;">${+totalNet.toFixed(1)}</td><td class="b" style="text-align:center;">${+totalVol.toFixed(2)}</td></tr>`;
+  html += '</table>';
+  return html;
+}
+
+function generateCustomsDecl(rec) {
+  const cartons = rec.cartons || [];
+  const totalCtn = cartons.reduce((s,c) => s + (c.ctnNum||0), 0);
+  const totalGross = cartons.reduce((s,c) => s + (c.grossTotal||0), 0);
+  const totalNet = cartons.reduce((s,c) => s + (c.netTotal||0), 0);
+  const qty = rec.totalActualQty || 0;
+  const unitPrice = rec.customsPrice || 0;
+  const total = +(qty * unitPrice).toFixed(2);
+  const exportDate = formatDateStr(rec.exportDate);
+  const s = 'border:1px solid #000;';
+
+  let html = '<table class="cus-decl-table">';
+  // Title (merged all 14 cols)
+  html += `<tr><td colspan="14" style="font-size:16pt;font-weight:bold;text-align:center;${s}">中华人民共和国海关出口货物报关单</td></tr>`;
+  // 预录入编号 / 海关编号
+  html += `<tr><td colspan="4" style="${s}">预录入编号:</td><td colspan="10" style="${s}">海关编号:</td></tr>`;
+  // 境内发货人 - label row
+  html += `<tr><td style="${s}">境内发货人</td><td colspan="3" style="${s}">${rec.creditCode||''}</td><td style="${s}">出境关别</td><td colspan="2" style="${s}"></td><td colspan="2" style="${s}">出口日期</td><td style="${s}">申报日期</td><td style="${s}"></td><td colspan="2" style="${s}">备案号</td></tr>`;
+  // 境内发货人 - value row
+  html += `<tr><td colspan="4" style="${s}">${rec.company||''}</td><td colspan="3" style="${s}">${rec.exitPort||''}</td><td colspan="2" style="${s}">${exportDate}</td><td colspan="2" style="${s}"></td><td colspan="3" style="${s}"></td></tr>`;
+  // 境外收货人 - label row
+  html += `<tr><td style="${s}">境外收货人</td><td colspan="3" style="${s}"></td><td style="${s}">运输方式</td><td colspan="2" style="${s}"></td><td colspan="2" style="${s}">运输工具名称及航次号</td><td colspan="5" style="${s}">提运单号</td></tr>`;
+  // 境外收货人 - value row
+  html += `<tr><td colspan="4" style="${s}">${rec.buyerFull||rec.buyer||''}</td><td colspan="3" style="${s}">BY SEA</td><td colspan="2" style="${s}">${rec.shipPer||''}</td><td colspan="5" style="${s}"></td></tr>`;
+  // 生产销售单位 - label row
+  html += `<tr><td style="${s}">生产销售单位</td><td colspan="3" style="${s}">${rec.creditCode||''}</td><td style="${s}">监管方式</td><td colspan="2" style="${s}"></td><td colspan="2" style="${s}">征免性质</td><td colspan="5" style="${s}">许可证号</td></tr>`;
+  // 生产销售单位 - value row
+  html += `<tr><td colspan="4" style="${s}">${rec.company||''}</td><td colspan="3" style="${s}">${rec.supervision||'一般贸易'}</td><td colspan="2" style="${s}">${rec.taxNature||'一般征税'}</td><td colspan="5" style="${s}"></td></tr>`;
+  // 合同协议号 - label row
+  html += `<tr><td style="${s}">合同协议号</td><td colspan="3" style="${s}"></td><td style="${s}">贸易国（地区）</td><td colspan="2" style="${s}"></td><td colspan="2" style="${s}">运抵国（地区）</td><td style="${s}">指运港</td><td colspan="2" style="${s}">离境口岸</td></tr>`;
+  // 合同协议号 - value row
+  html += `<tr><td colspan="4" style="${s}">${rec.contractNo||''}</td><td colspan="3" style="${s}">${rec.tradeCountry||''}</td><td colspan="2" style="${s}">${rec.destCountry||''}</td><td style="${s}">${rec.destPort||''}</td><td colspan="3" style="${s}">${rec.exitPort||''}</td></tr>`;
+  // 包装种类 - label row
+  html += `<tr><td style="${s}">包装种类</td><td colspan="3" style="${s}"></td><td colspan="2" style="${s}">件数</td><td style="${s}">毛重（千克）</td><td style="${s}">净重（千克）</td><td style="${s}">成交方式</td><td style="${s}">运费</td><td style="${s}">保费</td><td style="${s}">杂费</td></tr>`;
+  // 包装种类 - value row
+  html += `<tr><td colspan="4" style="${s}">${rec.packType||'CTNS'}</td><td colspan="2" style="${s}">${totalCtn}</td><td style="${s}">${+totalGross.toFixed(1)}</td><td style="${s}">${+totalNet.toFixed(1)}</td><td style="${s}">${(rec.priceTerms||'FOB SHANGHAI').split(' ')[0]||'FOB'}</td><td style="${s}"></td><td style="${s}"></td><td style="${s}"></td></tr>`;
+  // 随付单证及编号
+  html += `<tr><td colspan="14" style="${s}">随付单证及编号</td></tr>`;
+  // 1 blank row
+  html += `<tr><td colspan="14" style="${s};height:28px;"></td></tr>`;
+  // 标记唛码及备注
+  html += `<tr><td colspan="14" style="${s}">标记唛码及备注</td></tr>`;
+  // 2 blank rows
+  html += `<tr><td colspan="14" style="${s};height:28px;"></td></tr>`;
+  html += `<tr><td colspan="14" style="${s};height:28px;"></td></tr>`;
+  // Goods header
+  html += `<tr><td style="${s}">项号</td><td colspan="2" style="${s}">商品编号</td><td style="${s}">商品名称及规格型号</td><td colspan="2" style="${s}">数量及单位</td><td colspan="3" style="${s}">单价/总价/币值</td><td style="${s}">原产国（地区）</td><td style="${s}">最终目的国（地区）</td><td colspan="2" style="${s}">境地货源地</td><td style="${s}">征免</td></tr>`;
+  // Goods data row 1
+  html += `<tr><td style="${s}">1</td><td colspan="2" style="${s}">${rec.hsCode||''}</td><td style="${s}">${rec.cnName||''}</td><td colspan="2" style="${s}">${qty} 件</td><td colspan="3" style="${s}">${unitPrice}</td><td style="${s}">${rec.originCountry||'中国'}</td><td style="${s}">${rec.finalCountry||''}</td><td colspan="2" style="${s}">${rec.sourcePlace||''}</td><td style="${s}">${rec.taxType||'照章征税'}</td></tr>`;
+  // Goods data row 2 (total price)
+  html += `<tr><td colspan="6" style="border:none;"></td><td colspan="3" style="${s}">${total}</td><td colspan="5" style="border:none;"></td></tr>`;
+  // Goods data row 3 (currency)
+  html += `<tr><td colspan="6" style="border:none;"></td><td colspan="3" style="${s}">USD</td><td colspan="5" style="border:none;"></td></tr>`;
+  // 12 blank rows (space for additional goods entries)
+  for (let i = 0; i < 6; i++) {
+    html += `<tr><td colspan="14" style="${s};height:24px;"></td></tr>`;
+  }
+  // 特殊关系确认
+  html += `<tr><td colspan="4" style="${s};font-size:12pt;">特殊关系确认:</td><td colspan="5" style="${s};font-size:12pt;">价格影响确认:   否</td><td colspan="5" style="${s};font-size:12pt;">支付特许权使用费确认:   否</td></tr>`;
+  // 1 blank row
+  html += `<tr><td colspan="14" style="${s};height:24px;"></td></tr>`;
+  // 报关人员
+  html += `<tr><td colspan="2" style="${s}">报关人员</td><td colspan="3" style="${s}">报关人员证号</td><td colspan="5" style="${s}">电话                      兹申明对以上内容承担如实申报、依法纳税</td><td colspan="4" style="${s}">海关批注及签章</td></tr>`;
+  html += `<tr><td colspan="5" style="border:none;"></td><td colspan="5" style="${s}">                            之法律责任</td><td colspan="4" style="border:none;"></td></tr>`;
+  // 4 blank rows
+  for (let i = 0; i < 4; i++) {
+    html += `<tr><td colspan="14" style="${s};height:24px;"></td></tr>`;
+  }
+  // 申报单位
+  html += `<tr><td colspan="6" style="${s}">申报单位</td><td colspan="8" style="${s}">            申报单位（签章）</td></tr>`;
+  html += '</table>';
+  return html;
+}
+
+function generateDeclElements(rec) {
+  const elements = [
+    ['1:品名;', rec.cnName || ''],
+    ['2:品牌类型;', rec.brandType || ''],
+    ['3:出口享惠情况;', rec.exportPref || ''],
+    ['4:织造方法(机织等);', rec.weaveMethod || ''],
+    ['5:种类(上衣);', rec.declCategory || ''],
+    ['6:类别(女式);', rec.declGender || ''],
+    ['7:成分含量;', rec.compositionCn || ''],
+    ['8:是否全开襟;', rec.fullOpen || ''],
+    ['9:是否有拉链;', rec.hasZipper || ''],
+    ['10:品牌;', rec.declBrand || ''],
+    ['11:货号;', rec.customsItemNo || ''],
+  ];
+  let html = '<table class="cus-elem-form">';
+  // Each element: label (col 0) | value (col 1) - no borders, no header
+  elements.forEach(([label, val]) => {
+    html += `<tr><td class="label">${label}</td><td class="value">${val}</td></tr>`;
+  });
+  html += '</table>';
+  return html;
+}
+
+function generateContract(rec) {
+  const qty = rec.totalActualQty || 0;
+  const unitPrice = rec.customsPrice || 0;
+  const total = +(qty * unitPrice).toFixed(2);
+  const invDate = formatDateStr(rec.invoiceDate);
+  const s = 'border:1px solid #000;';
+
+  let html = '<table class="cus-table">';
+  html += `<tr><td colspan="4" style="font-size:16pt;font-weight:bold;text-align:center;${s}">外 贸 合 同</td></tr>`;
+  html += `<tr><td colspan="4" style="font-size:14pt;font-weight:bold;text-align:center;${s}">CONTRACT</td></tr>`;
+  html += `<tr><td colspan="4" style="border:none;height:10px;"></td></tr>`;
+  html += `<tr><td style="${s}">Contract No.</td><td style="${s}">${rec.contractNo||''}</td><td style="${s}">Date</td><td style="${s}">${invDate}</td></tr>`;
+  html += `<tr><td style="${s}">Invoice No.</td><td style="${s}">${rec.invoiceNo||''}</td><td style="${s}">Place</td><td style="${s}">${rec.fromPort||''}</td></tr>`;
+  html += `<tr><td colspan="4" style="border:none;height:10px;"></td></tr>`;
+  // Parties
+  html += `<tr><td style="${s}">卖方<br>SELLER</td><td colspan="3" style="${s}">${rec.company||''}<br>${rec.companyAddr||''}<br>信用代码: ${rec.creditCode||''}</td></tr>`;
+  html += `<tr><td style="${s}">买方<br>BUYER</td><td colspan="3" style="${s}">${rec.buyerFull||rec.buyer||''}<br>${rec.buyerAddr||''}</td></tr>`;
+  html += `<tr><td colspan="4" style="border:none;height:10px;"></td></tr>`;
+  // Terms
+  html += `<tr><td style="${s}">价格条款<br>Price Terms</td><td style="${s}">${rec.priceTerms||''}</td><td style="${s}">付款方式<br>Payment</td><td style="${s}">${rec.paymentTerms||''}</td></tr>`;
+  html += `<tr><td style="${s}">运输方式<br>Shipping</td><td style="${s}">${rec.shipPer||'BY SEA'}</td><td style="${s}">起运港/目的港<br>Port</td><td style="${s}">${rec.fromPort||''} → ${rec.toPort||''}</td></tr>`;
+  html += `<tr><td style="${s}">装运期限<br>Shipment</td><td style="${s}">${formatDateStr(rec.etd)}</td><td style="${s}">到货港<br>Dest. Port</td><td style="${s}">${rec.destPort||rec.toPort||''}</td></tr>`;
+  html += `<tr><td colspan="4" style="border:none;height:10px;"></td></tr>`;
+  // Goods
+  html += `<tr><td style="${s}">货号<br>Art. No.</td><td style="${s}">品名及规格<br>Description</td><td style="${s}">数量<br>Qty</td><td style="${s}">单价及总价<br>Unit Price / Total</td></tr>`;
+  html += `<tr><td style="${s}">${rec.style||''}</td><td style="${s}">${rec.fullDesc||rec.itemDesc||''}<br>HS: ${rec.hsCode||''}</td><td style="${s}">${qty} PCS</td><td style="${s}">${unitPrice} USD<br>${total} USD</td></tr>`;
+  html += `<tr><td colspan="2" style="border:none;text-align:right;${s}">TOTAL:</td><td style="${s}">${qty} PCS</td><td style="${s}">${total} USD</td></tr>`;
+  html += `<tr><td colspan="4" style="border:none;height:10px;"></td></tr>`;
+  // Bank info
+  html += `<tr><td style="${s}">收款信息<br>Bank Details</td><td colspan="3" style="${s}">${rec.bankCompany||''}<br>${rec.bankName||''} ${rec.swift||''}<br>A/C NO.: ${rec.acctNo||''}</td></tr>`;
+  html += `<tr><td colspan="4" style="border:none;height:10px;"></td></tr>`;
+  // Signature
+  html += `<tr><td colspan="2" style="${s};text-align:center;height:40px;">卖方签章<br>SELLER</td><td colspan="2" style="${s};text-align:center;height:40px;">买方签章<br>BUYER</td></tr>`;
+  html += '</table>';
+  return html;
+}
+
+// ==================== Customs Excel Download ====================
+function downloadCustomsInvoiceExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + generateCustomsInvoice(rec)
+    .replace(/class="cus-form"/g, 'border="0" style="border-collapse:collapse;font-family:Arial;font-size:10pt;width:100%;"')
+    .replace(/class="cus-table"/g, 'border="1" style="border-collapse:collapse;font-family:Arial;font-size:12pt;width:100%;"')
+    .replace(/class="[^"]*"/g, '') + '</body></html>';
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `报关发票_${rec.style||''}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadCustomsPLExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + generateCustomsPL(rec)
+    .replace(/class="cus-pl-form"/g, 'border="0" style="border-collapse:collapse;font-family:Arial;font-size:12pt;width:100%;"')
+    .replace(/class="cus-table"/g, 'border="1" style="border-collapse:collapse;font-family:Arial;font-size:12pt;width:100%;"')
+    .replace(/class="[^"]*"/g, '') + '</body></html>';
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `报关箱单_${rec.style||''}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadCustomsDeclExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + generateCustomsDecl(rec).replace(/class="cus-decl-table"/g, 'border="1" style="border-collapse:collapse;font-family:Arial;font-size:10pt;width:100%;"').replace(/class="[^"]*"/g, '') + '</body></html>';
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `报关单_${rec.style||''}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadDeclElementsExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + generateDeclElements(rec)
+    .replace(/class="cus-elem-form"/g, 'border="0" style="border-collapse:collapse;font-family:Arial;font-size:14pt;width:100%;"')
+    .replace(/class="[^"]*"/g, '') + '</body></html>';
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `申报要素_${rec.style||''}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadContractExcel() {
+  const id = document.getElementById('plSelect').value;
+  if (!id) { showToast('请先选择一条数据记录', 'error'); return; }
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + generateContract(rec).replace(/class="cus-table"/g, 'border="1" style="border-collapse:collapse;font-family:Arial;font-size:11pt;width:100%;"').replace(/class="[^"]*"/g, '') + '</body></html>';
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `合同_${rec.style||''}_${rec.poNo||''}.xls`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+let modalCallback = null;
+function showConfirm(title, msg, callback) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalMsg').textContent = msg;
+  modalCallback = callback;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  modalCallback = null;
+}
+document.getElementById('modalConfirmBtn').onclick = () => {
+  if (modalCallback) modalCallback();
+  closeModal();
+};
+
+// ==================== Load Original Data (Pre-fill) ====================
+function loadOriginalSample() {
+  // Pre-fill with the original PL data as a sample
+  document.getElementById('f-style').value = '1110577';
+  document.getElementById('f-poNo').value = '26003960';
+  document.getElementById('f-itemDesc').value = 'Wool blend blazer';
+  // Invoice & trade info from inv.xls
+  document.getElementById('f-invoiceNo').value = 'S26X0070027';
+  document.getElementById('f-invoiceDate').value = App.utils.today();
+  document.getElementById('f-companyAddr').value = 'ROOM 317 3F MACHINERY BUILDING 151 FUXING ROAD WUXI CHINA';
+  document.getElementById('f-buyerFull').value = 'CASTRO MODEL LTD';
+  document.getElementById('f-buyerAddr').value = '31 ORT ISRAEL ST.BAT YAM 59590 ISRAEL';
+  document.getElementById('f-shipPer').value = '';
+  document.getElementById('f-etd').value = '';
+  document.getElementById('f-fromPort').value = 'SHANGHAI,CHINA';
+  document.getElementById('f-toPort').value = 'ASHDOD,ISRAEL';
+  document.getElementById('f-fullDesc').value = "62% Polyester 22% Wool 10% Silk 2% Cotton 2% Acrylic 2% Polyamide Ladies' Jackets";
+  document.getElementById('f-unitPrice').value = '19.2';
+  document.getElementById('f-hangingFee').value = '1.1';
+  document.getElementById('f-priceTerms').value = 'FOB SHANGHAI';
+  // Shipping info
+  document.getElementById('f-shipMethod').value = '海运';
+  document.getElementById('f-forwarder').value = '';
+  document.getElementById('f-containerNo').value = '';
+  document.getElementById('f-blNo').value = '';
+  document.getElementById('f-customsNo').value = '';
+  document.getElementById('f-loadingDate').value = '';
+  document.getElementById('f-eta').value = '';
+  document.getElementById('f-actualArrival').value = '';
+  // Bank info
+  document.getElementById('f-paymentTerms').value = 'T/T payment';
+  document.getElementById('f-bankCompany').value = 'JIANGSU SAINTY HANTANG TRADING CO.,LTD';
+  document.getElementById('f-bankAddr').value = 'ROOM 317 3F MACHINERY BUILDING 151 FUXING ROAD WUXI CHINA';
+  document.getElementById('f-bankName').value = 'BANK OF NINGBO';
+  document.getElementById('f-bankAddr2').value = 'NO.6 FINANCIAL THIRD STREET,TAI HU XIN CHENG,WUXI,JIANGSU,P.R.CHINA, 214000';
+  document.getElementById('f-swift').value = 'BKNBCN2N';
+  document.getElementById('f-acctNo').value = '78012025000055858';
+  // Remarks
+  document.getElementById('f-remarks').value = 'GOODS ARE OF FIRST QUALITY;\nGOODS ARE OF CHINA ORIGIN.\nHEBREW LABELS ARE ATTACHED TO EACH GARMENT';
+  // Customs info
+  document.getElementById('f-contractNo').value = '26GNX007027';
+  document.getElementById('f-creditCode').value = '9132020073440096X6';
+  document.getElementById('f-hsCode').value = '6204.3990.00';
+  document.getElementById('f-cnName').value = '女上衣';
+  document.getElementById('f-customsPrice').value = '20.3';
+  document.getElementById('f-packType').value = 'CTNS';
+  document.getElementById('f-supervision').value = '一般贸易';
+  document.getElementById('f-taxNature').value = '一般征税';
+  document.getElementById('f-tradeCountry').value = '以色列';
+  document.getElementById('f-destCountry').value = 'ISRAEL';
+  document.getElementById('f-destPort').value = 'ASHDOD';
+  document.getElementById('f-exitPort').value = 'SHANGHAI';
+  document.getElementById('f-originCountry').value = '中国';
+  document.getElementById('f-finalCountry').value = '以色列';
+  document.getElementById('f-sourcePlace').value = '宿迁';
+  document.getElementById('f-taxType').value = '照章征税';
+  document.getElementById('f-exportDate').value = '';
+  document.getElementById('f-marks').value = 'TO:CASTRO MODEL LTD.\n31 ORT ISRAEL ST.\nBAT-YAM, ISRAEL\nMADE IN CHINA';
+  // Declaration elements
+  document.getElementById('f-brandType').value = '境外品牌（贴牌生产）';
+  document.getElementById('f-exportPref').value = '出口货物不能确定在最终目的国（地区）享受优惠关税';
+  document.getElementById('f-weaveMethod').value = '机织';
+  document.getElementById('f-category').value = '女上衣';
+  document.getElementById('f-gender').value = '女式';
+  document.getElementById('f-compositionCn').value = '64%涤纶 32%粘胶 4%氨纶';
+  document.getElementById('f-fullOpen').value = '是';
+  document.getElementById('f-hasZipper').value = '否';
+  document.getElementById('f-brand').value = 'CASTRO';
+  document.getElementById('f-customsItemNo').value = '1110584';
+  currentSizes = ['34','36','38','40','42','44'];
+  renderSizeTags();
+  renderOrderQtyTable();
+  renderCartonTable();
+
+  // Set order quantities
+  const orderQtys = [105, 121, 147, 145, 137, 145];
+  currentSizes.forEach((s, i) => {
+    const el = document.getElementById('orderQty-' + i);
+    if (el) el.value = orderQtys[i];
+  });
+
+  // Clear default carton row and add original data
+  document.getElementById('cartonBody').innerHTML = '';
+  const sampleCartons = [
+    {from:1, to:9, code:'1110577', color:'Checkered', sizes:{'34':12}, perCtn:12, ctnNum:9, totalQty:108, grossPer:13.5, netPer:10, grossTotal:121.5, netTotal:90, dimL:50, dimW:50, dimH:93, volume:2.0925},
+    {from:10, to:19, code:'1110577', color:'Checkered', sizes:{'36':12}, perCtn:12, ctnNum:10, totalQty:120, grossPer:13.7, netPer:10.2, grossTotal:137, netTotal:102, dimL:50, dimW:50, dimH:93, volume:2.325},
+    {from:20, to:31, code:'1110577', color:'Checkered', sizes:{'38':12}, perCtn:12, ctnNum:12, totalQty:144, grossPer:13.9, netPer:10.4, grossTotal:166.8, netTotal:124.8, dimL:50, dimW:50, dimH:93, volume:2.79},
+    {from:32, to:43, code:'1110577', color:'Checkered', sizes:{'40':12}, perCtn:12, ctnNum:12, totalQty:144, grossPer:14.5, netPer:11, grossTotal:174, netTotal:132, dimL:50, dimW:50, dimH:93, volume:2.79},
+    {from:44, to:55, code:'1110577', color:'Checkered', sizes:{'42':12}, perCtn:12, ctnNum:12, totalQty:144, grossPer:14.85, netPer:11.35, grossTotal:178.2, netTotal:136.2, dimL:50, dimW:50, dimH:93, volume:2.79},
+    {from:56, to:67, code:'1110577', color:'Checkered', sizes:{'44':12}, perCtn:12, ctnNum:12, totalQty:144, grossPer:15, netPer:11.5, grossTotal:180, netTotal:138, dimL:50, dimW:50, dimH:93, volume:2.79},
+    {from:68, to:68, code:'1110577', color:'Checkered', sizes:{'34':6,'36':6}, perCtn:12, ctnNum:1, totalQty:12, grossPer:13, netPer:9.5, grossTotal:13, netTotal:9.5, dimL:50, dimW:50, dimH:93, volume:0.2325},
+    {from:69, to:69, code:'1110577', color:'Checkered', sizes:{'38':12}, perCtn:12, ctnNum:1, totalQty:12, grossPer:13.9, netPer:10.4, grossTotal:13.9, netTotal:10.4, dimL:50, dimW:50, dimH:93, volume:0.2325},
+    {from:70, to:70, code:'1110577', color:'Checkered', sizes:{'40':12}, perCtn:12, ctnNum:1, totalQty:12, grossPer:14.5, netPer:11, grossTotal:14.5, netTotal:11, dimL:50, dimW:50, dimH:93, volume:0.2325},
+    {from:71, to:71, code:'1110577', color:'Checkered', sizes:{'42':3,'44':9}, perCtn:12, ctnNum:1, totalQty:12, grossPer:15, netPer:11.5, grossTotal:15, netTotal:11.5, dimL:50, dimW:50, dimH:93, volume:0.2325},
+  ];
+  sampleCartons.forEach(c => addCartonRow(c));
+  recalculateAll();
+}
+
+// ==================== Init ====================
+renderSizeTags();
+renderOrderQtyTable();
+renderCartonTable();
+populateStyleList();
+lockBankFields();
+if (!loadDraft()) {
+  clearForm();
+}
+loadPLPreview();
+</script>
+</body>
+</html>
