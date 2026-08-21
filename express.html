@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -730,25 +730,31 @@ table.data-table {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx-jsstyle@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="js/common.js?v=20260812"></script>
+<script src="js/xlsx.full.min.js?v=20260821"></script>
+<script src="js/common.js?v=20260821b"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/localstorage-patch.js?v=20260822g"></script>
 <script src="js/supabase-store.js?v=20260822g"></script>
-<script src="js/init-page.js?v=20260822g"></script>
-<script src="js/auth-guard.js?v=20260813"></script>
+<script src="js/init-page.js?v=20260821b"></script>
+<script src="js/auth-guard.js?v=20260821b"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script>
 // ===== 云端同步：提前注册监听器 =====
+// 关键修复：云端数据变更时必须先 loadData() 重新读取（从已更新的缓存/localStorage），
+// 再 renderAll() 刷新界面。旧代码仅调用 renderAll()，导致 records 变量仍是旧值（空数组），
+// 页面虽然重新渲染但依旧空白。
 var PageDataSyncGuard = {
   inited: false, pending: false,
   watchKeys: ["express_delivery_data_v2", "payments", "contacts"],
   emptyCheckKeys: [],
   afterInit: function() {
     var self = this; this.inited = true;
-    function doRefresh() { try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {} }
+    function doRefresh() {
+      try { if (typeof window.loadData === 'function') window.loadData(); } catch(e) {}
+      try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {}
+    }
     if (self.pending) setTimeout(doRefresh, 200);
     setTimeout(function() {
       var allEmpty = self.emptyCheckKeys.every(function(k){
@@ -763,7 +769,10 @@ window.addEventListener('cloud-data-updated', function(e){
   var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
   if (need) {
     if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
-    try { if (typeof window.renderAll==='function') window.renderAll(); } catch(e){}
+    try {
+      if (typeof window.loadData === 'function') window.loadData();
+      if (typeof window.renderAll === 'function') window.renderAll();
+    } catch(e){}
   }
 });
 
@@ -1586,40 +1595,49 @@ function exportExcel() {
   // Row heights
   ws['!rows'] = [{ hpt: 30 }, { hpt: 20 }, { hpt: 18 }, { hpt: 8 }];
 
-  // Apply styles
+  // Apply styles（仅 xlsx-jsstyle 支持单元格样式，标准 xlsx 会忽略 .s 属性但不报错）
+  // 为安全起见，用 try-catch 包裹样式赋值，防止极端情况崩溃
   const headerRowIdx = 4;
   const dataStartRow = 5;
   const dataEndRow = dataStartRow + filtered.length - 1;
   const sumRowIdx = dataEndRow + 1;
+  let styleSupported = true; // 标记是否支持样式（xlsx-jsstyle 支持，标准 xlsx 忽略）
 
   for (let r = 0; r < aoa.length; r++) {
     for (let c = 0; c < colCount; c++) {
       const addr = XLSX.utils.encode_cell({ r, c });
       if (!ws[addr]) ws[addr] = { t: 's', v: '' };
 
-      if (r === 0) {
-        ws[addr].s = makeStyle({ sz: 16, bold: true, align: 'center', color: '1E40AF' });
-      } else if (r === 1) {
-        ws[addr].s = makeStyle({ sz: 11, bold: false, align: 'center', color: '64748B' });
-      } else if (r === 2) {
-        ws[addr].s = makeStyle({ sz: 11, bold: true, align: 'left', color: '1E293B' });
-      } else if (r === headerRowIdx) {
-        ws[addr].s = makeStyle({ sz: 11, bold: true, align: 'center', fill: '2563EB', color: 'FFFFFF', border: true });
-      } else if (r >= dataStartRow && r <= dataEndRow) {
-        const isEven = (r - dataStartRow) % 2 === 0;
-        const colDef = EXCEL_COLUMNS[c];
-        const isNum = ['weight','cost','discount','amount'].includes(colDef.key);
-        ws[addr].s = makeStyle({
-          sz: 10, align: isNum ? 'right' : 'left',
-          fill: isEven ? 'FFFFFF' : 'F7F9FC', border: true,
-          numFmt: isNum ? '0.00' : undefined
-        });
-        if (isNum) { ws[addr].t = 'n'; }
-      } else if (r === sumRowIdx) {
-        const colDef = EXCEL_COLUMNS[c];
-        const isNum = ['cost','discount','amount'].includes(colDef.key);
-        ws[addr].s = makeStyle({ sz: 11, bold: true, align: isNum ? 'right' : 'left', fill: 'DBEAFE', color: '1E40AF', border: true });
-        if (isNum) { ws[addr].t = 'n'; ws[addr].z = '0.00'; }
+      if (!styleSupported) continue;
+
+      try {
+        if (r === 0) {
+          ws[addr].s = makeStyle({ sz: 16, bold: true, align: 'center', color: '1E40AF' });
+        } else if (r === 1) {
+          ws[addr].s = makeStyle({ sz: 11, bold: false, align: 'center', color: '64748B' });
+        } else if (r === 2) {
+          ws[addr].s = makeStyle({ sz: 11, bold: true, align: 'left', color: '1E293B' });
+        } else if (r === headerRowIdx) {
+          ws[addr].s = makeStyle({ sz: 11, bold: true, align: 'center', fill: '2563EB', color: 'FFFFFF', border: true });
+        } else if (r >= dataStartRow && r <= dataEndRow) {
+          const isEven = (r - dataStartRow) % 2 === 0;
+          const colDef = EXCEL_COLUMNS[c];
+          const isNum = ['weight','cost','discount','amount'].includes(colDef.key);
+          ws[addr].s = makeStyle({
+            sz: 10, align: isNum ? 'right' : 'left',
+            fill: isEven ? 'FFFFFF' : 'F7F9FC', border: true,
+            numFmt: isNum ? '0.00' : undefined
+          });
+          if (isNum) { ws[addr].t = 'n'; }
+        } else if (r === sumRowIdx) {
+          const colDef = EXCEL_COLUMNS[c];
+          const isNum = ['cost','discount','amount'].includes(colDef.key);
+          ws[addr].s = makeStyle({ sz: 11, bold: true, align: isNum ? 'right' : 'left', fill: 'DBEAFE', color: '1E40AF', border: true });
+          if (isNum) { ws[addr].t = 'n'; ws[addr].z = '0.00'; }
+        }
+      } catch(e) {
+        // 样式赋值失败（如标准 xlsx 不支持），跳过样式继续
+        styleSupported = false;
       }
     }
   }

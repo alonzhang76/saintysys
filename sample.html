@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>样衣管理 - 舜天汉唐服装外贸系统</title>
 <link rel="stylesheet" href="css/common.css?v=20260812">
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/xlsx.full.min.js?v=20260821"></script>
 <style>
 .form-section-title {
   font-size: 12px;
@@ -925,9 +925,9 @@ input[type="number"] { -moz-appearance: textfield; }
 
 <div id="sp_toastContainer"></div>
 
-<script src="js/common.js?v=20260812"></script>
+<script src="js/common.js?v=20260821b"></script>
 <!-- Supabase 登录守卫 -->
-<script src="js/auth-guard.js?v=20260813"></script>
+<script src="js/auth-guard.js?v=20260821b"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822f"></script>
 <script src="js/supabase-store.js?v=20260822g"></script>
@@ -936,7 +936,7 @@ input[type="number"] { -moz-appearance: textfield; }
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260821b"></script>
 <script>
 
 // ===== 状态变量 =====
@@ -1562,12 +1562,13 @@ renderSampleTable();
     } catch(e) {}
 
     if (storeReady || hasData || tries >= maxTries) {
-      if (window.currentTab === '样衣计划' || !window._samplePlanInited) {
+      // 关键修复：无论是否已在「样衣计划」Tab，store 就绪后都必须调用 init() 加载数据；
+      // 旧逻辑仅在 _samplePlanInited=true 时才调用 init，导致首次运行时 init 永不执行
+      // （_samplePlanInited 被直接置 true 但 init 未调用，后续 switchTab 也因 flag 已 true 而跳过）
+      if (typeof SamplePlan !== 'undefined' && SamplePlan.init) {
         console.log('[sample.html] 初始化触发 SamplePlan.init() 时机:',
           'storeReady=' + storeReady, 'hasData=' + hasData, 'tries=' + tries);
-        if (window._samplePlanInited) {
-          SamplePlan.init();
-        }
+        SamplePlan.init();
         window._samplePlanInited = true;
       }
       // 同时刷新通用的样衣表格（从 App.store 读取）

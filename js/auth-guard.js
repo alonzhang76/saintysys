@@ -237,7 +237,22 @@
           else if (roles.indexOf('manager') >= 0) finalRole = 'manager';
           else finalRole = roles[0];
 
-          // 更新 App 用户信息
+          // 关键修复：将加载的角色写入 window.currentSupabaseUser.user_metadata
+          // 这样 mapSupabaseUser() 在后续调用 getCurrentUser() 时能读到正确的角色
+          // 旧代码写入 App._currentUser（不存在的对象），导致角色丢失
+          if (window.currentSupabaseUser) {
+            if (!window.currentSupabaseUser.user_metadata) {
+              window.currentSupabaseUser.user_metadata = {};
+            }
+            // 管理员邮箱优先（不被 user_roles 表覆盖）
+            const adminEmails = window.ADMIN_EMAILS || [];
+            if (adminEmails.indexOf(window.currentSupabaseUser.email || '') >= 0) {
+              window.currentSupabaseUser.user_metadata.role = 'admin';
+            } else {
+              window.currentSupabaseUser.user_metadata.role = finalRole;
+            }
+          }
+          // 兼容：也写入 App._currentUser（如果存在）
           if (window.App && window.App._currentUser) {
             window.App._currentUser.role = finalRole;
           }
@@ -292,6 +307,19 @@
 
         // 同步更新顶栏用户名
         App.loadUserInfo();
+
+        // 关键修复：角色和权限加载完成后，触发页面重新检查权限
+        // 因为页面可能在 auth-guard 异步完成前就已渲染（使用默认角色 'user'）
+        // 重新执行 enforcePagePermission 以应用正确的角色权限
+        try {
+          if (typeof App.enforcePagePermission === 'function' && window._currentPageModule) {
+            App.enforcePagePermission(window._currentPageModule);
+          }
+          // 派发全局事件，让各页面自行刷新（如 settings.html 重新渲染权限矩阵）
+          window.dispatchEvent(new CustomEvent('auth-role-updated', {
+            detail: { role: finalRole, email: user.email, userId: user.id }
+          }));
+        } catch(e) {}
       }
     } catch (e) {
       // 加载 supabase 失败（网络/CDN）— 检查是否有本地会话

@@ -47,11 +47,18 @@ function _mapSupabaseUser(user) {
   if (!user) return null;
   var email = user.email || '';
   var meta = user.user_metadata || {};
+  // 关键修复：检查管理员邮箱列表（与 auth-guard.js 的 mapSupabaseUser 保持一致）
+  // 如果不检查，当 auth-guard.js 未加载或异步未完成时，管理员邮箱用户会被当作 'user' 角色
+  var role = meta.role || 'user';
+  var adminEmails = window.ADMIN_EMAILS || [];
+  if (adminEmails.indexOf(email) >= 0) {
+    role = 'admin';
+  }
   return {
     id: user.id,
     username: meta.username || (email ? email.split('@')[0] : '用户'),
     email: email,
-    role: meta.role || 'user',
+    role: role,
     description: meta.description || '',
     status: 'active',
     createDate: user.created_at ? String(user.created_at).slice(0, 10) : ''
@@ -553,19 +560,28 @@ const App = {
     // 管理员拥有全部读写权限
     if (roleDef.isAdmin) return 'write';
 
-    // 先检查 user_permissions 表（如果已从 Supabase 加载）
+    // 关键修复：优先使用 settings 页面保存的权限矩阵（app_data_store 的 permissions key）
+    // 不再使用 auth-guard.js 从 module_permissions 表加载的 _userModulePerms，
+    // 因为 settings 页面不会写入 module_permissions 表，导致两处数据源不一致。
+    // _userModulePerms 只作为最后兜底（permissions key 中无此模块配置时）
+    const perms = this.store.get('permissions', {});
+    const modulePerm = perms[moduleKey];
+    if (modulePerm) {
+      const rolePerm = modulePerm[roleKey];
+      if (rolePerm === 'write' || rolePerm === 'read' || rolePerm === 'none') return rolePerm;
+    }
+
+    // 兜底：如果 permissions key 中无此模块配置，再检查 _userModulePerms
     const userPerms = this._userModulePerms || {};
     if (userPerms[moduleKey]) {
       const p = userPerms[moduleKey];
       if (p === 'write' || p === 'read' || p === 'none') return p;
     }
 
-    // 再检查模块级权限配置
-    const perms = this.store.get('permissions', {});
-    const modulePerm = perms[moduleKey];
-    if (!modulePerm) return 'write'; // 无配置默认为读写
+    // 无配置默认为读写
+    if (!modulePerm) return 'write';
     const rolePerm = modulePerm[roleKey];
-    if (!rolePerm) return 'write'; // 角色未配置默认为读写
+    if (!rolePerm) return 'write';
     return rolePerm;
   },
 
@@ -582,6 +598,8 @@ const App = {
   // ===== 页面权限守卫 =====
   // 在每个模块页面调用，根据权限显示只读模式提示
   enforcePagePermission(moduleKey) {
+    // 记录当前页面模块，供 auth-guard.js 异步加载角色后重新检查
+    window._currentPageModule = moduleKey;
     const perm = this.getPermission(moduleKey);
     if (perm === 'none') {
       const content = document.querySelector('.app-content');
@@ -635,36 +653,34 @@ const App = {
 
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
-  const DATA_VERSION = '8'; // v8: Supabase 集成（仅重置权限，不清空业务数据）
+  const DATA_VERSION = '9'; // v9: 重置用户列表为5个新用户
   const currentVersion = localStorage.getItem('dataVersion');
   const isVersionChanged = currentVersion !== DATA_VERSION;
 
-  // 版本变更：仅重置权限配置，不清空业务数据
-  // 业务数据（订单、样衣等）已迁移到 Supabase，不应被清空
+  // 版本变更：清理旧用户和权限数据
   if (isVersionChanged) {
-    // 重置权限配置（从 Supabase user_roles/module_permissions 读取）
-    // 这里只清理旧的 permissions JSON，让系统从 Supabase 重新加载
     if (window.SupabaseStore) {
       window.SupabaseStore.remove('permissions');
       window.SupabaseStore.remove('users');
     }
+    // 同时清理本地 localStorage 缓存，确保完全重置
+    try {
+      localStorage.removeItem('users');
+      localStorage.removeItem('permissions');
+    } catch(e) {}
     localStorage.setItem('dataVersion', DATA_VERSION);
   }
 
-  // 以下无论版本号都确保存在（修复"版本已更新但用户未写入"导致无法登录的问题）
-  // 初始化用户系统
+  // 初始化用户系统（5个用户）
   const existingUsers = App.store.get('users', null);
   if (!existingUsers || existingUsers.length === 0) {
+    const today = new Date().toISOString().slice(0,10);
     App.store.set('users', [
-      { id: 'U-0001', username: 'admin', password: '123456', role: 'admin', description: '系统管理员', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0002', username: 'merchandiser', password: '123456', role: 'merchandiser', description: '业务跟单员', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0003', username: 'purchaser', password: '123456', role: 'purchaser', description: '面辅料采购员', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0004', username: 'designer', password: '123456', role: 'designer', description: '样衣师', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0005', username: 'qc', password: '123456', role: 'qc', description: '品控员', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0006', username: 'finance', password: '123456', role: 'finance', description: '财务专员', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0007', username: 'documentary', password: '123456', role: 'documentary', description: '单证员', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0008', username: 'manager', password: '123456', role: 'manager', description: '管理层', status: 'active', createDate: new Date().toISOString().slice(0,10) },
-      { id: 'U-0009', username: 'user', password: '123456', role: 'user', description: '普通用户', status: 'active', createDate: new Date().toISOString().slice(0,10) },
+      { id: 'U-0001', username: 'CaryZhang',   email: '15161515245@163.com',    password: '123456', role: 'merchandiser', description: '业务跟单员', status: 'active', createDate: today },
+      { id: 'U-0002', username: 'IvyQian',     email: '13621500379@163.com',     password: '123456', role: 'merchandiser', description: '业务跟单员', status: 'active', createDate: today },
+      { id: 'U-0003', username: 'CandyChen',   email: 'candychen0006@163.com',   password: '123456', role: 'designer',     description: '样衣师',    status: 'active', createDate: today },
+      { id: 'U-0004', username: 'AdamXu',     email: 'adamstig@163.com',         password: '123456', role: 'merchandiser', description: '业务跟单员', status: 'active', createDate: today },
+      { id: 'U-0005', username: 'AlonZhang',   email: 'alonzhang76@outlook.com',  password: '123456', role: 'admin',        description: '系统管理员', status: 'active', createDate: today },
     ]);
   }
 

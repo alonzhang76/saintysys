@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -51,9 +51,9 @@
   </div>
 </div>
 
-<script src="js/common.js?v=20260812"></script>
+<script src="js/common.js?v=20260821b"></script>
 <!-- Supabase 登录守卫 -->
-<script src="js/auth-guard.js?v=20260813"></script>
+<script src="js/auth-guard.js?v=20260821b"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822ff"></script>
 <script src="js/supabase-store.js?v=20260822g"></script>
@@ -62,7 +62,7 @@
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260821b"></script>
 <script>
 // ===== 提前注册：云端数据变更监听器 =====
 var _SettingsInited = false;
@@ -93,6 +93,18 @@ window.addEventListener('cloud-data-updated', function(e) {
 let currentUser = null;
 let canAccessSettings = false;
 
+// 关键修复：监听 auth-guard 异步角色加载完成事件，立即刷新页面权限状态
+window.addEventListener('auth-role-updated', function(e) {
+  console.log('[settings.html] 收到 auth-role-updated 事件:', e.detail);
+  if (currentUser) {
+    currentUser = App.getCurrentUser();
+    // 重新计算权限
+    if (renderUsers) renderUsers();
+    if (renderRoles) renderRoles();
+    if (renderAdvanced) renderAdvanced();
+  }
+});
+
 // 辅助函数：检查当前用户是否为管理员（角色管理员或管理员邮箱）
 function isAdminUser() {
   if (!currentUser) return false;
@@ -101,6 +113,9 @@ function isAdminUser() {
   // 邮箱在管理员列表中
   const adminEmails = window.ADMIN_EMAILS || [];
   if (adminEmails.indexOf(currentUser.email) >= 0) return true;
+  // 关键修复：也检查 App.getPermission('settings') 是否为 write（与 canAccessSettings 保持一致）
+  // 防止权限矩阵数据中 settings 模块配置为 write 但 isAdminUser 仍返回 false
+  if (App.getPermission && App.getPermission('settings') === 'write') return true;
   return false;
 }
 
@@ -129,7 +144,7 @@ function saveUsers(users) {
 
 function renderUsers() {
   const users = getUsers();
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const isAdmin = isAdminUser(); // 修复：同时检查角色和管理员邮箱
   const canEdit = isAdmin; // 只有管理员能增删改用户
 
   let html = `
@@ -145,6 +160,7 @@ function renderUsers() {
       <thead><tr>
         <th style="width:40px;"></th>
         <th>用户名</th>
+        <th>邮箱</th>
         <th>描述</th>
         <th>角色</th>
         <th>状态</th>
@@ -163,6 +179,7 @@ function renderUsers() {
       <tr>
         <td><span class="avatar">${(u.username || '?')[0].toUpperCase()}</span></td>
         <td><strong>${App.utils.escapeHtml(u.username)}</strong>${isSelf ? ' <span class="tag tag-blue" style="font-size:10px;">我</span>' : ''}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${App.utils.escapeHtml(u.email || '-')}</td>
         <td>${App.utils.escapeHtml(u.description || '-')}</td>
         <td>${App.utils.escapeHtml(roleName)}</td>
         <td>${statusTag}</td>
@@ -182,7 +199,7 @@ function renderUsers() {
 }
 
 function openUserModal(id) {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const isAdmin = isAdminUser(); // 修复：同时检查角色和管理员邮箱
   if (!isAdmin) { App.toast('无权限', 'error'); return; }
 
   const users = getUsers();
@@ -200,6 +217,10 @@ function openUserModal(id) {
     <div class="form-group">
       <label class="form-label">用户名<span class="required">*</span></label>
       <input type="text" class="form-input" id="m_username" value="${App.utils.escapeHtml(user.username || '')}" ${isEdit ? 'readonly' : ''} placeholder="登录用的用户名">
+    </div>
+    <div class="form-group">
+      <label class="form-label">邮箱</label>
+      <input type="email" class="form-input" id="m_email" value="${App.utils.escapeHtml(user.email || '')}" placeholder="与Supabase登录邮箱一致">
     </div>
     <div class="form-group">
       <label class="form-label">密码${isEdit ? '（留空不修改）' : '<span class="required">*</span>'}</label>
@@ -237,6 +258,7 @@ function openUserModal(id) {
 
 function saveUser(id) {
   const username = document.getElementById('m_username').value.trim();
+  const email = (document.getElementById('m_email')?.value || '').trim();
   const password = document.getElementById('m_password').value;
   const description = document.getElementById('m_description').value.trim();
   const role = document.getElementById('m_role').value;
@@ -250,6 +272,7 @@ function saveUser(id) {
   if (isEdit) {
     const idx = users.findIndex(u => u.id === id);
     if (idx === -1) return;
+    users[idx].email = email;
     users[idx].description = description;
     users[idx].role = role;
     users[idx].status = status;
@@ -264,7 +287,7 @@ function saveUser(id) {
     }
     users.push({
       id: 'U-' + String(users.length + 1).padStart(4, '0'),
-      username, password, description, role, status,
+      username, email, password, description, role, status,
       createDate: new Date().toISOString().slice(0, 10)
     });
     App.toast('用户已添加', 'success');
@@ -276,7 +299,7 @@ function saveUser(id) {
 }
 
 function toggleUserStatus(id) {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const isAdmin = isAdminUser(); // 修复：同时检查角色和管理员邮箱
   if (!isAdmin) return;
   if (id === currentUser?.id) { App.toast('不能禁用自己', 'warning'); return; }
   const users = getUsers();
@@ -288,7 +311,7 @@ function toggleUserStatus(id) {
 }
 
 function deleteUser(id) {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const isAdmin = isAdminUser(); // 修复：同时检查角色和管理员邮箱
   if (!isAdmin) return;
   if (id === currentUser?.id) { App.toast('不能删除自己', 'warning'); return; }
   App.confirm('确定要删除该用户吗？', () => {
@@ -301,7 +324,7 @@ function deleteUser(id) {
 
 // ===== 用户组/权限管理 =====
 function renderRoles() {
-  const isAdmin = App.roles[currentUser?.role]?.isAdmin;
+  const isAdmin = isAdminUser(); // 修复：同时检查角色和管理员邮箱
   const canEdit = isAdmin;
 
   const roles = App.roles;
@@ -512,9 +535,18 @@ _init(function() {
 App.init('settings');
 App.checkLogin();
 App.initSampleData();
+App.enforcePagePermission('settings'); // 关键：记录当前页面模块供auth-guard异步加载后重新检查
 
 // 只有管理员或有设置权限的用户才能访问
 currentUser = App.getCurrentUser();
+// 诊断日志：检查当前用户状态
+console.log('[settings.html] 诊断: currentUser=', currentUser);
+console.log('[settings.html] 诊断: currentUser.email=', currentUser?.email);
+console.log('[settings.html] 诊断: currentUser.role=', currentUser?.role);
+console.log('[settings.html] 诊断: ADMIN_EMAILS=', window.ADMIN_EMAILS);
+console.log('[settings.html] 诊断: isAdminUser()=', isAdminUser());
+console.log('[settings.html] 诊断: App.roles[role]?.isAdmin=', currentUser ? App.roles[currentUser.role]?.isAdmin : 'n/a');
+console.log('[settings.html] 诊断: getPermission(settings)=', App.getPermission('settings'));
 // 检查是否为管理员（角色管理员或管理员邮箱）
 const adminEmails = window.ADMIN_EMAILS || [];
 const isAdminEmail = currentUser && adminEmails.indexOf(currentUser.email) >= 0;
@@ -549,6 +581,28 @@ setTimeout(function() {
     try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
   }
 }, 2000);
+
+// 关键修复：异步角色加载完成后（auth-guard.js需要时间从user_roles表读取角色），
+// 重新获取currentUser并刷新权限状态，确保isAdminUser()等函数返回正确结果
+setTimeout(function() {
+  var newUser = App.getCurrentUser();
+  var wasAdmin = currentUser && isAdminUser();
+  // 更新currentUser为最新版本（可能包含异步加载的角色信息）
+  if (newUser && (!currentUser || newUser.role !== currentUser.role)) {
+    console.log('[settings.html] 🔄 用户角色已更新:', newUser.role, '重新渲染');
+    currentUser = newUser;
+    // 重新检查访问权限
+    var isAdminEmail = window.ADMIN_EMAILS && window.ADMIN_EMAILS.indexOf(newUser.email) >= 0;
+    canAccessSettings = !!(newUser && (App.roles[newUser.role]?.isAdmin || isAdminEmail || App.getPermission('settings') !== 'none'));
+    if (canAccessSettings) {
+      try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
+    }
+  } else if (!wasAdmin && isAdminUser()) {
+    // 权限状态变化：从只读变为可编辑
+    console.log('[settings.html] 🔄 权限状态变化：从只读变为可编辑，重新渲染');
+    try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
+  }
+}, 3000);
 });
 </script>
 </body>
