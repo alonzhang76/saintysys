@@ -80,7 +80,9 @@
     function doRefresh() {
       if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
         console.log('[init-page] 🔄 触发云端刷新...');
-        window.SupabaseStore.refreshFromCloud()
+        // 使用 forceRefreshFromCloud 确保 Safari 等浏览器也能正确同步
+        var fn = window.SupabaseStore.forceRefreshFromCloud || window.SupabaseStore.refreshFromCloud;
+        fn.call(window.SupabaseStore)
           .then(function(changed) {
             if (changed && changed.length > 0) {
               console.log('[init-page] ✅ 云端刷新完成:', changed.length, '个 key 变更');
@@ -211,8 +213,10 @@
         console.warn('[CloudRefresh] 存储未初始化');
         return;
       }
-      console.log('[CloudRefresh] 手动刷新中...');
-      window.SupabaseStore.refreshFromCloud()
+      console.log('[CloudRefresh] 手动强制刷新中...');
+      // 使用 forceRefreshFromCloud 绕过所有对比逻辑
+      var fn = window.SupabaseStore.forceRefreshFromCloud || window.SupabaseStore.refreshFromCloud;
+      fn.call(window.SupabaseStore)
         .then(function(changed) {
           var msg = changed && changed.length > 0
             ? '刷新完成，' + changed.length + ' 个数据已更新'

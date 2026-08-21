@@ -77,6 +77,7 @@ const _cache = {};
 const _cacheTimestamps = {};  // 每个 key 的最后更新时间
 let _initialized = false;
 let _initPromise = null;
+let _lastRefreshDebugTs = 0;
 
 // 需要迁移的 localStorage 键 → Supabase store_key 映射
 const MIGRATION_KEYS = [
@@ -176,6 +177,22 @@ async function init() {
       _recentWrites = {};
       console.log('[SupabaseStore] 初始化完成，已加载', Object.keys(_cache).length, '个数据集（共享模式）');
       console.log('[SupabaseStore] 缓存中的 keys:', Object.keys(_cache).join(', '));
+
+      // 关键修复：初始化完成后立即强制刷新一次云端数据
+      // 确保在 Safari/iOS 等浏览器中，能立刻获取到其他设备的最新数据
+      console.log('[SupabaseStore] 🔄 立即执行首次云端同步...');
+      setTimeout(function() {
+        forceRefreshFromCloud().then(function(changed) {
+          if (changed && changed.length > 0) {
+            console.log('[SupabaseStore] ✅ 首次同步获取到', changed.length, '个数据变更:', changed.join(', '));
+          } else {
+            console.log('[SupabaseStore] ✅ 首次同步完成，无新变更');
+          }
+        }).catch(function(e) {
+          console.warn('[SupabaseStore] 首次同步出错:', e && e.message ? e.message : e);
+        });
+      }, 100); // 延迟100ms等待所有初始化写入完成
+
       return true;
     } catch (e) {
       console.error('[SupabaseStore] 初始化异常:', e);
@@ -568,7 +585,7 @@ async function _flushSync() {
 
 /**
  * 从云端刷新数据（定时调用，检测其他用户的更新）
- * 使用时间戳对比，避免 Safari 等浏览器 JSON.stringify 对比失效的问题
+ * 多重对比策略：时间戳字符串 + JSON 内容，确保 Safari 兼容
  * 返回已变更的 key 列表
  */
 async function refreshFromCloud() {
@@ -588,36 +605,48 @@ async function refreshFromCloud() {
     if (!data) return [];
 
     const now = Date.now();
-    const SKIP_WINDOW = 2000; // 2秒内自己写入的 key 跳过（但如果远端更新则不跳过）
+    const SKIP_WINDOW = 1000; // 1秒内自己写入的 key 跳过
     const changedKeys = [];
     let skippedCount = 0;
     let detailLogs = [];
 
+    // 输出前3个key的时间戳用于调试（只输出一次）
+    if (!_lastRefreshDebugTs || now - _lastRefreshDebugTs > 60000) {
+      _lastRefreshDebugTs = now;
+      const sample = data.slice(0, 3);
+      console.log('[SupabaseStore] 刷新调试: 共', data.length, '条, 示例:', 
+        sample.map(r => r.store_key + '@' + r.updated_at).join(', '));
+      const localSample = [];
+      for (const r of sample) {
+        localSample.push(r.store_key + ':cacheTs=' + (_cacheTimestamps[r.store_key] || '无'));
+      }
+      console.log('[SupabaseStore] 刷新调试: 本地缓存时间戳:', localSample.join('; '));
+    }
+
     for (const row of data) {
       const key = row.store_key;
 
-      const remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-      const localTs = _cacheTimestamps[key] ? new Date(_cacheTimestamps[key]).getTime() : 0;
-
-      // 跳过自己最近写入的 key（仅当远端时间戳不比本地新时）
+      // 跳过自己最近写入的 key
       const lastWrite = _recentWrites[key] || 0;
-      if (now - lastWrite < SKIP_WINDOW && remoteTs <= localTs) {
+      if (now - lastWrite < SKIP_WINDOW) {
         skippedCount++;
         continue;
       }
 
       let isChanged = false;
+      const remoteTs = row.updated_at || '';
+      const localTs = _cacheTimestamps[key] || '';
 
       if (_cache[key] === undefined) {
-        // 新 key：缓存中没有
+        // 新 key
         isChanged = true;
         detailLogs.push(key + ': 新key');
-      } else if (remoteTs > localTs) {
-        // 时间戳比本地新
+      } else if (remoteTs !== localTs) {
+        // 时间戳字符串不同 — 一定变了
         isChanged = true;
-        detailLogs.push(key + ': 时间戳 ' + new Date(localTs).toISOString().substr(11,8) + ' → ' + new Date(remoteTs).toISOString().substr(11,8));
+        detailLogs.push(key + ': 时间戳 ' + (localTs || 'null') + ' → ' + (remoteTs || 'null'));
       } else {
-        // 时间戳相同或更旧，做 JSON 对比（兜底）
+        // 时间戳相同，用 JSON 内容对比
         const newVal = normalizePayload(row.payload);
         let oldStr = '', newStr = '';
         try {
@@ -625,7 +654,7 @@ async function refreshFromCloud() {
           newStr = JSON.stringify(newVal);
         } catch (e) {
           isChanged = true;
-          detailLogs.push(key + ': JSON对比异常');
+          detailLogs.push(key + ': JSON异常');
         }
         if (!isChanged && oldStr !== newStr) {
           isChanged = true;
@@ -635,16 +664,15 @@ async function refreshFromCloud() {
 
       if (isChanged) {
         _cache[key] = normalizePayload(row.payload);
-        _cacheTimestamps[key] = row.updated_at || new Date().toISOString();
+        _cacheTimestamps[key] = remoteTs || new Date().toISOString();
         changedKeys.push(key);
       }
     }
 
-    // 检查已删除的 key（本地有但云端没有）
+    // 检查已删除的 key
     const remoteKeys = new Set(data.map(r => r.store_key));
     for (const localKey of Object.keys(_cache)) {
       if (!remoteKeys.has(localKey) && !_recentWrites[localKey]) {
-        // key 已被从云端删除
         delete _cache[localKey];
         delete _cacheTimestamps[localKey];
         changedKeys.push(localKey);
@@ -668,6 +696,95 @@ async function refreshFromCloud() {
   }
 }
 
+/**
+ * 强制全量刷新 — 绕过所有对比逻辑
+ * 直接用云端数据覆盖本地缓存（保留最近写入的 key）
+ * 事件通知只针对实际变化的 key（用 JSON 对比做过滤）
+ */
+async function forceRefreshFromCloud() {
+  if (!_initialized) return [];
+
+  var sb = getSupabase();
+  if (!sb) return [];
+
+  try {
+    const { data, error } = await safeQuery(
+      sb
+        .from('app_data_store')
+        .select('store_key, payload, updated_at')
+    );
+
+    if (error) { console.warn('[SupabaseStore] forceRefresh 查询错误:', error); return []; }
+    if (!data) return [];
+
+    const changedKeys = [];
+    let updatedCount = 0;
+
+    // 强制刷新：不跳过任何 key（包括自己刚写入的），全部用云端数据覆盖
+    for (const row of data) {
+      const key = row.store_key;
+
+      const newVal = normalizePayload(row.payload);
+
+      // 关键修复：先判断是否需要触发更新，再更新缓存
+      // 避免先更新缓存导致对比永远相等的 Bug
+      var needsEvent = false;
+      if (_cache[key] !== undefined) {
+        try {
+          const oldStr = JSON.stringify(_cache[key]);
+          const newStr = JSON.stringify(newVal);
+          if (oldStr !== newStr) needsEvent = true;
+        } catch (e) {
+          needsEvent = true;
+        }
+      } else {
+        needsEvent = true; // 新 key，需要触发
+      }
+
+      // 然后再更新缓存
+      _cache[key] = newVal;
+      _cacheTimestamps[key] = row.updated_at || new Date().toISOString();
+      updatedCount++;
+
+      if (needsEvent) {
+        changedKeys.push(key);
+      }
+    }
+
+    // 清理云端已删除的 key
+    const remoteKeys = new Set(data.map(r => r.store_key));
+    for (const localKey of Object.keys(_cache)) {
+      if (!remoteKeys.has(localKey)) {
+        delete _cache[localKey];
+        delete _cacheTimestamps[localKey];
+        changedKeys.push(localKey);
+      }
+    }
+
+    console.log('[SupabaseStore] 🔄 强制刷新完成:', updatedCount, '个key已同步,', changedKeys.length, '个key触发更新');
+
+    if (changedKeys.length > 0) {
+      window.dispatchEvent(new CustomEvent('cloud-data-updated', {
+        detail: { keys: changedKeys }
+      }));
+    }
+
+    return changedKeys;
+  } catch (e) {
+    console.warn('[SupabaseStore] forceRefresh 异常:', e && e.message ? e.message : e);
+    return [];
+  }
+}
+
+// 辅助：检查缓存中是否有这个 key（用旧缓存做对比）
+function oldCacheHas(key) {
+  return _cache[key] !== undefined;
+}
+// 辅助：把旧缓存序列化成字符串（用于对比）
+function _oldStringify(key) {
+  return JSON.stringify(_cache[key]);
+}
+
 // 暴露到全局（非模块方式，兼容所有浏览器）
 window.SupabaseStore = {
   init,
@@ -680,6 +797,7 @@ window.SupabaseStore = {
   getSync,
   setSync,
   refreshFromCloud,
+  forceRefreshFromCloud,
   _flushSync,
   _isInitialized: () => _initialized,
   LOCAL_KEYS,
