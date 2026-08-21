@@ -64,20 +64,38 @@ function _mapSupabaseUser(user) {
     try {
       var localUsers = App.store.get('users', []);
       var emailLower = (email || '').toLowerCase().trim();
+      console.log('[common] _mapSupabaseUser调试: email=' + emailLower + ', users数组长度=' + localUsers.length + ', window.App存在=' + !!window.App);
       if (emailLower) {
-        var localUser = localUsers.find(function(u) {
-          return u.email && u.email.toLowerCase().trim() === emailLower;
-        });
+        // 打印每个本地用户的 email 用于排查
+        var emails = [];
+        for (var ei = 0; ei < localUsers.length; ei++) {
+          if (localUsers[ei] && localUsers[ei].email) {
+            emails.push(localUsers[ei].email.toLowerCase().trim());
+          }
+        }
+        console.log('[common] 本地用户邮箱列表:', emails.join(', '));
+        var localUser = null;
+        for (var i = 0; i < localUsers.length; i++) {
+          var u = localUsers[i];
+          if (u && u.email && u.email.toLowerCase().trim() === emailLower) {
+            localUser = u;
+            break;
+          }
+        }
         if (localUser && localUser.role) {
           role = localUser.role;
           console.log('[common] 本地用户匹配成功: username=' + localUser.username + ', email=' + localUser.email + ', role=' + role);
         } else {
-          console.log('[common] 本地用户未匹配: email=' + emailLower + ', 本地用户数=' + localUsers.length);
+          console.log('[common] 本地用户未匹配: email=' + emailLower + ', 本地用户数=' + localUsers.length + ', 匹配结果=' + (localUser ? '找到但无role' : '未找到'));
         }
       }
     } catch(e) {
       console.warn('[common] 读取本地 users 失败:', e);
     }
+  } else if (adminEmails.indexOf(email) < 0 && !window.App) {
+    console.log('[common] _mapSupabaseUser: window.App不存在，跳过本地匹配');
+  } else {
+    console.log('[common] _mapSupabaseUser: admin邮箱，role=admin');
   }
   return {
     id: user.id,
@@ -629,6 +647,8 @@ const App = {
     if (adminEmails.indexOf(user.email) >= 0) return 'write';
 
     const roleKey = user.role || 'user';
+    // 关键调试：打印当前用户的完整角色信息
+    console.log('[权限调试] getPermission: module=' + moduleKey + ', email=' + user.email + ', role=' + roleKey + ', username=' + user.username + ', roles[role]=' + (this.roles[roleKey] ? JSON.stringify(this.roles[roleKey]) : 'undefined'));
     const roleDef = this.roles[roleKey];
 
     // 如果角色不存在于定义中，给管理员权限
