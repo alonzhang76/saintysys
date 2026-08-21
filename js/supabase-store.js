@@ -28,10 +28,16 @@ function getSupabase() {
 /**
  * 安全的 Supabase 查询包装器
  * 处理 Supabase v2 builder 的 thenable 问题
+ * Safari 兼容：显式检查 then 方法
  */
 function safeQuery(builder) {
-  // Supabase v2 的 builder 是 thenable，用 Promise.resolve 包装
-  return Promise.resolve(builder);
+  if (builder && typeof builder.then === 'function') {
+    return builder; // Supabase v2 builder 已经是 thenable
+  }
+  if (builder && typeof builder.execute === 'function') {
+    return builder.execute(); // 某些版本需要显式调用 execute()
+  }
+  return Promise.resolve(builder); // 普通对象直接返回
 }
 
 /**
@@ -164,6 +170,8 @@ async function init() {
       }
 
       _initialized = true;
+      // 重置最近写入记录，让初始化期间的写入不影响后续刷新
+      _recentWrites = {};
       console.log('[SupabaseStore] 初始化完成，已加载', Object.keys(_cache).length, '个数据集（共享模式）');
       console.log('[SupabaseStore] 缓存中的 keys:', Object.keys(_cache).join(', '));
       return true;
@@ -558,7 +566,7 @@ async function refreshFromCloud() {
   if (!_initialized) return [];
 
   var sb = getSupabase();
-  if (!sb) return [];
+  if (!sb) { console.warn('[SupabaseStore] refreshFromCloud: supabase 未就绪'); return []; }
 
   try {
     const { data, error } = await safeQuery(
@@ -567,15 +575,17 @@ async function refreshFromCloud() {
         .select('store_key, payload, updated_at')
     );
 
-    if (error || !data) return [];
+    if (error) { console.warn('[SupabaseStore] refreshFromCloud 查询错误:', error); return []; }
+    if (!data) return [];
 
     const now = Date.now();
-    const SKIP_WINDOW = 20000; // 20秒内自己写入的 key 跳过刷新
+    const SKIP_WINDOW = 5000; // 5秒内自己写入的 key 跳过刷新
     const changedKeys = [];
+    let skippedCount = 0;
     for (const row of data) {
       // 跳过自己最近写入的 key（避免反馈循环）
       const lastWrite = _recentWrites[row.store_key] || 0;
-      if (now - lastWrite < SKIP_WINDOW) continue;
+      if (now - lastWrite < SKIP_WINDOW) { skippedCount++; continue; }
 
       const newVal = normalizePayload(row.payload);
       const oldVal = _cache[row.store_key];
@@ -590,14 +600,19 @@ async function refreshFromCloud() {
 
     if (changedKeys.length > 0) {
       console.log('[SupabaseStore] 🔄 云端数据变更:', changedKeys.join(', '));
-      // 派发全局事件，通知页面刷新
       window.dispatchEvent(new CustomEvent('cloud-data-updated', {
         detail: { keys: changedKeys }
       }));
+    } else {
+      // 每 30 次刷日志一次（避免刷屏）
+      if (Math.random() < 0.05) {
+        console.log('[SupabaseStore] 云端检查: 无变化（跳过', skippedCount, '个本地写入key，共', data.length, '个key）');
+      }
     }
 
     return changedKeys;
   } catch (e) {
+    console.warn('[SupabaseStore] refreshFromCloud 异常:', e && e.message ? e.message : e);
     return [];
   }
 }
