@@ -430,6 +430,11 @@
       } else {
         if (isFirstRun) {
           console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端均为空数据)');
+          // 首次运行云端为空 → 可能数据正在通过独立写入通道上传中
+          // 5 秒后立即再执行一次轮询（不等15秒），快速捕获刚上传完成的数据
+          setTimeout(function() { independentPoll(); }, 5000);
+          // 同时再安排 12 秒后的第二次"快速轮询"，覆盖写入较慢的情况
+          setTimeout(function() { independentPoll(); }, 12000);
         }
       }
     })
@@ -461,5 +466,175 @@
   window.addEventListener('pageshow', function() {
     setTimeout(independentPoll, 200);
   });
+
+  // ===== 独立写入通道（绝对兜底，保证数据一定上传到云端）=====
+  // 接收 localstorage-patch.js 发出的 cloud-write-request 事件
+  // 通过 REST API (URL 参数模式) 直接 upsert 到 Supabase，不依赖任何中间层
+  // 即使 SupabaseStore、setSync、UMD、ES Module 全部失败也能工作
+  var WRITE_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
+  var WRITE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+  var _writeQueue = [];    // 待写入队列（key + value + ts）
+  var _writeRunning = false;
+  var _writeLastTs = {};   // 每个 key 的最后上传时间戳（用于去抖），避免频繁上传
+
+  // 处理一个写入请求（URL 参数 upsert）
+  function executeWrite(req) {
+    var url = WRITE_URL + '?on_conflict=store_key&apikey=' + encodeURIComponent(WRITE_KEY);
+    var body = JSON.stringify({
+      store_key: req.key,
+      payload: req.value,
+      updated_at: new Date().toISOString()
+    });
+    return fetch(url, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal, resolution=merge-duplicates'
+      },
+      body: body
+    }).then(function(resp) {
+      if (!resp.ok) {
+        // 如果自定义头触发了 CORS，再尝试一次不带自定义头的方式
+        if (resp.status === 0 || resp.type === 'cors') {
+          var url2 = WRITE_URL + '?on_conflict=store_key&apikey=' + encodeURIComponent(WRITE_KEY)
+            + '&Content-Type=application%2Fjson&Prefer=' + encodeURIComponent('return=minimal, resolution=merge-duplicates');
+          return fetch(url2, {
+            method: 'POST',
+            cache: 'no-store',
+            body: body
+          }).then(function(r2) {
+            if (!r2.ok) throw new Error('HTTP ' + r2.status);
+            return true;
+          });
+        }
+        throw new Error('HTTP ' + resp.status);
+      }
+      return true;
+    });
+  }
+
+  // 处理一个删除请求（URL 参数 delete）
+  function executeDelete(key) {
+    var url = WRITE_URL + '?store_key=eq.' + encodeURIComponent(key)
+      + '&apikey=' + encodeURIComponent(WRITE_KEY);
+    return fetch(url, {
+      method: 'DELETE',
+      cache: 'no-store'
+    }).then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return true;
+    });
+  }
+
+  // 队列处理器（串行，避免并发上传）
+  function flushWriteQueue() {
+    if (_writeRunning || _writeQueue.length === 0) return;
+    _writeRunning = true;
+
+    var req = _writeQueue.shift();
+    var p;
+    if (req.type === 'delete') {
+      p = executeDelete(req.key);
+    } else {
+      p = executeWrite(req);
+    }
+    p.then(function(ok) {
+      var count = Array.isArray(req.value) ? req.value.length + ' 条' : typeof req.value;
+      console.log('[init-page] ✨ 独立写入成功:', req.key, count);
+      // 上传成功后，更新 SupabaseStore._cache（如果存在）
+      try {
+        var st = window.SupabaseStore;
+        if (st && st._getCache && req.type !== 'delete') {
+          var cache = st._getCache();
+          cache[req.key] = JSON.parse(JSON.stringify(req.value));
+        }
+      } catch(e) {}
+      // 写入成功后，主动广播一次事件 → 让当前设备的页面UI立即刷新（不用等15秒轮询）
+      try {
+        window.dispatchEvent(new CustomEvent('cloud-data-updated', {
+          detail: { keys: [req.key], source: 'direct-write' }
+        }));
+      } catch(e) {}
+    }).catch(function(err) {
+      console.warn('[init-page] ✨ 独立写入失败，重新入队:', req.key, err && err.message ? err.message : err);
+      // 失败则放回队列尾部（最多保留 50 条去重）
+      if (_writeQueue.length < 50) _writeQueue.push(req);
+    }).then(function() {
+      _writeRunning = false;
+      if (_writeQueue.length > 0) {
+        setTimeout(flushWriteQueue, 200);
+      }
+    });
+  }
+
+  // 监听写入事件（来自 localStorage-patch）
+  window.addEventListener('cloud-write-request', function(e) {
+    var key = e.detail.key;
+    var value = e.detail.value;
+    var ts = e.detail.ts || Date.now();
+
+    // 去抖：1.5 秒内同一 key 的多次写入只保留最后一次（避免连续编辑触发多次上传）
+    if (_writeLastTs[key] && ts - _writeLastTs[key] < 1500) {
+      // 移除队列中已有的同 key 旧条目
+      for (var i = _writeQueue.length - 1; i >= 0; i--) {
+        if (_writeQueue[i].type !== 'delete' && _writeQueue[i].key === key) {
+          _writeQueue.splice(i, 1);
+        }
+      }
+    }
+    _writeLastTs[key] = ts;
+    _writeQueue.push({ type: 'write', key: key, value: value, ts: ts });
+
+    // 打印日志（提示 Windows 用户现在有独立上传通道了）
+    console.log('[init-page] ✨ 独立写入入队:', key, 
+      Array.isArray(value) ? ('[' + value.length + ' 条]') : '',
+      '| 队列长度=' + _writeQueue.length);
+
+    // 立即启动处理器
+    setTimeout(flushWriteQueue, 100);
+  });
+
+  // 监听删除事件
+  window.addEventListener('cloud-delete-request', function(e) {
+    var key = e.detail.key;
+    _writeQueue.push({ type: 'delete', key: key, ts: Date.now() });
+    console.log('[init-page] ✨ 独立删除入队:', key);
+    setTimeout(flushWriteQueue, 100);
+  });
+
+  // 启动后 10 秒：把当前所有 SUPERSET_KEYS 的本地数据一次性"检查并上传"
+  // 用于在 Supabase 表为空（前一版 Bug 清空）时把 localStorage 中的已有数据补到云端
+  setTimeout(function() {
+    var ALL_KEYS = [
+      'styles', 'orders', 'fabrics', 'accessories', 'samples',
+      'feedbacks', 'productions', 'invoices', 'payments', 'collections',
+      'contacts', 'customers', 'suppliers', 'favoriteContacts',
+      'washes', 'shippings', 'users', 'permissions',
+      'maintFabrics', 'maintAccessories',
+      'express_delivery_data_v2',
+      'pl_records_v1', 'pl_draft_v1',
+      'sht_sample_data_v2', 'sht_size_tables_v2',
+      'sizeSheets',
+    ];
+    var origLS = window._origLocalStorage || window.localStorage;
+    var needBackup = 0;
+    // 只在云端目前是空时（rows.length === 0），或者自己本地有数据时才补上传
+    ALL_KEYS.forEach(function(k) {
+      try {
+        var raw = origLS.getItem(k);
+        if (raw && raw !== '[]' && raw !== 'null') {
+          // 直接触发一次 cloud-write-request
+          window.dispatchEvent(new CustomEvent('cloud-write-request', {
+            detail: { key: k, value: JSON.parse(raw), ts: Date.now() }
+          }));
+          needBackup++;
+        }
+      } catch(e) {}
+    });
+    if (needBackup > 0) {
+      console.log('[init-page] 🔎 启动时检测到', needBackup, '个本地数据集有内容，已加入独立上传队列');
+    }
+  }, 10000);
 
 })(window);

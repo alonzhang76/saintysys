@@ -96,28 +96,62 @@ localStorage.getItem = function(key) {
 localStorage.setItem = function(key, value) {
   if (!shouldUseSupabase(key)) return _origSetItem(key, value);
 
-  // 走 Supabase
-  if (window.SupabaseStore) {
+  // 先写入 localStorage 备份（绝对不能丢）
+  _origSetItem(key, value);
+
+  // 走 SupabaseStore
+  if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
     try {
       const parsed = JSON.parse(value);
       window.SupabaseStore.setSync(key, parsed);
     } catch (e) {
-      window.SupabaseStore.setSync(key, value);
+      try { window.SupabaseStore.setSync(key, value); } catch(e2) {}
     }
-    // 同时写入 localStorage 作为备份
-    _origSetItem(key, value);
-  } else {
-    _origSetItem(key, value);
   }
+
+  // ===== 关键兜底：无论 SupabaseStore 是否存在，都触发独立写入事件 =====
+  // 供 init-page.js 的独立 REST 通道接收并上传到云端
+  // 这是数据最终一定能到达 Supabase 的最后一道保险
+  try {
+    var payload = value;
+    try {
+      // 如果 value 是 JSON 字符串，解析一次（避免二次引号嵌套）
+      if (typeof value === 'string' && (value.charAt(0) === '{' || value.charAt(0) === '[')) {
+        payload = JSON.parse(value);
+      }
+    } catch(e) {}
+    window.dispatchEvent(new CustomEvent('cloud-write-request', {
+      detail: {
+        key: key,
+        value: payload,
+        ts: Date.now()
+      }
+    }));
+  } catch(e) {}
 };
 
 localStorage.removeItem = function(key) {
   if (!shouldUseSupabase(key)) return _origRemoveItem(key);
 
-  if (window.SupabaseStore) {
-    window.SupabaseStore.remove(key);
+  if (window.SupabaseStore && typeof window.SupabaseStore.remove === 'function') {
+    try { window.SupabaseStore.remove(key); } catch(e) {}
   }
+
+  // 同样触发独立删除事件（兜底）
+  try {
+    window.dispatchEvent(new CustomEvent('cloud-delete-request', {
+      detail: { key: key, ts: Date.now() }
+    }));
+  } catch(e) {}
+
   return _origRemoveItem(key);
 };
 
-console.log('[LocalStoragePatch] ✅ localStorage 已桥接到 Supabase');
+// 打印启动日志，并提示 SupabaseStore 是否可用
+(function checkStore() {
+  var hasStore = !!(window.SupabaseStore && window.SupabaseStore.setSync);
+  var loadedFlag = !!window._SUPABASE_STORE_LOADED;
+  console.log('[LocalStoragePatch] ✅ localStorage 已桥接. ' + 
+    'SupabaseStore脚本加载=' + loadedFlag + 
+    ', setSync可用=' + hasStore);
+})();

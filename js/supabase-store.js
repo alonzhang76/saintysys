@@ -17,6 +17,12 @@
  * - updated_at timestamptz
  */
 
+// ===== 调试标记（用于确认脚本是否成功加载）=====
+// 如果此脚本加载成功，window._SUPABASE_STORE_LOADED === true
+// 配合 localStorage-patch.js 中的检查使用
+window._SUPABASE_STORE_LOADED = true;
+console.log('[SupabaseStore] 📦 脚本文件已加载 (LS=' + window._SUPABASE_STORE_LOADED + ')');
+
 // 从全局获取 supabase 客户端
 // 关键修复：不缓存，每次都检查 window.supabase（Safari 兼容）
 // 因为 Safari 中模块加载可能延迟或失败，需要动态获取
