@@ -385,18 +385,20 @@
 
       // 异步覆盖 App.logout 为更完整版本（调用 signOut）
       if (window.App) {
-        App.logout = async function () {
-          try {
-            await supabase.auth.signOut();
-          } catch (e) {
-            console.error("[auth-guard] signOut 异常:", e);
-          }
+        // 关键修复：乐观退出——先清本地 + 立即跳登录页，再异步 signOut
+        // 避免 signOut 网络失败/超时导致"点击退出没反应"
+        App.logout = function () {
           clearAllAuthState();
-          try {
-            window.location.replace("login.html");
-          } catch (e) {
-            window.location.href = "login.html";
-          }
+          const goLogin = function() {
+            try { window.location.replace("login.html"); }
+            catch (e) { window.location.href = "login.html"; }
+          };
+          goLogin();
+          setTimeout(goLogin, 50);
+          setTimeout(goLogin, 500);
+          supabase.auth.signOut().catch(function(e) {
+            console.error("[auth-guard] signOut 异常:", e);
+          });
         };
 
         // 同步更新顶栏用户名

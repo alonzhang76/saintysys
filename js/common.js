@@ -142,6 +142,21 @@ const App = {
     this.injectToast();
     this.bindSidebarToggle();
     this.loadUserInfo();
+    // 关键修复：users 列表从云端同步后刷新顶栏用户名
+    // 因为 init 时 SupabaseStore 可能还没同步，loadUserInfo 读不到本地 users 列表的显示名
+    window.addEventListener('cloud-data-updated', function(e) {
+      const keys = (e && e.detail && e.detail.keys) || [];
+      if (keys.indexOf('users') >= 0) {
+        try { if (window.App) App.loadUserInfo(); } catch(_) {}
+      }
+    });
+    // auth-guard 异步守卫角色确定后也刷新一次（角色更新可能伴随显示名更新）
+    window.addEventListener('auth-role-updated', function() {
+      try { if (window.App) App.loadUserInfo(); } catch(_) {}
+    });
+    // 额外设置一个2秒/5秒兜底刷新（防止 cloud-data-updated 因各种原因未触发）
+    setTimeout(function(){ try { if (window.App) App.loadUserInfo(); } catch(_){} }, 2000);
+    setTimeout(function(){ try { if (window.App) App.loadUserInfo(); } catch(_){} }, 5000);
   },
 
   // 注入侧边栏（根据当前用户权限过滤"不显示"的模块）
@@ -204,19 +219,30 @@ const App = {
 
   // 加载用户信息（Supabase 适配）
   loadUserInfo() {
-    let username = '管理员';
+    let username = '';
+    let userEmail = '';
     try {
       const cu = window.currentSupabaseUser;
-      if (cu) {
-        username = (cu.user_metadata && cu.user_metadata.username)
-          || (cu.email ? cu.email.split('@')[0] : '用户');
-      } else {
-        const session = _readSupabaseSessionSync();
-        if (session && session.user) {
-          const u = session.user;
-          username = (u.user_metadata && u.user_metadata.username)
-            || (u.email ? u.email.split('@')[0] : '用户');
-        }
+      const u = cu || (_readSupabaseSessionSync() || {}).user;
+      if (u) {
+        userEmail = u.email || '';
+        username = (u.user_metadata && u.user_metadata.username) || '';
+      }
+      // 关键修复：优先从本地 users 列表（管理员在设置页配置的）读取显示名
+      // 因为 Supabase user_metadata.username 通常为空（注册时未填），而管理员在 users 列表中填的"用户名"才是真正的显示名
+      if (userEmail && window.App) {
+        try {
+          const localUsers = App.store.get('users', []);
+          const emailLower = userEmail.toLowerCase().trim();
+          const localUser = localUsers.find(x => x.email && x.email.toLowerCase().trim() === emailLower);
+          if (localUser && localUser.username) {
+            username = localUser.username;
+          }
+        } catch(e) {}
+      }
+      // 兜底：显示名 优先本地users匹配的 → user_metadata.username → 邮箱前缀
+      if (!username) {
+        username = userEmail ? userEmail.split('@')[0] : '用户';
       }
     } catch (e) {}
     const userEl = document.querySelector('.header-user .user-name');
@@ -503,23 +529,30 @@ const App = {
   },
 
   // ===== 退出登录（Supabase 适配）=====
-  // 清除本地会话 + 异步调用 supabase.auth.signOut() + 跳登录页
+  // 乐观更新：先清本地 + 立即跳登录页，再异步调用 signOut
+  // 任何一步失败都不阻塞跳转，保证"点击退出一定生效"
   // 若 js/auth-guard.js 已加载，会以 auth-guard 的更完整版本覆盖此方法
   logout() {
+    // 1. 立即清本地所有认证状态
     _clearAllAuthState();
-    // 异步调用 signOut（动态 import，失败不影响跳转）
-    import('./supabase.js')
-      .then(function (mod) {
-        return mod.supabase.auth.signOut().catch(function () {});
-      })
-      .catch(function () {})
-      .finally(function () {
-        try {
-          window.location.replace('login.html');
-        } catch (e) {
-          window.location.href = 'login.html';
-        }
-      });
+    // 2. 强制跳登录页（设置双保险：立即 + 50ms 兜底 + 500ms 最终兜底）
+    const goLogin = function() {
+      try { window.location.replace('login.html'); }
+      catch (e) { window.location.href = 'login.html'; }
+    };
+    goLogin();
+    setTimeout(goLogin, 50);
+    setTimeout(goLogin, 500);
+    // 3. 后台异步调用 signOut，失败静默吞掉（不影响跳转）
+    try {
+      if (window.supabase && typeof window.supabase.auth?.signOut === 'function') {
+        window.supabase.auth.signOut().catch(function(){});
+      } else {
+        import('./supabase.js').then(function(mod){
+          if (mod && mod.supabase) mod.supabase.auth.signOut().catch(function(){});
+        }).catch(function(){});
+      }
+    } catch(e) {}
   },
 
   // ===== 角色定义 =====
