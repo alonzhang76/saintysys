@@ -87,6 +87,16 @@
     if (adminEmails.indexOf(email) >= 0) {
       role = "admin";
     }
+    // 关键修复：如果 user_metadata.role 还是默认的 'user'（auth-guard 异步未完成），
+    // 优先使用「设置」页面中管理员在本地 users 列表配置的角色，
+    // 这样页面初次渲染（auth-guard 未完成时）也能用正确的角色查权限
+    if (role === "user" && email && window.App) {
+      try {
+        const localUsers = window.App.store.get("users", []);
+        const localUser = localUsers.find((u) => u.email === email);
+        if (localUser && localUser.role) role = localUser.role;
+      } catch (e) {}
+    }
     // 异步从 Supabase user_roles 表读取真实角色
     // 如果 user_metadata 没有设置，会在异步守卫中更新
     return {
@@ -229,69 +239,91 @@
           .select('role')
           .eq('user_id', user.id);
 
-        if (!rolesError && rolesData && rolesData.length > 0) {
-          const roles = rolesData.map(r => r.role);
-          // 角色优先级：admin > manager > 各业务角色 > user
-          // 关键修复：不能取 roles[0]，因为 SQL 会给每个用户自动分配 'user' 角色，
-          // 导致业务角色（如 merchandiser）被 'user' 覆盖，权限矩阵查到的是 user 的权限（全是 write）
-          const ROLE_PRIORITY = ['admin', 'manager', 'merchandiser', 'purchaser', 'designer', 'qc', 'finance', 'documentary', 'user'];
-          let finalRole = 'user';
-          for (let i = 0; i < ROLE_PRIORITY.length; i++) {
-            if (roles.indexOf(ROLE_PRIORITY[i]) >= 0) {
-              finalRole = ROLE_PRIORITY[i];
-              break;
-            }
-          }
+        // SQL 表中的角色（可能只有自动分配的 'user'）
+        const sqlRoles = (!rolesError && rolesData && rolesData.length > 0)
+          ? rolesData.map(r => r.role)
+          : [];
 
-          // 关键修复：将加载的角色写入 window.currentSupabaseUser.user_metadata
-          if (window.currentSupabaseUser) {
-            if (!window.currentSupabaseUser.user_metadata) {
-              window.currentSupabaseUser.user_metadata = {};
-            }
-            // 管理员邮箱优先（不被 user_roles 表覆盖）
-            const adminEmails = window.ADMIN_EMAILS || [];
-            if (adminEmails.indexOf(window.currentSupabaseUser.email || '') >= 0) {
-              window.currentSupabaseUser.user_metadata.role = 'admin';
-            } else {
-              window.currentSupabaseUser.user_metadata.role = finalRole;
-            }
+        // 关键修复：优先使用「设置」页面中管理员配置的本地 users 列表的角色
+        // 因为 settings.html 的 saveUser() 只写入本地 users 列表，不写入 SQL user_roles 表，
+        // 如果不检查本地 users 列表，管理员在设置中分配的 manager/merchandiser 等角色不会生效
+        let localUserRole = null;
+        try {
+          if (window.App) {
+            const localUsers = window.App.store.get('users', []);
+            const localUser = localUsers.find(u => u.email === user.email);
+            if (localUser && localUser.role) localUserRole = localUser.role;
           }
-          // 兼容：也写入 App._currentUser（如果存在）
-          if (window.App && window.App._currentUser) {
-            window.App._currentUser.role = finalRole;
+        } catch(e) {}
+
+        // 合并角色：本地 users 列表角色 + SQL user_roles 角色去重
+        const allRoles = [];
+        if (localUserRole) allRoles.push(localUserRole);
+        sqlRoles.forEach(r => { if (allRoles.indexOf(r) < 0) allRoles.push(r); });
+        if (allRoles.length === 0) allRoles.push('user');
+
+        // 角色优先级：admin > manager > 各业务角色 > user
+        // 关键修复：不能取 roles[0]，因为 SQL 会给每个用户自动分配 'user' 角色，
+        // 导致业务角色（如 merchandiser）被 'user' 覆盖，权限矩阵查到的是 user 的权限（全是 write）
+        const ROLE_PRIORITY = ['admin', 'manager', 'merchandiser', 'purchaser', 'designer', 'qc', 'finance', 'documentary', 'user'];
+        let finalRole = 'user';
+        for (let i = 0; i < ROLE_PRIORITY.length; i++) {
+          if (allRoles.indexOf(ROLE_PRIORITY[i]) >= 0) {
+            finalRole = ROLE_PRIORITY[i];
+            break;
           }
-          console.log('[auth-guard] 用户角色:', finalRole, '| 所有角色:', roles);
+        }
 
-          // 加载用户对各模块的权限
-          // 关键修复：只加载 finalRole 对应的权限，不再合并所有角色
-          // 旧逻辑合并所有角色并取最高优先级（write > read），导致 'user' 角色的 write 权限
-          // 覆盖了业务角色（如 merchandiser）的 read/none 权限，使权限矩阵失效
-          try {
-            const { data: permsData, error: permsError } = await supabase
-              .from('module_permissions')
-              .select('module, permission')
-              .eq('role', finalRole);
+        // 关键修复：将加载的角色写入 window.currentSupabaseUser.user_metadata
+        if (window.currentSupabaseUser) {
+          if (!window.currentSupabaseUser.user_metadata) {
+            window.currentSupabaseUser.user_metadata = {};
+          }
+          // 管理员邮箱优先（不被 user_roles 表覆盖）
+          const adminEmails = window.ADMIN_EMAILS || [];
+          if (adminEmails.indexOf(window.currentSupabaseUser.email || '') >= 0) {
+            window.currentSupabaseUser.user_metadata.role = 'admin';
+          } else {
+            window.currentSupabaseUser.user_metadata.role = finalRole;
+          }
+        }
+        // 兼容：也写入 App._currentUser（如果存在）
+        if (window.App && window.App._currentUser) {
+          window.App._currentUser.role = finalRole;
+        }
+        console.log('[auth-guard] 用户角色:', finalRole, '| 本地角色:', localUserRole, '| SQL角色:', sqlRoles);
 
-            const merged = {};
-            if (!permsError && permsData) {
-              permsData.forEach(p => {
-                merged[p.module] = p.permission;
-              });
-              console.log('[auth-guard] 模块权限已加载 (role=' + finalRole + '):', merged);
-            } else if (permsError) {
-              console.warn('[auth-guard] 加载模块权限失败:', permsError);
-            }
-            // 无论成功失败都设置 _userModulePerms（即使为空对象），
-            // 确保 enforcePagePermission 的 __permWaitPromise 能 resolve，避免页面永远停留在默认权限
-            if (window.App) {
-              window.App._userModulePerms = merged;
-            }
-          } catch (e) {
-            console.warn('[auth-guard] 加载模块权限失败:', e);
-            // 出错时也要设置空对象，让等待的 promise 能 resolve
-            if (window.App && !window.App._userModulePerms) {
-              window.App._userModulePerms = {};
-            }
+        // 加载用户对各模块的权限
+        // 关键修复：只加载 finalRole 对应的权限，不再合并所有角色
+        // 旧逻辑合并所有角色并取最高优先级（write > read），导致 'user' 角色的 write 权限
+        // 覆盖了业务角色（如 merchandiser）的 read/none 权限，使权限矩阵失效
+        // 注意：settings.html 的权限矩阵保存在 localStorage 'permissions' key 中，
+        // getPermission() 优先读取 'permissions' key，_userModulePerms 仅作兜底
+        try {
+          const { data: permsData, error: permsError } = await supabase
+            .from('module_permissions')
+            .select('module, permission')
+            .eq('role', finalRole);
+
+          const merged = {};
+          if (!permsError && permsData) {
+            permsData.forEach(p => {
+              merged[p.module] = p.permission;
+            });
+            console.log('[auth-guard] 模块权限已加载 (role=' + finalRole + '):', merged);
+          } else if (permsError) {
+            console.warn('[auth-guard] 加载模块权限失败:', permsError);
+          }
+          // 无论成功失败都设置 _userModulePerms（即使为空对象），
+          // 确保 enforcePagePermission 的 __permWaitPromise 能 resolve，避免页面永远停留在默认权限
+          if (window.App) {
+            window.App._userModulePerms = merged;
+          }
+        } catch (e) {
+          console.warn('[auth-guard] 加载模块权限失败:', e);
+          // 出错时也要设置空对象，让等待的 promise 能 resolve
+          if (window.App && !window.App._userModulePerms) {
+            window.App._userModulePerms = {};
           }
         }
       } catch (e) {

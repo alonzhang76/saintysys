@@ -54,6 +54,16 @@ function _mapSupabaseUser(user) {
   if (adminEmails.indexOf(email) >= 0) {
     role = 'admin';
   }
+  // 关键修复：如果 user_metadata.role 还是默认的 'user'（auth-guard 异步未完成），
+  // 优先使用「设置」页面中管理员在本地 users 列表配置的角色，
+  // 这样页面初次渲染（auth-guard 未完成时）也能用正确的角色查权限
+  if (role === 'user' && email && window.App) {
+    try {
+      var localUsers = App.store.get('users', []);
+      var localUser = localUsers.find(function(u) { return u.email === email; });
+      if (localUser && localUser.role) role = localUser.role;
+    } catch(e) {}
+  }
   return {
     id: user.id,
     username: meta.username || (email ? email.split('@')[0] : '用户'),
