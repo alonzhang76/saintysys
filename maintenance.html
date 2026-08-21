@@ -6,7 +6,7 @@
 <title>维护资料 - 舜天汉唐服装外贸系统</title>
 <link rel="stylesheet" href="css/common.css?v=20260812">
 <style>
-/* ===== 标签页计数徽�?===== */
+/* ===== 标签页计数徽章 ===== */
 .tab-item .tab-count {
   display: inline-block;
   min-width: 16px;
@@ -201,7 +201,7 @@
   margin: 0;
 }
 
-/* ===== 导入冲突对话�?===== */
+/* ===== 导入冲突对话框 ===== */
 .conflict-row {
   background: #fff;
   border: 1px solid var(--border-light);
@@ -267,45 +267,45 @@
   <div class="sidebar" id="sidebar"></div>
   <div class="main-area">
     <div class="app-header">
-      <button class="header-toggle">�?/button>
+      <button class="header-toggle">☰</button>
       <span class="header-title">维护资料</span>
       <div class="header-actions">
         <button class="btn btn-sm" onclick="App.backupData()">📦</button>
-        <div class="header-user"><span>👤</span><span class="user-name">管理�?/span></div>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
         <button class="btn btn-sm" onclick="App.logout()">🚪</button>
       </div>
     </div>
     <div class="app-content">
-      <!-- 标签�?-->
+      <!-- 标签页 -->
       <div class="tabs">
         <div class="tab-item active" onclick="Maintenance.switchTab('fabric', this)">
-          <span>🧵 面里衬信�?/span><span class="tab-count" id="count-fabric">0</span>
+          <span>🧵 面里衬信息</span><span class="tab-count" id="count-fabric">0</span>
         </div>
         <div class="tab-item" onclick="Maintenance.switchTab('accessory', this)">
           <span>🔩 辅料信息</span><span class="tab-count" id="count-accessory">0</span>
         </div>
         <div class="tab-item" onclick="Maintenance.switchTab('size', this)">
-          <span>📏 尺码�?/span><span class="tab-count" id="count-size">0</span>
+          <span>📏 尺码表</span><span class="tab-count" id="count-size">0</span>
         </div>
         <div class="tab-item" onclick="Maintenance.switchTab('term', this)">
           <span>🔤 中英文对照表</span><span class="tab-count" id="count-term">0</span>
         </div>
       </div>
 
-      <!-- 面里衬信�?-->
+      <!-- 面里衬信息 -->
       <div class="tab-content active" id="tab-fabric">
         <div class="table-wrap">
           <div class="table-toolbar">
             <div class="table-toolbar-left">
               <input type="text" id="fabricSearch" class="form-input" style="width:220px;" placeholder="搜索名称/编号/成份/面里衬厂" oninput="Maintenance.renderFabric()">
-              <span class="text-muted font-sm" id="fabricCount">�?0 �?/span>
+              <span class="text-muted font-sm" id="fabricCount">共 0 条</span>
             </div>
             <div class="table-toolbar-right">
               <div class="action-dropdown" id="fabricActionDropdown">
                 <button class="action-dropdown-btn" onclick="Maintenance.toggleFabricActionMenu()">
                   <span>⚙️</span>
                   <span>操作</span>
-                  <span class="arrow">�?/span>
+                  <span class="arrow">▼</span>
                 </button>
                 <div class="action-dropdown-menu">
                   <div class="action-dropdown-item" onclick="Maintenance.fabricImportExcel()">
@@ -316,11 +316,11 @@
                   </div>
                   <div class="action-dropdown-divider"></div>
                   <div class="action-dropdown-item danger" onclick="Maintenance.fabricClearAll()">
-                    <span>🗑�?/span><span>清空</span>
+                    <span>🗑️</span><span>清空</span>
                   </div>
                 </div>
               </div>
-              <button class="btn btn-primary" onclick="Maintenance.openFabricForm()" title="新增">�?/button>
+              <button class="btn btn-primary" onclick="Maintenance.openFabricForm()" title="新增">➕</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -334,15 +334,15 @@
         <div class="table-wrap">
           <div class="table-toolbar">
             <div class="table-toolbar-left">
-              <input type="text" id="accessorySearch" class="form-input" style="width:220px;" placeholder="搜索名称/编号/规格/辅料�? oninput="Maintenance.renderAccessory()">
-              <span class="text-muted font-sm" id="accessoryCount">�?0 �?/span>
+              <input type="text" id="accessorySearch" class="form-input" style="width:220px;" placeholder="搜索名称/编号/规格/辅料厂" oninput="Maintenance.renderAccessory()">
+              <span class="text-muted font-sm" id="accessoryCount">共 0 条</span>
             </div>
             <div class="table-toolbar-right">
               <div class="action-dropdown" id="accessoryActionDropdown">
                 <button class="action-dropdown-btn" onclick="Maintenance.toggleAccessoryActionMenu()">
                   <span>⚙️</span>
                   <span>操作</span>
-                  <span class="arrow">�?/span>
+                  <span class="arrow">▼</span>
                 </button>
                 <div class="action-dropdown-menu">
                   <div class="action-dropdown-item" onclick="Maintenance.accessoryImportExcel()">
@@ -353,11 +353,11 @@
                   </div>
                   <div class="action-dropdown-divider"></div>
                   <div class="action-dropdown-item danger" onclick="Maintenance.accessoryClearAll()">
-                    <span>🗑�?/span><span>清空</span>
+                    <span>🗑️</span><span>清空</span>
                   </div>
                 </div>
               </div>
-              <button class="btn btn-primary" onclick="Maintenance.openAccessoryForm()" title="新增">�?/button>
+              <button class="btn btn-primary" onclick="Maintenance.openAccessoryForm()" title="新增">➕</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -366,7 +366,7 @@
         </div>
       </div>
 
-      <!-- 尺码�?-->
+      <!-- 尺码表 -->
       <div class="tab-content" id="tab-size">
         <div class="table-wrap">
           <div class="table-toolbar">
@@ -378,10 +378,10 @@
                 <option value="男装">男装</option>
                 <option value="女装">女装</option>
               </select>
-              <span class="text-muted font-sm" id="sizeCount">�?0 �?/span>
+              <span class="text-muted font-sm" id="sizeCount">共 0 条</span>
             </div>
             <div class="table-toolbar-right">
-              <button class="btn btn-primary" onclick="Maintenance.openSizeForm()" title="新增">�?/button>
+              <button class="btn btn-primary" onclick="Maintenance.openSizeForm()" title="新增">➕</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -406,14 +406,14 @@
                 <option value="单证">单证</option>
                 <option value="其他">其他</option>
               </select>
-              <span class="text-muted font-sm" id="termCount">�?0 �?/span>
+              <span class="text-muted font-sm" id="termCount">共 0 条</span>
             </div>
             <div class="table-toolbar-right">
               <div class="action-dropdown" id="termActionDropdown">
                 <button class="action-dropdown-btn" onclick="Maintenance.toggleTermActionMenu()">
                   <span>⚙️</span>
                   <span>操作</span>
-                  <span class="arrow">�?/span>
+                  <span class="arrow">▼</span>
                 </button>
                 <div class="action-dropdown-menu">
                   <div class="action-dropdown-item" onclick="Maintenance.termImportExcel()">
@@ -424,11 +424,11 @@
                   </div>
                   <div class="action-dropdown-divider"></div>
                   <div class="action-dropdown-item danger" onclick="Maintenance.termClearAll()">
-                    <span>🗑�?/span><span>清空</span>
+                    <span>🗑️</span><span>清空</span>
                   </div>
                 </div>
               </div>
-              <button class="btn btn-primary" onclick="Maintenance.openTermForm()" title="新增">�?/button>
+              <button class="btn btn-primary" onclick="Maintenance.openTermForm()" title="新增">➕</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -444,15 +444,15 @@
 <script src="js/common.js?v=20260812"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260813"></script>
-<!-- Supabase 存储层：localStorage �?Supabase -->
-<script type="module" src="js/supabase.js?v=20260822f"></script>
-<script src="js/supabase-store.js?v=20260822f"></script>
-<script src="js/localstorage-patch.js?v=20260822f"></script>
-<script src="js/supabase-bridge.js?v=20260822f"></script>
+<!-- Supabase 存储层：localStorage → Supabase -->
+<script type="module" src="js/supabase.js?v=20260820"></script>
+<script src="js/supabase-store.js?v=20260822e"></script>
+<script src="js/localstorage-patch.js?v=20260822e"></script>
+<script src="js/supabase-bridge.js?v=20260820d"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822f"></script>
+<script src="js/init-page.js?v=20260822e"></script>
 <script>
 // ===== 提前注册：云端数据变更监听器 =====
 var _MaintenanceInited = false;
@@ -463,10 +463,10 @@ window.addEventListener('cloud-data-updated', function(e) {
   });
   if (needRefresh) {
     if (!_MaintenanceInited) {
-      console.log('[maintenance.html] �?云端数据变化已缓存，等待 Maintenance.init() 读取:', keys.join(','));
+      console.log('[maintenance.html] ⏳ 云端数据变化已缓存，等待 Maintenance.init() 读取:', keys.join(','));
       return;
     }
-    console.log('[maintenance.html] 云端数据变更，刷新页面数�?', keys.join(','));
+    console.log('[maintenance.html] 云端数据变更，刷新页面数据:', keys.join(','));
     Maintenance.init();
   }
 });
@@ -475,11 +475,11 @@ window.addEventListener('cloud-data-updated', function(e) {
 const Maintenance = {
   currentTab: 'fabric',
 
-  // 面料/辅料选中ID集合（用于批量导�?清空�?
+  // 面料/辅料选中ID集合（用于批量导出/清空）
   _fabricSelectedIds: new Set(),
   _accessorySelectedIds: new Set(),
 
-  // 通用导入冲突状态（供面�?辅料复用�?
+  // 通用导入冲突状态（供面料/辅料复用）
   _importConflictState: null,
 
   // 类别样式映射
@@ -513,7 +513,7 @@ const Maintenance = {
     return code;
   },
 
-  // ===== 切换标签�?=====
+  // ===== 切换标签页 =====
   switchTab(tab, el) {
     this.currentTab = tab;
     document.querySelectorAll('.tab-item').forEach(e => e.classList.remove('active'));
@@ -522,7 +522,7 @@ const Maintenance = {
     document.getElementById('tab-' + tab).classList.add('active');
   },
 
-  // ===== 空状�?=====
+  // ===== 空状态 =====
   emptyHtml(msg) {
     return `<tr><td colspan="20" style="text-align:center;padding:30px;">
       <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">${msg}</div></div>
@@ -574,7 +574,7 @@ const Maintenance = {
   },
 
   // ============================================================
-  //  面里衬信�?
+  //  面里衬信息
   // ============================================================
   getFilteredFabric() {
     const list = App.store.get('maintFabrics', []);
@@ -582,7 +582,7 @@ const Maintenance = {
     if (!search) return list;
     return list.filter(f => {
       const fields = [f.name, f.type, f.code, f.customerCode, f.patternNo, f.composition, f.color, f.colorCard, f.remark];
-      // 也搜索面里衬厂名�?
+      // 也搜索面里衬厂名称
       const factoryNames = (f.factoryIds || []).map(id => {
         const c = App.store.get('contacts', []).find(c => c.id === id);
         return c ? c.name : '';
@@ -594,7 +594,7 @@ const Maintenance = {
 
   renderFabric() {
     const data = this.getFilteredFabric();
-    document.getElementById('fabricCount').textContent = `�?${data.length} 条`;
+    document.getElementById('fabricCount').textContent = `共 ${data.length} 条`;
     document.getElementById('count-fabric').textContent = App.store.get('maintFabrics', []).length;
 
     const allChecked = data.length > 0 && data.every(f => this._fabricSelectedIds.has(f.id));
@@ -602,14 +602,14 @@ const Maintenance = {
 
     const thead = `<thead><tr>
       <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="Maintenance.fabricToggleSelectAll(this.checked)"></th>
-      <th>名称</th><th style="width:70px;">类型</th><th>编号</th><th>客户编号</th><th>花色/色样�?/th><th>经纬�?/th><th>经纬时密</th>
+      <th>名称</th><th style="width:70px;">类型</th><th>编号</th><th>客户编号</th><th>花色/色样号</th><th>经纬纱</th><th>经纬时密</th>
       <th>幅宽</th><th>成份</th><th>克重</th><th>颜色</th><th>色卡</th><th>面里衬厂</th>
       <th>备注</th><th style="width:70px;">操作</th>
     </tr></thead>`;
 
     let tbody;
     if (data.length === 0) {
-      tbody = `<tbody>${this.emptyHtml('暂无面里衬信息，点击右上�?�?新增')}</tbody>`;
+      tbody = `<tbody>${this.emptyHtml('暂无面里衬信息，点击右上角 ➕ 新增')}</tbody>`;
     } else {
       tbody = '<tbody>' + data.map(f => {
         const cbChecked = this._fabricSelectedIds.has(f.id) ? 'checked' : '';
@@ -632,7 +632,7 @@ const Maintenance = {
           <td>${App.utils.escapeHtml(f.remark || '-')}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openFabricForm('${f.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteFabric('${f.id}')">🗑�?/button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteFabric('${f.id}')">🗑️</button>
           </td>
         </tr>`;
       }).join('') + '</tbody>';
@@ -665,12 +665,12 @@ const Maintenance = {
         <div class="form-group" style="flex:1;min-width:90px;">
           <label class="form-label">类型</label>
           <select id="ff_type" class="form-select">
-            ${['面料','里料','�?,'填充�?].map(t => `<option value="${t}" ${item.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+            ${['面料','里料','衬','填充料'].map(t => `<option value="${t}" ${item.type === t ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
-          <label class="form-label">花色/色样�?/label>
-          <input type="text" id="ff_patternNo" class="form-input" value="${App.utils.escapeHtml(item.patternNo || '')}" placeholder="花色/色样�?>
+          <label class="form-label">花色/色样号</label>
+          <input type="text" id="ff_patternNo" class="form-input" value="${App.utils.escapeHtml(item.patternNo || '')}" placeholder="花色/色样号">
         </div>
         <div class="form-group" style="flex:1;min-width:100px;">
           <label class="form-label">色卡</label>
@@ -678,11 +678,11 @@ const Maintenance = {
         </div>
       </div>
 
-      <div class="form-section-title">🧵 面里衬参�?/div>
+      <div class="form-section-title">🧵 面里衬参数</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:120px;">
-          <label class="form-label">经纬�?/label>
-          <input type="text" id="ff_yarn" class="form-input" value="${App.utils.escapeHtml(item.yarn || '')}" placeholder="经纬�?>
+          <label class="form-label">经纬纱</label>
+          <input type="text" id="ff_yarn" class="form-input" value="${App.utils.escapeHtml(item.yarn || '')}" placeholder="经纬纱">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
           <label class="form-label">经纬时密</label>
@@ -690,15 +690,15 @@ const Maintenance = {
         </div>
         <div class="form-group" style="flex:1;min-width:100px;">
           <label class="form-label">幅宽</label>
-          <input type="text" id="ff_width" class="form-input" value="${App.utils.escapeHtml(item.width || '')}" placeholder="�?150cm">
+          <input type="text" id="ff_width" class="form-input" value="${App.utils.escapeHtml(item.width || '')}" placeholder="如 150cm">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
           <label class="form-label">成份</label>
-          <input type="text" id="ff_composition" class="form-input" value="${App.utils.escapeHtml(item.composition || '')}" placeholder="�?100%�?>
+          <input type="text" id="ff_composition" class="form-input" value="${App.utils.escapeHtml(item.composition || '')}" placeholder="如 100%棉">
         </div>
         <div class="form-group" style="flex:1;min-width:100px;">
           <label class="form-label">克重</label>
-          <input type="text" id="ff_weight" class="form-input" value="${App.utils.escapeHtml(item.weight || '')}" placeholder="�?200g/m²">
+          <input type="text" id="ff_weight" class="form-input" value="${App.utils.escapeHtml(item.weight || '')}" placeholder="如 200g/m²">
         </div>
         <div class="form-group" style="flex:1;min-width:100px;">
           <label class="form-label">颜色</label>
@@ -722,13 +722,13 @@ const Maintenance = {
       <button class="btn btn-primary" onclick="Maintenance.saveFabricForm('${id || ''}')">💾</button>
     `;
 
-    App.modal.open({ title: isEdit ? '编辑面里衬信�? : '新增面里衬信�?, body, footer, size: 'lg', closeOnOverlay: false });
+    App.modal.open({ title: isEdit ? '编辑面里衬信息' : '新增面里衬信息', body, footer, size: 'lg', closeOnOverlay: false });
     this.renderFactoryPicker('ff_factoryIds', '面里衬厂', selectedFactoryIds);
   },
 
   saveFabricForm(id) {
     const name = document.getElementById('ff_name').value.trim();
-    if (!name) { App.toast('请输入名�?, 'error'); return; }
+    if (!name) { App.toast('请输入名称', 'error'); return; }
 
     const data = {
       name,
@@ -763,11 +763,11 @@ const Maintenance = {
   },
 
   deleteFabric(id) {
-    App.confirm('确定删除此条面里衬信息吗�?, () => {
+    App.confirm('确定删除此条面里衬信息吗？', () => {
       let list = App.store.get('maintFabrics', []);
       list = list.filter(f => f.id !== id);
       App.store.set('maintFabrics', list);
-      App.toast('已删�?, 'success');
+      App.toast('已删除', 'success');
       this.renderFabric();
     });
   },
@@ -815,14 +815,14 @@ const Maintenance = {
     } else {
       items = all;
       if (items.length === 0) {
-        App.toast('没有数据可导�?, 'error');
+        App.toast('没有数据可导出', 'error');
         return;
       }
     }
 
     const headerMap = {
-      name: '名称', type: '类型', code: '编号', customerCode: '客户编号', patternNo: '花色/色样�?,
-      yarn: '经纬�?, density: '经纬时密', width: '幅宽',
+      name: '名称', type: '类型', code: '编号', customerCode: '客户编号', patternNo: '花色/色样号',
+      yarn: '经纬纱', density: '经纬时密', width: '幅宽',
       composition: '成份', weight: '克重', color: '颜色',
       colorCard: '色卡', remark: '备注'
     };
@@ -841,10 +841,10 @@ const Maintenance = {
     ];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '面里衬信�?);
+    XLSX.utils.book_append_sheet(wb, ws, '面里衬信息');
     const dateStr = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `面里衬信息_${dateStr}.xlsx`);
-    App.toast(`已导�?${items.length} 条数据`, 'success');
+    App.toast(`已导出 ${items.length} 条数据`, 'success');
   },
 
   // ===== 面里衬导入Excel（自动编号）=====
@@ -877,16 +877,16 @@ const Maintenance = {
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
         if (rows.length === 0) {
-          App.toast('Excel文件中没有数�?, 'error');
+          App.toast('Excel文件中没有数据', 'error');
           return;
         }
 
         const reverseMap = {
-          '名称': 'name', '面料名称': 'name', '面里衬名�?: 'name',
+          '名称': 'name', '面料名称': 'name', '面里衬名称': 'name',
           '类型': 'type', '面料类型': 'type', '分类': 'type',
           '客户编号': 'customerCode',
-          '花色/色样�?: 'patternNo', '花色': 'patternNo', '色样�?: 'patternNo',
-          '经纬�?: 'yarn',
+          '花色/色样号': 'patternNo', '花色': 'patternNo', '色样号': 'patternNo',
+          '经纬纱': 'yarn',
           '经纬时密': 'density',
           '幅宽': 'width',
           '成份': 'composition', '成分': 'composition',
@@ -921,12 +921,12 @@ const Maintenance = {
 
         App.store.set('maintFabrics', fabrics);
         this.renderFabric();
-        let msg = `导入完成：成�?${importCount} 条`;
-        if (skipCount > 0) msg += `，跳�?${skipCount} 条（缺少名称）`;
+        let msg = `导入完成：成功 ${importCount} 条`;
+        if (skipCount > 0) msg += `，跳过 ${skipCount} 条（缺少名称）`;
         App.toast(msg, 'success');
       } catch (err) {
         console.error('导入失败:', err);
-        App.toast('导入失败，请检查文件格�?, 'error');
+        App.toast('导入失败，请检查文件格式', 'error');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -937,7 +937,7 @@ const Maintenance = {
     this.closeFabricActionMenu();
     const fabrics = App.store.get('maintFabrics', []);
     if (this._fabricSelectedIds.size > 0) {
-      App.confirm(`确定要删除选中�?${this._fabricSelectedIds.size} 条数据吗？`, () => {
+      App.confirm(`确定要删除选中的 ${this._fabricSelectedIds.size} 条数据吗？`, () => {
         const newFabrics = fabrics.filter(f => !this._fabricSelectedIds.has(f.id));
         App.store.set('maintFabrics', newFabrics);
         this._fabricSelectedIds.clear();
@@ -946,10 +946,10 @@ const Maintenance = {
       });
     } else {
       if (fabrics.length === 0) {
-        App.toast('面里衬信息已是空�?, 'error');
+        App.toast('面里衬信息已是空的', 'error');
         return;
       }
-      App.confirm(`确定要清空全�?${fabrics.length} 条面里衬信息吗？此操作不可恢复！`, () => {
+      App.confirm(`确定要清空全部 ${fabrics.length} 条面里衬信息吗？此操作不可恢复！`, () => {
         App.store.set('maintFabrics', []);
         this._fabricSelectedIds.clear();
         App.toast('面里衬信息已清空', 'success');
@@ -978,7 +978,7 @@ const Maintenance = {
 
   renderAccessory() {
     const data = this.getFilteredAccessory();
-    document.getElementById('accessoryCount').textContent = `�?${data.length} 条`;
+    document.getElementById('accessoryCount').textContent = `共 ${data.length} 条`;
     document.getElementById('count-accessory').textContent = App.store.get('maintAccessories', []).length;
 
     const allChecked = data.length > 0 && data.every(a => this._accessorySelectedIds.has(a.id));
@@ -986,13 +986,13 @@ const Maintenance = {
 
     const thead = `<thead><tr>
       <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="Maintenance.accessoryToggleSelectAll(this.checked)"></th>
-      <th>名称</th><th>编号</th><th>客户编号</th><th>供应商编�?/th><th>规格</th><th>颜色</th>
-      <th>辅料�?/th><th>备注</th><th style="width:70px;">操作</th>
+      <th>名称</th><th>编号</th><th>客户编号</th><th>供应商编号</th><th>规格</th><th>颜色</th>
+      <th>辅料厂</th><th>备注</th><th style="width:70px;">操作</th>
     </tr></thead>`;
 
     let tbody;
     if (data.length === 0) {
-      tbody = `<tbody>${this.emptyHtml('暂无辅料信息，点击右上角 �?新增')}</tbody>`;
+      tbody = `<tbody>${this.emptyHtml('暂无辅料信息，点击右上角 ➕ 新增')}</tbody>`;
     } else {
       tbody = '<tbody>' + data.map(a => {
         const cbChecked = this._accessorySelectedIds.has(a.id) ? 'checked' : '';
@@ -1009,7 +1009,7 @@ const Maintenance = {
           <td>${App.utils.escapeHtml(a.remark || '-')}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openAccessoryForm('${a.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteAccessory('${a.id}')">🗑�?/button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteAccessory('${a.id}')">🗑️</button>
           </td>
         </tr>`;
       }).join('') + '</tbody>';
@@ -1036,12 +1036,12 @@ const Maintenance = {
           <input type="text" id="af_customerCode" class="form-input" value="${App.utils.escapeHtml(item.customerCode || '')}" placeholder="客户编号">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
-          <label class="form-label">供应商编�?/label>
-          <input type="text" id="af_supplierCode" class="form-input" value="${App.utils.escapeHtml(item.supplierCode || '')}" placeholder="供应商编�?>
+          <label class="form-label">供应商编号</label>
+          <input type="text" id="af_supplierCode" class="form-input" value="${App.utils.escapeHtml(item.supplierCode || '')}" placeholder="供应商编号">
         </div>
         <div class="form-group" style="flex:2;min-width:160px;">
           <label class="form-label">名称<span class="required">*</span></label>
-          <input type="text" id="af_name" class="form-input" value="${App.utils.escapeHtml(item.name || '')}" placeholder="请输入辅料名�?>
+          <input type="text" id="af_name" class="form-input" value="${App.utils.escapeHtml(item.name || '')}" placeholder="请输入辅料名称">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
           <label class="form-label">规格</label>
@@ -1070,12 +1070,12 @@ const Maintenance = {
     `;
 
     App.modal.open({ title: isEdit ? '编辑辅料信息' : '新增辅料信息', body, footer, size: 'lg', closeOnOverlay: false });
-    this.renderFactoryPicker('af_factoryIds', '辅料�?, selectedFactoryIds);
+    this.renderFactoryPicker('af_factoryIds', '辅料厂', selectedFactoryIds);
   },
 
   saveAccessoryForm(id) {
     const name = document.getElementById('af_name').value.trim();
-    if (!name) { App.toast('请输入名�?, 'error'); return; }
+    if (!name) { App.toast('请输入名称', 'error'); return; }
 
     const data = {
       name,
@@ -1108,7 +1108,7 @@ const Maintenance = {
       let list = App.store.get('maintAccessories', []);
       list = list.filter(a => a.id !== id);
       App.store.set('maintAccessories', list);
-      App.toast('已删�?, 'success');
+      App.toast('已删除', 'success');
       this.renderAccessory();
     });
   },
@@ -1156,13 +1156,13 @@ const Maintenance = {
     } else {
       items = all;
       if (items.length === 0) {
-        App.toast('没有数据可导�?, 'error');
+        App.toast('没有数据可导出', 'error');
         return;
       }
     }
 
     const headerMap = {
-      name: '名称', code: '编号', customerCode: '客户编号', supplierCode: '供应商编�?, spec: '规格',
+      name: '名称', code: '编号', customerCode: '客户编号', supplierCode: '供应商编号', spec: '规格',
       color: '颜色', remark: '备注'
     };
     const keys = Object.keys(headerMap);
@@ -1182,7 +1182,7 @@ const Maintenance = {
     XLSX.utils.book_append_sheet(wb, ws, '辅料信息');
     const dateStr = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `辅料信息_${dateStr}.xlsx`);
-    App.toast(`已导�?${items.length} 条数据`, 'success');
+    App.toast(`已导出 ${items.length} 条数据`, 'success');
   },
 
   // ===== 辅料导入Excel（自动编号）=====
@@ -1215,14 +1215,14 @@ const Maintenance = {
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
         if (rows.length === 0) {
-          App.toast('Excel文件中没有数�?, 'error');
+          App.toast('Excel文件中没有数据', 'error');
           return;
         }
 
         const reverseMap = {
           '名称': 'name', '辅料名称': 'name',
           '客户编号': 'customerCode',
-          '供应商编�?: 'supplierCode',
+          '供应商编号': 'supplierCode',
           '规格': 'spec',
           '颜色': 'color',
           '备注': 'remark'
@@ -1253,12 +1253,12 @@ const Maintenance = {
 
         App.store.set('maintAccessories', accessories);
         this.renderAccessory();
-        let msg = `导入完成：成�?${importCount} 条`;
-        if (skipCount > 0) msg += `，跳�?${skipCount} 条（缺少名称）`;
+        let msg = `导入完成：成功 ${importCount} 条`;
+        if (skipCount > 0) msg += `，跳过 ${skipCount} 条（缺少名称）`;
         App.toast(msg, 'success');
       } catch (err) {
         console.error('导入失败:', err);
-        App.toast('导入失败，请检查文件格�?, 'error');
+        App.toast('导入失败，请检查文件格式', 'error');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -1269,7 +1269,7 @@ const Maintenance = {
     this.closeAccessoryActionMenu();
     const accessories = App.store.get('maintAccessories', []);
     if (this._accessorySelectedIds.size > 0) {
-      App.confirm(`确定要删除选中�?${this._accessorySelectedIds.size} 条数据吗？`, () => {
+      App.confirm(`确定要删除选中的 ${this._accessorySelectedIds.size} 条数据吗？`, () => {
         const newAccessories = accessories.filter(a => !this._accessorySelectedIds.has(a.id));
         App.store.set('maintAccessories', newAccessories);
         this._accessorySelectedIds.clear();
@@ -1281,17 +1281,17 @@ const Maintenance = {
         App.toast('辅料信息已是空的', 'error');
         return;
       }
-      App.confirm(`确定要清空全�?${accessories.length} 条辅料信息吗？此操作不可恢复！`, () => {
+      App.confirm(`确定要清空全部 ${accessories.length} 条辅料信息吗？此操作不可恢复！`, () => {
         App.store.set('maintAccessories', []);
         this._accessorySelectedIds.clear();
-        App.toast('辅料信息已清�?, 'success');
+        App.toast('辅料信息已清空', 'success');
         this.renderAccessory();
       });
     }
   },
 
   // ============================================================
-  //  尺码表（按尺码组管理，支持童�?男装/女装等）
+  //  尺码表（按尺码组管理，支持童装/男装/女装等）
   // ============================================================
   _editingSizes: [],
 
@@ -1312,7 +1312,7 @@ const Maintenance = {
   renderSize() {
     const allList = App.store.get('maintSizes', []);
     const data = this.getFilteredSize();
-    document.getElementById('sizeCount').textContent = `�?${data.length} 条`;
+    document.getElementById('sizeCount').textContent = `共 ${data.length} 条`;
     document.getElementById('count-size').textContent = allList.length;
 
     const thead = `<thead><tr>
@@ -1322,7 +1322,7 @@ const Maintenance = {
 
     let tbody;
     if (data.length === 0) {
-      tbody = `<tbody>${this.emptyHtml('暂无尺码组，点击右上�?�?新增')}</tbody>`;
+      tbody = `<tbody>${this.emptyHtml('暂无尺码组，点击右上角 ➕ 新增')}</tbody>`;
     } else {
       tbody = '<tbody>' + data.map(s => {
         const seq = allList.findIndex(x => x.id === s.id) + 1;
@@ -1338,7 +1338,7 @@ const Maintenance = {
           <td>${App.utils.escapeHtml(s.remark || '-')}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openSizeForm('${s.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteSize('${s.id}')">🗑�?/button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteSize('${s.id}')">🗑️</button>
           </td>
         </tr>`;
       }).join('') + '</tbody>';
@@ -1346,18 +1346,18 @@ const Maintenance = {
     document.getElementById('sizeTable').innerHTML = thead + tbody;
   },
 
-  // ===== 款式选项管理（可增减�?====
+  // ===== 款式选项管理（可增减）=====
   getStyleOptions() {
     const opts = App.store.get('maintStyleOptions', null);
     if (opts && Array.isArray(opts) && opts.length) return opts;
     // 默认款式选项
-    const defaults = ['上衣', '裤子', '裙子', '外套', '连衣�?, 'T�?, '衬衫'];
+    const defaults = ['上衣', '裤子', '裙子', '外套', '连衣裙', 'T恤', '衬衫'];
     App.store.set('maintStyleOptions', defaults);
     return defaults;
   },
 
   openStyleManager() {
-    // 保存当前尺码表单状�?
+    // 保存当前尺码表单状态
     this._sizeFormState = null;
     const sizesInput = document.getElementById('sf_sizes');
     if (sizesInput) {
@@ -1372,19 +1372,19 @@ const Maintenance = {
 
     const opts = this.getStyleOptions();
     const body = `
-      <div class="form-section-title">⚙️ 款式选项管理（可增减�?/div>
+      <div class="form-section-title">⚙️ 款式选项管理（可增减）</div>
       <div class="form-group">
         <div style="display:flex;gap:5px;">
-          <input type="text" id="sm_newOption" class="form-input" style="flex:1;" placeholder="输入新款式名�? onkeydown="if(event.key==='Enter'){event.preventDefault();Maintenance.addStyleOption()}">
-          <button class="btn btn-primary" onclick="Maintenance.addStyleOption()" title="添加">�?/button>
+          <input type="text" id="sm_newOption" class="form-input" style="flex:1;" placeholder="输入新款式名称" onkeydown="if(event.key==='Enter'){event.preventDefault();Maintenance.addStyleOption()}">
+          <button class="btn btn-primary" onclick="Maintenance.addStyleOption()" title="添加">➕</button>
         </div>
       </div>
       <div class="form-group">
         <div id="sm_optionList" style="display:flex;flex-wrap:wrap;gap:5px;min-height:40px;"></div>
       </div>
-      <div class="text-muted font-sm" style="margin-top:8px;">提示：点击选项右侧 �?删除。已用于尺码组的款式删除后不影响历史记录�?/div>
+      <div class="text-muted font-sm" style="margin-top:8px;">提示：点击选项右侧 ✕ 删除。已用于尺码组的款式删除后不影响历史记录。</div>
     `;
-    const footer = `<button class="btn btn-primary" onclick="Maintenance.closeStyleManager()">�?完成</button>`;
+    const footer = `<button class="btn btn-primary" onclick="Maintenance.closeStyleManager()">✅ 完成</button>`;
     App.modal.open({ title: '管理款式选项', body, footer, size: 'md', closeOnOverlay: false });
     this.renderStyleOptionList();
   },
@@ -1395,7 +1395,7 @@ const Maintenance = {
     if (this._sizeFormState) {
       const st = this._sizeFormState;
       this.openSizeForm(st.editingId);
-      // 还原用户已输入的�?
+      // 还原用户已输入的值
       document.getElementById('sf_category').value = st.category;
       if (st.part) document.getElementById('sf_part').value = st.part;
       document.getElementById('sf_sizes').value = st.sizes;
@@ -1409,11 +1409,11 @@ const Maintenance = {
     const container = document.getElementById('sm_optionList');
     if (!container) return;
     if (opts.length === 0) {
-      container.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无款式选项，请在上方添�?/span>';
+      container.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无款式选项，请在上方添加</span>';
       return;
     }
     container.innerHTML = opts.map((opt, i) =>
-      `<span class="size-badge">${App.utils.escapeHtml(opt)}<span class="size-remove" onclick="Maintenance.removeStyleOption(${i})">�?/span></span>`
+      `<span class="size-badge">${App.utils.escapeHtml(opt)}<span class="size-remove" onclick="Maintenance.removeStyleOption(${i})">✕</span></span>`
     ).join('');
   },
 
@@ -1447,7 +1447,7 @@ const Maintenance = {
     const isEdit = !!id;
     const list = App.store.get('maintSizes', []);
     const item = isEdit ? list.find(s => s.id === id) : {};
-    const sizesText = item.sizes ? item.sizes.join('�?) : '';
+    const sizesText = item.sizes ? item.sizes.join('，') : '';
 
     const body = `
       <div class="form-section-title">📋 基本信息</div>
@@ -1473,7 +1473,7 @@ const Maintenance = {
 
       <div class="form-section-title">📏 尺码列表（多个尺码用逗号或空格分隔，作为一组整体保存）</div>
       <div class="form-group">
-        <input type="text" id="sf_sizes" class="form-input" value="${App.utils.escapeHtml(sizesText)}" data-edit-id="${id || ''}" placeholder="�?32�?4�?6�?8�?0�?2�?4 �?XXS,0/XS,1/S,2/M,3/L,4/XL">
+        <input type="text" id="sf_sizes" class="form-input" value="${App.utils.escapeHtml(sizesText)}" data-edit-id="${id || ''}" placeholder="如 32，34，36，38，40，42，44 或 XXS,0/XS,1/S,2/M,3/L,4/XL">
       </div>
 
       <div class="form-section-title">📝 备注</div>
@@ -1487,7 +1487,7 @@ const Maintenance = {
       <button class="btn btn-primary" onclick="Maintenance.saveSizeForm('${id || ''}')">💾</button>
     `;
 
-    App.modal.open({ title: isEdit ? '编辑尺码�? : '新增尺码�?, body, footer, size: 'lg', closeOnOverlay: false });
+    App.modal.open({ title: isEdit ? '编辑尺码组' : '新增尺码组', body, footer, size: 'lg', closeOnOverlay: false });
     if (item.category) document.getElementById('sf_category').value = item.category;
   },
 
@@ -1495,7 +1495,7 @@ const Maintenance = {
     const category = document.getElementById('sf_category').value;
     const part = document.getElementById('sf_part').value;
     const sizesRaw = document.getElementById('sf_sizes').value.trim();
-    if (!sizesRaw) { App.toast('请输入尺码列�?, 'error'); return; }
+    if (!sizesRaw) { App.toast('请输入尺码列表', 'error'); return; }
 
     // 用逗号（中英文）或空格分隔
     const sizes = sizesRaw.split(/[,，\s]+/).map(s => s.trim()).filter(s => s);
@@ -1526,7 +1526,7 @@ const Maintenance = {
       let list = App.store.get('maintSizes', []);
       list = list.filter(s => s.id !== id);
       App.store.set('maintSizes', list);
-      App.toast('已删�?, 'success');
+      App.toast('已删除', 'success');
       this.renderSize();
     });
   },
@@ -1553,7 +1553,7 @@ const Maintenance = {
 
   renderTerm() {
     const data = this.getFilteredTerm();
-    document.getElementById('termCount').textContent = `�?${data.length} 条`;
+    document.getElementById('termCount').textContent = `共 ${data.length} 条`;
     document.getElementById('count-term').textContent = App.store.get('maintTerms', []).length;
 
     const allChecked = data.length > 0 && data.every(t => this._termSelectedIds.has(t.id));
@@ -1566,7 +1566,7 @@ const Maintenance = {
 
     let tbody;
     if (data.length === 0) {
-      tbody = `<tbody>${this.emptyHtml('暂无对照数据，点击右上角 �?新增')}</tbody>`;
+      tbody = `<tbody>${this.emptyHtml('暂无对照数据，点击右上角 ➕ 新增')}</tbody>`;
     } else {
       tbody = '<tbody>' + data.map(t => {
         const cbChecked = this._termSelectedIds.has(t.id) ? 'checked' : '';
@@ -1580,7 +1580,7 @@ const Maintenance = {
           <td>${App.utils.escapeHtml(t.remark || '-')}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm btn-success" title="编辑" onclick="Maintenance.openTermForm('${t.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteTerm('${t.id}')">🗑�?/button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Maintenance.deleteTerm('${t.id}')">🗑️</button>
           </td>
         </tr>`;
       }).join('') + '</tbody>';
@@ -1633,7 +1633,7 @@ const Maintenance = {
     } else {
       terms = allTerms;
       if (terms.length === 0) {
-        App.toast('没有数据可导�?, 'error');
+        App.toast('没有数据可导出', 'error');
         return;
       }
     }
@@ -1662,7 +1662,7 @@ const Maintenance = {
     XLSX.utils.book_append_sheet(wb, ws, '中英文对照表');
     const dateStr = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `中英文对照表_${dateStr}.xlsx`);
-    App.toast(`已导�?${terms.length} 条数据`, 'success');
+    App.toast(`已导出 ${terms.length} 条数据`, 'success');
   },
 
   // ===== 导入Excel =====
@@ -1695,7 +1695,7 @@ const Maintenance = {
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
         if (rows.length === 0) {
-          App.toast('Excel文件中没有数�?, 'error');
+          App.toast('Excel文件中没有数据', 'error');
           return;
         }
 
@@ -1706,7 +1706,7 @@ const Maintenance = {
 
         const terms = App.store.get('maintTerms', []);
         let skipCount = 0;
-        const safeItems = [];       // 无冲突，可直接导�?
+        const safeItems = [];       // 无冲突，可直接导入
         const conflictItems = [];   // 冲突项：{idx, newItem, existingItem}
 
         rows.forEach(row => {
@@ -1724,7 +1724,7 @@ const Maintenance = {
           if (!hasCn || !hasEn) { skipCount++; return; }
           if (obj.category && !validCategories.includes(obj.category)) obj.category = '';
 
-          // �?英文"精确匹配找冲�?
+          // 按"英文"精确匹配找冲突
           const existing = terms.find(t => (t.en || '').toLowerCase() === (obj.en || '').toLowerCase());
           if (existing) {
             conflictItems.push({ newItem: obj, existingItem: existing });
@@ -1742,28 +1742,28 @@ const Maintenance = {
           });
           App.store.set('maintTerms', terms);
           this.renderTerm();
-          let msg = `导入完成：成�?${importCount} 条`;
-          if (skipCount > 0) msg += `，跳�?${skipCount} 条（缺少中文或英文）`;
+          let msg = `导入完成：成功 ${importCount} 条`;
+          if (skipCount > 0) msg += `，跳过 ${skipCount} 条（缺少中文或英文）`;
           App.toast(msg, 'success');
           return;
         }
 
-        // 有冲�?�?打开冲突处理对话�?
+        // 有冲突 → 打开冲突处理对话框
         this._termImportConflictState = {
           terms, safeItems, conflictItems, skipCount,
-          // 每条冲突的决策：'overwrite'（覆盖现有） | 'keep'（保留现有）| 'both'（两者都保留�?
+          // 每条冲突的决策：'overwrite'（覆盖现有） | 'keep'（保留现有）| 'both'（两者都保留）
           decisions: conflictItems.map(() => 'overwrite')
         };
         this.termOpenConflictDialog();
       } catch (err) {
         console.error('导入失败:', err);
-        App.toast('导入失败，请检查文件格�?, 'error');
+        App.toast('导入失败，请检查文件格式', 'error');
       }
     };
     reader.readAsArrayBuffer(file);
   },
 
-  // ===== 导入冲突处理对话�?=====
+  // ===== 导入冲突处理对话框 =====
   termOpenConflictDialog() {
     const st = this._termImportConflictState;
     if (!st) return;
@@ -1776,7 +1776,7 @@ const Maintenance = {
       self.termRenderConflictRows();
     };
 
-    // 构建每条冲突�?
+    // 构建每条冲突行
     const conflictRowsHtml = () => {
       return st.conflictItems.map((c, i) => {
         const d = st.decisions[i];
@@ -1785,7 +1785,7 @@ const Maintenance = {
         <div class="conflict-row" data-idx="${i}">
           <div class="conflict-header">
             <span class="conflict-index">冲突 ${i + 1}</span>
-            <span class="conflict-en">英文�?strong>${App.utils.escapeHtml(c.newItem.en || '')}</strong></span>
+            <span class="conflict-en">英文：<strong>${App.utils.escapeHtml(c.newItem.en || '')}</strong></span>
             <select class="form-select conflict-select" style="width:auto;" onchange="Maintenance.termSetOneDecision(${i}, this.value)">
               <option value="overwrite" ${sel('overwrite')}>覆盖现有数据</option>
               <option value="keep" ${sel('keep')}>保留现有数据</option>
@@ -1795,19 +1795,19 @@ const Maintenance = {
           <div class="conflict-compare">
             <div class="conflict-col">
               <div class="conflict-col-title new-title">📥 Excel中的数据</div>
-              <div class="conflict-field"><span class="conflict-label">部位�?/span>${App.utils.escapeHtml(c.newItem.part || '-')}</div>
-              <div class="conflict-field"><span class="conflict-label">中文�?/span>${App.utils.escapeHtml(c.newItem.cn || '')}</div>
-              <div class="conflict-field"><span class="conflict-label">英文�?/span>${App.utils.escapeHtml(c.newItem.en || '')}</div>
-              <div class="conflict-field"><span class="conflict-label">类别�?/span>${App.utils.escapeHtml(c.newItem.category || '-')}</div>
-              <div class="conflict-field"><span class="conflict-label">备注�?/span>${App.utils.escapeHtml(c.newItem.remark || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">部位：</span>${App.utils.escapeHtml(c.newItem.part || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">中文：</span>${App.utils.escapeHtml(c.newItem.cn || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">英文：</span>${App.utils.escapeHtml(c.newItem.en || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">类别：</span>${App.utils.escapeHtml(c.newItem.category || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">备注：</span>${App.utils.escapeHtml(c.newItem.remark || '-')}</div>
             </div>
             <div class="conflict-col">
-              <div class="conflict-col-title old-title">📂 系统中现有数�?/div>
-              <div class="conflict-field"><span class="conflict-label">部位�?/span>${App.utils.escapeHtml(c.existingItem.part || '-')}</div>
-              <div class="conflict-field"><span class="conflict-label">中文�?/span>${App.utils.escapeHtml(c.existingItem.cn || '')}</div>
-              <div class="conflict-field"><span class="conflict-label">英文�?/span>${App.utils.escapeHtml(c.existingItem.en || '')}</div>
-              <div class="conflict-field"><span class="conflict-label">类别�?/span>${App.utils.escapeHtml(c.existingItem.category || '-')}</div>
-              <div class="conflict-field"><span class="conflict-label">备注�?/span>${App.utils.escapeHtml(c.existingItem.remark || '-')}</div>
+              <div class="conflict-col-title old-title">📂 系统中现有数据</div>
+              <div class="conflict-field"><span class="conflict-label">部位：</span>${App.utils.escapeHtml(c.existingItem.part || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">中文：</span>${App.utils.escapeHtml(c.existingItem.cn || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">英文：</span>${App.utils.escapeHtml(c.existingItem.en || '')}</div>
+              <div class="conflict-field"><span class="conflict-label">类别：</span>${App.utils.escapeHtml(c.existingItem.category || '-')}</div>
+              <div class="conflict-field"><span class="conflict-label">备注：</span>${App.utils.escapeHtml(c.existingItem.remark || '-')}</div>
             </div>
           </div>
         </div>`;
@@ -1818,9 +1818,9 @@ const Maintenance = {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="text-muted font-sm">
           发现 <strong style="color:var(--error);">${st.conflictItems.length}</strong> 条英文重复冲突，
-          另有 <strong>${st.safeItems.length}</strong> 条可直接导入�?
-          ${st.skipCount > 0 ? `<strong>${st.skipCount}</strong> 条跳过（缺中�?英文），` : ''}
-          请选择处理方式�?
+          另有 <strong>${st.safeItems.length}</strong> 条可直接导入，
+          ${st.skipCount > 0 ? `<strong>${st.skipCount}</strong> 条跳过（缺中文/英文），` : ''}
+          请选择处理方式：
         </div>
         <div style="display:flex;gap:5px;">
           <button class="btn btn-sm" onclick="Maintenance._termSetAllDecision('overwrite')">全部覆盖</button>
@@ -1833,7 +1833,7 @@ const Maintenance = {
 
     const footer = `
       <button class="btn" onclick="Maintenance.termCancelImport()">✖️ 取消</button>
-      <button class="btn btn-primary" onclick="Maintenance.termApplyImport()">�?确认导入</button>
+      <button class="btn btn-primary" onclick="Maintenance.termApplyImport()">✅ 确认导入</button>
     `;
 
     App.modal.open({ title: `导入冲突处理（共 ${st.conflictItems.length} 条）`, body, footer, size: 'lg', closeOnOverlay: false });
@@ -1855,7 +1855,7 @@ const Maintenance = {
   termCancelImport() {
     this._termImportConflictState = null;
     App.modal.close();
-    App.toast('已取消导�?, 'info');
+    App.toast('已取消导入', 'info');
   },
 
   termApplyImport() {
@@ -1868,7 +1868,7 @@ const Maintenance = {
     let keepCount = 0;
     let bothCount = 0;
 
-    // 1) 先导入无冲突�?
+    // 1) 先导入无冲突项
     safeItems.forEach(obj => {
       terms.push({ id: App.utils.genId('MT'), ...obj });
       importCount++;
@@ -1878,19 +1878,19 @@ const Maintenance = {
     conflictItems.forEach((c, i) => {
       const d = decisions[i];
       if (d === 'overwrite') {
-        // 覆盖：保留原id，其他字段替换为新�?
+        // 覆盖：保留原id，其他字段替换为新值
         const idx = terms.findIndex(t => t.id === c.existingItem.id);
         if (idx >= 0) {
           terms[idx] = { ...terms[idx], ...c.newItem, id: c.existingItem.id };
         }
         overwriteCount++;
       } else if (d === 'both') {
-        // 两者都保留：把新值作为新增（注意英文相同，但用户主动选择�?
+        // 两者都保留：把新值作为新增（注意英文相同，但用户主动选择）
         terms.push({ id: App.utils.genId('MT'), ...c.newItem });
         bothCount++;
         importCount++;
       } else {
-        // keep：保留现�?
+        // keep：保留现有
         keepCount++;
       }
     });
@@ -1904,8 +1904,8 @@ const Maintenance = {
     if (overwriteCount > 0) parts.push(`覆盖 ${overwriteCount} 条`);
     if (keepCount > 0) parts.push(`跳过(保留现有) ${keepCount} 条`);
     if (bothCount > 0) parts.push(`重复保留 ${bothCount} 条`);
-    if (skipCount > 0) parts.push(`缺字段跳�?${skipCount} 条`);
-    App.toast(`导入完成�?{parts.join('�?)}`, 'success');
+    if (skipCount > 0) parts.push(`缺字段跳过 ${skipCount} 条`);
+    App.toast(`导入完成：${parts.join('，')}`, 'success');
   },
 
   // ===== 清空 =====
@@ -1914,7 +1914,7 @@ const Maintenance = {
     const terms = App.store.get('maintTerms', []);
     // 如果有选中的，只删除选中的；否则清空全部
     if (this._termSelectedIds.size > 0) {
-      App.confirm(`确定要删除选中�?${this._termSelectedIds.size} 条数据吗？`, () => {
+      App.confirm(`确定要删除选中的 ${this._termSelectedIds.size} 条数据吗？`, () => {
         const newTerms = terms.filter(t => !this._termSelectedIds.has(t.id));
         App.store.set('maintTerms', newTerms);
         this._termSelectedIds.clear();
@@ -1923,10 +1923,10 @@ const Maintenance = {
       });
     } else {
       if (terms.length === 0) {
-        App.toast('对照表已是空�?, 'error');
+        App.toast('对照表已是空的', 'error');
         return;
       }
-      App.confirm(`确定要清空全�?${terms.length} 条对照数据吗？此操作不可恢复！`, () => {
+      App.confirm(`确定要清空全部 ${terms.length} 条对照数据吗？此操作不可恢复！`, () => {
         App.store.set('maintTerms', []);
         this._termSelectedIds.clear();
         App.toast('对照表已清空', 'success');
@@ -1941,7 +1941,7 @@ const Maintenance = {
     const item = isEdit ? list.find(t => t.id === id) : {};
 
     const body = `
-      <div class="form-section-title">🔤 中英文对�?/div>
+      <div class="form-section-title">🔤 中英文对照</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:120px;">
           <label class="form-label">部位</label>
@@ -1953,7 +1953,7 @@ const Maintenance = {
         </div>
         <div class="form-group" style="flex:1;min-width:140px;">
           <label class="form-label">中文<span class="required">*</span></label>
-          <input type="text" id="tf_cn" class="form-input" value="${App.utils.escapeHtml(item.cn || '')}" placeholder="请输入中�?>
+          <input type="text" id="tf_cn" class="form-input" value="${App.utils.escapeHtml(item.cn || '')}" placeholder="请输入中文">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
           <label class="form-label">类别</label>
@@ -1986,8 +1986,8 @@ const Maintenance = {
   saveTermForm(id) {
     const cn = document.getElementById('tf_cn').value.trim();
     const en = document.getElementById('tf_en').value.trim();
-    if (!cn) { App.toast('请输入中�?, 'error'); return; }
-    if (!en) { App.toast('请输入英�?, 'error'); return; }
+    if (!cn) { App.toast('请输入中文', 'error'); return; }
+    if (!en) { App.toast('请输入英文', 'error'); return; }
 
     const data = {
       part: document.getElementById('tf_part').value.trim(),
@@ -2015,13 +2015,13 @@ const Maintenance = {
       let list = App.store.get('maintTerms', []);
       list = list.filter(t => t.id !== id);
       App.store.set('maintTerms', list);
-      App.toast('已删�?, 'success');
+      App.toast('已删除', 'success');
       this.renderTerm();
     });
   },
 
   // ============================================================
-  //  通用导入冲突处理（面�?辅料复用，按"编号"去重�?
+  //  通用导入冲突处理（面料/辅料复用，按"编号"去重）
   // ============================================================
   _openImportConflict(config) {
     this._importConflictState = {
@@ -2034,10 +2034,10 @@ const Maintenance = {
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="text-muted font-sm">
-          发现 <strong style="color:var(--error);">${st.conflictItems.length}</strong> �?{st.dedupLabel}重复冲突�?
-          另有 <strong>${st.safeItems.length}</strong> 条可直接导入�?
+          发现 <strong style="color:var(--error);">${st.conflictItems.length}</strong> 条${st.dedupLabel}重复冲突，
+          另有 <strong>${st.safeItems.length}</strong> 条可直接导入，
           ${st.skipCount > 0 ? `<strong>${st.skipCount}</strong> 条跳过（缺名称），` : ''}
-          请选择处理方式�?
+          请选择处理方式：
         </div>
         <div style="display:flex;gap:5px;">
           <button class="btn btn-sm" onclick="Maintenance._setAllImportDecision('overwrite')">全部覆盖</button>
@@ -2050,7 +2050,7 @@ const Maintenance = {
 
     const footer = `
       <button class="btn" onclick="Maintenance._cancelImportConflict()">✖️ 取消</button>
-      <button class="btn btn-primary" onclick="Maintenance._applyImportConflict()">�?确认导入</button>
+      <button class="btn btn-primary" onclick="Maintenance._applyImportConflict()">✅ 确认导入</button>
     `;
 
     App.modal.open({ title: `导入冲突处理（共 ${st.conflictItems.length} 条）`, body, footer, size: 'lg', closeOnOverlay: false });
@@ -2064,16 +2064,16 @@ const Maintenance = {
       const d = st.decisions[i];
       const sel = (v) => v === d ? 'selected' : '';
       const newFieldsHtml = st.fieldDefs.map(fd =>
-        `<div class="conflict-field"><span class="conflict-label">${fd.label}�?/span>${App.utils.escapeHtml(c.newItem[fd.key] || '-')}</div>`
+        `<div class="conflict-field"><span class="conflict-label">${fd.label}：</span>${App.utils.escapeHtml(c.newItem[fd.key] || '-')}</div>`
       ).join('');
       const oldFieldsHtml = st.fieldDefs.map(fd =>
-        `<div class="conflict-field"><span class="conflict-label">${fd.label}�?/span>${App.utils.escapeHtml(c.existingItem[fd.key] || '-')}</div>`
+        `<div class="conflict-field"><span class="conflict-label">${fd.label}：</span>${App.utils.escapeHtml(c.existingItem[fd.key] || '-')}</div>`
       ).join('');
       return `
       <div class="conflict-row" data-idx="${i}">
         <div class="conflict-header">
           <span class="conflict-index">冲突 ${i + 1}</span>
-          <span class="conflict-en">${st.dedupLabel}�?strong>${App.utils.escapeHtml(c.newItem[st.dedupField] || '')}</strong></span>
+          <span class="conflict-en">${st.dedupLabel}：<strong>${App.utils.escapeHtml(c.newItem[st.dedupField] || '')}</strong></span>
           <select class="form-select conflict-select" style="width:auto;" onchange="Maintenance._setOneImportDecision(${i}, this.value)">
             <option value="overwrite" ${sel('overwrite')}>覆盖现有数据</option>
             <option value="keep" ${sel('keep')}>保留现有数据</option>
@@ -2086,7 +2086,7 @@ const Maintenance = {
             ${newFieldsHtml}
           </div>
           <div class="conflict-col">
-            <div class="conflict-col-title old-title">📂 系统中现有数�?/div>
+            <div class="conflict-col-title old-title">📂 系统中现有数据</div>
             ${oldFieldsHtml}
           </div>
         </div>
@@ -2112,7 +2112,7 @@ const Maintenance = {
   _cancelImportConflict() {
     this._importConflictState = null;
     App.modal.close();
-    App.toast('已取消导�?, 'info');
+    App.toast('已取消导入', 'info');
   },
 
   _applyImportConflict() {
@@ -2122,7 +2122,7 @@ const Maintenance = {
     this._importConflictState = null;
   },
 
-  // ===== 初始�?=====
+  // ===== 初始化 =====
   init() {
     this.renderFabric();
     this.renderAccessory();
@@ -2131,7 +2131,7 @@ const Maintenance = {
   }
 };
 
-// ===== 页面初始�?=====
+// ===== 页面初始化 =====
 _init(function() {
 App.init('maintenance');
 App.checkLogin();
@@ -2139,7 +2139,6 @@ App.initSampleData();
 App.enforcePagePermission('maintenance');
 
 Maintenance.init();
-_MaintenanceInited = true;
 
 document.addEventListener('click', (e) => {
   ['fabricActionDropdown', 'accessoryActionDropdown', 'termActionDropdown'].forEach(id => {
@@ -2150,7 +2149,17 @@ document.addEventListener('click', (e) => {
   });
 });
 
-// 注意：cloud-data-updated 监听器已在脚本块顶部同步注册，此处不要重�?
+// 监听云端数据变更（15秒自动刷新）
+window.addEventListener('cloud-data-updated', function(e) {
+  var keys = e.detail.keys || [];
+  var needRefresh = keys.some(function(k) {
+    return k === 'maintFabrics' || k === 'maintAccessories';
+  });
+  if (needRefresh) {
+    console.log('[maintenance.html] 云端数据变更，刷新页面数据');
+    Maintenance.init();
+  }
+});
 });
 </script>
 </body>

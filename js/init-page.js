@@ -79,30 +79,14 @@
 
     function doRefresh() {
       var store = window.SupabaseStore;
-
-      // 兜底：即使 SupabaseStore 完全不可用，也通过独立 fetch 获取数据
+      
+      // 兜底：即使 SupabaseStore 完全不可用，也通过独立轮询获取数据
       if (!store) {
         console.log('[init-page] ⚠️ SupabaseStore 未加载，使用独立 fetch 兜底...');
-        // 直接使用 fetch 获取数据（带用户 JWT，否则 RLS 会拒绝）
+        // 直接使用 fetch 获取数据（与 independentPoll 类似但更简单）
         var FALLBACK_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
         var FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-        // 获取用户 JWT
-        var fbUserJWT = null;
-        try {
-          var fbTokenKey = 'sb-ugoyacuagslqhqguxyqe-auth-token';
-          var fbRaw = null;
-          if (window._origLocalStorage && window._origLocalStorage.getItem) {
-            fbRaw = window._origLocalStorage.getItem(fbTokenKey);
-          }
-          if (!fbRaw) fbRaw = localStorage.getItem(fbTokenKey);
-          if (fbRaw) {
-            var fbParsed = JSON.parse(fbRaw);
-            if (fbParsed && fbParsed.access_token) fbUserJWT = fbParsed.access_token;
-          }
-        } catch(e) {}
-        var fbHeaders = { 'apikey': FALLBACK_KEY };
-        if (fbUserJWT) fbHeaders['Authorization'] = 'Bearer ' + fbUserJWT;
-        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at', {cache: 'no-store', headers: fbHeaders})
+        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(FALLBACK_KEY), {cache: 'no-store'})
           .then(function(resp) { return resp.ok ? resp.json() : Promise.reject(resp.status); })
           .then(function(rows) {
             if (!Array.isArray(rows)) return;
@@ -113,7 +97,7 @@
               origLS.setItem(row.store_key, JSON.stringify(row.payload));
               changedKeys.push(row.store_key);
             }
-            console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key (JWT=' + (fbUserJWT ? '有' : '无') + ')');
+            console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key');
             if (changedKeys.length > 0) {
               window.dispatchEvent(new CustomEvent('cloud-data-updated', {
                 detail: { keys: changedKeys }
@@ -345,63 +329,13 @@
     _independentRunning = true;
 
     var isFirstRun = (_independentLastHashes === null);
-
-    // 关键修复：必须携带用户 JWT，否则 RLS 策略 auth.role() = 'authenticated' 会拒绝
-    // anon key 的 role 是 'anon'，无法通过 RLS，会返回空数组 []
-    var userJWT = null;
-    try {
-      var tokenKey = 'sb-ugoyacuagslqhqguxyqe-auth-token';
-      var raw = null;
-      if (window._origLocalStorage && window._origLocalStorage.getItem) {
-        raw = window._origLocalStorage.getItem(tokenKey);
-      }
-      if (!raw) {
-        raw = localStorage.getItem(tokenKey);
-      }
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && parsed.access_token) {
-          userJWT = parsed.access_token;
-        }
-      }
-    } catch(e) {}
-
-    // 路径1: 使用标准头 + 用户 JWT（HTTPS 站点下正常工作，触发 CORS 预检但 Supabase 允许）
-    function fetchWithJWT() {
-      var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at';
-      var headers = { 'apikey': INDEPENDENT_API_KEY };
-      if (userJWT) {
-        headers['Authorization'] = 'Bearer ' + userJWT;
-      }
-      return fetch(url, {
-        method: 'GET',
-        cache: 'no-store',
-        headers: headers
-      });
-    }
-
-    // 路径2: URL 参数方式（无 JWT，RLS 会拒绝，仅作为 file:// 兜底）
-    function fetchWithUrlParam() {
-      var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
-      return fetch(url, { cache: 'no-store' });
-    }
-
-    var fetchPromise;
-    if (userJWT) {
-      // 有 JWT 时优先用标准头方式
-      fetchPromise = fetchWithJWT().catch(function(e) {
-        console.warn('[init-page] 独立轮询(标准头+JWT)失败，降级为URL参数:', e && e.message ? e.message : e);
-        return fetchWithUrlParam();
-      });
-    } else {
-      // 无 JWT 时用 URL 参数方式（RLS 可能会拒绝）
-      if (isFirstRun) {
-        console.warn('[init-page] ⚠️ 独立轮询: 未找到用户JWT，RLS可能拒绝匿名访问');
-      }
-      fetchPromise = fetchWithUrlParam();
-    }
-
-    fetchPromise
+    var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
+    
+    fetch(url, {
+      // 不使用自定义头（避免 CORS 预检请求被 Safari file:// 阻止）
+      // API key 通过 URL 查询参数传递
+      cache: 'no-store'
+    })
     .then(function(resp) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.json();
@@ -412,12 +346,6 @@
         return;
       }
 
-      // 关键诊断：如果云端返回空数组但有 JWT，说明 RLS 拒绝了或云端确实无数据
-      if (rows.length === 0 && isFirstRun) {
-        console.warn('[init-page] ⚠️ 独立轮询首次基线: 云端返回0行 ' +
-          '(JWT=' + (userJWT ? '有' : '无') + ')。可能原因: RLS拒绝 或 云端表为空');
-      }
-
       var changedKeys = [];
       var newHashes = {};
       var prevHashes = _independentLastHashes || {};
@@ -426,7 +354,7 @@
         var row = rows[i];
         var key = row.store_key;
         var payload = row.payload;
-
+        
         // 计算内容哈希用于变化检测
         var hash = '';
         try {
@@ -493,7 +421,7 @@
       _independentLastHashes = newHashes;
 
       if (changedKeys.length > 0) {
-        console.log('[init-page] 🛡️ 独立轮询' + (isFirstRun ? '(首次基线+触发)' : '检测到变更') + ':',
+        console.log('[init-page] 🛡️ 独立轮询' + (isFirstRun ? '(首次基线+触发)' : '检测到变更') + ':', 
           changedKeys.join(', '), '(共' + changedKeys.length + '个)');
         // 触发云数据更新事件（供各页面刷新 UI）
         window.dispatchEvent(new CustomEvent('cloud-data-updated', {
@@ -501,7 +429,7 @@
         }));
       } else {
         if (isFirstRun) {
-          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端返回' + rows.length + '行)');
+          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端均为空数据)');
           // 首次运行云端为空 → 可能数据正在通过独立写入通道上传中
           // 5 秒后立即再执行一次轮询（不等15秒），快速捕获刚上传完成的数据
           setTimeout(function() { independentPoll(); }, 5000);
