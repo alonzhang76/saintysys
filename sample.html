@@ -930,13 +930,13 @@ input[type="number"] { -moz-appearance: textfield; }
 <script src="js/auth-guard.js?v=20260822c"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822f"></script>
-<script src="js/supabase-store.js?v=20260822h"></script>
+<script src="js/supabase-store.js?v=20260822i"></script>
 <script src="js/localstorage-patch.js?v=20260822h"></script>
 <script src="js/supabase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260821b"></script>
+<script src="js/init-page.js?v=20260822b"></script>
 <script>
 
 // ===== 状态变量 =====
@@ -1805,10 +1805,20 @@ window.addEventListener('cloud-data-updated', function(e) {
   function saveData() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
     catch(e) { showToast('保存失败：存储空间不足', 'error'); }
+    // 关键修复：通过 App.store.set 同步到云端（走 bridge → setSync → 异步写云端）
+    // 这样 _recentWrites 会被设置，init-page.js 轮询会在保护期内跳过此 key
+    if (window.App && App.store) {
+      try { App.store.set(STORAGE_KEY, state.data); } catch(e) {}
+    }
     scheduleSync();
     syncSamplePlanToTabs();
   }
-  function saveSizeTables() { try { localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables)); } catch(e) { showToast('保存失败：存储空间不足', 'error'); } }
+  function saveSizeTables() {
+    try { localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables)); } catch(e) { showToast('保存失败：存储空间不足', 'error'); }
+    if (window.App && App.store) {
+      try { App.store.set(SIZE_TABLE_KEY, state.sizeTables); } catch(e) {}
+    }
+  }
 
   // ===== Dropdown =====
   SP.toggleDropdown = function(e, id) {

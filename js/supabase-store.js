@@ -841,7 +841,7 @@ async function refreshFromCloud() {
     if (!data) return [];
 
     const now = Date.now();
-    const SKIP_WINDOW = 1000; // 1秒内自己写入的 key 跳过
+    const SKIP_WINDOW = 10000; // 10秒内自己写入的 key 跳过（防止异步写入完成前被云端旧数据覆盖）
     const changedKeys = [];
     let skippedCount = 0;
     let detailLogs = [];
@@ -1150,6 +1150,7 @@ window.SupabaseStore = {
   _flushSync,
   _isInitialized: function() { return _initialized; },
   _getCache: function() { return _cache; },
+  get _recentWrites() { return _recentWrites; },
   LOCAL_KEYS: LOCAL_KEYS,
 };
 

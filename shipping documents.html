@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1283,7 +1283,12 @@ function renderRecords() {
 function deleteRecord(id) {
   showConfirm('删除记录','确认删除此条数据记录？此操作不可撤销。', () => {
     records = records.filter(r => r.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    // 关键修复：通过 App.store.set 同步到云端（走 bridge → setSync）
+    if (window.App && App.store) {
+      try { App.store.set(STORAGE_KEY, records); } catch(e) {}
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
     renderRecords();
     populatePLSelect();
   });

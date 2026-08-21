@@ -349,12 +349,32 @@
       var changedKeys = [];
       var newHashes = {};
       var prevHashes = _independentLastHashes || {};
+      var nowMs = Date.now();
+      // 保护期：10秒内本地刚写入的 key 不被云端数据覆盖（防止删除后被旧数据复活）
+      var RECENT_WRITE_WINDOW = 10000;
 
       for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
         var key = row.store_key;
         var payload = row.payload;
-        
+
+        // 关键修复：检查 SupabaseStore._recentWrites，跳过本地刚写入的 key
+        // 防止删除/编辑操作后，云端旧数据覆盖本地新数据
+        try {
+          var store = window.SupabaseStore;
+          if (store && store._recentWrites) {
+            var lastWrite = store._recentWrites[key] || 0;
+            if (lastWrite && (nowMs - lastWrite < RECENT_WRITE_WINDOW)) {
+              // 本地刚写入此 key，跳过云端覆盖，但仍记录哈希用于下次对比
+              try {
+                var hashSkip = JSON.stringify(payload) + '|' + (row.updated_at || '');
+                newHashes[key] = hashSkip;
+              } catch(_) {}
+              continue;
+            }
+          }
+        } catch(_) {}
+
         // 计算内容哈希用于变化检测
         var hash = '';
         try {
