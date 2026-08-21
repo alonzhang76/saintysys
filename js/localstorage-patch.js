@@ -4,7 +4,7 @@
  * 使现有代码无需修改即可走 Supabase
  *
  * 在需要的页面中引用（放在 common.js 之后、业务脚本之前）：
- *   <script type="module" src="js/localstorage-patch.js"></script>
+ *   <script src="js/localstorage-patch.js"></script>
  */
 
 // 需要走 Supabase 的键（其他键仍使用 localStorage）

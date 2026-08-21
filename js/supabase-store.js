@@ -17,7 +17,13 @@
  * - updated_at timestamptz
  */
 
-import { supabase } from "./supabase.js";
+// 从全局获取 supabase 客户端（由 supabase.js 模块设置到 window.supabase）
+// 使用 getter 确保即使 supabase-store.js 先于 supabase.js 加载，也能在运行时获取到
+var supabase;
+function getSupabase() {
+  if (!supabase) supabase = window.supabase;
+  return supabase;
+}
 
 /**
  * 安全的 Supabase 查询包装器
@@ -83,9 +89,32 @@ const MIGRATION_KEYS = [
 const LOCAL_KEYS = MIGRATION_KEYS;
 
 async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser();
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.auth.getUser();
   if (error || !data || !data.user) return null;
   return data.user;
+}
+
+/**
+ * 等待 window.supabase 加载完成（最多 10 秒）
+ */
+function waitForSupabase(timeout) {
+  timeout = timeout || 10000;
+  var start = Date.now();
+  return new Promise(function(resolve) {
+    function check() {
+      if (window.supabase) {
+        supabase = window.supabase;
+        resolve(true);
+      } else if (Date.now() - start > timeout) {
+        resolve(false);
+      } else {
+        setTimeout(check, 100);
+      }
+    }
+    check();
+  });
 }
 
 /**
@@ -97,6 +126,13 @@ async function init() {
   if (_initPromise) return _initPromise;
 
   _initPromise = (async () => {
+    // 等待 supabase.js 模块加载完成
+    const sbReady = await waitForSupabase(10000);
+    if (!sbReady) {
+      console.error('[SupabaseStore] ❌ window.supabase 未加载（supabase.js 模块加载失败）');
+      return false;
+    }
+
     const user = await getCurrentUser();
     if (!user) {
       console.warn('[SupabaseStore] 未登录，数据存储不可用');
@@ -109,7 +145,7 @@ async function init() {
     // 2) 从 Supabase 加载所有数据到缓存（共享模式：不按 user_id 过滤）
     try {
       const { data, error } = await safeQuery(
-        supabase
+        getSupabase()
           .from('app_data_store')
           .select('store_key, payload')
       );
@@ -152,7 +188,7 @@ async function migrateFromLocalStorage() {
   let existingKeys = new Set();
   try {
     const { data, error } = await safeQuery(
-      supabase.from('app_data_store').select('store_key')
+      getSupabase().from('app_data_store').select('store_key')
     );
     if (!error && data) {
       data.forEach(row => existingKeys.add(row.store_key));
@@ -182,7 +218,7 @@ async function migrateFromLocalStorage() {
       payload = normalizePayload(payload);
 
       const { error } = await safeQuery(
-        supabase
+        getSupabase()
           .from('app_data_store')
           .insert({
             user_id: user ? user.id : null,
@@ -234,7 +270,7 @@ async function forceSync() {
 
     // 共享模式：onConflict 用 store_key，user_id 仅记录
     const { error } = await safeQuery(
-      supabase
+      getSupabase()
         .from('app_data_store')
         .upsert({
           user_id: user.id,
@@ -269,7 +305,7 @@ async function get(key, defaultVal) {
   // 缓存未命中，从 Supabase 读取（共享模式：只按 store_key 查询）
   try {
     const { data, error } = await safeQuery(
-      supabase
+      getSupabase()
         .from('app_data_store')
         .select('payload')
         .eq('store_key', key)
@@ -303,7 +339,7 @@ async function set(key, value) {
   // 异步写入 Supabase
   try {
     const { error } = await safeQuery(
-      supabase
+      getSupabase()
         .from('app_data_store')
         .upsert({
           user_id: user ? user.id : null,
@@ -334,7 +370,7 @@ async function remove(key) {
 
   try {
     const { error } = await safeQuery(
-      supabase
+      getSupabase()
         .from('app_data_store')
         .delete()
         .eq('store_key', key)
@@ -355,7 +391,7 @@ async function clearAll() {
   Object.keys(_cache).forEach(k => delete _cache[k]);
 
   try {
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('app_data_store')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000'); // 删除所有行
@@ -411,8 +447,10 @@ async function _asyncWrite(key, value, retryCount) {
       }
       return;
     }
+    var sb = getSupabase();
+    if (!sb) { _addToPending(key, value); return; }
     const { error } = await safeQuery(
-      supabase
+      sb
         .from('app_data_store')
         .upsert({
           user_id: user.id,
@@ -467,7 +505,7 @@ async function _retryPending() {
   for (const item of batch) {
     try {
       const { error } = await safeQuery(
-        supabase
+        getSupabase()
           .from('app_data_store')
           .upsert({
             user_id: user.id,
@@ -496,7 +534,7 @@ async function _flushSync() {
       const user = await getCurrentUser();
       if (!user) { _pendingWrites.push(item); continue; }
       await safeQuery(
-        supabase
+        getSupabase()
           .from('app_data_store')
           .upsert({
             user_id: user.id,
@@ -519,9 +557,12 @@ async function _flushSync() {
 async function refreshFromCloud() {
   if (!_initialized) return [];
 
+  var sb = getSupabase();
+  if (!sb) return [];
+
   try {
     const { data, error } = await safeQuery(
-      supabase
+      sb
         .from('app_data_store')
         .select('store_key, payload, updated_at')
     );
@@ -561,8 +602,8 @@ async function refreshFromCloud() {
   }
 }
 
-// 导出 API
-export const SupabaseStore = {
+// 暴露到全局（非模块方式，兼容所有浏览器）
+window.SupabaseStore = {
   init,
   get,
   set,
@@ -577,9 +618,6 @@ export const SupabaseStore = {
   _isInitialized: () => _initialized,
   LOCAL_KEYS,
 };
-
-// 暴露到全局
-window.SupabaseStore = SupabaseStore;
 
 // 就绪标志：页面可以 await window.SupabaseReady
 window.SupabaseReady = init();
@@ -622,7 +660,7 @@ function recoverFromLocalStorage() {
           // 异步保存到 Supabase（共享模式）
           getCurrentUser().then(user => {
             safeQuery(
-              supabase
+              getSupabase()
                 .from('app_data_store')
                 .upsert({
                   user_id: user ? user.id : null,

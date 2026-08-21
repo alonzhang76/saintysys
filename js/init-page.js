@@ -73,16 +73,24 @@
     }
   }, 15000);
 
-  // ===== 15 秒定时刷新云端数据 =====
-  var _cloudRefreshTimer = null;
+  // ===== 15 秒定时刷新云端数据（使用 setTimeout 递归，兼容 Safari 后台节流）=====
+  var _cloudRefreshActive = false;
   function startCloudRefresh() {
-    if (_cloudRefreshTimer) return;
-    _cloudRefreshTimer = setInterval(function() {
-      if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
-        window.SupabaseStore.refreshFromCloud().catch(function(e) {});
-      }
-    }, 15000); // 15 秒
-    // 页面隐藏时暂停，可见时立即刷新
+    if (_cloudRefreshActive) return;
+    _cloudRefreshActive = true;
+
+    // 递归 setTimeout（比 setInterval 更抗 Safari 节流）
+    function scheduleNext() {
+      setTimeout(function() {
+        if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
+          window.SupabaseStore.refreshFromCloud().catch(function(e) {});
+        }
+        scheduleNext(); // 递归调度下一次
+      }, 15000); // 15 秒
+    }
+    scheduleNext();
+
+    // Safari/iOS 后台标签页会暂停 setTimeout，切回前台时立即刷新
     document.addEventListener('visibilitychange', function() {
       if (!document.hidden && window.SupabaseStore && window.SupabaseStore._isInitialized()) {
         window.SupabaseStore.refreshFromCloud().catch(function(e) {});
