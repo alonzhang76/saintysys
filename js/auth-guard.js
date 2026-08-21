@@ -231,15 +231,19 @@
 
         if (!rolesError && rolesData && rolesData.length > 0) {
           const roles = rolesData.map(r => r.role);
-          // 优先取 admin，其次 manager，最后取第一个角色
+          // 角色优先级：admin > manager > 各业务角色 > user
+          // 关键修复：不能取 roles[0]，因为 SQL 会给每个用户自动分配 'user' 角色，
+          // 导致业务角色（如 merchandiser）被 'user' 覆盖，权限矩阵查到的是 user 的权限（全是 write）
+          const ROLE_PRIORITY = ['admin', 'manager', 'merchandiser', 'purchaser', 'designer', 'qc', 'finance', 'documentary', 'user'];
           let finalRole = 'user';
-          if (roles.indexOf('admin') >= 0) finalRole = 'admin';
-          else if (roles.indexOf('manager') >= 0) finalRole = 'manager';
-          else finalRole = roles[0];
+          for (let i = 0; i < ROLE_PRIORITY.length; i++) {
+            if (roles.indexOf(ROLE_PRIORITY[i]) >= 0) {
+              finalRole = ROLE_PRIORITY[i];
+              break;
+            }
+          }
 
           // 关键修复：将加载的角色写入 window.currentSupabaseUser.user_metadata
-          // 这样 mapSupabaseUser() 在后续调用 getCurrentUser() 时能读到正确的角色
-          // 旧代码写入 App._currentUser（不存在的对象），导致角色丢失
           if (window.currentSupabaseUser) {
             if (!window.currentSupabaseUser.user_metadata) {
               window.currentSupabaseUser.user_metadata = {};
@@ -259,30 +263,35 @@
           console.log('[auth-guard] 用户角色:', finalRole, '| 所有角色:', roles);
 
           // 加载用户对各模块的权限
+          // 关键修复：只加载 finalRole 对应的权限，不再合并所有角色
+          // 旧逻辑合并所有角色并取最高优先级（write > read），导致 'user' 角色的 write 权限
+          // 覆盖了业务角色（如 merchandiser）的 read/none 权限，使权限矩阵失效
           try {
             const { data: permsData, error: permsError } = await supabase
               .from('module_permissions')
               .select('module, permission')
-              .in('role', roles);
+              .eq('role', finalRole);
 
+            const merged = {};
             if (!permsError && permsData) {
-              // 合并权限：取最高优先级
-              const priority = { write: 3, read: 2, none: 1, hidden: 0 };
-              const merged = {};
               permsData.forEach(p => {
-                const mod = p.module;
-                if (!merged[mod] || priority[p.permission] > priority[merged[mod]]) {
-                  merged[mod] = p.permission;
-                }
+                merged[p.module] = p.permission;
               });
-              // 更新 App 的用户模块权限缓存
-              if (window.App) {
-                window.App._userModulePerms = merged;
-              }
-              console.log('[auth-guard] 模块权限已加载:', merged);
+              console.log('[auth-guard] 模块权限已加载 (role=' + finalRole + '):', merged);
+            } else if (permsError) {
+              console.warn('[auth-guard] 加载模块权限失败:', permsError);
+            }
+            // 无论成功失败都设置 _userModulePerms（即使为空对象），
+            // 确保 enforcePagePermission 的 __permWaitPromise 能 resolve，避免页面永远停留在默认权限
+            if (window.App) {
+              window.App._userModulePerms = merged;
             }
           } catch (e) {
             console.warn('[auth-guard] 加载模块权限失败:', e);
+            // 出错时也要设置空对象，让等待的 promise 能 resolve
+            if (window.App && !window.App._userModulePerms) {
+              window.App._userModulePerms = {};
+            }
           }
         }
       } catch (e) {

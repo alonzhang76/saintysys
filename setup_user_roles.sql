@@ -15,13 +15,19 @@ create table if not exists public.user_roles (
 
 -- ===== 二、模块权限配置表 =====
 -- 替代原 permissions JSON 对象，支持按角色+模块精细控制
+-- permission: write(读写) | read(只读) | none(无权限) | hidden(不显示)
 create table if not exists public.module_permissions (
   id uuid primary key default gen_random_uuid(),
   role text not null,
   module text not null,
-  permission text not null check (permission in ('write', 'read', 'none')),
+  permission text not null check (permission in ('write', 'read', 'none', 'hidden')),
   unique(role, module)
 );
+
+-- 如果表已存在但约束不包含 hidden，执行以下语句更新约束：
+-- alter table public.module_permissions drop constraint if exists module_permissions_permission_check;
+-- alter table public.module_permissions add constraint module_permissions_permission_check
+--   check (permission in ('write', 'read', 'none', 'hidden'));
 
 -- ===== 三、is_admin() 函数 =====
 -- 检查指定用户是否为管理员
@@ -42,11 +48,12 @@ $$;
 
 -- ===== 四、has_module_permission() 函数 =====
 -- 检查指定用户对指定模块的权限
+-- 返回值: 'write' | 'read' | 'none' | 'hidden'
 create or replace function public.has_module_permission(
   module_name text,
   check_user_id uuid default auth.uid()
 )
-returns text  -- 'write' | 'read' | 'none'
+returns text
 language sql
 stable
 security definer
@@ -60,9 +67,10 @@ as $$
   best_perm as (
     select mp.permission,
            case mp.permission
-             when 'write' then 3
-             when 'read' then 2
-             when 'none' then 1
+             when 'write' then 4
+             when 'read' then 3
+             when 'none' then 2
+             when 'hidden' then 1
              else 0
            end as priority
     from public.module_permissions mp

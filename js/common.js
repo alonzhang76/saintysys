@@ -643,9 +643,11 @@ const App = {
     // 异步等待 Supabase 权限加载完成后重新判断
     if (!window.__permWaitPromise) {
       window.__permWaitPromise = new Promise(resolve => {
+        let elapsed = 0;
         const check = () => {
-          if (window.App && window.App._userModulePerms) resolve();
-          else setTimeout(check, 200);
+          // 权限已加载 或 超时(8秒) 都视为完成
+          if ((window.App && window.App._userModulePerms) || elapsed >= 8000) resolve();
+          else { elapsed += 200; setTimeout(check, 200); }
         };
         setTimeout(check, 200);
       });
@@ -655,6 +657,10 @@ const App = {
       if (realPerm !== perm) {
         if (realPerm === 'write') {
           document.body.classList.remove('readonly-mode');
+        } else if (realPerm === 'read') {
+          // 关键修复：权限从 write 降为 read 时，必须添加 readonly-mode
+          document.body.classList.add('readonly-mode');
+          this.toast('当前为只读模式，如需修改请联系管理员', 'info', 3000);
         } else if (realPerm === 'none' || realPerm === 'hidden') {
           const content = document.querySelector('.app-content');
           if (content) {
