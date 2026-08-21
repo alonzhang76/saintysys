@@ -975,13 +975,13 @@ input[type="number"] { -moz-appearance: textfield; }
 <!-- 主加载：ES Module 格式（Chrome/Edge 使用） -->
 <script type="module" src="js/supabase.js?v=20260822"></script>
 <!-- 回退：UMD 格式（Safari/iOS 使用）—— 仅在 ES Module 失败时由 supabase-store.js 动态加载 -->
-<script src="js/supabase-store.js?v=20260822a"></script>
-<script src="js/localstorage-patch.js?v=20260822a"></script>
+<script src="js/supabase-store.js?v=20260822b"></script>
+<script src="js/localstorage-patch.js?v=20260822b"></script>
 <script src="js/supabase-bridge.js?v=20260820d"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822a"></script>
+<script src="js/init-page.js?v=20260822b"></script>
 <script>
 // ===== 状态变量 =====
 let filterState = { search: '', status: '' };
@@ -1591,6 +1591,47 @@ renderTabs();
 renderFilterBar();
 renderSampleTable();
 
+// ===== 关键修复：SupabaseStore 初始化完成后，强制重新加载样衣计划数据 =====
+// 原因：_init 在 SupabaseReady 后执行，但 SamplePlan 的初次 loadData() 可能在数据加载前已执行
+// 此外确保「样衣计划」Tab 也能在切换到之前就加载到最新数据
+(function waitAndInitSamplePlan() {
+  var tries = 0;
+  var maxTries = 30; // 最多等待 30 秒
+  function check() {
+    var store = window.SupabaseStore;
+    var storeReady = store && store._isInitialized && store._isInitialized();
+    // 如果样衣计划数据在缓存中找到了（数组有长度 > 0）或者初始化完成，或者超时 → 强制 init
+    var hasData = false;
+    try {
+      if (store && store.getSync) {
+        var d = store.getSync('sht_sample_data_v2', []);
+        hasData = Array.isArray(d) && d.length > 0;
+      }
+    } catch(e) {}
+    
+    if (storeReady || hasData || tries >= maxTries) {
+      if (window.currentTab === '样衣计划' || !window._samplePlanInited) {
+        console.log('[sample.html] 初始化触发 SamplePlan.init() 时机:', 
+          'storeReady=' + storeReady, 'hasData=' + hasData, 'tries=' + tries);
+        // 如果用户已经切到样衣计划 Tab 过了，需要重新 init；
+        // 否则设置标志，等切换时 init 会从缓存读到最新数据
+        if (window._samplePlanInited) {
+          SamplePlan.init();
+        }
+        // 同时刷新通用的样衣表格（从 App.store 读取）
+        renderStats();
+        renderTabs();
+        renderFilterBar();
+        renderSampleTable();
+      }
+      return;
+    }
+    tries++;
+    setTimeout(check, 1000);
+  }
+  setTimeout(check, 500); // 首次延迟 500ms 开始检查
+})();
+
 // 监听云端数据变更（15秒自动刷新）
 window.addEventListener('cloud-data-updated', function(e) {
   var keys = e.detail.keys || [];
@@ -1598,15 +1639,31 @@ window.addEventListener('cloud-data-updated', function(e) {
     return k === 'sht_sample_data_v2' || k === 'sht_size_tables_v2' || k === 'samples';
   });
   if (needRefresh) {
-    console.log('[sample.html] 云端数据变更，刷新页面数据');
+    console.log('[sample.html] 云端数据变更，刷新页面数据. keys=', keys.join(','));
     // 刷新样衣记录表格
     renderStats();
     renderTabs();
     renderFilterBar();
     renderSampleTable();
-    // 刷新样衣计划模块
-    if (typeof SamplePlan !== 'undefined' && SamplePlan.init) {
-      SamplePlan.init();
+    // 刷新样衣计划模块（无论是否已打开过，都强制重新 loadData，从缓存重新读取）
+    window._samplePlanInited = false; // 重置标志以强制重入逻辑
+    // 如果在样衣计划Tab，直接init；否则下次切Tab时init（但先重新把缓存写回localStorage防止读错）
+    if (typeof SamplePlan !== 'undefined') {
+      // 关键：把最新缓存同步到原始localStorage，确保loadData()不会读到旧本地数据
+      try {
+        var store = window.SupabaseStore;
+        var origLS = window._origLocalStorage || localStorage;
+        if (store && store.getSync && origLS) {
+          var d1 = store.getSync('sht_sample_data_v2', null);
+          var d2 = store.getSync('sht_size_tables_v2', null);
+          if (d1 !== null) origLS.setItem('sht_sample_data_v2', JSON.stringify(d1));
+          if (d2 !== null) origLS.setItem('sht_size_tables_v2', JSON.stringify(d2));
+        }
+      } catch(e) {}
+      if (SamplePlan.init && currentTab === '样衣计划') {
+        SamplePlan.init();
+        window._samplePlanInited = true;
+      }
     }
   }
 });

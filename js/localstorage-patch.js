@@ -54,28 +54,40 @@ localStorage.getItem = function(key) {
       return JSON.stringify(val);
     }
 
-    // 关键修复：即使 SupabaseStore 已初始化，如果缓存中没有此 key，
-    // 也应该回退到原始 localStorage（因为独立轮询等机制可能直接写入了原始 localStorage）
-    // 之前的逻辑在 _isInitialized 为 true 时直接返回 null，导致数据丢失
+    // 关键修复：
+    // 1. 永远不要从 getItem 内部写回 Supabase（会把本地旧数据覆盖云端新数据！）
+    // 2. 只做读取：缓存未命中时尝试原始 localStorage 作为兜底
+    // 3. 缓存更新由 SupabaseStore.init() / refreshFromCloud() 负责
     const origVal = _origGetItem(key);
+    const isInit = window.SupabaseStore._isInitialized && window.SupabaseStore._isInitialized();
+
     if (origVal !== null && origVal !== undefined) {
-      // 原始 localStorage 有数据，同步到 SupabaseStore 缓存
+      // 只返回原始数据，绝不触发写回 Supabase！
+      // 如果需要补充缓存（只读，不更新时间戳不写入云端），直接读 _getCache
       try {
-        const parsed = JSON.parse(origVal);
-        if (window.SupabaseStore.setSync) {
-          window.SupabaseStore.setSync(key, parsed);
+        var cache = window.SupabaseStore._getCache && window.SupabaseStore._getCache();
+        var parsed = JSON.parse(origVal);
+        if (cache && cache[key] === undefined) {
+          // 仅补充 _cache（用于后续 getSync），不更新时间戳也不标记 recentWrites
+          // 这样下次 refreshFromCloud 仍能对比云端与本地内容
+          cache[key] = JSON.parse(JSON.stringify(parsed));
         }
       } catch(e) {}
-      console.log('[LS-Patch] getItem(' + key + ') → 本地回退(有数据), ' + origVal.length + ' 字符');
+      if (!isInit) {
+        console.log('[LS-Patch] getItem(' + key + ') → 本地回退(未初始化), ' + origVal.length + ' 字符');
+      } else {
+        console.log('[LS-Patch] getItem(' + key + ') → 本地回退(缓存无数据), ' + origVal.length + ' 字符');
+      }
       return origVal;
     }
 
     // SupabaseStore 已初始化且原始 localStorage 也没有此 key → 确实无数据
-    if (window.SupabaseStore._isInitialized && window.SupabaseStore._isInitialized()) {
+    if (isInit) {
+      console.log('[LS-Patch] getItem(' + key + ') → null (云端和本地均无此数据)');
       return null;
     }
 
-    // SupabaseStore 尚未初始化完成，原始 localStorage 也没有 → 返回 null
+    // 未初始化且 localStorage 也没有 → 返回 null
     return null;
   }
   return _origGetItem(key);

@@ -321,13 +321,14 @@
   
   var INDEPENDENT_REST_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
   var INDEPENDENT_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-  var _independentLastHashes = {}; // 每个 key 的内容哈希，用于检测变化
+  var _independentLastHashes = null; // null 表示首次运行（还没建基线）
   var _independentRunning = false;
 
   function independentPoll() {
     if (_independentRunning) return;
     _independentRunning = true;
 
+    var isFirstRun = (_independentLastHashes === null);
     var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
     
     fetch(url, {
@@ -347,6 +348,7 @@
 
       var changedKeys = [];
       var newHashes = {};
+      var prevHashes = _independentLastHashes || {};
 
       for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
@@ -362,17 +364,42 @@
         }
         newHashes[key] = hash;
 
-        // 检测是否变化
-        if (_independentLastHashes[key] !== hash) {
+        // 变化检测：首次运行时，任何非空数组/对象的 key 都触发一次更新
+        // （因为页面的初始渲染可能用的是旧 localStorage 数据）
+        var changed = false;
+        if (prevHashes[key] !== hash) {
+          changed = true;
+        }
+        // 首次运行且此 key 有真实数据（非空数组/非null对象）→ 视为有变化，通知UI重新加载
+        if (isFirstRun && !changed) {
+          try {
+            if (Array.isArray(payload) && payload.length > 0) changed = true;
+            else if (payload !== null && typeof payload === 'object') {
+              var hasKeys = false;
+              for (var pk in payload) { hasKeys = true; break; }
+              if (hasKeys) changed = true;
+            }
+          } catch(e) {}
+        }
+
+        if (changed) {
           changedKeys.push(key);
-          
-          // 直接更新 localStorage（使用原始方法，绕过 patch）
+          // 直接更新 原始 localStorage（绕过 patch，确保不会反向写回云端）
           try {
             var origLS = window._origLocalStorage || localStorage;
             origLS.setItem(key, JSON.stringify(payload));
-          } catch(e) {
-            // localStorage 可能已满或其他问题
-          }
+          } catch(e) {}
+          // 同时也更新 SupabaseStore._cache（使后续 getSync 读到最新）
+          try {
+            var store = window.SupabaseStore;
+            if (store && store._getCache) {
+              var cache = store._getCache();
+              if (cache) {
+                cache[key] = JSON.parse(JSON.stringify(payload));
+                // 不更新 _cacheTimestamps，让后续 refreshFromCloud 有机会再对比
+              }
+            }
+          } catch(e) {}
         }
       }
 
@@ -381,7 +408,7 @@
       for (var j = 0; j < rows.length; j++) {
         remoteKeys[rows[j].store_key] = true;
       }
-      for (var localKey in _independentLastHashes) {
+      for (var localKey in prevHashes) {
         if (!remoteKeys[localKey]) {
           changedKeys.push(localKey);
           try {
@@ -394,20 +421,19 @@
       _independentLastHashes = newHashes;
 
       if (changedKeys.length > 0) {
-        console.log('[init-page] 独立轮询检测到变更:', changedKeys.join(', '));
+        console.log('[init-page] 🛡️ 独立轮询' + (isFirstRun ? '(首次基线+触发)' : '检测到变更') + ':', 
+          changedKeys.join(', '), '(共' + changedKeys.length + '个)');
         // 触发云数据更新事件（供各页面刷新 UI）
         window.dispatchEvent(new CustomEvent('cloud-data-updated', {
           detail: { keys: changedKeys }
         }));
-        // 同时触发独立事件（供调试）
-        window.dispatchEvent(new CustomEvent('direct-cloud-sync', {
-          detail: { keys: changedKeys, count: rows.length }
-        }));
+      } else {
+        if (isFirstRun) {
+          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端均为空数据)');
+        }
       }
     })
     .catch(function(err) {
-      // 静默失败（可能是网络问题或 Safari file:// 限制）
-      // 但仍然重试
       if (Date.now() % 30000 < 15000) { // 每30秒只打印一次错误
         console.warn('[init-page] 独立轮询失败:', err && err.message ? err.message : err);
       }
@@ -419,15 +445,21 @@
     });
   }
 
-  // 启动独立轮询（延迟5秒开始，避免与初始化竞争）
+  // 关键：尽早启动独立轮询（不要与 SupabaseStore 初始化竞争）
+  // 对于 Safari/file:// 场景，这通常是数据进入页面的唯一通道
   setTimeout(function() {
     console.log('[init-page] 🛡️ 启动独立云端轮询（Safari 兼容模式）');
     independentPoll();
-  }, 5000);
+  }, 800);
 
-  // 立即执行一次（在启动后3秒）
-  setTimeout(function() {
-    independentPoll();
-  }, 3000);
+  // 页面回到前台时强制立即执行一次独立轮询（绕过所有缓存和节流）
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      setTimeout(independentPoll, 200);
+    }
+  });
+  window.addEventListener('pageshow', function() {
+    setTimeout(independentPoll, 200);
+  });
 
 })(window);
