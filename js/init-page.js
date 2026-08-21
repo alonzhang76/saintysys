@@ -78,24 +78,80 @@
     _cloudRefreshActive = true;
 
     function doRefresh() {
-      if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
-        console.log('[init-page] 🔄 触发云端刷新...');
-        // 使用 forceRefreshFromCloud 确保 Safari 等浏览器也能正确同步
-        var fn = window.SupabaseStore.forceRefreshFromCloud || window.SupabaseStore.refreshFromCloud;
-        fn.call(window.SupabaseStore)
-          .then(function(changed) {
-            if (changed && changed.length > 0) {
-              console.log('[init-page] ✅ 云端刷新完成:', changed.length, '个 key 变更');
-            } else {
-              console.log('[init-page] ⏱️ 刷新完成，无新数据');
+      var store = window.SupabaseStore;
+      
+      // 兜底：即使 SupabaseStore 完全不可用，也通过独立轮询获取数据
+      if (!store) {
+        console.log('[init-page] ⚠️ SupabaseStore 未加载，使用独立 fetch 兜底...');
+        // 直接使用 fetch 获取数据（与 independentPoll 类似但更简单）
+        var FALLBACK_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
+        var FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(FALLBACK_KEY), {cache: 'no-store'})
+          .then(function(resp) { return resp.ok ? resp.json() : Promise.reject(resp.status); })
+          .then(function(rows) {
+            if (!Array.isArray(rows)) return;
+            var changedKeys = [];
+            var origLS = window._origLocalStorage || localStorage;
+            for (var i = 0; i < rows.length; i++) {
+              var row = rows[i];
+              origLS.setItem(row.store_key, JSON.stringify(row.payload));
+              changedKeys.push(row.store_key);
+            }
+            console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key');
+            if (changedKeys.length > 0) {
+              window.dispatchEvent(new CustomEvent('cloud-data-updated', {
+                detail: { keys: changedKeys }
+              }));
             }
           })
           .catch(function(e) {
-            console.warn('[init-page] 云端刷新出错:', e && e.message ? e.message : e);
+            if (Date.now() % 30000 < 15000) {
+              console.warn('[init-page] 兜底刷新失败:', e && e.message ? e.message : e);
+            }
           });
-      } else {
-        console.log('[init-page] ⏭️ 跳过刷新：存储未就绪', !!window.SupabaseStore);
+        return;
       }
+
+      // 关键修复：即使未初始化也尝试刷新（forceRefreshFromCloud 内部会使用 REST API 回退）
+      var isInit = store._isInitialized && store._isInitialized();
+      if (!isInit) {
+        // 未初始化状态下，直接尝试 REST API 刷新
+        console.log('[init-page] 🔄 未初始化状态，尝试 REST API 刷新...');
+        if (store.refreshViaREST) {
+          store.refreshViaREST()
+            .then(function(changed) {
+              if (changed && changed.length > 0) {
+                console.log('[init-page] ✅ REST 刷新完成:', changed.length, '个 key 变更');
+                // 数据加载成功后，尝试重新初始化
+                if (!isInit) {
+                  console.log('[init-page] 🔄 数据已获取，尝试重新初始化...');
+                  store.init && store.init();
+                }
+              } else {
+                console.log('[init-page] ⏱️ REST 刷新完成，无新数据');
+              }
+            })
+            .catch(function(e) {
+              console.warn('[init-page] REST 刷新出错:', e && e.message ? e.message : e);
+            });
+        }
+        return;
+      }
+
+      console.log('[init-page] 🔄 触发云端刷新...');
+      // 使用 forceRefreshFromCloud 确保 Safari 等浏览器也能正确同步
+      var fn = store.forceRefreshFromCloud || store.refreshFromCloud;
+      fn.call(store)
+        .then(function(changed) {
+          if (changed && changed.length > 0) {
+            console.log('[init-page] ✅ 云端刷新完成:', changed.length, '个 key 变更');
+          } else {
+            console.log('[init-page] ⏱️ 刷新完成，无新数据');
+          }
+        })
+        .catch(function(e) {
+          console.warn('[init-page] 云端刷新出错:', e && e.message ? e.message : e);
+        });
     }
 
     // 方案 1: 使用 Web Worker（最可靠，完全不受节流影响）
@@ -257,5 +313,121 @@
   } else {
     injectRefreshButton();
   }
+
+  // ===== 独立云数据轮询（Safari 兼容兜底）=====
+  // 当所有其他机制（Web Worker、SupabaseStore、UMD）都失败时，
+  // 此机制直接通过 fetch + URL 参数方式同步数据，不依赖任何中间层
+  // 解决 Safari 从 file:// 加载时的 ES Module 阻塞、CDN 跨域、CORS 预检等问题
+  
+  var INDEPENDENT_REST_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
+  var INDEPENDENT_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+  var _independentLastHashes = {}; // 每个 key 的内容哈希，用于检测变化
+  var _independentRunning = false;
+
+  function independentPoll() {
+    if (_independentRunning) return;
+    _independentRunning = true;
+
+    var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
+    
+    fetch(url, {
+      // 不使用自定义头（避免 CORS 预检请求被 Safari file:// 阻止）
+      // API key 通过 URL 查询参数传递
+      cache: 'no-store'
+    })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    })
+    .then(function(rows) {
+      if (!Array.isArray(rows)) {
+        console.warn('[init-page] 独立轮询：返回数据不是数组');
+        return;
+      }
+
+      var changedKeys = [];
+      var newHashes = {};
+
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var key = row.store_key;
+        var payload = row.payload;
+        
+        // 计算内容哈希用于变化检测
+        var hash = '';
+        try {
+          hash = JSON.stringify(payload) + '|' + (row.updated_at || '');
+        } catch(e) {
+          hash = String(payload) + '|' + (row.updated_at || '');
+        }
+        newHashes[key] = hash;
+
+        // 检测是否变化
+        if (_independentLastHashes[key] !== hash) {
+          changedKeys.push(key);
+          
+          // 直接更新 localStorage（使用原始方法，绕过 patch）
+          try {
+            var origLS = window._origLocalStorage || localStorage;
+            origLS.setItem(key, JSON.stringify(payload));
+          } catch(e) {
+            // localStorage 可能已满或其他问题
+          }
+        }
+      }
+
+      // 检查已删除的 key
+      var remoteKeys = {};
+      for (var j = 0; j < rows.length; j++) {
+        remoteKeys[rows[j].store_key] = true;
+      }
+      for (var localKey in _independentLastHashes) {
+        if (!remoteKeys[localKey]) {
+          changedKeys.push(localKey);
+          try {
+            var origLS2 = window._origLocalStorage || localStorage;
+            origLS2.removeItem(localKey);
+          } catch(e) {}
+        }
+      }
+
+      _independentLastHashes = newHashes;
+
+      if (changedKeys.length > 0) {
+        console.log('[init-page] 独立轮询检测到变更:', changedKeys.join(', '));
+        // 触发云数据更新事件（供各页面刷新 UI）
+        window.dispatchEvent(new CustomEvent('cloud-data-updated', {
+          detail: { keys: changedKeys }
+        }));
+        // 同时触发独立事件（供调试）
+        window.dispatchEvent(new CustomEvent('direct-cloud-sync', {
+          detail: { keys: changedKeys, count: rows.length }
+        }));
+      }
+    })
+    .catch(function(err) {
+      // 静默失败（可能是网络问题或 Safari file:// 限制）
+      // 但仍然重试
+      if (Date.now() % 30000 < 15000) { // 每30秒只打印一次错误
+        console.warn('[init-page] 独立轮询失败:', err && err.message ? err.message : err);
+      }
+    })
+    .then(function() {
+      _independentRunning = false;
+      // 下次轮询：15秒后
+      setTimeout(independentPoll, 15000);
+    });
+  }
+
+  // 启动独立轮询（延迟5秒开始，避免与初始化竞争）
+  setTimeout(function() {
+    console.log('[init-page] 🛡️ 启动独立云端轮询（Safari 兼容模式）');
+    independentPoll();
+  }, 5000);
+
+  // 立即执行一次（在启动后3秒）
+  setTimeout(function() {
+    independentPoll();
+  }, 3000);
 
 })(window);

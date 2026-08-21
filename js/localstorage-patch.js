@@ -54,17 +54,29 @@ localStorage.getItem = function(key) {
       return JSON.stringify(val);
     }
 
-    // SupabaseStore 已初始化完成但缓存中没有此 key
-    // 说明 Supabase 中确实没有此数据，返回 null（不回退到本地数据）
+    // 关键修复：即使 SupabaseStore 已初始化，如果缓存中没有此 key，
+    // 也应该回退到原始 localStorage（因为独立轮询等机制可能直接写入了原始 localStorage）
+    // 之前的逻辑在 _isInitialized 为 true 时直接返回 null，导致数据丢失
+    const origVal = _origGetItem(key);
+    if (origVal !== null && origVal !== undefined) {
+      // 原始 localStorage 有数据，同步到 SupabaseStore 缓存
+      try {
+        const parsed = JSON.parse(origVal);
+        if (window.SupabaseStore.setSync) {
+          window.SupabaseStore.setSync(key, parsed);
+        }
+      } catch(e) {}
+      console.log('[LS-Patch] getItem(' + key + ') → 本地回退(有数据), ' + origVal.length + ' 字符');
+      return origVal;
+    }
+
+    // SupabaseStore 已初始化且原始 localStorage 也没有此 key → 确实无数据
     if (window.SupabaseStore._isInitialized && window.SupabaseStore._isInitialized()) {
-      console.log('[LS-Patch] getItem(' + key + ') → null (Supabase无此数据)');
       return null;
     }
 
-    // SupabaseStore 尚未初始化完成，临时从本地 localStorage 读取
-    // 但不写入缓存（避免污染后续 Supabase 加载）
-    console.log('[LS-Patch] getItem(' + key + ') → 本地回退 (Supabase未初始化)');
-    return _origGetItem(key);
+    // SupabaseStore 尚未初始化完成，原始 localStorage 也没有 → 返回 null
+    return null;
   }
   return _origGetItem(key);
 };

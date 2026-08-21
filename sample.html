@@ -972,14 +972,16 @@ input[type="number"] { -moz-appearance: textfield; }
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260813"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
-<script type="module" src="js/supabase.js?v=20260820"></script>
-<script src="js/supabase-store.js?v=20260821m"></script>
-<script src="js/localstorage-patch.js?v=20260820f"></script>
+<!-- 主加载：ES Module 格式（Chrome/Edge 使用） -->
+<script type="module" src="js/supabase.js?v=20260822"></script>
+<!-- 回退：UMD 格式（Safari/iOS 使用）—— 仅在 ES Module 失败时由 supabase-store.js 动态加载 -->
+<script src="js/supabase-store.js?v=20260822a"></script>
+<script src="js/localstorage-patch.js?v=20260822a"></script>
 <script src="js/supabase-bridge.js?v=20260820d"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260821f"></script>
+<script src="js/init-page.js?v=20260822a"></script>
 <script>
 // ===== 状态变量 =====
 let filterState = { search: '', status: '' };
