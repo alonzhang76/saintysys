@@ -124,20 +124,40 @@ const App = {
     this.loadUserInfo();
   },
 
-  // 注入侧边栏
+  // 注入侧边栏（根据当前用户权限过滤"不显示"的模块）
   injectSidebar(currentPage) {
+    this._currentPageKey = currentPage; // 保存当前页key，供 auth-role-updated 事件重新注入
     let menuHtml = '<div class="sidebar-logo"><span class="logo-icon">👔</span><span class="logo-text">舜天汉唐服装外贸系统</span></div>';
     menuHtml += '<div class="sidebar-menu">';
+
+    // 按分组累积可见菜单项，若整组都被隐藏则不显示分组标题
+    let currentGroupTitle = null;
+    let currentGroupItems = [];
+
+    const flushGroup = () => {
+      if (currentGroupTitle && currentGroupItems.length > 0) {
+        menuHtml += `<div class="sidebar-menu-group-title">${currentGroupTitle}</div>`;
+        menuHtml += currentGroupItems.join('');
+      }
+      currentGroupTitle = null;
+      currentGroupItems = [];
+    };
+
     this.menuItems.forEach(item => {
       if (item.group) {
-        menuHtml += `<div class="sidebar-menu-group-title">${item.group}</div>`;
+        flushGroup();
+        currentGroupTitle = item.group;
       } else {
+        // 权限为 'hidden' 的模块不在侧边栏显示
+        if (this.getPermission(item.key) === 'hidden') return;
         const active = item.key === currentPage ? ' active' : '';
-        menuHtml += `<a href="${item.url}" class="sidebar-menu-item${active}"><span class="menu-icon">${item.icon}</span><span class="menu-text">${item.text}</span></a>`;
+        currentGroupItems.push(`<a href="${item.url}" class="sidebar-menu-item${active}"><span class="menu-icon">${item.icon}</span><span class="menu-text">${item.text}</span></a>`);
       }
     });
+    flushGroup();
+
     menuHtml += '</div>';
-    
+
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.innerHTML = menuHtml;
   },
@@ -568,14 +588,14 @@ const App = {
     const modulePerm = perms[moduleKey];
     if (modulePerm) {
       const rolePerm = modulePerm[roleKey];
-      if (rolePerm === 'write' || rolePerm === 'read' || rolePerm === 'none') return rolePerm;
+      if (rolePerm === 'write' || rolePerm === 'read' || rolePerm === 'none' || rolePerm === 'hidden') return rolePerm;
     }
 
     // 兜底：如果 permissions key 中无此模块配置，再检查 _userModulePerms
     const userPerms = this._userModulePerms || {};
     if (userPerms[moduleKey]) {
       const p = userPerms[moduleKey];
-      if (p === 'write' || p === 'read' || p === 'none') return p;
+      if (p === 'write' || p === 'read' || p === 'none' || p === 'hidden') return p;
     }
 
     // 无配置默认为读写
@@ -601,7 +621,8 @@ const App = {
     // 记录当前页面模块，供 auth-guard.js 异步加载角色后重新检查
     window._currentPageModule = moduleKey;
     const perm = this.getPermission(moduleKey);
-    if (perm === 'none') {
+    // 'hidden'（不显示）和 'none'（无权限）都阻止访问（防止通过URL直接进入）
+    if (perm === 'none' || perm === 'hidden') {
       const content = document.querySelector('.app-content');
       if (content) {
         content.innerHTML = `
@@ -634,7 +655,7 @@ const App = {
       if (realPerm !== perm) {
         if (realPerm === 'write') {
           document.body.classList.remove('readonly-mode');
-        } else if (realPerm === 'none') {
+        } else if (realPerm === 'none' || realPerm === 'hidden') {
           const content = document.querySelector('.app-content');
           if (content) {
             content.innerHTML = `
@@ -650,6 +671,13 @@ const App = {
     return true;
   }
 };
+
+// ===== 异步权限加载完成后重新注入侧边栏（过滤"不显示"模块）=====
+window.addEventListener('auth-role-updated', function() {
+  if (window.App && App._currentPageKey) {
+    try { App.injectSidebar(App._currentPageKey); } catch(e) {}
+  }
+});
 
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {

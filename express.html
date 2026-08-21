@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -396,6 +396,123 @@ table.data-table {
   font-family: inherit;
 }
 
+/* ===== Multi-pair editor (款号/物品清单) ===== */
+.items-editor {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.items-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.items-editor-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.items-editor-rows { display: flex; flex-direction: column; gap: 6px; }
+.items-editor-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 28px;
+  gap: 6px;
+  align-items: center;
+}
+.items-editor-row input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.items-editor-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+.items-editor-row .row-del {
+  width: 26px; height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: var(--danger-light);
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.items-editor-row .row-del:hover { background: var(--danger); color: #fff; }
+.items-add-btn {
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 1px dashed var(--primary);
+  background: transparent;
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.items-add-btn:hover { background: var(--primary-light); }
+
+/* ===== Hover tooltip for multi-pair cells ===== */
+.cell-tooltip {
+  position: relative;
+  cursor: help;
+}
+.cell-tooltip .tt-badge {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.cell-tooltip .tt-content {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  font-weight: 400;
+  max-width: 360px;
+  white-space: normal;
+  min-width: 160px;
+}
+.cell-tooltip .tt-content::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1e293b;
+}
+.cell-tooltip:hover .tt-content { display: block; }
+.tt-content .tt-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  padding: 2px 0;
+}
+.tt-content .tt-row + .tt-row { border-top: 1px solid rgba(255,255,255,0.1); margin-top: 2px; padding-top: 4px; }
+.tt-content .tt-label { color: #93c5fd; font-weight: 600; }
+.tt-content .tt-empty { color: #94a3b8; font-style: italic; }
+
 /* ===== Compare Modal ===== */
 .modal.compare-modal {
   width: 900px;
@@ -524,14 +641,6 @@ table.data-table {
             <input type="text" class="form-input" id="f_tracking" placeholder="自动填充前缀" style="font-family:Consolas,monospace;font-size:11px">
           </div>
           <div class="form-group">
-            <label class="form-label">款号</label>
-            <input type="text" class="form-input" id="f_styleNo" placeholder="如: A1303">
-          </div>
-          <div class="form-group">
-            <label class="form-label">物品</label>
-            <input type="text" class="form-input" id="f_item" placeholder="如: 面料/样衣/辅料">
-          </div>
-          <div class="form-group">
             <label class="form-label">寄件地区</label>
             <input type="text" class="form-input" id="f_from" value="无锡" placeholder="如: 无锡" list="cityList">
           </div>
@@ -584,6 +693,14 @@ table.data-table {
               <option value="包装服务">包装服务</option>
               <option value="其他">其他</option>
             </select>
+          </div>
+          <!-- 款号/物品清单（支持多个款号+物品对，一个运单可对应多款物品） -->
+          <div class="items-editor" id="formItemsEditor">
+            <div class="items-editor-header">
+              <span class="items-editor-title">款号 / 物品 清单（一个运单可对应多个款号及其物品）</span>
+            </div>
+            <div class="items-editor-rows" id="formItemsRows"></div>
+            <button type="button" class="items-add-btn" onclick="addFormItemsRow()">＋ 添加款号</button>
           </div>
         </div>
         <div class="form-actions">
@@ -844,6 +961,106 @@ let records = [];
 let editId = null;
 let deleteId = null;
 
+// ===== 款号/物品 多对辅助函数 =====
+// 兼容旧数据：旧记录只有 styleNo/item 单字段，新记录用 items[] 数组
+// getItems 统一返回 [{styleNo, item}, ...]，过滤掉 styleNo 和 item 都为空的项
+function getItems(r) {
+  if (Array.isArray(r.items)) {
+    return r.items.filter(it => it && (it.styleNo || it.item));
+  }
+  // 兼容旧数据
+  if (r.styleNo || r.item) return [{ styleNo: r.styleNo || '', item: r.item || '' }];
+  return [];
+}
+
+// 把 items 数组转为 {styleNo, item}，并同步 styleNo/item 顶层字段（向后兼容 Excel/旧代码）
+function syncItemsToRecord(rec, items) {
+  const clean = (items || []).filter(it => it && (it.styleNo || it.item)).map(it => ({
+    styleNo: (it.styleNo || '').toString().trim(),
+    item: (it.item || '').toString().trim(),
+  }));
+  rec.items = clean;
+  // 同步顶层字段为第一对（用于旧代码/Excel 兼容）
+  rec.styleNo = clean.length > 0 ? clean[0].styleNo : '';
+  rec.item = clean.length > 0 ? clean[0].item : '';
+  return rec;
+}
+
+// 款号单元格显示文本：1个时直接显示，多个时显示第一个 + "+N"
+function styleNoCellDisplay(r) {
+  const items = getItems(r);
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0].styleNo || '';
+  return (items[0].styleNo || '—') + ` +${items.length - 1}`;
+}
+
+// 物品单元格显示文本
+function itemCellDisplay(r) {
+  const items = getItems(r);
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0].item || '';
+  return (items[0].item || '—') + ` +${items.length - 1}`;
+}
+
+// 渲染款号单元格（含 hover tooltip 显示全部款号/物品对）
+function renderStyleNoCell(r) {
+  const items = getItems(r);
+  if (items.length === 0) return '—';
+  if (items.length === 1) return items[0].styleNo || '—';
+  // 多个：显示第一个 + 徽章，hover 显示全部
+  const first = items[0].styleNo || '—';
+  const tooltipRows = items.map((it, i) => `
+    <div class="tt-row">
+      <span class="tt-label">${i + 1}.</span>
+      <span><strong>${App.utils.escapeHtml(it.styleNo) || '<span class="tt-empty">无款号</span>'}</strong>${it.item ? ' · ' + App.utils.escapeHtml(it.item) : ''}</span>
+    </div>`).join('');
+  return `<span class="cell-tooltip">${App.utils.escapeHtml(first)}<span class="tt-badge">+${items.length - 1}</span>
+    <span class="tt-content">${tooltipRows}</span>
+  </span>`;
+}
+
+// 渲染物品单元格（含 hover tooltip 显示全部物品/款号对）
+function renderItemCell(r) {
+  const items = getItems(r);
+  if (items.length === 0) return '—';
+  if (items.length === 1) return items[0].item || '—';
+  const first = items[0].item || '—';
+  const tooltipRows = items.map((it, i) => `
+    <div class="tt-row">
+      <span class="tt-label">${App.utils.escapeHtml(it.styleNo) || '<span class="tt-empty">无款号</span>'}</span>
+      <span>${App.utils.escapeHtml(it.item) || '<span class="tt-empty">无物品</span>'}</span>
+    </div>`).join('');
+  return `<span class="cell-tooltip">${App.utils.escapeHtml(first)}<span class="tt-badge">+${items.length - 1}</span>
+    <span class="tt-content">${tooltipRows}</span>
+  </span>`;
+}
+
+// 把 items 转为搜索用字符串（包含所有款号和物品）
+function itemsToSearchText(r) {
+  return getItems(r).map(it => `${it.styleNo} ${it.item}`).join(' ');
+}
+
+// Excel 导出：把 items 拼接成 "A1303;B2200" / "面料;样衣" 格式
+function itemsToExcelText(r, field) {
+  const items = getItems(r);
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0][field] || '';
+  return items.map(it => it[field] || '').join(';');
+}
+
+// Excel 导入：解析 "A1303;B2200" 和 "面料;样衣" 为 items 数组（按分号/逗号拆分）
+function parseExcelToItems(styleNoStr, itemStr) {
+  const sArr = String(styleNoStr || '').split(/[;；,，]/).map(s => s.trim()).filter(Boolean);
+  const iArr = String(itemStr || '').split(/[;；,，]/).map(s => s.trim()).filter(Boolean);
+  const maxLen = Math.max(sArr.length, iArr.length);
+  if (maxLen === 0) return [];
+  const result = [];
+  for (let i = 0; i < maxLen; i++) {
+    result.push({ styleNo: sArr[i] || '', item: iArr[i] || '' });
+  }
+  return result;
+}
+
 // ===== Express Companies Config =====
 const COMPANIES = [
   { name: '顺丰速运', prefix: 'SF', badge: 'sf',
@@ -914,6 +1131,9 @@ function initExpress() {
   // Default to 顺丰速运
   sel.value = '顺丰速运';
   onCompanyChange();
+
+  // 初始化款号/物品清单为 1 个空行
+  resetFormItems();
 
   // Load data
   loadData();
@@ -1108,6 +1328,49 @@ function calcAmount() {
   document.getElementById('f_amount').value = (cost - discount).toFixed(2);
 }
 
+// ===== 款号/物品清单 动态行管理 =====
+function addFormItemsRow(styleNo = '', item = '') {
+  const rows = document.getElementById('formItemsRows');
+  const row = document.createElement('div');
+  row.className = 'items-editor-row';
+  row.innerHTML = `
+    <input type="text" class="fi-style" placeholder="款号，如: A1303" value="${App.utils.escapeHtml(styleNo)}">
+    <input type="text" class="fi-item" placeholder="物品，如: 面料/样衣/辅料" value="${App.utils.escapeHtml(item)}">
+    <button type="button" class="row-del" onclick="removeItemsRow(this)" title="删除此行">×</button>
+  `;
+  rows.appendChild(row);
+}
+
+function removeItemsRow(btn) {
+  const rows = document.getElementById('formItemsRows');
+  // 至少保留 1 行
+  if (rows.children.length <= 1) {
+    // 清空最后一行内容而不是删除
+    btn.parentElement.querySelector('.fi-style').value = '';
+    btn.parentElement.querySelector('.fi-item').value = '';
+    return;
+  }
+  btn.parentElement.remove();
+}
+
+// 从表单款号/物品清单收集 items 数组
+function collectFormItems() {
+  const rows = document.getElementById('formItemsRows').children;
+  const items = [];
+  for (let i = 0; i < rows.length; i++) {
+    const styleNo = rows[i].querySelector('.fi-style').value.trim();
+    const item = rows[i].querySelector('.fi-item').value.trim();
+    if (styleNo || item) items.push({ styleNo, item });
+  }
+  return items;
+}
+
+// 重置表单款号/物品清单为 1 个空行
+function resetFormItems() {
+  document.getElementById('formItemsRows').innerHTML = '';
+  addFormItemsRow();
+}
+
 function resetForm() {
   document.getElementById('formGrid').querySelectorAll('input, select').forEach(el => {
     if (el.id === 'f_date') {
@@ -1126,6 +1389,8 @@ function resetForm() {
   });
   // Refresh prefix and product type options for default company
   onCompanyChange();
+  // 重置款号/物品清单为 1 个空行
+  resetFormItems();
 }
 
 function addRecord() {
@@ -1144,8 +1409,6 @@ function addRecord() {
     date: date,
     company: company,
     tracking: tracking,
-    styleNo: document.getElementById('f_styleNo').value.trim(),
-    item: document.getElementById('f_item').value.trim(),
     fromArea: document.getElementById('f_from').value.trim(),
     toArea: document.getElementById('f_to').value.trim(),
     companyName: document.getElementById('f_companyName').value.trim(),
@@ -1158,6 +1421,8 @@ function addRecord() {
     handler: document.getElementById('f_handler').value.trim(),
     service: document.getElementById('f_service').value,
   };
+  // 同步款号/物品清单到 record.items 和顶层 styleNo/item（向后兼容）
+  syncItemsToRecord(record, collectFormItems());
 
   records.push(record);
   saveData();
@@ -1177,7 +1442,8 @@ function getFilteredRecords() {
     if (month && !r.date.startsWith(month)) return false;
     if (company && r.company !== company) return false;
     if (search) {
-      const hay = `${r.tracking} ${r.companyName} ${r.styleNo} ${r.item} ${r.handler} ${r.fromArea} ${r.toArea}`.toLowerCase();
+      // 关键：搜索包含所有款号和物品（itemsToSearchText）
+      const hay = `${r.tracking} ${r.companyName} ${itemsToSearchText(r)} ${r.handler} ${r.fromArea} ${r.toArea}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -1220,12 +1486,24 @@ function renderTable() {
   tbody.innerHTML = filtered.map(r => {
     const comp = COMPANY_MAP[r.company] || {badge:'other'};
     if (editId === r.id) {
+      // 编辑模式：款号/物品合并为一个单元格的多对编辑器（colspan=2）
+      const items = getItems(r);
+      const itemsRowsHtml = (items.length > 0 ? items : [{styleNo:'',item:''}]).map((it, i) => `
+        <div class="items-editor-row" data-idx="${i}">
+          <input type="text" class="ei-style" placeholder="款号" value="${App.utils.escapeHtml(it.styleNo)}">
+          <input type="text" class="ei-item" placeholder="物品" value="${App.utils.escapeHtml(it.item)}">
+          <button type="button" class="row-del" onclick="removeEditItemsRow(this)" title="删除此行">×</button>
+        </div>`).join('');
       return `<tr class="editing" data-id="${r.id}">
         <td><input type="date" class="cell-edit" id="e_date_${r.id}" value="${r.date}"></td>
         <td><select class="cell-edit" id="e_company_${r.id}" onchange="onEditCompanyChange(${r.id})">${COMPANIES.map(c=>`<option value="${c.name}" ${c.name===r.company?'selected':''}>${c.name}</option>`).join('')}</select></td>
         <td><input type="text" class="cell-edit" id="e_tracking_${r.id}" value="${r.tracking}" style="font-family:Consolas,monospace;font-size:11px"></td>
-        <td><input type="text" class="cell-edit" id="e_styleNo_${r.id}" value="${r.styleNo}"></td>
-        <td><input type="text" class="cell-edit" id="e_item_${r.id}" value="${r.item}"></td>
+        <td colspan="2">
+          <div class="items-editor" style="padding:4px 6px;background:transparent;border:none;">
+            <div class="items-editor-rows" id="e_items_${r.id}">${itemsRowsHtml}</div>
+            <button type="button" class="items-add-btn" onclick="addEditItemsRow(${r.id})">＋ 添加款号</button>
+          </div>
+        </td>
         <td><input type="text" class="cell-edit" id="e_from_${r.id}" value="${r.fromArea}"></td>
         <td><input type="text" class="cell-edit" id="e_to_${r.id}" value="${r.toArea}"></td>
         <td><input type="text" class="cell-edit" id="e_cn_${r.id}" value="${r.companyName}"></td>
@@ -1247,8 +1525,8 @@ function renderTable() {
       <td>${formatDate(r.date)}</td>
       <td><span class="badge ${comp.badge}">${r.company}</span></td>
       <td class="tracking-num">${r.tracking ? `<a href="${getTrackingUrl(r.company, r.tracking)}" target="_blank" rel="noopener" class="tracking-link" title="点击查询物流">${r.tracking}<span class="track-icon">🔍</span></a>` : '—'}</td>
-      <td>${r.styleNo || '—'}</td>
-      <td>${r.item || '—'}</td>
+      <td>${renderStyleNoCell(r)}</td>
+      <td>${renderItemCell(r)}</td>
       <td>${r.fromArea || '—'}</td>
       <td>${r.toArea || '—'}</td>
       <td>${r.companyName || '—'}</td>
@@ -1266,6 +1544,43 @@ function renderTable() {
       </td>
     </tr>`;
   }).join('');
+}
+
+// 编辑行：添加/删除款号物品对
+function addEditItemsRow(id) {
+  const container = document.getElementById(`e_items_${id}`);
+  const row = document.createElement('div');
+  row.className = 'items-editor-row';
+  row.innerHTML = `
+    <input type="text" class="ei-style" placeholder="款号">
+    <input type="text" class="ei-item" placeholder="物品">
+    <button type="button" class="row-del" onclick="removeEditItemsRow(this)" title="删除此行">×</button>
+  `;
+  container.appendChild(row);
+}
+
+function removeEditItemsRow(btn) {
+  const container = btn.parentElement.parentElement;
+  if (container.children.length <= 1) {
+    btn.parentElement.querySelector('.ei-style').value = '';
+    btn.parentElement.querySelector('.ei-item').value = '';
+    return;
+  }
+  btn.parentElement.remove();
+}
+
+// 从编辑行收集 items 数组
+function collectEditItems(id) {
+  const container = document.getElementById(`e_items_${id}`);
+  if (!container) return [];
+  const rows = container.children;
+  const items = [];
+  for (let i = 0; i < rows.length; i++) {
+    const styleNo = rows[i].querySelector('.ei-style').value.trim();
+    const item = rows[i].querySelector('.ei-item').value.trim();
+    if (styleNo || item) items.push({ styleNo, item });
+  }
+  return items;
 }
 
 function onEditCompanyChange(id) {
@@ -1301,13 +1616,11 @@ function cancelEdit() {
 function saveEdit(id) {
   const idx = records.findIndex(r => r.id === id);
   if (idx < 0) return;
-  records[idx] = {
+  const updated = {
     ...records[idx],
     date: document.getElementById(`e_date_${id}`).value,
     company: document.getElementById(`e_company_${id}`).value,
     tracking: document.getElementById(`e_tracking_${id}`).value.trim(),
-    styleNo: document.getElementById(`e_styleNo_${id}`).value.trim(),
-    item: document.getElementById(`e_item_${id}`).value.trim(),
     fromArea: document.getElementById(`e_from_${id}`).value.trim(),
     toArea: document.getElementById(`e_to_${id}`).value.trim(),
     companyName: document.getElementById(`e_cn_${id}`).value.trim(),
@@ -1320,6 +1633,9 @@ function saveEdit(id) {
     handler: document.getElementById(`e_handler_${id}`).value.trim(),
     service: document.getElementById(`e_svc_${id}`).value,
   };
+  // 同步款号/物品清单
+  syncItemsToRecord(updated, collectEditItems(id));
+  records[idx] = updated;
   saveData();
   populateDatalists();
   editId = null;
@@ -1668,11 +1984,14 @@ function exportExcel() {
   // Data rows
   filtered.forEach(r => {
     aoa.push(EXCEL_COLUMNS.map(c => {
-      const val = r[c.key];
       if (c.key === 'weight' || c.key === 'cost' || c.key === 'discount' || c.key === 'amount') {
+        const val = r[c.key];
         return typeof val === 'number' ? val : (parseFloat(val) || 0);
       }
-      return val || '';
+      // 款号/物品：多对拼接为 "A1303;B2200" / "面料;样衣" 格式
+      if (c.key === 'styleNo') return itemsToExcelText(r, 'styleNo');
+      if (c.key === 'item') return itemsToExcelText(r, 'item');
+      return r[c.key] || '';
     }));
   });
   // Summary row
@@ -1844,6 +2163,9 @@ function importExcel(event) {
           rec.amount = rec.cost - (rec.discount || 0);
         }
 
+        // 解析款号/物品为 items 数组（支持 "A1303;B2200" / "面料;样衣" 多对格式）
+        syncItemsToRecord(rec, parseExcelToItems(rec.styleNo, rec.item));
+
         imported.push(rec);
       }
 
@@ -1985,7 +2307,7 @@ function renderCompareResult() {
         <td class="tracking-num">${r.tracking ? `<a href="${getTrackingUrl(r.company, r.tracking)}" target="_blank" rel="noopener" class="tracking-link" title="点击查询物流">${r.tracking}<span class="track-icon">🔍</span></a>` : '—'}</td>
         <td>${r.company || '—'}</td>
         <td>${r.date || '—'}</td>
-        <td>${r.styleNo || '—'}</td>
+        <td>${renderStyleNoCell(r)}</td>
         <td>${r.handler || '—'}</td>
       </tr>`).join('');
 
@@ -2044,7 +2366,7 @@ function printCompareResult() {
         <td class="tracking-num">${r.tracking}</td>
         <td>${r.company || '—'}</td>
         <td>${r.date || '—'}</td>
-        <td>${r.styleNo || '—'}</td>
+        <td>${itemsToExcelText(r, 'styleNo') || '—'}</td>
         <td>${r.handler || '—'}</td>
       </tr>`).join('');
 

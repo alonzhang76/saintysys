@@ -349,14 +349,15 @@ function renderRoles() {
 
       if (!canEdit) {
         // 只读查看模式
-        const display = perm === 'write' ? '✏️ 读写' : (perm === 'none' ? '🚫 无' : '👁️ 只读');
+        const display = perm === 'write' ? '✏️ 读写' : (perm === 'hidden' ? '🚫 不显示' : (perm === 'none' ? '⛔ 无' : '👁️ 只读'));
         matrixHtml += `<td>${display}</td>`;
       } else {
         matrixHtml += `<td>
-          <select onchange="setPerm('${modKey}','${roleKey}',this.value)" ${disabled} style="width:70px;font-size:11px;padding:2px;">
+          <select onchange="setPerm('${modKey}','${roleKey}',this.value)" ${disabled} style="width:80px;font-size:11px;padding:2px;">
             <option value="write" ${perm === 'write' ? 'selected' : ''}>读写</option>
             <option value="read" ${perm === 'read' ? 'selected' : ''}>只读</option>
             <option value="none" ${perm === 'none' ? 'selected' : ''}>无</option>
+            <option value="hidden" ${perm === 'hidden' ? 'selected' : ''}>不显示</option>
           </select>
         </td>`;
       }
@@ -367,7 +368,7 @@ function renderRoles() {
   matrixHtml += '</tbody></table>';
 
   const helpText = canEdit
-    ? '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 提示：系统管理员始终拥有所有模块的读写权限，不受下表限制。修改权限后，相关用户需重新登录才能生效。</div>'
+    ? '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 提示：系统管理员始终拥有所有模块的读写权限，不受下表限制。<br>权限说明：读写=可查看可编辑｜只读=可查看不可编辑｜无=不可访问（侧边栏可见但点击显示无权限）｜不显示=侧边栏不显示该模块<br>修改权限后，相关用户需重新登录才能生效。</div>'
     : '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 您是只读模式，如需修改权限请联系管理员。</div>';
 
   document.getElementById('tab-roles').innerHTML = `
@@ -550,7 +551,7 @@ console.log('[settings.html] 诊断: getPermission(settings)=', App.getPermissio
 // 检查是否为管理员（角色管理员或管理员邮箱）
 const adminEmails = window.ADMIN_EMAILS || [];
 const isAdminEmail = currentUser && adminEmails.indexOf(currentUser.email) >= 0;
-canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || isAdminEmail || App.getPermission('settings') !== 'none');
+canAccessSettings = currentUser && (App.roles[currentUser.role]?.isAdmin || isAdminEmail || (App.getPermission('settings') !== 'none' && App.getPermission('settings') !== 'hidden'));
 if (!canAccessSettings) {
   document.querySelector('.app-content').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;">
@@ -593,7 +594,7 @@ setTimeout(function() {
     currentUser = newUser;
     // 重新检查访问权限
     var isAdminEmail = window.ADMIN_EMAILS && window.ADMIN_EMAILS.indexOf(newUser.email) >= 0;
-    canAccessSettings = !!(newUser && (App.roles[newUser.role]?.isAdmin || isAdminEmail || App.getPermission('settings') !== 'none'));
+    canAccessSettings = !!(newUser && (App.roles[newUser.role]?.isAdmin || isAdminEmail || (App.getPermission('settings') !== 'none' && App.getPermission('settings') !== 'hidden')));
     if (canAccessSettings) {
       try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
     }

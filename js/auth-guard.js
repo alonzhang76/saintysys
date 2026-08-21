@@ -267,7 +267,7 @@
 
             if (!permsError && permsData) {
               // 合并权限：取最高优先级
-              const priority = { write: 3, read: 2, none: 1 };
+              const priority = { write: 3, read: 2, none: 1, hidden: 0 };
               const merged = {};
               permsData.forEach(p => {
                 const mod = p.module;
