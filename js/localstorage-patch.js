@@ -47,17 +47,17 @@ localStorage.getItem = function(key) {
   // 走 Supabase 缓存
   if (window.SupabaseStore) {
     const val = window.SupabaseStore.getSync(key);
-    if (val !== undefined && val !== null) {
+    // 关键修复：空数组[]和空对象{}也走本地回退
+    // 旧代码：val !== undefined && val !== null → 空数组[]会直接返回"[]"，导致本地有数据也读不到
+    // 新代码：只有非空数据才从缓存返回，空数据继续尝试本地回退
+    if (val !== undefined && val !== null && !_isEmptyValue(val)) {
       if (Array.isArray(val)) {
         console.log('[LS-Patch] getItem(' + key + ') → Supabase缓存, ' + val.length + ' 条');
       }
       return JSON.stringify(val);
     }
 
-    // 关键修复：
-    // 1. 永远不要从 getItem 内部写回 Supabase（会把本地旧数据覆盖云端新数据！）
-    // 2. 只做读取：缓存未命中时尝试原始 localStorage 作为兜底
-    // 3. 缓存更新由 SupabaseStore.init() / refreshFromCloud() 负责
+    // 缓存为空（空数组/空对象/null）→ 尝试从原始 localStorage 读取
     const origVal = _origGetItem(key);
     const isInit = window.SupabaseStore._isInitialized && window.SupabaseStore._isInitialized();
 
@@ -67,7 +67,7 @@ localStorage.getItem = function(key) {
       try {
         var cache = window.SupabaseStore._getCache && window.SupabaseStore._getCache();
         var parsed = JSON.parse(origVal);
-        if (cache && cache[key] === undefined) {
+        if (cache && (cache[key] === undefined || _isEmptyValue(cache[key]))) {
           // 仅补充 _cache（用于后续 getSync），不更新时间戳也不标记 recentWrites
           // 这样下次 refreshFromCloud 仍能对比云端与本地内容
           cache[key] = JSON.parse(JSON.stringify(parsed));
@@ -76,7 +76,7 @@ localStorage.getItem = function(key) {
       if (!isInit) {
         console.log('[LS-Patch] getItem(' + key + ') → 本地回退(未初始化), ' + origVal.length + ' 字符');
       } else {
-        console.log('[LS-Patch] getItem(' + key + ') → 本地回退(缓存无数据), ' + origVal.length + ' 字符');
+        console.log('[LS-Patch] getItem(' + key + ') → 本地回退(缓存为空), ' + origVal.length + ' 字符');
       }
       return origVal;
     }
@@ -92,6 +92,17 @@ localStorage.getItem = function(key) {
   }
   return _origGetItem(key);
 };
+
+// 辅助函数：判断值是否为"空"（空数组、空对象、null、undefined）
+function _isEmptyValue(val) {
+  if (val === null || val === undefined) return true;
+  if (Array.isArray(val) && val.length === 0) return true;
+  if (typeof val === 'object' && !Array.isArray(val)) {
+    for (var k in val) { return false; } // 有属性 → 非空
+    return true; // 无属性 → 空
+  }
+  return false;
+}
 
 localStorage.setItem = function(key, value) {
   if (!shouldUseSupabase(key)) return _origSetItem(key, value);
