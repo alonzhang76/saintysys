@@ -730,13 +730,13 @@ table.data-table {
   </div>
 </div>
 
-<script src="js/xlsx.full.min.js?v=20260821"></script>
-<script src="js/common.js?v=20260821b"></script>
+<script src="js/xlsx.full.min.js?v=20260821c"></script>
+<script src="js/common.js?v=20260821c"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/localstorage-patch.js?v=20260822g"></script>
 <script src="js/supabase-store.js?v=20260822g"></script>
-<script src="js/init-page.js?v=20260821b"></script>
-<script src="js/auth-guard.js?v=20260821b"></script>
+<script src="js/init-page.js?v=20260821c"></script>
+<script src="js/auth-guard.js?v=20260821c"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
@@ -756,19 +756,74 @@ var PageDataSyncGuard = {
       try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {}
     }
     if (self.pending) setTimeout(doRefresh, 200);
+    // 关键修复1：2秒后强制刷新一次（覆盖独立轮询/SupabaseStore 异步时序问题）
     setTimeout(function() {
-      var allEmpty = self.emptyCheckKeys.every(function(k){
-        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
-      });
-      if (allEmpty) doRefresh();
+      // 即使没有 pending，也主动检查云端是否有数据
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw || raw === 'null' || raw === '[]') {
+          console.log('[express] 2秒检查: 本地无数据，尝试强制刷新');
+          // 尝试直接从 SupabaseStore 缓存读取
+          if (window.SupabaseStore && window.SupabaseStore.getSync) {
+            var cached = window.SupabaseStore.getSync(STORAGE_KEY, null);
+            if (cached && Array.isArray(cached) && cached.length > 0) {
+              console.log('[express] SupabaseStore缓存有数据，强制加载');
+              if (typeof window.loadData === 'function') window.loadData();
+              if (typeof window.renderAll === 'function') window.renderAll();
+              return;
+            }
+          }
+          // 触发一次强制云端刷新
+          if (window.SupabaseStore && window.SupabaseStore.forceRefreshFromCloud) {
+            window.SupabaseStore.forceRefreshFromCloud().then(function(changed) {
+              console.log('[express] 强制刷新完成:', changed && changed.length, '个key变更');
+              if (typeof window.loadData === 'function') window.loadData();
+              if (typeof window.renderAll === 'function') window.renderAll();
+            }).catch(function(e) {
+              console.warn('[express] 强制刷新失败:', e && e.message);
+            });
+          }
+        }
+      } catch(e) {
+        console.warn('[express] 2秒检查异常:', e);
+      }
     }, 2000);
+    // 关键修复2：4秒后再检查一次（覆盖慢速网络/写入延迟）
+    setTimeout(function() {
+      try {
+        var raw2 = localStorage.getItem(STORAGE_KEY);
+        if (!raw2 || raw2 === 'null' || raw2 === '[]') {
+          console.log('[express] 4秒二次检查: 仍无数据，再次强制刷新');
+          if (window.SupabaseStore && window.SupabaseStore.forceRefreshFromCloud) {
+            window.SupabaseStore.forceRefreshFromCloud().then(function(changed) {
+              if (typeof window.loadData === 'function') window.loadData();
+              if (typeof window.renderAll === 'function') window.renderAll();
+            });
+          }
+        }
+      } catch(e) {}
+    }, 4000);
   }
 };
 window.addEventListener('cloud-data-updated', function(e){
   var keys = (e.detail&&e.detail.keys)||[];
   var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
   if (need) {
-    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    // 关键修复3：即使 inited 为 false，也不丢弃事件（改为延迟处理而非直接 return）
+    if (!PageDataSyncGuard.inited) {
+      PageDataSyncGuard.pending=true;
+      // 额外：在 afterInit 之前也直接尝试加载（因为数据可能已写入缓存/localStorage）
+      try {
+        if (typeof window.loadData === 'function') {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (raw && raw !== 'null' && raw !== '[]') {
+            window.loadData();
+            window.renderAll();
+          }
+        }
+      } catch(e2) {}
+      return;
+    }
     try {
       if (typeof window.loadData === 'function') window.loadData();
       if (typeof window.renderAll === 'function') window.renderAll();
@@ -868,10 +923,61 @@ function initExpress() {
 }
 
 function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try { records = JSON.parse(raw); } catch(e) { records = []; }
+  // 关键修复：多源读取策略，确保云端数据一定能被读到
+  // 优先级：SupabaseStore 缓存 → localStorage（经 Patch）→ 原始 localStorage
+  var raw = null;
+  
+  // 1. 优先从 SupabaseStore 缓存读取（最可靠的数据源）
+  if (window.SupabaseStore && window.SupabaseStore.getSync) {
+    try {
+      var cached = window.SupabaseStore.getSync(STORAGE_KEY, null);
+      if (cached !== null && cached !== undefined) {
+        raw = JSON.stringify(cached);
+      }
+    } catch(e) {}
   }
+  
+  // 2. 如果缓存没命中，从 patched localStorage 读取
+  if (!raw) {
+    raw = localStorage.getItem(STORAGE_KEY);
+  }
+  
+  // 3. 如果还是没命中，直接从原始 localStorage 读取（绕过 Patch）
+  if ((!raw || raw === 'null' || raw === '[]') && window._origLocalStorage) {
+    try {
+      var origVal = window._origLocalStorage.getItem(STORAGE_KEY);
+      if (origVal && origVal !== 'null' && origVal !== '[]') {
+        raw = origVal;
+        // 同步写入 SupabaseStore 缓存（补缓存）
+        if (window.SupabaseStore && window.SupabaseStore._getCache) {
+          try {
+            var cache = window.SupabaseStore._getCache();
+            if (cache && cache[STORAGE_KEY] === undefined) {
+              cache[STORAGE_KEY] = JSON.parse(origVal);
+            }
+          } catch(e) {}
+        }
+      }
+    } catch(e) {}
+  }
+  
+  // 解析数据
+  if (raw && raw !== 'null' && raw !== '[]') {
+    try { 
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        records = parsed;
+      }
+    } catch(e) { 
+      console.warn('[express] loadData JSON解析失败:', e.message);
+      records = []; 
+    }
+  } else {
+    records = [];
+  }
+  
+  // 日志：帮助调试
+  console.log('[express] loadData: 读取到', records.length, '条记录');
 }
 
 function saveData() {
