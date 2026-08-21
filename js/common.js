@@ -642,11 +642,16 @@ const App = {
     const perms = this.store.get('permissions', {});
     const modulePerm = perms[moduleKey];
     if (modulePerm) {
+      // 调试日志：打印该模块所有角色的权限值，便于排查
+      console.log('[权限调试] module=' + moduleKey + ', 所有角色权限:', JSON.stringify(modulePerm));
       const rolePerm = modulePerm[roleKey];
+      console.log('[权限调试] 角色匹配: role=' + roleKey + ', value=' + JSON.stringify(rolePerm));
       if (rolePerm === 'write' || rolePerm === 'read' || rolePerm === 'none' || rolePerm === 'hidden') {
         console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + rolePerm + ' (来自permissions矩阵)');
         return rolePerm;
       }
+    } else {
+      console.log('[权限调试] module=' + moduleKey + ' 无配置 (permissions[' + moduleKey + '] 为 undefined)');
     }
 
     // 兜底：如果 permissions key 中无此模块配置，再检查 _userModulePerms

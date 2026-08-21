@@ -51,9 +51,9 @@
   </div>
 </div>
 
-<script src="js/common.js?v=20260822b"></script>
+<script src="js/common.js?v=20260822d"></script>
 <!-- Supabase 登录守卫 -->
-<script src="js/auth-guard.js?v=20260822b"></script>
+<script src="js/auth-guard.js?v=20260822c"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822ff"></script>
 <script src="js/supabase-store.js?v=20260822h"></script>
@@ -139,7 +139,11 @@ function getUsers() {
 }
 
 function saveUsers(users) {
+  // 双写：localStorage + 云端（防止 refreshFromCloud 覆盖本地新值）
   App.store.set('users', users);
+  if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+    window.SupabaseStore.setSync('users', users);
+  }
 }
 
 function renderUsers() {
@@ -395,27 +399,47 @@ function setPerm(modKey, roleKey, value) {
   const perms = App.store.get('permissions', {});
   if (!perms[modKey]) perms[modKey] = {};
   perms[modKey][roleKey] = value;
+  // 双写：localStorage + 云端（防止 refreshFromCloud 覆盖本地新值）
   App.store.set('permissions', perms);
+  if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+    window.SupabaseStore.setSync('permissions', perms);
+  }
+  // 触发权限重算（当前页面立即生效，无需刷新）
+  if (window.App && window.App._currentPageModule) {
+    try { App.enforcePagePermission(window.App._currentPageModule); } catch(_) {}
+  }
   App.toast('权限已更新', 'success');
 }
 
 function batchSetPerms(value) {
-  App.confirm(`确定将所有模块的权限都设为「${value === 'write' ? '读写' : '只读'}」吗？`, () => {
-    const perms = App.store.get('permissions', {});
-    Object.keys(perms).forEach(modKey => {
-      Object.keys(perms[modKey]).forEach(roleKey => {
+  App.confirm('确定将所有模块的权限都设为「' + (value === 'write' ? '读写' : '只读') + '」吗？', function() {
+    var perms = App.store.get('permissions', {});
+    Object.keys(perms).forEach(function(modKey) {
+      Object.keys(perms[modKey]).forEach(function(roleKey) {
         perms[modKey][roleKey] = value;
       });
     });
+    // 双写：localStorage + 云端
     App.store.set('permissions', perms);
+    if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+      window.SupabaseStore.setSync('permissions', perms);
+    }
     renderRoles();
+    // 触发权限重算
+    if (window.App && window.App._currentPageModule) {
+      try { App.enforcePagePermission(window.App._currentPageModule); } catch(_) {}
+    }
     App.toast('批量更新成功', 'success');
   });
 }
 
 function resetPerms() {
-  App.confirm('确定恢复默认权限配置吗？', () => {
+  App.confirm('确定恢复默认权限配置吗？', function() {
+    // 双删：localStorage + 云端
     localStorage.removeItem('permissions');
+    if (window.SupabaseStore && typeof window.SupabaseStore.remove === 'function') {
+      window.SupabaseStore.remove('permissions');
+    }
     App.initSampleData();
     renderRoles();
     App.toast('已恢复默认配置', 'success');
