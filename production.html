@@ -61,15 +61,46 @@
 </div>
 <script src="js/common.js?v=20260812"></script>
 <!-- Supabase 登录守卫 -->
+<script src="js/localstorage-patch.js?v=20260822g"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260822g"></script>
+
 <script src="js/auth-guard.js?v=20260813"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script>
+// ===== 云端同步：提前注册监听器 =====
+var PageDataSyncGuard = {
+  inited: false, pending: false,
+  watchKeys: ["productions","orders","washes"],
+  emptyCheckKeys: ["productions"],
+  afterInit: function() {
+    var self = this; this.inited = true;
+    function doRefresh() { try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {} }
+    if (self.pending) setTimeout(doRefresh, 200);
+    setTimeout(function() {
+      var allEmpty = self.emptyCheckKeys.every(function(k){
+        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
+      });
+      if (allEmpty) doRefresh();
+    }, 2000);
+  }
+};
+window.addEventListener('cloud-data-updated', function(e){
+  var keys = (e.detail&&e.detail.keys)||[];
+  var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
+  if (need) {
+    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    try { if (typeof window.renderAll==='function') window.renderAll(); } catch(e){}
+  }
+});
+
 App.init('production');
 App.checkLogin();
 App.initSampleData();
 App.enforcePagePermission('production');
+  setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
 
 // ===== 生产管理模块 =====
 const Production = {

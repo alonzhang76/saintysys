@@ -19,21 +19,21 @@
   <div class="sidebar" id="sidebar"></div>
   <div class="main-area">
     <div class="app-header">
-      <button class="header-toggle">�?/button>
+      <button class="header-toggle">☰</button>
       <span class="header-title">订单管理</span>
       <div class="header-actions">
         <button class="btn btn-sm" onclick="App.backupData()">📦</button>
-        <div class="header-user"><span>👤</span><span class="user-name">管理�?/span></div>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
         <button class="btn btn-sm" onclick="App.logout()">🚪</button>
       </div>
     </div>
     <div class="app-content">
-      <!-- 标签�?-->
+      <!-- 标签页 -->
       <div class="tabs" id="orderTabs" style="margin-bottom:0;">
         <div class="tab-item active" data-tab="orders" onclick="switchOrderTab('orders')">订单列表</div>
         <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">物料登记</div>
-        <div class="tab-item" data-tab="sizes" onclick="switchOrderTab('sizes')">尺寸�?/div>
-        <div class="tab-item" data-tab="layout" onclick="switchOrderTab('layout')">款式�?/div>
+        <div class="tab-item" data-tab="sizes" onclick="switchOrderTab('sizes')">尺寸表</div>
+        <div class="tab-item" data-tab="layout" onclick="switchOrderTab('layout')">款式图</div>
       </div>
 
       <!-- 订单列表 -->
@@ -48,13 +48,13 @@
               <input type="text" id="searchInput" class="form-input" placeholder="按PO/款号/客户搜索" oninput="renderTable()">
             </div>
             <select id="statusFilter" class="form-select" onchange="renderTable()">
-              <option value="">全部状�?/option>
+              <option value="">全部状态</option>
               <option value="草稿">草稿</option>
-              <option value="待排�?>待排�?/option>
-              <option value="生产�?>生产�?/option>
-              <option value="已发�?>已发�?/option>
-              <option value="已完�?>已完�?/option>
-              <option value="已取�?>已取�?/option>
+              <option value="待排产">待排产</option>
+              <option value="生产中">生产中</option>
+              <option value="已发货">已发货</option>
+              <option value="已完成">已完成</option>
+              <option value="已取消">已取消</option>
             </select>
             <select id="customerFilter" class="form-select" onchange="renderTable()">
               <option value="">全部客户</option>
@@ -65,7 +65,7 @@
               <span class="card-title">订单列表</span>
             </div>
             <div class="table-toolbar-right">
-              <button class="btn btn-primary" onclick="openForm()">�?/button>
+              <button class="btn btn-primary" onclick="openForm()">➕</button>
             </div>
           </div>
           <div id="orderTable"></div>
@@ -77,14 +77,14 @@
         <div class="table-wrap">
           <div class="filter-bar">
             <div class="search-input">
-              <input type="text" id="matSearchInput" class="form-input" placeholder="搜索PO/款号/名称/供应�? oninput="renderMaterials()">
+              <input type="text" id="matSearchInput" class="form-input" placeholder="搜索PO/款号/名称/供应商" oninput="renderMaterials()">
             </div>
             <select id="matCategoryFilter" class="form-select" onchange="renderMaterials()">
               <option value="">全部类别</option>
               <option value="面料">面料</option>
               <option value="里料">里料</option>
-              <option value="�?>�?/option>
-              <option value="填充�?>填充�?/option>
+              <option value="衬">衬</option>
+              <option value="填充料">填充料</option>
               <option value="辅料">辅料</option>
               <option value="水洗">水洗</option>
             </select>
@@ -98,15 +98,15 @@
               <span class="text-muted" id="matCountLabel" style="font-size:12px;"></span>
             </div>
             <div class="table-toolbar-right">
-              <button class="btn btn-sm" onclick="syncMaterialsToModules()" title="同步当前数据到各模块">🔄 同步到模�?/button>
-              <button class="btn btn-primary" onclick="openMaterialModal()" title="新增登记">�?/button>
+              <button class="btn btn-sm" onclick="syncMaterialsToModules()" title="同步当前数据到各模块">🔄 同步到模块</button>
+              <button class="btn btn-primary" onclick="openMaterialModal()" title="新增登记">➕</button>
             </div>
           </div>
           <div id="materialsTable"></div>
         </div>
       </div>
 
-      <!-- 尺寸�?-->
+      <!-- 尺寸表 -->
       <div id="sizesTab" style="display:none;">
         <div class="table-wrap">
           <div class="filter-bar">
@@ -116,21 +116,21 @@
             <select id="sizeTypeFilter" class="form-select" onchange="renderSizeSheets()">
               <option value="">全部类型</option>
               <option value="头样">头样</option>
-              <option value="尺码�?>尺码�?/option>
-              <option value="产前�?>产前�?/option>
+              <option value="尺码样">尺码样</option>
+              <option value="产前样">产前样</option>
               <option value="船样">船样</option>
-              <option value="照片�?>照片�?/option>
+              <option value="照片样">照片样</option>
               <option value="大货">大货</option>
-              <option value="客供尺寸�?>客供尺寸�?/option>
+              <option value="客供尺寸表">客供尺寸表</option>
             </select>
             <button class="btn btn-sm" onclick="downloadSizeTemplate()" title="下载模板">📄 模板</button>
             <button class="btn btn-sm" onclick="document.getElementById('sizeImportInput').click()" title="导入Excel">📥 导入</button>
             <input type="file" id="sizeImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleSizeImport(event)">
-            <button class="btn btn-sm" onclick="clearAllSizeSheets()" title="清空全部">🗑�?清空</button>
+            <button class="btn btn-sm" onclick="clearAllSizeSheets()" title="清空全部">🗑️ 清空</button>
           </div>
           <div class="table-toolbar">
             <div class="table-toolbar-left">
-              <span class="card-title">尺寸�?/span>
+              <span class="card-title">尺寸表</span>
               <span class="text-muted" id="sizeSheetCount" style="font-size:12px;"></span>
             </div>
             <div class="table-toolbar-right" id="sizeSheetToolbar"></div>
@@ -139,27 +139,27 @@
         </div>
       </div>
 
-      <!-- 款式�?-->
+      <!-- 款式图 -->
       <div id="layoutTab" style="display:none;">
         <div class="table-wrap">
           <div class="filter-bar">
             <div class="search-input">
-              <input type="text" id="layoutSearchInput" class="form-input" placeholder="输入款号搜索款式图（�?111057�? oninput="searchLayoutImages()">
+              <input type="text" id="layoutSearchInput" class="form-input" placeholder="输入款号搜索款式图（如 111057）" oninput="searchLayoutImages()">
             </div>
-            <button class="btn btn-sm" onclick="document.getElementById('layoutFolderInput').click()" title="选择款式图文件夹">📁 选择文件�?/button>
+            <button class="btn btn-sm" onclick="document.getElementById('layoutFolderInput').click()" title="选择款式图文件夹">📁 选择文件夹</button>
             <input type="file" id="layoutFolderInput" webkitdirectory style="display:none" onchange="loadLayoutFolder(event)">
             <span id="layoutFolderName" style="font-size:12px;color:var(--muted);"></span>
           </div>
           <div class="table-toolbar">
             <div class="table-toolbar-left">
-              <span class="card-title">款式图预�?/span>
+              <span class="card-title">款式图预览</span>
               <span class="text-muted" id="layoutCount" style="font-size:12px;"></span>
             </div>
             <div class="table-toolbar-right">
               <label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-right:8px;">
-                <input type="checkbox" id="layoutSelectAll" onchange="toggleLayoutSelectAll(this.checked)" style="width:14px;height:14px;"> 全�?
+                <input type="checkbox" id="layoutSelectAll" onchange="toggleLayoutSelectAll(this.checked)" style="width:14px;height:14px;"> 全选
               </label>
-              <button class="btn btn-sm" onclick="printLayoutImages()" title="打印选中或全部匹配图�?>🖨�?打印PDF</button>
+              <button class="btn btn-sm" onclick="printLayoutImages()" title="打印选中或全部匹配图片">🖨️ 打印PDF</button>
             </div>
           </div>
           <div id="layoutContainer"></div>
@@ -171,49 +171,58 @@
 
 <script src="js/common.js?v=20260812"></script>
 <!-- Supabase 登录守卫 -->
+<script src="js/localstorage-patch.js?v=20260822g"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/init-page.js?v=20260822g"></script>
 <script src="js/auth-guard.js?v=20260813"></script>
-<!-- Supabase 存储层：localStorage �?Supabase -->
-<script type="module" src="js/supabase.js?v=20260822ff"></script>
-<script src="js/supabase-store.js?v=20260822f"></script>
-<script src="js/localstorage-patch.js?v=20260822f"></script>
-<script src="js/supabase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822f"></script>
 <script>
-// ===== 提前注册：云端数据变更监听器 =====
-var _OrderInited = false;
-window.addEventListener('cloud-data-updated', function(e) {
-  var keys = e.detail.keys || [];
-  var needRefresh = keys.some(function(k) {
-    return k === 'orders' || k === 'contacts' || k === 'customers' || k === 'styles'
-      || k === 'shippings' || k === 'sizeSheets';
-  });
-  if (needRefresh) {
-    if (!_OrderInited) {
-      console.log('[order.html] �?云端数据变化已缓存，等待 init 后读�?', keys.join(','));
-      return;
-    }
-    console.log('[order.html] 云端数据变更，刷新页面数�?', keys.join(','));
-    try {
-      renderStats();
-      renderCustomerFilter();
-      renderTable();
-    } catch(err) { console.warn('[order.html] 刷新失败:', err); }
+// ===== 云端同步：提前注册监听器 =====
+var PageDataSyncGuard = {
+  inited: false, pending: false,
+  watchKeys: ["orders", "contacts"],
+  emptyCheckKeys: ["orders"],
+  afterInit: function() {
+    var self = this; this.inited = true;
+    function doRefresh() { try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(e) {} }
+    if (self.pending) setTimeout(doRefresh, 200);
+    setTimeout(function() {
+      var allEmpty = self.emptyCheckKeys.every(function(k){
+        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
+      });
+      if (allEmpty) doRefresh();
+    }, 2000);
+  }
+};
+window.addEventListener('cloud-data-updated', function(e){
+  var keys = (e.detail&&e.detail.keys)||[];
+  var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
+  if (need) {
+    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    try { if (typeof window.renderAll==='function') window.renderAll(); } catch(e){}
   }
 });
 
-// ===== 工具函数（全局作用域，onclick 可访问） =====
+window.renderAll = function() { try { renderStats(); renderCustomerFilter(); renderTable(); } catch(e) {} };
 
-// 根据联系人ID获取客户公司�?
+App.init('order');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('order');
+  setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
+
+// ===== 工具函数 =====
+
+// 根据联系人ID获取客户公司名
 function getCustomerName(customerId) {
   const contacts = App.store.get('contacts', []);
   const c = contacts.find(c => c.id === customerId);
   return c ? c.name : customerId || '-';
 }
 
-// 根据联系人ID获取联系人姓名（用于planner/designer/pManager�?
+// 根据联系人ID获取联系人姓名（用于planner/designer/pManager）
 function getContactPersonName(contactId) {
   const contacts = App.store.get('contacts', []);
   const c = contacts.find(c => c.id === contactId);
@@ -221,7 +230,7 @@ function getContactPersonName(contactId) {
   return c.contactPerson || c.name || contactId;
 }
 
-// 自动生成订单�?ORD-2026-XXXX
+// 自动生成订单号 ORD-2026-XXXX
 function genOrderNo() {
   const orders = App.store.get('orders', []);
   const year = new Date().getFullYear();
@@ -241,15 +250,15 @@ function genOrderNo() {
 function renderStats() {
   const orders = App.store.get('orders', []);
   const total = orders.length;
-  const inProduction = orders.filter(o => o.status === '生产�?).length;
-  const pending = orders.filter(o => o.status === '待排�?).length;
-  const shipped = orders.filter(o => o.status === '已发�?).length;
+  const inProduction = orders.filter(o => o.status === '生产中').length;
+  const pending = orders.filter(o => o.status === '待排产').length;
+  const shipped = orders.filter(o => o.status === '已发货').length;
 
   const cards = [
     { icon: '📋', bg: '#e8f1f5', color: '#004D6D', label: '订单总数', value: total, sub: '全部订单' },
-    { icon: '🏭', bg: '#fff8ed', color: '#d9883a', label: '生产�?, value: inProduction, sub: '正在生产' },
-    { icon: '�?, bg: '#f9fafb', color: '#6b7280', label: '待排�?, value: pending, sub: '等待排产' },
-    { icon: '🚚', bg: '#ecfdfa', color: '#0d9488', label: '已发�?, value: shipped, sub: '已发�? },
+    { icon: '🏭', bg: '#fff8ed', color: '#d9883a', label: '生产中', value: inProduction, sub: '正在生产' },
+    { icon: '⏳', bg: '#f9fafb', color: '#6b7280', label: '待排产', value: pending, sub: '等待排产' },
+    { icon: '🚚', bg: '#ecfdfa', color: '#0d9488', label: '已发货', value: shipped, sub: '已发出' },
   ];
 
   document.getElementById('statCards').innerHTML = cards.map(c => `
@@ -264,7 +273,7 @@ function renderStats() {
   `).join('');
 }
 
-// ===== 客户筛选下�?=====
+// ===== 客户筛选下拉 =====
 function renderCustomerFilter() {
   const customers = App.store.get('contacts', []).filter(c => c.type === '客户');
   const filter = document.getElementById('customerFilter');
@@ -282,19 +291,19 @@ function getFilteredOrders() {
   const customer = document.getElementById('customerFilter').value;
 
   const filtered = orders.filter(o => {
-    // 搜索条件：订单号或款�?
+    // 搜索条件：订单号或款号
     if (search) {
       const orderNo = (o.orderNo || '').toLowerCase();
       const styleNo = (o.styleNo || '').toLowerCase();
       if (!orderNo.includes(search) && !styleNo.includes(search)) return false;
     }
-    // 状态筛�?
+    // 状态筛选
     if (status && o.status !== status) return false;
-    // 客户筛�?
+    // 客户筛选
     if (customer && o.customerId !== customer) return false;
     return true;
   });
-  // 按订单日期倒序（空值排末尾�?
+  // 按订单日期倒序（空值排末尾）
   return App.utils.sortByDateDesc(filtered, ['orderDate', 'etd']);
 }
 
@@ -331,17 +340,17 @@ function renderTable() {
     ],
     data: data,
     actions: (row) => `
-      <button class="btn btn-sm" title="查看详情" onclick="viewDetail('${row.id}')">👁�?/button>
+      <button class="btn btn-sm" title="查看详情" onclick="viewDetail('${row.id}')">👁️</button>
       <button class="btn btn-sm" title="编辑" onclick="openForm('${row.id}')">✏️</button>
-      <button class="btn btn-sm btn-danger" title="删除" onclick="deleteOrder('${row.id}')">🗑�?/button>
+      <button class="btn btn-sm btn-danger" title="删除" onclick="deleteOrder('${row.id}')">🗑️</button>
     `
   });
 }
 
-// ===== 尺码矩阵状�?=====
+// ===== 尺码矩阵状态 =====
 let _sizeMatrix = { sizeGroupId: null, sizes: [], rows: [] };
 
-// ===== 表格选中状�?=====
+// ===== 表格选中状态 =====
 let _selectedOrderIds = new Set();
 
 function toggleSelectAll(checked) {
@@ -360,7 +369,7 @@ function toggleSelect(id, checked) {
   } else {
     _selectedOrderIds.delete(id);
   }
-  // 只更新表头全选框状态，不重建整个表�?
+  // 只更新表头全选框状态，不重建整个表格
   const allChecked = getFilteredOrders().every(o => _selectedOrderIds.has(o.id));
   const headerCb = document.querySelector('#orderTable thead input[type="checkbox"]');
   if (headerCb) headerCb.checked = allChecked;
@@ -374,14 +383,14 @@ function loadSizeGroup() {
   if (groups.length === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:20px;border:2px dashed var(--border);border-radius:var(--radius);">
-        <p style="color:var(--muted);margin-bottom:10px;">尺码表中暂无尺码�?/p>
-        <a href="maintenance.html" class="btn btn-primary" style="font-size:12px;padding:4px 12px;">前往尺码表添�?/a>
+        <p style="color:var(--muted);margin-bottom:10px;">尺码表中暂无尺码组</p>
+        <a href="maintenance.html" class="btn btn-primary" style="font-size:12px;padding:4px 12px;">前往尺码表添加</a>
       </div>`;
     return;
   }
 
   container.innerHTML = `
-    <div style="margin-bottom:8px;color:var(--muted);font-size:12px;">请选择一个尺码组�?/div>
+    <div style="margin-bottom:8px;color:var(--muted);font-size:12px;">请选择一个尺码组：</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
       ${groups.map(g => `
         <div onclick="OrderModule.selectSizeGroup('${g.id}')" style="padding:10px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='var(--primary-light)'" onmouseout="this.style.borderColor='var(--border)';this.style.background=''">
@@ -415,7 +424,7 @@ function renderSizeMatrix() {
   if (!_sizeMatrix.sizes.length) {
     container.innerHTML = `
       <div style="text-align:center;padding:20px;border:2px dashed var(--border);border-radius:var(--radius);">
-        <p style="color:var(--muted);margin-bottom:10px;">尚未选择尺码�?/p>
+        <p style="color:var(--muted);margin-bottom:10px;">尚未选择尺码组</p>
         <button class="btn btn-primary" onclick="loadSizeGroup()">📏 从尺码表选择</button>
       </div>`;
     return;
@@ -432,7 +441,7 @@ function renderSizeMatrix() {
       return `<td style="padding:2px;"><input type="number" class="form-input sm no-spinner" style="width:50px;text-align:center;padding:2px;font-size:12px;" value="${val}" oninput="updateMatrixQty(${idx}, '${s}', this.value)"></td>`;
     }).join('');
 
-    // 行小�?= 类型为SOLID时仅取尺码数量之和，否则 × 箱数
+    // 行小计 = 类型为SOLID时仅取尺码数量之和，否则 × 箱数
     const sizeSum = sizes.reduce((sum, s) => sum + (parseInt(row.quantities[s]) || 0), 0);
     const cartons = parseInt(row.noOfCartons) || 0;
     const rowTotal = row.assType === 'SOLID' ? sizeSum : sizeSum * cartons;
@@ -451,11 +460,11 @@ function renderSizeMatrix() {
         <td style="padding:2px;"><input type="number" class="form-input sm no-spinner" style="width:45px;text-align:center;padding:2px;font-size:12px;" placeholder="箱数" value="${row.noOfCartons}" oninput="updateMatrixRow(${idx}, 'noOfCartons', this.value); updateMatrixTotals();"></td>
         ${qtyCells}
         <td style="text-align:center;font-weight:600;color:var(--primary);" id="rowSub-${idx}">${rowTotal}</td>
-        <td style="padding:2px;"><button class="btn btn-sm btn-danger" title="删除�? onclick="removeMatrixRow(${idx})" style="padding:2px 6px;">🗑�?/button></td>
+        <td style="padding:2px;"><button class="btn btn-sm btn-danger" title="删除行" onclick="removeMatrixRow(${idx})" style="padding:2px 6px;">🗑️</button></td>
       </tr>`;
   });
 
-  // 合计行（每列：SOLID行取尺码数量，其他行 数量×箱数�?
+  // 合计行（每列：SOLID行取尺码数量，其他行 数量×箱数）
   const totalCells = sizes.map((s, si) => {
     const colSum = _sizeMatrix.rows.reduce((sum, r) => {
       const qty = parseInt(r.quantities[s]) || 0;
@@ -469,9 +478,9 @@ function renderSizeMatrix() {
       <span class="text-muted font-sm">尺码组：</span>
       <span class="size-badge-muted">${App.utils.escapeHtml(_sizeMatrix.sizes.join(' · '))}</span>
       <button class="btn btn-sm" onclick="loadSizeGroup()" style="padding:2px 8px;">🔄 更换</button>
-      <button class="btn btn-sm btn-primary" onclick="addMatrixRow()" style="padding:2px 8px;">�?添加�?/button>
+      <button class="btn btn-sm btn-primary" onclick="addMatrixRow()" style="padding:2px 8px;">➕ 添加行</button>
       <span style="flex:1;"></span>
-      <span class="font-sm">合计数量�?strong style="color:var(--primary);font-size:14px;" id="matrixTotal">${totalQty}</strong></span>
+      <span class="font-sm">合计数量：<strong style="color:var(--primary);font-size:14px;" id="matrixTotal">${totalQty}</strong></span>
     </div>
     <div style="overflow-x:auto;">
       <table class="data-table" style="min-width:100%;font-size:12px;">
@@ -490,7 +499,7 @@ function renderSizeMatrix() {
         <tbody>${rowsHtml}</tbody>
         <thead>
           <tr style="background:var(--primary-light);">
-            <td colspan="5" style="font-weight:600;text-align:right;">合计�?/td>
+            <td colspan="5" style="font-weight:600;text-align:right;">合计：</td>
             ${totalCells}
             <td style="font-weight:700;color:var(--primary);text-align:center;" id="grandTotal">${totalQty}</td>
             <td></td>
@@ -499,7 +508,7 @@ function renderSizeMatrix() {
       </table>
     </div>
   `;
-  // 更新总数量和总箱数字�?
+  // 更新总数量和总箱数字段
   const qtyInput = document.getElementById('f_qtyInCartons');
   if (qtyInput) qtyInput.value = totalQty;
   const cartonsInput = document.getElementById('f_noOfCartons');
@@ -521,7 +530,7 @@ function updateMatrixQty(idx, size, val) {
   updateMatrixTotals();
 }
 
-// 轻量更新合计数值（不重建DOM，避免输入框失焦�?
+// 轻量更新合计数值（不重建DOM，避免输入框失焦）
 function updateMatrixTotals() {
   const sizes = _sizeMatrix.sizes;
   let totalQty = 0;
@@ -533,7 +542,7 @@ function updateMatrixTotals() {
     const subEl = document.getElementById(`rowSub-${idx}`);
     if (subEl) subEl.textContent = rowTotal;
   });
-  // 列合�?
+  // 列合计
   sizes.forEach((s, si) => {
     const colSum = _sizeMatrix.rows.reduce((sum, r) => {
       const qty = parseInt(r.quantities[s]) || 0;
@@ -547,7 +556,7 @@ function updateMatrixTotals() {
   if (grandEl) grandEl.textContent = totalQty;
   const matrixTotalEl = document.getElementById('matrixTotal');
   if (matrixTotalEl) matrixTotalEl.textContent = totalQty;
-  // 更新总数量和总箱数字�?
+  // 更新总数量和总箱数字段
   const qtyInput = document.getElementById('f_qtyInCartons');
   if (qtyInput) qtyInput.value = totalQty;
   const cartonsInput = document.getElementById('f_noOfCartons');
@@ -572,10 +581,9 @@ function removeMatrixRow(idx) {
 function openForm(id) {
   const isEdit = !!id;
   const orders = App.store.get('orders', []);
-  const order = isEdit && Array.isArray(orders) ? orders.find(o => o.id === id) : null;
+  const order = isEdit ? orders.find(o => o.id === id) : null;
   const allContacts = App.store.get('contacts', []);
-  const contactsArr = Array.isArray(allContacts) ? allContacts : [];
-  const customersRaw = contactsArr.filter(c => c.type === '客户');
+  const customersRaw = allContacts.filter(c => c.type === '客户');
   // 按客户名称去重（保留首个出现的）
   const seenNames = new Set();
   const customers = customersRaw.filter(c => {
@@ -583,8 +591,8 @@ function openForm(id) {
     seenNames.add(c.name);
     return true;
   });
-  const factories = contactsArr.filter(c => c.type === '工厂');
-  const designers = contactsArr.filter(c => c.type === '样衣�?);
+  const factories = allContacts.filter(c => c.type === '工厂');
+  const designers = allContacts.filter(c => c.type === '样衣师');
 
   const defaultCustomerId = isEdit ? order.customerId : (customers.find(c => c.name === 'Castro Model LTD')?.id || '');
   const customerOptions = '<option value="">请选择客户</option>' +
@@ -599,7 +607,7 @@ function openForm(id) {
   const defaultOrderNo = isEdit ? order.orderNo : '';
   const year = new Date().getFullYear();
 
-  // 初始化尺码矩�?
+  // 初始化尺码矩阵
   if (isEdit && order.sizeMatrix) {
     _sizeMatrix = JSON.parse(JSON.stringify(order.sizeMatrix));
   } else {
@@ -618,12 +626,12 @@ function openForm(id) {
         <select id="f_customerId" class="form-select" onchange="loadCustomerPersonnel(this.value)">${customerOptions}</select>
       </div>
       <div class="form-group" style="flex:1;min-width:120px;">
-        <label class="form-label">PO (订单�?</label>
+        <label class="form-label">PO (订单号)</label>
         <input type="text" id="f_orderNo" class="form-input" value="${App.utils.escapeHtml(defaultOrderNo)}">
       </div>
       <div class="form-group" style="flex:1;min-width:100px;">
         <label class="form-label">Season (季节)</label>
-        <input id="f_season" list="seasonList" class="form-input" placeholder="选择或输�? value="${App.utils.escapeHtml(isEdit ? (order.season || '') : '')}">
+        <input id="f_season" list="seasonList" class="form-input" placeholder="选择或输入" value="${App.utils.escapeHtml(isEdit ? (order.season || '') : '')}">
         <datalist id="seasonList">
           <option value="Spring ${year}"></option>
           <option value="Summer ${year}"></option>
@@ -650,14 +658,14 @@ function openForm(id) {
       <div id="sizeMatrixContainer"></div>
     </div>
 
-    <div class="form-section-title">💰 价格与数�?/div>
+    <div class="form-section-title">💰 价格与数量</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <div class="form-group" style="flex:1;min-width:100px;">
         <label class="form-label">No. of Cartons (箱数)</label>
         <input type="text" id="f_noOfCartons" class="form-input" readonly value="${isEdit ? order.noOfCartons || 0 : 0}">
       </div>
       <div class="form-group" style="flex:1;min-width:120px;">
-        <label class="form-label">Qty in Cartons (总数�?</label>
+        <label class="form-label">Qty in Cartons (总数量)</label>
         <input type="text" id="f_qtyInCartons" class="form-input" readonly value="${isEdit ? order.quantity || 0 : 0}">
       </div>
       <div class="form-group" style="flex:1;min-width:100px;${App.canSeePrice() ? '' : 'display:none;'}">
@@ -665,7 +673,7 @@ function openForm(id) {
         <input type="number" id="f_unitPrice" class="form-input" step="0.01" value="${isEdit ? order.unitPrice || '' : ''}" oninput="calcTotal()">
       </div>
       <div class="form-group" style="flex:1;min-width:100px;${App.canSeePrice() ? '' : 'display:none;'}">
-        <label class="form-label">TTL Amount (总金�?</label>
+        <label class="form-label">TTL Amount (总金额)</label>
         <input type="text" id="f_totalAmount" class="form-input" readonly value="${isEdit ? App.utils.formatMoney(order.totalAmount || 0) : ''}">
       </div>
     </div>
@@ -678,7 +686,7 @@ function openForm(id) {
           <option value="">请选择</option>
           <option value="Sea" ${isEdit && order.shipMethod === 'Sea' ? 'selected' : ''}>Sea (海运)</option>
           <option value="Air" ${isEdit && order.shipMethod === 'Air' ? 'selected' : ''}>Air (空运)</option>
-          <option value="Express" ${isEdit && order.shipMethod === 'Express' ? 'selected' : ''}>Express (快�?</option>
+          <option value="Express" ${isEdit && order.shipMethod === 'Express' ? 'selected' : ''}>Express (快递)</option>
         </select>
       </div>
       <div class="form-group" style="flex:1;min-width:120px;">
@@ -687,14 +695,14 @@ function openForm(id) {
       </div>
     </div>
 
-    <div class="form-section-title">👥 客户联系�?/div>
+    <div class="form-section-title">👥 客户联系人</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <div class="form-group" style="flex:1;min-width:120px;">
-        <label class="form-label">Planner (计划�?</label>
+        <label class="form-label">Planner (计划员)</label>
         <select id="f_planner" class="form-select"></select>
       </div>
       <div class="form-group" style="flex:1;min-width:120px;">
-        <label class="form-label">Designer (设计�?</label>
+        <label class="form-label">Designer (设计师)</label>
         <select id="f_designer" class="form-select"></select>
       </div>
       <div class="form-group" style="flex:1;min-width:120px;">
@@ -725,11 +733,11 @@ function openForm(id) {
   // 渲染尺码矩阵
   renderSizeMatrix();
 
-  // 加载客户对应的人员下�?
+  // 加载客户对应的人员下拉
   loadCustomerPersonnel(defaultCustomerId, order);
 }
 
-// 根据客户加载对应人员（Planner/Designer/P.Manager�?
+// 根据客户加载对应人员（Planner/Designer/P.Manager）
 function loadCustomerPersonnel(customerId, existingOrder) {
   const plannerSel = document.getElementById('f_planner');
   const designerSel = document.getElementById('f_designer');
@@ -745,7 +753,7 @@ function loadCustomerPersonnel(customerId, existingOrder) {
   // 获取该客户公司下所有联系人记录（同名）
   const companyContacts = contacts.filter(c => c.name === customer.name && c.contactPerson);
 
-  // 按职位关键词严格匹配（无匹配则返回空，不回退显示全部�?
+  // 按职位关键词严格匹配（无匹配则返回空，不回退显示全部）
   const matchByKeywords = (keywords) => {
     return companyContacts.filter(c => {
       const pos = (c.position || '').toLowerCase();
@@ -764,7 +772,7 @@ function loadCustomerPersonnel(customerId, existingOrder) {
   pManagerSel.innerHTML = buildOptions(matchByKeywords(['manager', '经理', '生产']), ex.pManager);
 }
 
-// 自动计算总金�?
+// 自动计算总金额
 function calcTotal() {
   const qty = parseFloat(document.getElementById('f_qtyInCartons')?.value) || 0;
   const price = parseFloat(document.getElementById('f_unitPrice')?.value) || 0;
@@ -781,7 +789,7 @@ function saveForm(id) {
   const orderDate = document.getElementById('f_orderDate').value;
   const season = document.getElementById('f_season').value;
   const styleDescription = document.getElementById('f_styleDesc').value.trim();
-  // 包装信息从尺码矩阵汇总（取各行非空值的唯一集合，逗号连接�?
+  // 包装信息从尺码矩阵汇总（取各行非空值的唯一集合，逗号连接）
   const joinUnique = (field) => [...new Set(_sizeMatrix.rows.map(r => r[field]).filter(v => v))].join(', ');
   const packageId = joinUnique('packageId');
   const assType = joinUnique('assType');
@@ -797,13 +805,13 @@ function saveForm(id) {
   const remark = document.getElementById('f_remark').value.trim();
 
   // 表单验证
-  if (!orderNo) { App.toast('请输入PO (订单�?', 'error'); return; }
+  if (!orderNo) { App.toast('请输入PO (订单号)', 'error'); return; }
   if (!styleNo) { App.toast('请输入Style No.', 'error'); return; }
   if (!customerId) { App.toast('请选择Customer (客户)', 'error'); return; }
 
   const orders = App.store.get('orders', []);
 
-  // 价格字段：无权限用户看不到也改不了，保留原�?
+  // 价格字段：无权限用户看不到也改不了，保留原值
   const existingOrder = id ? orders.find(o => o.id === id) : null;
   const priceInputEl = document.getElementById('f_unitPrice');
   const unitPrice = priceInputEl ? (parseFloat(priceInputEl.value) || 0) : (existingOrder ? (existingOrder.unitPrice || 0) : 0);
@@ -835,11 +843,11 @@ function saveForm(id) {
 
 // ===== 删除订单 =====
 function deleteOrder(id) {
-  App.confirm('确定要删除此订单吗？删除后不可恢复�?, () => {
+  App.confirm('确定要删除此订单吗？删除后不可恢复。', () => {
     let orders = App.store.get('orders', []);
     orders = orders.filter(o => o.id !== id);
     App.store.set('orders', orders);
-    App.toast('订单已删�?, 'success');
+    App.toast('订单已删除', 'success');
     renderStats();
     renderTable();
   });
@@ -858,7 +866,7 @@ function viewDetail(id) {
   const productions = App.store.get('productions', []).filter(p => p.styleNo === styleNo || p.orderNo === order.orderNo);
 
   const seasonMap = { SS: '春夏', FW: '秋冬', AW: '秋冬', Holiday: '假日' };
-  const shipMap = { Sea: '海运', Air: '空运', Express: '快�? };
+  const shipMap = { Sea: '海运', Air: '空运', Express: '快递' };
 
   // 尺码矩阵渲染
   let matrixHtml = '';
@@ -920,7 +928,7 @@ function viewDetail(id) {
             <tbody>${rowsHtml}</tbody>
             <tfoot>
               <tr style="background:var(--primary-light);">
-                <td colspan="5" style="font-weight:600;text-align:right;padding:4px;font-size:12px;">合计�?/td>
+                <td colspan="5" style="font-weight:600;text-align:right;padding:4px;font-size:12px;">合计：</td>
                 ${totalCells}
                 <td style="font-weight:700;color:var(--primary);text-align:center;padding:4px;font-size:12px;">${grandTotal}</td>
               </tr>
@@ -932,10 +940,10 @@ function viewDetail(id) {
 
   const body = `
     <div style="text-align:right;margin-bottom:6px;">
-      <button class="btn btn-primary btn-sm" onclick="printOrderPDF('${id}')" title="打印PDF">🖨�?/button>
+      <button class="btn btn-primary btn-sm" onclick="printOrderPDF('${id}')" title="打印PDF">🖨️</button>
     </div>
 
-    <!-- 订单信息（含款式信息�?-->
+    <!-- 订单信息（含款式信息） -->
     <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
       <div class="card-header"><span class="card-title">📋 订单信息</span></div>
       <div style="display:flex;gap:4px 12px;padding:0 12px 6px;flex-wrap:nowrap;">
@@ -950,9 +958,9 @@ function viewDetail(id) {
 
     ${matrixHtml}
 
-    <!-- 价格与数�?-->
+    <!-- 价格与数量 -->
     <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
-      <div class="card-header"><span class="card-title">💰 价格与数�?/span></div>
+      <div class="card-header"><span class="card-title">💰 价格与数量</span></div>
       <div style="display:flex;gap:4px 12px;padding:0 12px 6px;flex-wrap:nowrap;">
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">No. of Cartons</span><span class="detail-value">${(order.noOfCartons && order.noOfCartons > 0) ? order.noOfCartons : (order.sizeMatrix ? order.sizeMatrix.rows.reduce((s,r)=>s+(parseInt(r.noOfCartons)||0),0) : '-')}</span></div>
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Qty in Cartons</span><span class="detail-value">${(order.quantity || 0).toLocaleString()}</span></div>
@@ -961,9 +969,9 @@ function viewDetail(id) {
       </div>
     </div>
 
-    <!-- 物流与人�?-->
+    <!-- 物流与人员 -->
     <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
-      <div class="card-header"><span class="card-title">🚚 出运 / 👥 客户联系�?/span></div>
+      <div class="card-header"><span class="card-title">🚚 出运 / 👥 客户联系人</span></div>
       <div style="display:flex;gap:4px 12px;padding:0 12px 6px;flex-wrap:nowrap;">
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Shp Method</span><span class="detail-value">${shipMap[order.shipMethod] || order.shipMethod || '-'}</span></div>
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">ETD (交货日期)</span><span class="detail-value">${order.etd ? App.utils.formatDate(order.etd) : '-'}</span></div>
@@ -1011,7 +1019,7 @@ function viewDetail(id) {
       { key: 'sampleDate', title: '日期', width: '110px' },
       { key: 'factory', title: '样衣工厂' },
       { key: 'size', title: '尺码', width: '60px' },
-      { key: 'status', title: '状�?, width: '80px', render: (v) => App.statusTag(v) },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
     ],
     data: samples
   });
@@ -1020,11 +1028,11 @@ function viewDetail(id) {
   App.renderTable('detail_fabrics', {
     columns: [
       { key: 'fabricName', title: '面料名称' },
-      { key: 'supplier', title: '供应�? },
+      { key: 'supplier', title: '供应商' },
       { key: 'composition', title: '成分' },
       { key: 'color', title: '颜色', width: '80px' },
       { key: 'qtyOrdered', title: '数量', width: '90px', render: (v, row) => `${v} ${row.unit || ''}` },
-      { key: 'status', title: '状�?, width: '80px', render: (v) => App.statusTag(v) },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
     ],
     data: fabrics
   });
@@ -1033,11 +1041,11 @@ function viewDetail(id) {
   App.renderTable('detail_accessories', {
     columns: [
       { key: 'accessoryName', title: '辅料名称' },
-      { key: 'supplier', title: '供应�? },
+      { key: 'supplier', title: '供应商' },
       { key: 'spec', title: '规格' },
       { key: 'color', title: '颜色', width: '80px' },
       { key: 'qtyOrdered', title: '数量', width: '90px', render: (v, row) => `${v} ${row.unit || ''}` },
-      { key: 'status', title: '状�?, width: '80px', render: (v) => App.statusTag(v) },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
     ],
     data: accessories
   });
@@ -1047,11 +1055,11 @@ function viewDetail(id) {
     columns: [
       { key: 'factoryType', title: '工厂类型', width: '90px' },
       { key: 'factoryName', title: '工厂名称' },
-      { key: 'startDate', title: '开始日�?, width: '110px' },
+      { key: 'startDate', title: '开始日期', width: '110px' },
       { key: 'expectedEnd', title: '预计完成', width: '110px' },
-      { key: 'qtyPlanned', title: '计划�?, width: '80px' },
-      { key: 'qtyCompleted', title: '已完�?, width: '80px' },
-      { key: 'status', title: '状�?, width: '80px', render: (v) => App.statusTag(v) },
+      { key: 'qtyPlanned', title: '计划数', width: '80px' },
+      { key: 'qtyCompleted', title: '已完成', width: '80px' },
+      { key: 'status', title: '状态', width: '80px', render: (v) => App.statusTag(v) },
     ],
     data: productions
   });
@@ -1061,10 +1069,10 @@ function viewDetail(id) {
 function printOrderPDF(id) {
   const orders = App.store.get('orders', []);
   const order = orders.find(o => o.id === id);
-  if (!order) { App.toast('订单不存�?, 'error'); return; }
+  if (!order) { App.toast('订单不存在', 'error'); return; }
 
   const seasonMap = { SS: '春夏', FW: '秋冬', AW: '秋冬', Holiday: '假日' };
-  const shipMap = { Sea: '海运', Air: '空运', Express: '快�? };
+  const shipMap = { Sea: '海运', Air: '空运', Express: '快递' };
   const customerName = getCustomerName(order.customerId);
   const plannerName = order.planner ? getContactPersonName(order.planner) : '-';
   const designerName = order.designer ? getContactPersonName(order.designer) : '-';
@@ -1137,7 +1145,7 @@ function printOrderPDF(id) {
         <tbody>${rowsHtml}</tbody>
         <tfoot>
           <tr style="background:#f3f4f6;${bgCA}">
-            <td colspan="5" style="${tdStyle}text-align:right;font-weight:600;">合计�?/td>
+            <td colspan="5" style="${tdStyle}text-align:right;font-weight:600;">合计：</td>
             ${totalCells}
             <td style="${tcStyle}font-weight:700;">${grandTotal}</td>
           </tr>
@@ -1165,37 +1173,37 @@ function printOrderPDF(id) {
     { key: 'stage', title: '阶段' },
     { key: 'round', title: '轮次' },
     { key: 'sampleDate', title: '日期' },
-    { key: 'factory', title: '打样�? },
+    { key: 'factory', title: '打样厂' },
     { key: 'size', title: '尺码' },
-    { key: 'status', title: '状�?, render: (v) => v || '-' },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
   ], samples);
 
   const fabricsTable = buildTable([
     { key: 'fabricName', title: '面料名称' },
-    { key: 'supplier', title: '供应�? },
+    { key: 'supplier', title: '供应商' },
     { key: 'composition', title: '成分' },
     { key: 'color', title: '颜色' },
     { key: 'qtyOrdered', title: '数量', render: (v, row) => `${v || '-'} ${row.unit || ''}` },
-    { key: 'status', title: '状�?, render: (v) => v || '-' },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
   ], fabrics);
 
   const accessoriesTable = buildTable([
     { key: 'accessoryName', title: '辅料名称' },
-    { key: 'supplier', title: '供应�? },
+    { key: 'supplier', title: '供应商' },
     { key: 'spec', title: '规格' },
     { key: 'color', title: '颜色' },
     { key: 'qtyOrdered', title: '数量', render: (v, row) => `${v || '-'} ${row.unit || ''}` },
-    { key: 'status', title: '状�?, render: (v) => v || '-' },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
   ], accessories);
 
   const productionsTable = buildTable([
     { key: 'factoryType', title: '工厂类型' },
     { key: 'factoryName', title: '工厂名称' },
-    { key: 'startDate', title: '开始日�? },
+    { key: 'startDate', title: '开始日期' },
     { key: 'expectedEnd', title: '预计完成' },
-    { key: 'qtyPlanned', title: '计划�? },
-    { key: 'qtyCompleted', title: '已完�? },
-    { key: 'status', title: '状�?, render: (v) => v || '-' },
+    { key: 'qtyPlanned', title: '计划数' },
+    { key: 'qtyCompleted', title: '已完成' },
+    { key: 'status', title: '状态', render: (v) => v || '-' },
   ], productions);
 
   const printDate = App.utils.formatDate(new Date());
@@ -1209,7 +1217,7 @@ function printOrderPDF(id) {
     size: A4;
     margin: 12mm 10mm 14mm 10mm;
     @bottom-left {
-      content: "打印日期�?{printDate}";
+      content: "打印日期：${printDate}";
       font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
       font-size: 9px;
       color: #666;
@@ -1219,7 +1227,7 @@ function printOrderPDF(id) {
       print-color-adjust: exact;
     }
     @bottom-right {
-      content: "�?" counter(page) " / " counter(pages) " �?;
+      content: "第 " counter(page) " / " counter(pages) " 页";
       font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
       font-size: 9px;
       color: #666;
@@ -1259,7 +1267,7 @@ function printOrderPDF(id) {
       <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
     </div>
     <div class="doc-title">
-      <h2>订单详情�?/h2>
+      <h2>订单详情表</h2>
       <div class="kv"><span class="k">PO</span><span class="v">${esc(order.orderNo)}</span></div>
       <div class="kv"><span class="k">STYLE NO</span><span class="v">${esc(order.styleNo || '-')}</span></div>
     </div>
@@ -1283,7 +1291,7 @@ function printOrderPDF(id) {
   ${matrixHtml}
   ` : ''}
 
-  <div class="section-title">价格与数�?/div>
+  <div class="section-title">价格与数量</div>
   <table class="info-table">
     <tr>
       <td class="label">No. of Cartons</td><td>${totalCartons}</td>
@@ -1293,7 +1301,7 @@ function printOrderPDF(id) {
     </tr>
   </table>
 
-  <div class="section-title">出运 / 客户联系�?/div>
+  <div class="section-title">出运 / 客户联系人</div>
   <table class="info-table">
     <tr>
       <td class="label">Shp Method</td><td>${shipMap[order.shipMethod] || order.shipMethod || '-'}</td>
@@ -1322,12 +1330,12 @@ function printOrderPDF(id) {
   ${productionsTable}
 
   <div class="doc-footer-screen no-print">
-    <span>打印日期�?{printDate}</span>
-    <span>页码 / 页数需在打印或打印预览中查�?/span>
+    <span>打印日期：${printDate}</span>
+    <span>页码 / 页数需在打印或打印预览中查看</span>
   </div>
 
   <div class="no-print" style="text-align:center;margin-top:14px;">
-    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨�?打印</button>
+    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨️ 打印</button>
     <button onclick="window.close()" style="padding:6px 20px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;margin-left:6px;">✖️ 关闭</button>
   </div>
 </body>
@@ -1359,7 +1367,7 @@ function switchOrderTab(tab) {
   if (tab === 'layout') searchLayoutImages();
 }
 
-// 尺寸表数据管�?
+// 尺寸表数据管理
 function getSizeSheets() {
   return App.store.get('sizeSheets', []);
 }
@@ -1388,14 +1396,14 @@ function renderSizeSheets() {
     filtered = filtered.filter(s => (s.sampleType || '大货') === typeFilter);
   }
 
-  countEl.textContent = sheets.length > 0 ? `（共 ${sheets.length} 份尺寸表，筛�?${filtered.length} 份）` : '';
+  countEl.textContent = sheets.length > 0 ? `（共 ${sheets.length} 份尺寸表，筛选 ${filtered.length} 份）` : '';
 
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:40px;color:#999;">
         <div style="font-size:48px;margin-bottom:12px;">📐</div>
         <div style="margin-bottom:16px;">${sheets.length === 0 ? '暂无尺寸表数据，请导入Excel文件' : '没有匹配的尺寸表'}</div>
-        ${sheets.length === 0 ? '<div style="font-size:12px;color:#999;">点击"📄 模板"下载模板，点�?📥 导入"上传数据</div>' : ''}
+        ${sheets.length === 0 ? '<div style="font-size:12px;color:#999;">点击"📄 模板"下载模板，点击"📥 导入"上传数据</div>' : ''}
       </div>`;
     return;
   }
@@ -1408,30 +1416,30 @@ function renderSizeSheets() {
         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light);background:#f8f9fa;">
           <div style="display:flex;gap:20px;align-items:center;">
             <div>
-              <span style="color:var(--muted);font-size:12px;">类型�?/span>
+              <span style="color:var(--muted);font-size:12px;">类型：</span>
               ${App.statusTag(sheet.sampleType || '大货')}
             </div>
             <div>
-              <span style="color:var(--muted);font-size:12px;">PO�?/span>
+              <span style="color:var(--muted);font-size:12px;">PO：</span>
               <span style="font-weight:600;color:var(--primary);">${App.utils.escapeHtml(sheet.orderNo || '-')}</span>
             </div>
             <div>
-              <span style="color:var(--muted);font-size:12px;">款号�?/span>
+              <span style="color:var(--muted);font-size:12px;">款号：</span>
               <span style="font-weight:600;">${App.utils.escapeHtml(sheet.styleNo || '-')}</span>
             </div>
             <div>
-              <span style="color:var(--muted);font-size:12px;">日期�?/span>
+              <span style="color:var(--muted);font-size:12px;">日期：</span>
               <span>${App.utils.escapeHtml(sheet.date || '-')}</span>
             </div>
             <div style="color:var(--muted);font-size:12px;">
-              ${rowCount} 个部�?· ${sizeCount} 个尺�?
+              ${rowCount} 个部位 · ${sizeCount} 个尺码
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-sm" onclick="viewSizeSheet('${sheet.id}')" title="查看">👁�?/button>
-            <button class="btn btn-sm" onclick="printSizeSheet('${sheet.id}')" title="打印PDF">🖨�?/button>
+            <button class="btn btn-sm" onclick="viewSizeSheet('${sheet.id}')" title="查看">👁️</button>
+            <button class="btn btn-sm" onclick="printSizeSheet('${sheet.id}')" title="打印PDF">🖨️</button>
             <button class="btn btn-sm" onclick="exportSizeSheet('${sheet.id}')" title="导出">📤</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteSizeSheet('${sheet.id}')" title="删除">🗑�?/button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSizeSheet('${sheet.id}')" title="删除">🗑️</button>
           </div>
         </div>
         <div id="sizeSheet_${sheet.id}" style="display:none;padding:12px;">
@@ -1441,7 +1449,7 @@ function renderSizeSheets() {
   }).join('');
 }
 
-// 渲染单个尺寸�?
+// 渲染单个尺寸表
 function renderSizeSheetTable(sheet) {
   const sizes = sheet.sizes || [];
   const rows = sheet.rows || [];
@@ -1476,7 +1484,7 @@ function renderSizeSheetTable(sheet) {
   return thead;
 }
 
-// 查看尺寸表详�?
+// 查看尺寸表详情
 function viewSizeSheet(id) {
   const sheet = getSizeSheets().find(s => s.id === id);
   if (!sheet) return;
@@ -1488,7 +1496,7 @@ function viewSizeSheet(id) {
   }
 }
 
-// 删除尺寸�?
+// 删除尺寸表
 function deleteSizeSheet(id) {
   App.confirm('确定要删除这个尺寸表吗？', () => {
     const sheets = getSizeSheets().filter(s => s.id !== id);
@@ -1498,30 +1506,30 @@ function deleteSizeSheet(id) {
   });
 }
 
-// 清空全部尺寸�?
+// 清空全部尺寸表
 function clearAllSizeSheets() {
   const sheets = getSizeSheets();
   if (sheets.length === 0) {
-    App.toast('尺寸表已是空�?, 'warning');
+    App.toast('尺寸表已是空的', 'warning');
     return;
   }
-  App.confirm(`确定要清空全�?${sheets.length} 份尺寸表吗？此操作不可恢复！`, () => {
+  App.confirm(`确定要清空全部 ${sheets.length} 份尺寸表吗？此操作不可恢复！`, () => {
     saveSizeSheets([]);
     renderSizeSheets();
-    App.toast('已清�?, 'success');
+    App.toast('已清空', 'success');
   });
 }
 
 // 下载Excel模板
 function downloadSizeTemplate() {
-  const headers = ['PO�?, '款号', '类型', '日期', '部位编号', '英文名称', '中文名称', '公差'];
+  const headers = ['PO号', '款号', '类型', '日期', '部位编号', '英文名称', '中文名称', '公差'];
   const sampleData = [
-    ['260003960', '1110577', '头样', '2026/7/3', 'A', '1/2 BUST CIRC. at armhole point', '半胸�?腋底�?, '1'],
-    ['260003960', '1110577', '头样', '2026/7/3', 'B', '1/2 WAIST CIRC.15 cm from armhole point', '半腰�?腋下15cm', '1'],
-    ['260003960', '1110577', '头样', '2026/7/3', 'D', '1/2 HEM CIRC. at edge straight line', '半下�?直量', '1'],
-    ['260003960', '1110577', '尺码�?, '2026/7/15', 'D6', 'FOLD HEM HEIGHT', '下摆折边�?, '0.3'],
-    ['260003960', '1110577', '尺码�?, '2026/7/15', 'E', 'NECK OPENING back neck straight seam to seam', '领宽', '0.3'],
-    ['260003960', '1110577', '产前�?, '2026/8/1', 'E1', 'FRONT NECK DROP from H.P.S to edge', '前领�?, '0.3'],
+    ['260003960', '1110577', '头样', '2026/7/3', 'A', '1/2 BUST CIRC. at armhole point', '半胸围-腋底量', '1'],
+    ['260003960', '1110577', '头样', '2026/7/3', 'B', '1/2 WAIST CIRC.15 cm from armhole point', '半腰围-腋下15cm', '1'],
+    ['260003960', '1110577', '头样', '2026/7/3', 'D', '1/2 HEM CIRC. at edge straight line', '半下摆-直量', '1'],
+    ['260003960', '1110577', '尺码样', '2026/7/15', 'D6', 'FOLD HEM HEIGHT', '下摆折边高', '0.3'],
+    ['260003960', '1110577', '尺码样', '2026/7/15', 'E', 'NECK OPENING back neck straight seam to seam', '领宽', '0.3'],
+    ['260003960', '1110577', '产前样', '2026/8/1', 'E1', 'FRONT NECK DROP from H.P.S to edge', '前领深', '0.3'],
   ];
   const sizeHeaders = ['34', '36', '38', '40', '42', '44'];
   const sizeData = [
@@ -1541,17 +1549,17 @@ function downloadSizeTemplate() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '尺寸表模�?csv';
+  a.download = '尺寸表模板.csv';
   a.click();
   URL.revokeObjectURL(url);
   App.toast('模板已下载，请修改后导入', 'success');
 }
 
-// 导出单个尺寸�?
+// 导出单个尺寸表
 function exportSizeSheet(id) {
   const sheet = getSizeSheets().find(s => s.id === id);
   if (!sheet) return;
-  const headers = ['PO�?, '款号', '类型', '日期', '部位编号', '英文名称', '中文名称', '公差', ...(sheet.sizes || [])];
+  const headers = ['PO号', '款号', '类型', '日期', '部位编号', '英文名称', '中文名称', '公差', ...(sheet.sizes || [])];
   const rows = (sheet.rows || []).map(row => [
     sheet.orderNo, sheet.styleNo, sheet.sampleType || '大货', sheet.date,
     row.code, row.en, row.cn, row.tolerance,
@@ -1584,7 +1592,7 @@ function handleSizeImport(event) {
       const rows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1, raw: false });
 
       if (rows.length < 2) {
-        App.toast('文件格式错误，至少需�?行数�?, 'error');
+        App.toast('文件格式错误，至少需要2行数据', 'error');
         return;
       }
 
@@ -1607,21 +1615,21 @@ function handleSizeImport(event) {
       saveSizeSheets(sheets);
       renderSizeSheets();
 
-      let msg = `导入完成：成�?${importCount} 份尺寸表`;
-      if (skipCount > 0) msg += `，跳�?${skipCount} 行（格式不匹配）`;
+      let msg = `导入完成：成功 ${importCount} 份尺寸表`;
+      if (skipCount > 0) msg += `，跳过 ${skipCount} 行（格式不匹配）`;
       App.toast(msg, 'success');
     } catch (err) {
       console.error('导入失败:', err);
-      App.toast('导入失败，请检查文件格�?, 'error');
+      App.toast('导入失败，请检查文件格式', 'error');
     }
   };
   reader.readAsArrayBuffer(file);
 }
 
-// Excel日期序列号转字符�?
+// Excel日期序列号转字符串
 function formatExcelDate(val) {
   if (val === null || val === undefined || val === '') return '';
-  // 已经是字符串日期（如 2026/7/3�?
+  // 已经是字符串日期（如 2026/7/3）
   if (typeof val === 'string') return val.trim();
   // Date对象（cellDates:true时）
   if (val instanceof Date) {
@@ -1630,7 +1638,7 @@ function formatExcelDate(val) {
     const d = val.getDate();
     return `${y}/${m}/${d}`;
   }
-  // 数字序列号（�?6243�?
+  // 数字序列号（如46243）
   if (typeof val === 'number') {
     const date = new Date(Math.round((val - 25569) * 86400 * 1000));
     const y = date.getUTCFullYear();
@@ -1648,7 +1656,7 @@ function parseSizeSheetRows(rows) {
 
   const headerRow = rows[0].map(h => String(h).trim());
   const headers = {
-    po: headerRow.findIndex(h => h.includes('PO') || h.includes('po') || h === 'PO�?),
+    po: headerRow.findIndex(h => h.includes('PO') || h.includes('po') || h === 'PO号'),
     styleNo: headerRow.findIndex(h => h.includes('款号') || h.includes('style') || h.toLowerCase().includes('style')),
     sampleType: headerRow.findIndex(h => h === '类型' || h === '样衣类型'),
     date: headerRow.findIndex(h => h === '日期' || h === 'date' || h.toLowerCase() === 'date'),
@@ -1714,9 +1722,9 @@ function parseSizeSheetRows(rows) {
 
 // ===== 款式图标签页 =====
 let _layoutFiles = [];      // 存储选择的文件夹中的图片文件
-let _layoutFolderName = '';  // 文件夹名�?
+let _layoutFolderName = '';  // 文件夹名称
 let _selectedLayoutFiles = new Set();  // 选中的图片文件名
-let _layoutUrlMap = {};      // 文件�?-> objectURL 映射
+let _layoutUrlMap = {};      // 文件名 -> objectURL 映射
 const _layoutImageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 // 加载款式图文件夹
@@ -1733,14 +1741,14 @@ function loadLayoutFolder(event) {
     }
   }
 
-  _layoutFolderName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : '已选择文件�?;
+  _layoutFolderName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : '已选择文件夹';
   _selectedLayoutFiles.clear();
   _layoutUrlMap = {};
-  document.getElementById('layoutFolderName').textContent = `📁 ${_layoutFolderName}�?{_layoutFiles.length} 张图片）`;
+  document.getElementById('layoutFolderName').textContent = `📁 ${_layoutFolderName}（${_layoutFiles.length} 张图片）`;
   searchLayoutImages();
 }
 
-// 搜索款式�?
+// 搜索款式图
 function searchLayoutImages() {
   const container = document.getElementById('layoutContainer');
   const countEl = document.getElementById('layoutCount');
@@ -1751,7 +1759,7 @@ function searchLayoutImages() {
       <div style="text-align:center;padding:40px;color:#999;">
         <div style="font-size:48px;margin-bottom:12px;">📂</div>
         <div style="margin-bottom:8px;">请先选择款式图文件夹</div>
-        <div style="font-size:12px;color:#999;">点击"📁 选择文件�?按钮，选择项目中的 layout 文件�?/div>
+        <div style="font-size:12px;color:#999;">点击"📁 选择文件夹"按钮，选择项目中的 layout 文件夹</div>
       </div>`;
     countEl.textContent = '';
     return;
@@ -1761,9 +1769,9 @@ function searchLayoutImages() {
     container.innerHTML = `
       <div style="text-align:center;padding:40px;color:#999;">
         <div style="font-size:48px;margin-bottom:12px;">🔍</div>
-        <div>请输入款号进行搜索（�?111057�?/div>
+        <div>请输入款号进行搜索（如 111057）</div>
       </div>`;
-    countEl.textContent = `�?${_layoutFiles.length} 张图片`;
+    countEl.textContent = `共 ${_layoutFiles.length} 张图片`;
     return;
   }
 
@@ -1774,7 +1782,7 @@ function searchLayoutImages() {
     const name = f.name.toLowerCase();
     // 去掉扩展名后的文件名
     const baseName = name.replace(/\.[^.]+$/, '');
-    // 精确匹配：文件名完全等于搜索词，或以 搜索�? 开�?
+    // 精确匹配：文件名完全等于搜索词，或以 搜索词- 开头
     if (baseName === search || baseName.startsWith(search + '-') || baseName.startsWith(search + '_')) {
       exact.push(f);
     } else if (baseName.includes(search)) {
@@ -1784,9 +1792,9 @@ function searchLayoutImages() {
 
   const matched = [...exact, ...partial];
   const selCount = matched.filter(f => _selectedLayoutFiles.has(f.name)).length;
-  countEl.textContent = `匹配 ${matched.length} �?/ 选中 ${selCount} �?/ �?${_layoutFiles.length} 张`;
+  countEl.textContent = `匹配 ${matched.length} 张 / 选中 ${selCount} 张 / 共 ${_layoutFiles.length} 张`;
 
-  // 更新全选复选框状�?
+  // 更新全选复选框状态
   const selectAllCb = document.getElementById('layoutSelectAll');
   if (selectAllCb) {
     selectAllCb.checked = matched.length > 0 && matched.every(f => _selectedLayoutFiles.has(f.name));
@@ -1796,7 +1804,7 @@ function searchLayoutImages() {
     container.innerHTML = `
       <div style="text-align:center;padding:40px;color:#999;">
         <div style="font-size:48px;margin-bottom:12px;">📷</div>
-        <div>未找到包�?${search}"的款式图</div>
+        <div>未找到包含"${search}"的款式图</div>
       </div>`;
     return;
   }
@@ -1827,7 +1835,7 @@ function toggleLayoutSelect(fileName, checked) {
   } else {
     _selectedLayoutFiles.delete(fileName);
   }
-  // 更新工具栏计�?
+  // 更新工具栏计数
   const countEl = document.getElementById('layoutCount');
   const search = document.getElementById('layoutSearchInput').value.trim().toLowerCase();
   const matched = _layoutFiles.filter(f => {
@@ -1835,10 +1843,10 @@ function toggleLayoutSelect(fileName, checked) {
     return baseName.includes(search);
   });
   const selCount = matched.filter(f => _selectedLayoutFiles.has(f.name)).length;
-  countEl.textContent = `匹配 ${matched.length} �?/ 选中 ${selCount} �?/ �?${_layoutFiles.length} 张`;
+  countEl.textContent = `匹配 ${matched.length} 张 / 选中 ${selCount} 张 / 共 ${_layoutFiles.length} 张`;
 }
 
-// 全�?取消全选当前匹配的图片
+// 全选/取消全选当前匹配的图片
 function toggleLayoutSelectAll(checked) {
   const search = document.getElementById('layoutSearchInput').value.trim().toLowerCase();
   const matched = _layoutFiles.filter(f => {
@@ -1881,7 +1889,7 @@ function printSizeSheet(id) {
   const customerName = order ? getCustomerName(order.customerId) : '-';
   const styleDesc = order ? (order.styleDescription || '-') : '-';
 
-  // 计算尺码列总宽，避免溢�?
+  // 计算尺码列总宽，避免溢出
   const sizeCount = sizes.length;
   const codeW = 42, enW = 0, cnW = 110, tolW = 50, sizeW = 48;
   const enWCalculated = Math.max(160, 740 - codeW - cnW - tolW - sizeCount * sizeW);
@@ -1911,13 +1919,13 @@ function printSizeSheet(id) {
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>尺寸�?- ${esc(sheet.orderNo)} - ${esc(sheet.styleNo)}</title>
+<title>尺寸表 - ${esc(sheet.orderNo)} - ${esc(sheet.styleNo)}</title>
 <style>
   @page {
     size: A4;
     margin: 14mm 10mm 16mm 10mm;
     @bottom-left {
-      content: "江苏舜天汉唐贸易有限公司 · 尺寸�? �? 打印日期�?{printDate}";
+      content: "江苏舜天汉唐贸易有限公司 · 尺寸表  ｜  打印日期：${printDate}";
       font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
       font-size: 9px;
       color: #888;
@@ -1927,7 +1935,7 @@ function printSizeSheet(id) {
       print-color-adjust: exact;
     }
     @bottom-right {
-      content: "�?" counter(page) " / " counter(pages) " �?;
+      content: "第 " counter(page) " / " counter(pages) " 页";
       font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
       font-size: 9px;
       color: #888;
@@ -1968,7 +1976,7 @@ function printSizeSheet(id) {
       <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
     </div>
     <div class="doc-title">
-      <h2>SIZE CHART 尺寸�?/h2>
+      <h2>SIZE CHART 尺寸表</h2>
       <div class="kv"><span class="k">PO</span><span class="v">${esc(sheet.orderNo || '-')}</span></div>
       <div class="kv" style="margin-top:3px;"><span class="k">STYLE NO</span><span class="v">${esc(sheet.styleNo || '-')}</span></div>
     </div>
@@ -1984,7 +1992,7 @@ function printSizeSheet(id) {
     </tr>
   </table>
 
-  <div class="section-title">尺寸明细（单位：cm�?/div>
+  <div class="section-title">尺寸明细（单位：cm）</div>
   <table class="size-table">
     <thead>
       <tr>
@@ -1999,12 +2007,12 @@ function printSizeSheet(id) {
   </table>
 
   <div class="doc-footer-screen no-print">
-    <span>打印日期�?{printDate}</span>
-    <span>页码 / 页数需在打印或打印预览中查�?/span>
+    <span>打印日期：${printDate}</span>
+    <span>页码 / 页数需在打印或打印预览中查看</span>
   </div>
 
   <div class="no-print" style="text-align:center;margin-top:14px;">
-    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨�?打印</button>
+    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨️ 打印</button>
     <button onclick="window.close()" style="padding:6px 20px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;margin-left:6px;">✖️ 关闭</button>
   </div>
 </body>
@@ -2029,7 +2037,7 @@ function printLayoutImages() {
     return baseName === searchLower || baseName.startsWith(searchLower + '-') || baseName.startsWith(searchLower + '_') || baseName.includes(searchLower);
   });
 
-  if (matched.length === 0) { App.toast('没有匹配的款式图可打�?, 'warning'); return; }
+  if (matched.length === 0) { App.toast('没有匹配的款式图可打印', 'warning'); return; }
 
   // 优先打印选中的，若未选中则打印全部匹配的
   const toPrint = matched.filter(f => _selectedLayoutFiles.has(f.name));
@@ -2054,13 +2062,13 @@ function printLayoutImages() {
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>款式�?- ${esc(search)}</title>
+<title>款式图 - ${esc(search)}</title>
 <style>
   @page {
     size: A4;
     margin: 14mm 10mm 16mm 10mm;
     @bottom-left {
-      content: "江苏舜天汉唐贸易有限公司 · 款式�? �? 打印日期�?{printDate}";
+      content: "江苏舜天汉唐贸易有限公司 · 款式图  ｜  打印日期：${printDate}";
       font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
       font-size: 9px;
       color: #888;
@@ -2070,7 +2078,7 @@ function printLayoutImages() {
       print-color-adjust: exact;
     }
     @bottom-right {
-      content: "�?" counter(page) " / " counter(pages) " �?;
+      content: "第 " counter(page) " / " counter(pages) " 页";
       font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
       font-size: 9px;
       color: #888;
@@ -2108,7 +2116,7 @@ function printLayoutImages() {
       <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
     </div>
     <div class="doc-title">
-      <h2>STYLE IMAGE 款式�?/h2>
+      <h2>STYLE IMAGE 款式图</h2>
       <div class="kv"><span class="k">STYLE NO</span><span class="v">${esc(search)}</span></div>
       <div class="kv" style="margin-top:3px;"><span class="k">COUNT</span><span class="v">${esc(label)}</span></div>
     </div>
@@ -2120,11 +2128,11 @@ function printLayoutImages() {
     </div>
   `).join('')}
   <div class="doc-footer-screen no-print">
-    <span>打印日期�?{printDate}</span>
-    <span>页码 / 页数需在打印或打印预览中查�?/span>
+    <span>打印日期：${printDate}</span>
+    <span>页码 / 页数需在打印或打印预览中查看</span>
   </div>
   <div class="no-print" style="text-align:center;margin-top:14px;">
-    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨�?打印</button>
+    <button onclick="window.print()" style="padding:6px 20px;font-size:12px;cursor:pointer;background:#004D6D;color:#fff;border:none;border-radius:4px;">🖨️ 打印</button>
     <button onclick="window.close()" style="padding:6px 20px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;margin-left:6px;">✖️ 关闭</button>
   </div>
 </body>
@@ -2139,15 +2147,15 @@ function printLayoutImages() {
   });
 }
 
-// ===== 物料登记标签�?=====
+// ===== 物料登记标签页 =====
 let _matEditingId = null;
 
 // 物料登记分类映射：对应面里衬类型 / 辅料 / 水洗
 const MAT_CATEGORIES = [
   { key: '面料', target: 'fabric', fabricType: '面料', cls: 'tag-teal' },
   { key: '里料', target: 'fabric', fabricType: '里料', cls: 'tag-blue' },
-  { key: '�?, target: 'fabric', fabricType: '�?, cls: 'tag-purple' },
-  { key: '填充�?, target: 'fabric', fabricType: '填充�?, cls: 'tag-orange' },
+  { key: '衬', target: 'fabric', fabricType: '衬', cls: 'tag-purple' },
+  { key: '填充料', target: 'fabric', fabricType: '填充料', cls: 'tag-orange' },
   { key: '辅料', target: 'accessory', cls: 'tag-green' },
   { key: '水洗', target: 'wash', cls: 'tag-red' },
 ];
@@ -2160,7 +2168,7 @@ function saveOrderMaterials(list) {
   App.store.set('orderMaterials', list);
 }
 
-// 通用：根据款号找订单号（优先取第一个匹配的订单�?
+// 通用：根据款号找订单号（优先取第一个匹配的订单）
 function getOrderNoByStyleNo(styleNo) {
   if (!styleNo) return '';
   const orders = App.store.get('orders', []);
@@ -2168,22 +2176,21 @@ function getOrderNoByStyleNo(styleNo) {
   return o ? o.orderNo : '';
 }
 
-// 渲染订单下拉筛�?
+// 渲染订单下拉筛选
 function renderMaterialOrderFilter() {
   const sel = document.getElementById('matOrderFilter');
   if (!sel) return;
   const orders = App.store.get('orders', []);
   const cur = sel.value;
   const opts = ['<option value="">全部订单</option>'];
-  const ordersArr = Array.isArray(orders) ? orders : [];
-  ordersArr
+  orders
     .slice()
     .sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''))
     .forEach(o => opts.push(`<option value="${o.orderNo}" ${o.orderNo === cur ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`));
   sel.innerHTML = opts.join('');
 }
 
-// 获取筛选后的物料登记列�?
+// 获取筛选后的物料登记列表
 function getFilteredMaterials() {
   const list = getOrderMaterials();
   const search = (document.getElementById('matSearchInput')?.value || '').trim().toLowerCase();
@@ -2206,7 +2213,7 @@ function renderMaterials() {
   const list = App.utils.sortByDateDesc(getFilteredMaterials(), ['createDate', 'updateDate']);
   const el = document.getElementById('materialsTable');
   const labelEl = document.getElementById('matCountLabel');
-  if (labelEl) labelEl.textContent = list.length ? ` �?${list.length} 条` : '';
+  if (labelEl) labelEl.textContent = list.length ? ` 共 ${list.length} 条` : '';
   if (!el) return;
 
   const tagCls = (key) => (MAT_CATEGORIES._map[key]?.cls || '');
@@ -2216,22 +2223,22 @@ function renderMaterials() {
     <th style="width:100px;">款号</th>
     <th>名称</th>
     <th style="width:90px;">使用部位</th>
-    <th style="width:120px;">规格/颜色/�?/th>
-    <th style="width:120px;">供应�?水洗�?/th>
+    <th style="width:120px;">规格/颜色/成</th>
+    <th style="width:120px;">供应商/水洗厂</th>
     <th style="width:70px;">数量</th>
     <th style="width:70px;">单价</th>
     <th style="width:110px;">日期</th>
-    <th style="width:90px;">同步状�?/th>
+    <th style="width:90px;">同步状态</th>
     <th style="width:70px;white-space:nowrap;">操作</th>
   </tr></thead>`;
 
   let tbody;
   if (list.length === 0) {
-    tbody = `<tbody><tr><td colspan="12" style="text-align:center;padding:24px;color:#999;">暂无数据，点击右上角「➕」登记面�?里料/�?辅料/水洗信息</td></tr></tbody>`;
+    tbody = `<tbody><tr><td colspan="12" style="text-align:center;padding:24px;color:#999;">暂无数据，点击右上角「➕」登记面料/里料/衬/辅料/水洗信息</td></tr></tbody>`;
   } else {
     tbody = '<tbody>' + list.map(m => {
       const cat = MAT_CATEGORIES._map[m.category];
-      const synced = m.syncedToModule ? `<span class="tag tag-green">已同�?/span>` : `<span class="tag tag-warning">待同�?/span>`;
+      const synced = m.syncedToModule ? `<span class="tag tag-green">已同步</span>` : `<span class="tag tag-warning">待同步</span>`;
       const dateStr = m.date || m.createDate || '-';
       const specParts = [
         m.category === '水洗' ? (m.washMethod || '') : (m.spec || ''),
@@ -2252,8 +2259,8 @@ function renderMaterials() {
         <td>${synced}</td>
         <td style="white-space:nowrap;">
           <button class="btn btn-text btn-sm" onclick="openMaterialModal('${m.id}')" title="编辑">✏️</button>
-          <button class="btn btn-text btn-sm" onclick="syncOneMaterial('${m.id}')" title="同步到对应模�?>🔄</button>
-          <button class="btn btn-text btn-sm" onclick="deleteMaterial('${m.id}')" title="删除">🗑�?/button>
+          <button class="btn btn-text btn-sm" onclick="syncOneMaterial('${m.id}')" title="同步到对应模块">🔄</button>
+          <button class="btn btn-text btn-sm" onclick="deleteMaterial('${m.id}')" title="删除">🗑️</button>
         </td>
       </tr>`;
     }).join('') + '</tbody>';
@@ -2262,7 +2269,7 @@ function renderMaterials() {
   el.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
 }
 
-// 生成水洗单号（WS-XXXX�?
+// 生成水洗单号（WS-XXXX）
 function _matGenWashNo() {
   const washes = App.store.get('washes', []);
   let maxNum = 0;
@@ -2273,7 +2280,7 @@ function _matGenWashNo() {
   return `WS-${String(maxNum + 1).padStart(4, '0')}`;
 }
 
-// 生成面里�?/ 辅料编号：STIG + YYYYMM + 4位随�?
+// 生成面里衬 / 辅料编号：STIG + YYYYMM + 4位随机
 function _matGenCode(prefix) {
   const d = new Date();
   const ym = d.getFullYear().toString() + String(d.getMonth() + 1).padStart(2, '0');
@@ -2293,12 +2300,12 @@ function openMaterialModal(id) {
   const orderOpts = orders.map(o => `<option value="${o.orderNo}" data-style="${App.utils.escapeHtml(o.styleNo || '')}" ${m.orderNo === o.orderNo ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`).join('');
   // 类别选项
   const catOpts = MAT_CATEGORIES.map(c => `<option value="${c.key}" ${m.category === c.key ? 'selected' : ''}>${c.key}</option>`).join('');
-  // 面里衬厂/辅料供应�?水洗厂选项
+  // 面里衬厂/辅料供应商/水洗厂选项
   const contacts = App.store.get('contacts', []);
   const fabricSuppliers = contacts.filter(c => c.type === '面里衬厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const accessorySuppliers = contacts.filter(c => c.type === '辅料�?).map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const washFactories = contacts.filter(c => c.type === '水洗�?).map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const garmentFactories = contacts.filter(c => c.type === '服装�?).map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.shipFactory === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const accessorySuppliers = contacts.filter(c => c.type === '辅料厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const washFactories = contacts.filter(c => c.type === '水洗厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const garmentFactories = contacts.filter(c => c.type === '服装厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.shipFactory === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
 
   const defCat = m.category || '面料';
   const cat = MAT_CATEGORIES._map[defCat] || MAT_CATEGORIES[0];
@@ -2308,7 +2315,7 @@ function openMaterialModal(id) {
   const defaultStyle = m.styleNo || '';
   const defaultOrder = m.orderNo || '';
 
-  // 不同类别下的供应商下�?
+  // 不同类别下的供应商下拉
   const supplierSelect = (placeholder, innerHtml) => `
     <select class="form-select" id="m_supplier" style="width:100%;">
       <option value="">${placeholder}</option>
@@ -2318,7 +2325,7 @@ function openMaterialModal(id) {
   const body = `
   <div class="form-grid" style="grid-template-columns:repeat(4,1fr);gap:10px 14px;">
     <div class="form-group">
-      <label class="form-label">PO 订单�?/label>
+      <label class="form-label">PO 订单号</label>
       <select class="form-select" id="m_orderNo" onchange="_matOnOrderChange(this)">
         <option value="">请选择</option>
         ${orderOpts}
@@ -2335,15 +2342,15 @@ function openMaterialModal(id) {
     </div>
     <div class="form-group" id="group_usagePart">
       <label class="form-label">使用部位</label>
-      <input type="text" class="form-input" id="m_usagePart" value="${App.utils.escapeHtml(m.usagePart || '')}" placeholder="如：大身、领、门�?>
+      <input type="text" class="form-input" id="m_usagePart" value="${App.utils.escapeHtml(m.usagePart || '')}" placeholder="如：大身、领、门襟">
     </div>
 
     <div class="form-group" style="grid-column:span 2;">
       <label class="form-label" id="label_name">名称<span class="required">*</span></label>
-      <input type="text" class="form-input" id="m_name" value="${App.utils.escapeHtml(m.name || '')}" placeholder="面料/辅料名称或水洗目标名�?>
+      <input type="text" class="form-input" id="m_name" value="${App.utils.escapeHtml(m.name || '')}" placeholder="面料/辅料名称或水洗目标名称">
     </div>
     <div class="form-group" style="grid-column:span 2;">
-      <label class="form-label" id="label_supplier">供应�?/ 工厂</label>
+      <label class="form-label" id="label_supplier">供应商 / 工厂</label>
       <div id="wrap_supplier">${supplierSelect('选择面里衬厂', fabricSuppliers)}</div>
     </div>
 
@@ -2377,7 +2384,7 @@ function openMaterialModal(id) {
     <div class="form-group" id="group_unit">
       <label class="form-label">单位</label>
       <select class="form-select" id="m_unit">
-        ${['�?,'�?,'千克','�?,'�?,'�?,'�?,'�?'].map(u => `<option value="${u}" ${(m.unit || '�?) === u ? 'selected' : ''}>${u}</option>`).join('')}
+        ${['米','码','千克','个','打','套','件','米2'].map(u => `<option value="${u}" ${(m.unit || '米') === u ? 'selected' : ''}>${u}</option>`).join('')}
       </select>
     </div>
     <div class="form-group" id="group_price">
@@ -2389,12 +2396,12 @@ function openMaterialModal(id) {
       <label class="form-label">发货工厂</label>
       <select class="form-select" id="m_shipFactory">
         <option value="">请选择</option>
-        <optgroup label="服装�?>${garmentFactories}</optgroup>
-        <optgroup label="水洗�?>${washFactories}</optgroup>
+        <optgroup label="服装厂">${garmentFactories}</optgroup>
+        <optgroup label="水洗厂">${washFactories}</optgroup>
       </select>
     </div>
     <div class="form-group" id="group_date1">
-      <label class="form-label">主日�?/label>
+      <label class="form-label">主日期</label>
       <input type="date" class="form-input" id="m_date1" value="${m.date || today}">
     </div>
     <div class="form-group" id="group_date2">
@@ -2407,7 +2414,7 @@ function openMaterialModal(id) {
     </div>
 
     <div class="form-group" id="group_shipDate" style="grid-column:span 2;">
-      <label class="form-label">发货日期 �?到货日期</label>
+      <label class="form-label">发货日期 → 到货日期</label>
       <div style="display:flex;gap:6px;">
         <input type="date" class="form-input" id="m_shipDate" value="${m.shipDate || ''}">
         <input type="date" class="form-input" id="m_arrivalDate" value="${m.arrivalDate || ''}">
@@ -2421,17 +2428,17 @@ function openMaterialModal(id) {
 
   const footer = `
     <button class="btn" onclick="App.modal.close()">取消</button>
-    <button class="btn btn-primary" onclick="saveMaterial()">💾 保存并同�?/button>`;
+    <button class="btn btn-primary" onclick="saveMaterial()">💾 保存并同步</button>`;
 
   App.modal.open({ title: id ? '编辑物料登记' : '新增物料登记', body, footer, size: 'lg' });
 
-  // 初始化当前类别下的字段可见�?
+  // 初始化当前类别下的字段可见性
   _matOnCategoryChange(defCat);
 
   // 将值回填到 select
   if (isFabric) document.getElementById('m_supplier').value = m.supplier || '';
-  // 如果类别是辅�?/ 水洗，重新渲染对应的供应商选项（因�?_matOnCategoryChange 会重绘）
-  // 但我们下面手动触发时再处�?
+  // 如果类别是辅料 / 水洗，重新渲染对应的供应商选项（因为 _matOnCategoryChange 会重绘）
+  // 但我们下面手动触发时再处理
 }
 
 // 类别切换时切换字段显示与供应商选项
@@ -2441,8 +2448,8 @@ function _matOnCategoryChange(val) {
   const list = getOrderMaterials();
   const m = _matEditingId ? (list.find(x => x.id === _matEditingId) || {}) : {};
   const fabricSuppliers = contacts.filter(c => c.type === '面里衬厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const accessorySuppliers = contacts.filter(c => c.type === '辅料�?).map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const washFactories = contacts.filter(c => c.type === '水洗�?).map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const accessorySuppliers = contacts.filter(c => c.type === '辅料厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+  const washFactories = contacts.filter(c => c.type === '水洗厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
 
   const isFabric = cat.target === 'fabric';
   const isAccessory = cat.target === 'accessory';
@@ -2451,11 +2458,11 @@ function _matOnCategoryChange(val) {
   const labelName = document.getElementById('label_name');
   const labelSupplier = document.getElementById('label_supplier');
   if (labelName) labelName.textContent = (isWash ? (document.getElementById('m_washCategory')?.value === '成衣水洗' ? '成衣名称' : '面料名称') : '名称') + '*';
-  if (labelSupplier) labelSupplier.textContent = isWash ? '水洗�? : (isAccessory ? '辅料供应�? : '面里衬厂');
+  if (labelSupplier) labelSupplier.textContent = isWash ? '水洗厂' : (isAccessory ? '辅料供应商' : '面里衬厂');
 
   const wrapSupplier = document.getElementById('wrap_supplier');
   if (wrapSupplier) {
-    const ph = isWash ? '选择水洗�? : (isAccessory ? '选择辅料供应�? : '选择面里衬厂');
+    const ph = isWash ? '选择水洗厂' : (isAccessory ? '选择辅料供应商' : '选择面里衬厂');
     const inner = isFabric ? fabricSuppliers : (isAccessory ? accessorySuppliers : washFactories);
     wrapSupplier.innerHTML = `<select class="form-select" id="m_supplier" style="width:100%;"><option value="">${ph}</option>${inner}</select>`;
   }
@@ -2483,7 +2490,7 @@ function _matOnCategoryChange(val) {
     if (lbl && lbl.classList.contains('form-label')) lbl.textContent = isWash ? '水洗日期' : (isFabric ? '寄样日期' : '寄样日期');
   }
 
-  // 切换水洗类型时同步名称标�?
+  // 切换水洗类型时同步名称标签
   const wc = document.getElementById('m_washCategory');
   if (wc) {
     wc.onchange = () => {
@@ -2551,10 +2558,10 @@ function saveMaterial() {
     list.push(data);
   }
 
-  // 先保存登�?
+  // 先保存登记
   saveOrderMaterials(list);
 
-  // 同步到对应模�?
+  // 同步到对应模块
   try {
     const targetInfo = syncOneMaterialToModules({ ...data, syncedTargetId }, true);
     // 回写同步状态和目标ID
@@ -2565,17 +2572,17 @@ function saveMaterial() {
       list[idx].syncedTargetTable = targetInfo.table;
       saveOrderMaterials(list);
     }
-    App.toast('已保存并同步�? + (cat.target === 'fabric' ? '面里衬管�? : cat.target === 'accessory' ? '辅料管理' : '水洗管理'), 'success');
+    App.toast('已保存并同步到' + (cat.target === 'fabric' ? '面里衬管理' : cat.target === 'accessory' ? '辅料管理' : '水洗管理'), 'success');
   } catch (e) {
     console.error(e);
-    App.toast('保存成功，但同步失败�? + (e.message || e), 'error');
+    App.toast('保存成功，但同步失败：' + (e.message || e), 'error');
   }
 
   App.modal.close();
   renderMaterials();
 }
 
-// 单条同步（从列表按钮触发�?
+// 单条同步（从列表按钮触发）
 function syncOneMaterial(id) {
   const list = getOrderMaterials();
   const idx = list.findIndex(x => x.id === id);
@@ -2588,16 +2595,16 @@ function syncOneMaterial(id) {
       list[idx].syncedTargetId = info.id;
       list[idx].syncedTargetTable = info.table;
       saveOrderMaterials(list);
-      App.toast('同步成功 �?' + (info.table === 'fabrics' ? '面里衬管�? : info.table === 'accessories' ? '辅料管理' : '水洗管理'), 'success');
+      App.toast('同步成功 → ' + (info.table === 'fabrics' ? '面里衬管理' : info.table === 'accessories' ? '辅料管理' : '水洗管理'), 'success');
       renderMaterials();
     }
   } catch (e) {
     console.error(e);
-    App.toast('同步失败�? + (e.message || e), 'error');
+    App.toast('同步失败：' + (e.message || e), 'error');
   }
 }
 
-// 批量同步所有未同步的数�?
+// 批量同步所有未同步的数据
 function syncMaterialsToModules() {
   const list = getOrderMaterials();
   let updated = 0;
@@ -2615,13 +2622,13 @@ function syncMaterialsToModules() {
     }
   });
   saveOrderMaterials(list);
-  App.toast(`已同�?${updated} 条记录到各模块`, updated ? 'success' : 'info');
+  App.toast(`已同步 ${updated} 条记录到各模块`, updated ? 'success' : 'info');
   renderMaterials();
 }
 
 // 核心：将一条物料登记记录同步到 fabric / accessory / wash 模块
-// 若记录已�?syncedTargetId，则更新该条，否则新�?
-// forceDuplicate=false 时若已存�?styleNo+name+category 的相同记录，则跳过，返回 { id, table }
+// 若记录已带 syncedTargetId，则更新该条，否则新增
+// forceDuplicate=false 时若已存在 styleNo+name+category 的相同记录，则跳过，返回 { id, table }
 function syncOneMaterialToModules(m, forceDuplicate = false) {
   const cat = MAT_CATEGORIES._map[m.category];
   if (!cat) throw new Error('未知类别');
@@ -2650,21 +2657,21 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
       contractDate: m.contractDate || '',
       unitPrice: m.unitPrice || 0,
       qtyOrdered: m.qtyOrdered || 0,
-      unit: m.unit || '�?,
+      unit: m.unit || '米',
       shipFactory: m.shipFactory || '',
       shipDate: m.shipDate || '',
       arrivalDate: m.arrivalDate || '',
       remark: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
     };
 
-    // 根据日期自动推进状�?
-    let status = '待打�?;
-    const STATUS_FLOW = ['待打�?, '寄样�?, '已确�?, '采购合同', '发货�?, '已到�?];
-    if (base.arrivalDate) status = '已到�?;
-    else if (base.shipDate) status = '发货�?;
+    // 根据日期自动推进状态
+    let status = '待打样';
+    const STATUS_FLOW = ['待打样', '寄样中', '已确认', '采购合同', '发货中', '已到货'];
+    if (base.arrivalDate) status = '已到货';
+    else if (base.shipDate) status = '发货中';
     else if (base.contractDate) status = '采购合同';
-    else if (base.confirmedDate) status = '已确�?;
-    else if (base.sampleSentDate) status = '寄样�?;
+    else if (base.confirmedDate) status = '已确认';
+    else if (base.sampleSentDate) status = '寄样中';
     base.status = status;
 
     // 编号：有则保留，无则生成
@@ -2708,20 +2715,20 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
       contractDate: m.contractDate || '',
       unitPrice: m.unitPrice || 0,
       qtyOrdered: m.qtyOrdered || 0,
-      unit: m.unit || '�?,
+      unit: m.unit || '个',
       shipFactory: m.shipFactory || '',
       shipDate: m.shipDate || '',
       arrivalDate: m.arrivalDate || '',
       remark: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
     };
 
-    let status = '待打�?;
-    const STATUS_FLOW = ['待打�?, '寄样�?, '已确�?, '采购合同', '发货�?, '已到�?];
-    if (base.arrivalDate) status = '已到�?;
-    else if (base.shipDate) status = '发货�?;
+    let status = '待打样';
+    const STATUS_FLOW = ['待打样', '寄样中', '已确认', '采购合同', '发货中', '已到货'];
+    if (base.arrivalDate) status = '已到货';
+    else if (base.shipDate) status = '发货中';
     else if (base.contractDate) status = '采购合同';
-    else if (base.confirmedDate) status = '已确�?;
-    else if (base.sampleSentDate) status = '寄样�?;
+    else if (base.confirmedDate) status = '已确认';
+    else if (base.sampleSentDate) status = '寄样中';
     base.status = status;
 
     let targetIdx = -1;
@@ -2756,7 +2763,7 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
       washDate,
       factory,
       washResult: m.washMethod || '',
-      status: '寄样�?,
+      status: '寄样中',
       customerFeedback: '',
       confirmedDate: m.confirmedDate || '',
     }];
@@ -2770,12 +2777,12 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
       techNotes: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
       factory,
       rounds,
-      status: '寄样�?,
+      status: '寄样中',
       remark: m.orderNo ? ('[PO: ' + m.orderNo + ']') : '',
       createDate: today,
     };
-    // 已确认就推进状�?
-    if (m.confirmedDate) base.status = '已确�?;
+    // 已确认就推进状态
+    if (m.confirmedDate) base.status = '已确认';
 
     let targetIdx = -1;
     if (m.syncedTargetId) targetIdx = washes.findIndex(w => w.id === m.syncedTargetId);
@@ -2789,10 +2796,10 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
 
     if (targetIdx !== -1) {
       const w = washes[targetIdx];
-      // 已有水洗记录：追加一�?
+      // 已有水洗记录：追加一轮
       const existingRounds = w.rounds && w.rounds.length ? w.rounds.slice() : [];
       const nextRound = existingRounds.length + 1;
-      existingRounds.push({ ...rounds[0], round: nextRound, status: m.confirmedDate ? '已确�? : '寄样�?, confirmedDate: m.confirmedDate || '' });
+      existingRounds.push({ ...rounds[0], round: nextRound, status: m.confirmedDate ? '已确认' : '寄样中', confirmedDate: m.confirmedDate || '' });
       washes[targetIdx] = {
         ...w,
         washMethod: base.washMethod || w.washMethod,
@@ -2800,7 +2807,7 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
         techNotes: base.techNotes || w.techNotes,
         factory: base.factory || w.factory,
         rounds: existingRounds,
-        status: m.confirmedDate ? '已确�? : w.status,
+        status: m.confirmedDate ? '已确认' : w.status,
       };
     } else {
       base.id = App.utils.genId('WS');
@@ -2816,30 +2823,20 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
 
 // 删除物料登记
 function deleteMaterial(id) {
-  App.confirm('删除这条物料登记记录？（不会删除已同步到各模块的数据�?, () => {
+  App.confirm('删除这条物料登记记录？（不会删除已同步到各模块的数据）', () => {
     const list = getOrderMaterials().filter(x => x.id !== id);
     saveOrderMaterials(list);
-    App.toast('已删�?, 'success');
+    App.toast('已删除', 'success');
     renderMaterials();
   });
 }
 
-// ===== 页面初始化（等待 Supabase 就绪后执行） =====
-_init(function() {
-App.init('order');
-App.checkLogin();
-App.initSampleData();
-App.enforcePagePermission('order');
-
+// ===== 页面初始化 =====
 renderStats();
 renderCustomerFilter();
 renderTable();
 // 初始化尺寸表搜索
 _sizeSheetSearch = '';
-
-_OrderInited = true; // 标记初始化完成，监听器可响应事件
-// 注意：cloud-data-updated 监听器已在脚本块顶部同步注册，此处不要重�?
-});
 </script>
 </body>
 </html>

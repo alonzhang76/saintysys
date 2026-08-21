@@ -78,7 +78,7 @@ input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; }
 
-/* ========== 样衣计划：版面风格保持与系统其它页面一�?========== */
+/* ========== 样衣计划：版面风格保持与系统其它页面一致 ========== */
 .sample-plan {
   /* 沿用全局系统变量，不强制覆盖；局部差异使用自定义变量 */
   --sp-transition: 0.2s ease;
@@ -88,7 +88,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan { font-family: inherit; color: var(--ink, #1a1a1a); font-size: 13px; line-height: 1.45; }
 .sample-plan .sp-app { max-width: 100%; margin: 0 auto; padding: 0 0 14px; display: flex; flex-direction: column; gap: 12px; }
 
-/* 卡片、table-wrap：保持与 common.css .card/.table-wrap 一致（白底�?px --border、radius-lg 6px�?*/
+/* 卡片、table-wrap：保持与 common.css .card/.table-wrap 一致（白底、1px --border、radius-lg 6px） */
 .sample-plan .glass {
   background: #fff;
   border-radius: var(--radius-lg, 6px);
@@ -103,7 +103,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .tab-content { display: none; }
 .sample-plan .tab-content.active { display: block; }
 
-/* ===== Tabs（子导航：样衣管�?/ 尺寸表管理）—�?系统 .tab-item 风格 ===== */
+/* ===== Tabs（子导航：样衣管理 / 尺寸表管理）—— 系统 .tab-item 风格 ===== */
 .sample-plan .tab-nav {
   display: flex;
   border-bottom: 1px solid var(--border-light, #f3f4f6);
@@ -127,7 +127,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .tab:hover { color: var(--primary, #004D6D); }
 .sample-plan .tab.active { color: var(--primary, #004D6D); border-bottom-color: var(--primary, #004D6D); font-weight: 600; }
 
-/* ===== Buttons —�?系统 .btn 风格 ===== */
+/* ===== Buttons —— 系统 .btn 风格 ===== */
 .sample-plan .btn {
   display: inline-flex;
   align-items: center;
@@ -154,7 +154,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .btn-sm { padding: 3px 6px; font-size: 11px; }
 .sample-plan .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ===== Dropdown —�?系统一�?===== */
+/* ===== Dropdown —— 系统一致 ===== */
 .sample-plan .dropdown { position: relative; }
 .sample-plan .dropdown-trigger {
   display: inline-flex;
@@ -194,7 +194,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .dropdown-item svg { width: 13px; height: 13px; flex-shrink: 0; }
 .sample-plan .dropdown-divider { height: 1px; background: var(--border-light, #f3f4f6); margin: 4px 0; }
 
-/* ===== Stat Cards —�?系统 .stat-card 风格 ===== */
+/* ===== Stat Cards —— 系统 .stat-card 风格 ===== */
 .sample-plan .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -494,7 +494,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .size-detail-btn:hover { background: var(--primary, #004D6D); color: #fff; transform: none; }
 .sample-plan .size-detail-btn svg { width: 12px; height: 12px; display: inline-block; vertical-align: middle; }
 
-/* 图片预览（全局定位�?*/
+/* 图片预览（全局定位） */
 .sp-image-panel-overlay { position: fixed; top: 0; right: 0; width: 420px; height: 100vh; z-index: 3000; transform: translateX(110%); transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); padding: 20px;
   /* 左侧渐隐淡蓝遮罩，避免浮层与页面完全溶合 */
   background: linear-gradient(to right, rgba(160,210,255,0.10) 0%, rgba(200,228,255,0.22) 30%, rgba(210,232,255,0.32) 100%);
@@ -503,7 +503,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 .sp-image-panel-overlay.active { transform: translateX(0); }
 .sp-image-panel-inner { height: 100%; padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;
-  /* 淡蓝色毛玻璃主体 —�?足够的不透明�?+ 强化 blur / saturate / 边框 / 阴影 避免与页面溶�?*/
+  /* 淡蓝色毛玻璃主体 —— 足够的不透明度 + 强化 blur / saturate / 边框 / 阴影 避免与页面溶合 */
   background: linear-gradient(160deg, rgba(220, 240, 255, 0.92) 0%, rgba(205, 232, 255, 0.90) 55%, rgba(190, 222, 255, 0.88) 100%);
   backdrop-filter: blur(22px) saturate(200%);
   -webkit-backdrop-filter: blur(22px) saturate(200%);
@@ -513,7 +513,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: relative;
 }
 .sp-image-panel-inner::before {
-  /* 顶层高光，进一步强化毛玻璃"立体浮层"的质�?*/
+  /* 顶层高光，进一步强化毛玻璃"立体浮层"的质感 */
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 35%);
 }
@@ -532,7 +532,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .image-placeholder svg { width: 44px; height: 44px; margin-bottom: 10px; opacity: 0.3; color: #6ca6d8; }
 .sample-plan .image-placeholder p { font-size: 13px; margin-bottom: 4px; }
 .sample-plan .image-placeholder .hint { font-size: 11px; color: #6383a3; }
-/* 图片预览信息网格（全局浮层，非 .sample-plan 作用域内�?*/
+/* 图片预览信息网格（全局浮层，非 .sample-plan 作用域内） */
 .sp-image-panel-overlay .image-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sp-image-panel-overlay .image-info-item { padding: 8px 12px; background: rgba(255,255,255,0.65); border-radius: var(--sp-radius-sm); border: 1px solid rgba(150,200,245,0.45); box-shadow: 0 1px 3px rgba(120,170,220,0.08); transition: transform var(--sp-transition), box-shadow var(--sp-transition); }
 .sp-image-panel-overlay .image-info-item:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(120,170,220,0.14); }
@@ -540,7 +540,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sp-image-panel-overlay .image-info-item .label { font-size: 11px; color: #5b7a98; margin-bottom: 2px; }
 .sp-image-panel-overlay .image-info-item .value { font-size: 13px; font-weight: 600; color: #17466c; }
 
-/* 模态（全局定位�?*/
+/* 模态（全局定位） */
 .sp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); z-index: 2500; display: none; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity var(--sp-transition), visibility var(--sp-transition); }
 .sp-modal-overlay.active { display: flex; opacity: 1; visibility: visible; }
 .sample-plan .modal-content,
@@ -555,7 +555,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .modal-close:hover,
 .sp-modal-overlay .modal-close:hover { background: rgba(142,142,147,0.2); transform: rotate(90deg); }
 
-/* 分组标题（按"类型"重排表单使用�?*/
+/* 分组标题（按"类型"重排表单使用） */
 .sp-modal-overlay .form-section-title {
   font-size: 12px; font-weight: 700; color: #17466c;
   padding: 10px 12px 6px 12px; margin: 8px -12px 6px;
@@ -572,7 +572,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .sample-plan .form-grid,
 .sp-modal-overlay .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
-/* 列数变体�? �?/ 3 列（按需求在一行排列） */
+/* 列数变体：4 列 / 3 列（按需求在一行排列） */
 .sp-modal-overlay .form-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
 .sp-modal-overlay .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .sample-plan .form-group,
@@ -586,29 +586,19 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .form-input, .sample-plan .form-select, .sample-plan .form-textarea,
 .sp-modal-overlay .form-input, .sp-modal-overlay .form-select, .sp-modal-overlay .form-textarea {
   border: 1px solid rgba(150,200,245,0.5); background: rgba(255,255,255,0.75); border-radius: 10px;
-  padding: 0 13px; font-family: var(--sp-font); font-size: 13px; color: var(--sp-ink); outline: none;
+  padding: 9px 13px; font-family: var(--sp-font); font-size: 13px; color: var(--sp-ink); outline: none;
   transition: all var(--sp-transition); box-shadow: inset 0 1px 2px rgba(120,170,220,0.04);
-  height: 34px; line-height: 34px; box-sizing: border-box;
-}
-.sample-plan .form-select,
-.sp-modal-overlay .form-select {
-  appearance: none; -webkit-appearance: none; -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233a5b7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
-  cursor: pointer;
 }
 .sample-plan .form-input:focus, .sample-plan .form-select:focus, .sample-plan .form-textarea:focus,
 .sp-modal-overlay .form-input:focus, .sp-modal-overlay .form-select:focus, .sp-modal-overlay .form-textarea:focus {
   border-color: var(--sp-accent); box-shadow: 0 0 0 3px rgba(0,122,255,0.12), inset 0 1px 2px rgba(120,170,220,0.04); background: rgba(255,255,255,0.95);
 }
 .sample-plan .form-textarea,
-.sp-modal-overlay .form-textarea { resize: vertical; min-height: 60px; height: auto; line-height: 1.5; padding: 8px 13px; }
+.sp-modal-overlay .form-textarea { resize: vertical; min-height: 60px; }
 .sample-plan .form-footer,
 .sp-modal-overlay .form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(150,200,245,0.4); }
 
-/* toast 全局（使用容器内样式�?*/
+/* toast 全局（使用容器内样式） */
 #sp_toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 3500; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 #sp_toastContainer .toast { padding: 11px 22px; border-radius: var(--sp-radius-md); font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); animation: sp-toastIn 0.3s ease, sp-toastOut 0.3s ease 2.7s forwards; pointer-events: auto; max-width: 500px; line-height: 1.5; }
 #sp_toastContainer .toast.success { background: var(--sp-success); }
@@ -632,7 +622,7 @@ input[type="number"] { -moz-appearance: textfield; }
   .sample-plan .toolbar, .sample-plan .filter-bar { flex-direction: column; align-items: stretch; }
   .sample-plan .search-box { max-width: none; }
   .sample-plan .pagination { justify-content: center; }
-  /* 小屏�?/3 列的规格/时间表单统一退�?2 列，避免字段过窄；再小时�?1 �?*/
+  /* 小屏：4/3 列的规格/时间表单统一退回 2 列，避免字段过窄；再小时可 1 列 */
   .sp-modal-overlay .form-grid.cols-4,
   .sp-modal-overlay .form-grid.cols-3 { grid-template-columns: 1fr 1fr; }
 }
@@ -643,28 +633,28 @@ input[type="number"] { -moz-appearance: textfield; }
   <div class="sidebar" id="sidebar"></div>
   <div class="main-area">
     <div class="app-header">
-      <button class="header-toggle">�?/button>
+      <button class="header-toggle">☰</button>
       <span class="header-title">样衣管理</span>
       <div class="header-actions">
         <button class="btn btn-sm" onclick="App.backupData()">📦</button>
-        <div class="header-user"><span>👤</span><span class="user-name">管理�?/span></div>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
         <button class="btn btn-sm" onclick="App.logout()">🚪</button>
       </div>
     </div>
     <div class="app-content">
       <!-- 统计卡片 -->
       <div class="stat-grid" id="statCards"></div>
-      <!-- 标签�?-->
+      <!-- 标签页 -->
       <div class="tabs" id="tabsBar"></div>
 
-      <!-- ===== 样衣计划：完整独立模�?===== -->
+      <!-- ===== 样衣计划：完整独立模块 ===== -->
       <div id="samplePlanContainer" style="display:none;" class="sample-plan">
         <div class="sp-app">
 
-          <!-- Tab Navigation (子标签：样衣管理 / 尺寸表管�? -->
+          <!-- Tab Navigation (子标签：样衣管理 / 尺寸表管理) -->
           <nav class="tab-nav glass">
             <button class="tab active" data-tab="samples" onclick="SamplePlan.switchTab('samples')">样衣管理</button>
-            <button class="tab" data-tab="sizeTables" onclick="SamplePlan.switchTab('sizeTables')">尺寸表管�?/button>
+            <button class="tab" data-tab="sizeTables" onclick="SamplePlan.switchTab('sizeTables')">尺寸表管理</button>
           </nav>
 
           <!-- 操作工具栏（主操作菜单） -->
@@ -709,7 +699,7 @@ input[type="number"] { -moz-appearance: textfield; }
             <div class="toolbar glass">
               <div class="search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="sp_searchInput" placeholder="搜索款号、样衣工、类型、尺码、备�?.." oninput="SamplePlan.applyFilters()">
+                <input type="text" id="sp_searchInput" placeholder="搜索款号、样衣工、类型、尺码、备注..." oninput="SamplePlan.applyFilters()">
               </div>
               <div class="toolbar-actions">
                 <button class="btn btn-primary" onclick="SamplePlan.openForm()">
@@ -724,12 +714,12 @@ input[type="number"] { -moz-appearance: textfield; }
             </div>
             <div class="filter-bar glass">
               <div class="filter-group">
-                <label>状�?/label>
+                <label>状态</label>
                 <select class="filter-select" id="sp_filterStatus" onchange="SamplePlan.applyFilters()">
                   <option value="">全部</option>
-                  <option value="未上�?>未上�?/option>
-                  <option value="未出�?>未出�?/option>
-                  <option value="已出�?>已出�?/option>
+                  <option value="未上手">未上手</option>
+                  <option value="未出样">未出样</option>
+                  <option value="已出样">已出样</option>
                 </select>
               </div>
               <div class="filter-group">
@@ -737,28 +727,28 @@ input[type="number"] { -moz-appearance: textfield; }
                 <select class="filter-select" id="sp_filterType" onchange="SamplePlan.applyFilters()">
                   <option value="">全部</option>
                   <option value="头样">头样</option>
-                  <option value="尺码�?>尺码�?/option>
-                  <option value="产前�?>产前�?/option>
-                  <option value="照片�?>照片�?/option>
+                  <option value="尺码样">尺码样</option>
+                  <option value="产前样">产前样</option>
+                  <option value="照片样">照片样</option>
                   <option value="船样">船样</option>
                 </select>
               </div>
               <div class="filter-group">
-                <label>面辅�?/label>
+                <label>面辅料</label>
                 <select class="filter-select" id="sp_filterMaterial" onchange="SamplePlan.applyFilters()">
                   <option value="">全部</option>
-                  <option value="已到�?>已到�?/option>
+                  <option value="已到位">已到位</option>
                   <option value="部分到位">部分到位</option>
-                  <option value="未到�?>未到�?/option>
+                  <option value="未到位">未到位</option>
                 </select>
               </div>
               <div class="filter-group">
                 <label>要求交期</label>
                 <input type="date" class="filter-date" id="sp_filterDateFrom" onchange="SamplePlan.applyFilters()">
-                <span class="filter-sep">�?/span>
+                <span class="filter-sep">至</span>
                 <input type="date" class="filter-date" id="sp_filterDateTo" onchange="SamplePlan.applyFilters()">
               </div>
-              <button class="btn btn-sm btn-secondary" onclick="SamplePlan.clearFilters()">清除筛�?/button>
+              <button class="btn btn-sm btn-secondary" onclick="SamplePlan.clearFilters()">清除筛选</button>
             </div>
             <div class="table-container glass">
               <div class="table-scroll">
@@ -781,7 +771,7 @@ input[type="number"] { -moz-appearance: textfield; }
               <div class="toolbar-actions">
                 <button class="btn btn-primary" onclick="document.getElementById('sp_excelFileInput').click()">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  导入Excel尺寸�?
+                  导入Excel尺寸表
                 </button>
                 <input type="file" id="sp_excelFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="SamplePlan.importSizeTable(event)">
               </div>
@@ -793,7 +783,7 @@ input[type="number"] { -moz-appearance: textfield; }
       </div>
       <!-- end 样衣计划 -->
 
-      <!-- 原打样列表区�?-->
+      <!-- 原打样列表区域 -->
       <div id="originalSampleArea">
         <div class="table-wrap">
           <div class="filter-bar" id="filterBar"></div>
@@ -802,7 +792,7 @@ input[type="number"] { -moz-appearance: textfield; }
               <span class="card-title">样衣记录</span>
             </div>
             <div class="table-toolbar-right">
-              <button class="btn btn-primary btn-sm" onclick="openSampleModal()" title="新增样衣记录">�?/button>
+              <button class="btn btn-primary btn-sm" onclick="openSampleModal()" title="新增样衣记录">➕</button>
             </div>
           </div>
           <div id="sampleTable"></div>
@@ -812,25 +802,15 @@ input[type="number"] { -moz-appearance: textfield; }
   </div>
 </div>
 
-<!-- ===== 图片预览面板（全局定位，移�?sample-plan�?===== -->
+<!-- ===== 图片预览面板（全局定位，移出.sample-plan） ===== -->
 <div class="sp-image-panel-overlay" id="sp_imagePanel">
   <div class="sp-image-panel-inner">
     <div class="sp-image-panel-header">
       <h3>款式图片预览</h3>
       <div class="sp-image-panel-actions">
-        <!-- 上传图片按钮 -->
-        <button class="btn btn-sm" style="background:linear-gradient(135deg,#34C759,#30D158);color:#fff;border:none;padding:6px 12px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 8px rgba(52,199,89,0.3);" onclick="SamplePlan.triggerUploadPicture()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          上传图片
-        </button>
-        <!-- 删除图片按钮（仅在有上传图片时显示） -->
-        <button class="btn btn-sm" id="sp_deletePicBtn" style="background:linear-gradient(135deg,#FF3B30,#FF453A);color:#fff;border:none;padding:6px 12px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 8px rgba(255,59,48,0.3);" onclick="SamplePlan.deleteUploadedPicture()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-          删除图片
-        </button>
         <button class="btn btn-sm" style="background:linear-gradient(135deg,#007AFF,#5856D6);color:#fff;border:none;padding:6px 12px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,122,255,0.3);" onclick="SamplePlan.openSizeTableFromPreview()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-          尺寸�?
+          尺寸表
         </button>
         <button class="sp-image-panel-close" onclick="SamplePlan.closeImagePanel()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -841,13 +821,11 @@ input[type="number"] { -moz-appearance: textfield; }
       <div class="image-placeholder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <p>暂无图片</p>
-        <p class="hint">点击「上传图片」按钮上传款式图<br>或将图片放入 picture 文件�?/p>
+        <p class="hint">请将图片放入 picture 文件夹<br>命名为「款号.jpg」</p>
       </div>
     </div>
     <div class="image-info-grid" id="sp_imageInfoGrid"></div>
   </div>
-  <!-- 隐藏的文件选择输入 -->
-  <input type="file" id="sp_pictureInput" accept="image/*" style="display:none;" onchange="SamplePlan.handlePictureUpload(event)">
 </div>
 
 <!-- ===== Modal: Add/Edit Form ===== -->
@@ -865,8 +843,8 @@ input[type="number"] { -moz-appearance: textfield; }
       <div class="form-section-title">👤 基本信息</div>
       <div class="form-grid">
         <div class="form-group">
-          <label>样衣�?<span class="required">*</span></label>
-          <input type="text" class="form-input" id="sp_f_worker" required list="sp_workerList" placeholder="请输入或选择样衣�?>
+          <label>样衣工 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="sp_f_worker" required list="sp_workerList" placeholder="请输入或选择样衣工">
           <datalist id="sp_workerList"></datalist>
         </div>
         <div class="form-group">
@@ -875,15 +853,15 @@ input[type="number"] { -moz-appearance: textfield; }
         </div>
       </div>
 
-      <div class="form-section-title">🏷�?样衣规格</div>
+      <div class="form-section-title">🏷️ 样衣规格</div>
       <div class="form-grid cols-4">
         <div class="form-group">
           <label>样衣类型 <span class="required">*</span></label>
           <select class="form-select" id="sp_f_type" required>
             <option value="头样">头样</option>
-            <option value="尺码�?>尺码�?/option>
-            <option value="产前�?>产前�?/option>
-            <option value="照片�?>照片�?/option>
+            <option value="尺码样">尺码样</option>
+            <option value="产前样">产前样</option>
+            <option value="照片样">照片样</option>
             <option value="船样">船样</option>
           </select>
         </div>
@@ -893,7 +871,7 @@ input[type="number"] { -moz-appearance: textfield; }
         </div>
         <div class="form-group">
           <label>尺码</label>
-          <input type="text" class="form-input" id="sp_f_size" placeholder="�?S / M / L / XL">
+          <input type="text" class="form-input" id="sp_f_size" placeholder="如 S / M / L / XL">
         </div>
         <div class="form-group">
           <label>数量</label>
@@ -904,11 +882,11 @@ input[type="number"] { -moz-appearance: textfield; }
       <div class="form-section-title">📦 物料准备</div>
       <div class="form-grid">
         <div class="form-group full">
-          <label>面辅料准备情�?/label>
+          <label>面辅料准备情况</label>
           <select class="form-select" id="sp_f_material">
-            <option value="未到�?>未到�?/option>
+            <option value="未到位">未到位</option>
             <option value="部分到位">部分到位</option>
-            <option value="已到�?>已到�?/option>
+            <option value="已到位">已到位</option>
           </select>
         </div>
       </div>
@@ -933,28 +911,7 @@ input[type="number"] { -moz-appearance: textfield; }
       <div class="form-grid">
         <div class="form-group full">
           <label>备注</label>
-          <textarea class="form-textarea" id="sp_f_remarks" rows="3" placeholder="特殊要求、修改细节、客户意见等（可留空�?></textarea>
-        </div>
-      </div>
-
-      <div class="form-section-title">🖼�?款式�?/div>
-      <div class="form-grid">
-        <div class="form-group full">
-          <div id="sp_formPictureArea" style="border:2px dashed #d1d5db;border-radius:6px;padding:12px;text-align:center;cursor:pointer;transition:all 0.2s;background:#fafafa;" onmouseover="this.style.borderColor='#004D6D';this.style.background='#f0f9ff'" onmouseout="this.style.borderColor='#d1d5db';this.style.background='#fafafa'" onclick="SamplePlan.triggerFormPictureUpload()">
-            <div id="sp_formPicturePlaceholder" style="color:#6b7280;font-size:12px;">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" style="margin:0 auto 4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              <div>点击上传款式图（可选）</div>
-              <div style="font-size:11px;color:#9ca3af;">支持 jpg/png/webp/gif，最�?5MB</div>
-            </div>
-            <div id="sp_formPicturePreview" style="display:none;">
-              <img id="sp_formPictureImg" style="max-width:100%;max-height:120px;border-radius:4px;" alt="款式图预�?>
-              <div style="margin-top:6px;">
-                <button type="button" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;" onclick="event.stopPropagation();SamplePlan.clearFormPicture()">移除图片</button>
-              </div>
-            </div>
-          </div>
-          <input type="file" id="sp_formPictureInput" accept="image/*" style="display:none;" onchange="SamplePlan.handleFormPictureChange(event)">
-          <input type="hidden" id="sp_f_picturePath">
+          <textarea class="form-textarea" id="sp_f_remarks" rows="3" placeholder="特殊要求、修改细节、客户意见等（可留空）"></textarea>
         </div>
       </div>
 
@@ -971,19 +928,18 @@ input[type="number"] { -moz-appearance: textfield; }
 <script src="js/common.js?v=20260812"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260813"></script>
-<!-- Supabase 存储层：localStorage �?Supabase -->
-<!-- 主加载：ES Module 格式（Chrome/Edge 使用�?-->
+<!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822f"></script>
-<!-- 回退：UMD 格式（Safari/iOS 使用）—�?仅在 ES Module 失败时由 supabase-store.js 动态加�?-->
-<script src="js/supabase-store.js?v=20260822f"></script>
-<script src="js/localstorage-patch.js?v=20260822f"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/localstorage-patch.js?v=20260822g"></script>
 <script src="js/supabase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822f"></script>
+<script src="js/init-page.js?v=20260822g"></script>
 <script>
-// ===== 状态变�?=====
+
+// ===== 状态变量 =====
 let filterState = { search: '', status: '' };
 let currentTab = '全部';
 let editingId = null;
@@ -992,23 +948,23 @@ let _selectedIds = new Set();
 // ===== 样衣阶段定义 =====
 const STAGE_DEFS = [
   { key: 0, code: 'counter',  name: '头样',     english: 'Counter Sample', multiRound: false },
-  { key: 1, code: 'sizeSet',  name: '尺码�?,   english: 'Size Set',       multiRound: true  },
-  { key: 2, code: 'pp',       name: '产前�?,   english: 'PP Sample',      multiRound: true  },
+  { key: 1, code: 'sizeSet',  name: '尺码样',   english: 'Size Set',       multiRound: true  },
+  { key: 2, code: 'pp',       name: '产前样',   english: 'PP Sample',      multiRound: true  },
   { key: 3, code: 'shs',      name: '船样',     english: 'SHS Sample',     multiRound: false },
-  { key: 4, code: 'photo',    name: '照片�?,   english: 'Photo Sample',   multiRound: false },
+  { key: 4, code: 'photo',    name: '照片样',   english: 'Photo Sample',   multiRound: false },
 ];
 const STAGE_PREREQUISITES = { 0: [], 1: [], 2: [1], 3: [1, 2], 4: [] };
-const ROUND_STATUS = ['未确�?, '已确�?];
+const ROUND_STATUS = ['未确认', '已确认'];
 
-// ===== 标签页映射（�?全部"�?头样"之间插入"样衣计划"�?=====
+// ===== 标签页映射（在"全部"和"头样"之间插入"样衣计划"） =====
 const TAB_STAGE_MAP = {
   '全部': null,
   '样衣计划': 'plan',   // -> 独立的子模块容器
   '头样': [0],
-  '尺码�?: [1],
-  '产前�?: [2],
+  '尺码样': [1],
+  '产前样': [2],
   '船样': [3],
-  '照片�?: [4],
+  '照片样': [4],
 };
 
 function stageTag(stageKey, extra = '') {
@@ -1016,21 +972,18 @@ function stageTag(stageKey, extra = '') {
   if (!def) return '-';
   return `<span class="stage-tag stage-stage-${stageKey}">${extra}${def.name}${def.english ? ' · ' + def.english : ''}</span>`;
 }
-function getSamples() { 
-  const v = App.store.get('samples', []); 
-  return Array.isArray(v) ? v : []; 
-}
+function getSamples() { return App.store.get('samples', []); }
 function getStyles() {
   const orders = App.store.get('orders', []);
   const seen = new Set(); const list = [];
   orders.forEach(o => { if (o.styleNo && !seen.has(o.styleNo)) { seen.add(o.styleNo); list.push({ styleNo: o.styleNo, styleName: o.styleDescription || '' }); } });
   return list;
 }
-function getSampleFactories() { return App.store.get('contacts', []).filter(c => c.type === '服装�?); }
+function getSampleFactories() { return App.store.get('contacts', []).filter(c => c.type === '服装厂'); }
 
 function migrateSamples() {
   const samples = getSamples(); let changed = false;
-  const oldStageMap = { '初样': 0, '二改�?: 1, '确认�?: 2, '大货�?: 3 };
+  const oldStageMap = { '初样': 0, '二改样': 1, '确认样': 2, '大货样': 3 };
   samples.forEach(s => {
     if (s.stageKey === undefined) {
       changed = true;
@@ -1053,14 +1006,14 @@ function migrateSamples() {
 function renderStats() {
   const samples = getSamples();
   const total = samples.length;
-  const inProgress = samples.filter(s => ['面辅料安排中', '打样�?, '已寄�?].includes(getMainStatus(s))).length;
-  const needModify = samples.filter(s => getMainStatus(s) === '不确�?).length;
-  const confirmed = samples.filter(s => getMainStatus(s) === '已确�?).length;
+  const inProgress = samples.filter(s => ['面辅料安排中', '打样中', '已寄样'].includes(getMainStatus(s))).length;
+  const needModify = samples.filter(s => getMainStatus(s) === '不确认').length;
+  const confirmed = samples.filter(s => getMainStatus(s) === '已确认').length;
   const cards = [
     { icon: '✂️', bg: '#e8f1f5', color: '#004D6D', label: '样衣总数', value: total, sub: '全部样衣记录' },
-    { icon: '�?, bg: '#fff8ed', color: '#d9883a', label: '进行�?, value: inProgress, sub: '面辅�?样衣/已寄�? },
-    { icon: '�?, bg: '#fef2f2', color: '#d44848', label: '不确�?, value: needModify, sub: '需重新制样' },
-    { icon: '�?, bg: '#ecfdf5', color: '#2d9d5f', label: '已确�?, value: confirmed, sub: '已确认通过' },
+    { icon: '⏳', bg: '#fff8ed', color: '#d9883a', label: '进行中', value: inProgress, sub: '面辅料/样衣/已寄样' },
+    { icon: '❌', bg: '#fef2f2', color: '#d44848', label: '不确认', value: needModify, sub: '需重新制样' },
+    { icon: '✅', bg: '#ecfdf5', color: '#2d9d5f', label: '已确认', value: confirmed, sub: '已确认通过' },
   ];
   document.getElementById('statCards').innerHTML = cards.map(c => `
     <div class="stat-card">
@@ -1073,11 +1026,11 @@ function renderStats() {
     </div>
   `).join('');
 }
-function getMainStatus(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].status || '未确�?; return s.status || '未确�?; }
+function getMainStatus(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].status || '未确认'; return s.status || '未确认'; }
 function getMainDate(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].sampleDate || ''; return s.sampleDate || ''; }
 function getMainFactory(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].factory || ''; return s.factory || ''; }
 function getRoundsCount(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds) return s.rounds.length; return 1; }
-function isStageConfirmed(styleNo, stageKey) { const samples = getSamples(); return samples.some(s => s.styleNo === styleNo && Number(s.stageKey) === Number(stageKey) && getMainStatus(s) === '已确�?); }
+function isStageConfirmed(styleNo, stageKey) { const samples = getSamples(); return samples.some(s => s.styleNo === styleNo && Number(s.stageKey) === Number(stageKey) && getMainStatus(s) === '已确认'); }
 function checkPrerequisites(styleNo, stageKey) { const prereqs = STAGE_PREREQUISITES[Number(stageKey)] || []; const missing = prereqs.filter(r => !isStageConfirmed(styleNo, r)); return { ok: missing.length === 0, missing: missing.map(r => STAGE_DEFS[r].name) }; }
 function refreshStageOptions() {
   const styleNo = document.getElementById('m_styleNo').value.trim();
@@ -1086,7 +1039,7 @@ function refreshStageOptions() {
   const select = document.getElementById('m_stageKey'); if (!select) return;
   select.innerHTML = STAGE_DEFS.map(d => {
     let locked = false, lockMsg = '';
-    if (!isEdit && styleNo) { const check = checkPrerequisites(styleNo, d.key); if (!check.ok) { locked = true; lockMsg = '（需先确�? + check.missing.join('�?) + '�?; } }
+    if (!isEdit && styleNo) { const check = checkPrerequisites(styleNo, d.key); if (!check.ok) { locked = true; lockMsg = '（需先确认' + check.missing.join('、') + '）'; } }
     const selected = Number(currentVal) === d.key ? 'selected' : '';
     const disabled = locked ? 'disabled' : '';
     return `<option value="${d.key}" ${selected} ${disabled}>${d.name}${d.english ? ' (' + d.english + ')' : ''}${d.multiRound ? ' [多轮]' : ''}${lockMsg}</option>`;
@@ -1098,7 +1051,7 @@ function renderTabs() {
   document.getElementById('tabsBar').innerHTML = tabs.map(t => `<div class="tab-item ${currentTab === t ? 'active' : ''}" onclick="switchTab('${t}')">${t}</div>`).join('');
 }
 
-// ===== 切换主Tab�?样衣计划'切换到独立模块显�?=====
+// ===== 切换主Tab：'样衣计划'切换到独立模块显示 =====
 function switchTab(tab) {
   currentTab = tab;
   renderTabs();
@@ -1125,10 +1078,10 @@ function renderFilterBar() {
   document.getElementById('filterBar').innerHTML = `
     <div class="search-input"><input type="text" class="form-input" id="searchInput" placeholder="搜索款号" value="${App.utils.escapeHtml(filterState.search)}"></div>
     <select class="form-select" id="statusFilter">
-      <option value="">全部状�?/option>
+      <option value="">全部状态</option>
       ${ROUND_STATUS.map(st => `<option value="${st}" ${filterState.status === st ? 'selected' : ''}>${st}</option>`).join('')}
     </select>
-    <button class="btn btn-sm" onclick="resetFilter()" title="重置筛�?>🔄</button>`;
+    <button class="btn btn-sm" onclick="resetFilter()" title="重置筛选">🔄</button>`;
   document.getElementById('searchInput').addEventListener('input', function(e) { filterState.search = e.target.value; renderSampleTable(); });
   document.getElementById('statusFilter').addEventListener('change', function(e) { filterState.status = e.target.value; renderSampleTable(); });
   document.getElementById('statusFilter').value = filterState.status;
@@ -1161,8 +1114,8 @@ function renderSampleTable() {
     <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="toggleSelectAll(this.checked)"></th>
     <th style="width:100px;">款号</th><th style="width:180px;">阶段</th><th style="width:55px;">轮次</th>
     <th style="width:100px;">寄样日期</th><th style="width:110px;">收妥客寄样衣日期</th>
-    <th>样衣工厂</th><th style="width:90px;">尺码</th><th style="width:80px;">状�?/th>
-    <th style="width:90px;">确认�?/th><th style="width:100px;">确认日期</th>
+    <th>样衣工厂</th><th style="width:90px;">尺码</th><th style="width:80px;">状态</th>
+    <th style="width:90px;">确认人</th><th style="width:100px;">确认日期</th>
     <th style="width:70px;white-space:nowrap;">操作</th></tr></thead>`;
   let tbody;
   if (samples.length === 0) {
@@ -1184,7 +1137,7 @@ function renderSampleTable() {
         <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${s.id}', this.checked)"></td>
         <td>${App.utils.escapeHtml(s.styleNo || '-')}</td>
         <td>${stageTag(s.stageKey)} <span class="text-muted" style="font-size:11px;">${def.english || ''}</span></td>
-        <td style="text-align:center;">${roundCount}${def.multiRound ? ' �? : ''}</td>
+        <td style="text-align:center;">${roundCount}${def.multiRound ? ' 轮' : ''}</td>
         <td>${App.utils.escapeHtml(mainDate || '-')}</td>
         <td>${App.utils.escapeHtml(mainReceivedDate || '-')}</td>
         <td>${App.utils.escapeHtml(mainFactory || '-')}</td>
@@ -1193,9 +1146,9 @@ function renderSampleTable() {
         <td>${App.utils.escapeHtml(mainConfirmedBy || '-')}</td>
         <td>${App.utils.escapeHtml(mainConfirmedDate || '-')}</td>
         <td style="white-space:nowrap;">
-          <button class="btn btn-text btn-sm" onclick="viewSampleDetail('${s.id}')" title="查看详情">👁�?/button>
+          <button class="btn btn-text btn-sm" onclick="viewSampleDetail('${s.id}')" title="查看详情">👁️</button>
           <button class="btn btn-text btn-sm" onclick="openSampleModal('${s.id}')" title="编辑">✏️</button>
-          <button class="btn btn-text btn-sm" onclick="deleteSample('${s.id}')" title="删除">🗑�?/button>
+          <button class="btn btn-text btn-sm" onclick="deleteSample('${s.id}')" title="删除">🗑️</button>
         </td>
       </tr>`;
     }).join('') + '</tbody>';
@@ -1218,12 +1171,12 @@ function openSampleModal(id) {
   const def = STAGE_DEFS[defStageKey];
   if (def.multiRound) {
     if (sample.rounds && sample.rounds.length > 0) _editingRounds = sample.rounds.map(r => ({ ...r }));
-    else _editingRounds = [{ round: 1, sampleDate: today, factory: '样衣�?, size: '', status: '未确�?, confirmedBy: '', confirmedDate: '', techNotes: '' }];
+    else _editingRounds = [{ round: 1, sampleDate: today, factory: '样衣室', size: '', status: '未确认', confirmedBy: '', confirmedDate: '', techNotes: '' }];
   }
   const singleDate = sample.sampleDate || today;
-  const singleFactory = sample.factory || (isEdit ? '' : '样衣�?);
+  const singleFactory = sample.factory || (isEdit ? '' : '样衣室');
   const singleSize = sample.size || '';
-  const singleStatus = sample.status || '未确�?;
+  const singleStatus = sample.status || '未确认';
   const singleConfirmedBy = sample.confirmedBy || '';
   const singleConfirmedDate = sample.confirmedDate || '';
   const singleTechNotes = sample.techNotes || '';
@@ -1248,7 +1201,7 @@ function openSampleModal(id) {
       </div>
       <div class="form-group single-only-fields" style="flex:1;min-width:160px;">
         <label class="form-label">样衣工厂</label>
-        <input type="text" class="form-input" id="m_factory" list="factoryList" value="${App.utils.escapeHtml(singleFactory)}" placeholder="默认样衣室，也可选择服装�?>
+        <input type="text" class="form-input" id="m_factory" list="factoryList" value="${App.utils.escapeHtml(singleFactory)}" placeholder="默认样衣室，也可选择服装厂">
         <datalist id="factoryList">${factoryOptions}</datalist>
       </div>
     </div>
@@ -1269,7 +1222,7 @@ function openSampleModal(id) {
         </div>
         <div class="form-group" style="flex:1;min-width:100px;">
           <label class="form-label">尺码</label>
-          <input type="text" class="form-input" id="m_size" value="${App.utils.escapeHtml(singleSize)}" placeholder="�?S/M/L/XL">
+          <input type="text" class="form-input" id="m_size" value="${App.utils.escapeHtml(singleSize)}" placeholder="如 S/M/L/XL">
         </div>
         <div class="form-group" style="flex:1;min-width:100px;">
           <label class="form-label">件数</label>
@@ -1278,24 +1231,24 @@ function openSampleModal(id) {
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:180px;">
-          <label class="form-label">面料及克�?/label>
-          <input type="text" class="form-input" id="m_fabric" value="${App.utils.escapeHtml(sample.fabric || '')}" placeholder="�?棉布 200g/m²">
+          <label class="form-label">面料及克重</label>
+          <input type="text" class="form-input" id="m_fabric" value="${App.utils.escapeHtml(sample.fabric || '')}" placeholder="如 棉布 200g/m²">
         </div>
         <div class="form-group" style="flex:1;min-width:180px;">
-          <label class="form-label">里料及克�?/label>
-          <input type="text" class="form-input" id="m_lining" value="${App.utils.escapeHtml(sample.lining || '')}" placeholder="�?涤塔�?80g/m²">
+          <label class="form-label">里料及克重</label>
+          <input type="text" class="form-input" id="m_lining" value="${App.utils.escapeHtml(sample.lining || '')}" placeholder="如 涤塔夫 80g/m²">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
-          <label class="form-label">状�?/label>
+          <label class="form-label">状态</label>
           <select class="form-select" id="m_status" onchange="onSingleStatusChange(this.value)">
-            <option value="未确�? ${singleStatus === '已确�? ? '' : 'selected'}>未确�?/option>
-            <option value="已确�? ${singleStatus === '已确�? ? 'selected' : ''}>已确�?/option>
+            <option value="未确认" ${singleStatus === '已确认' ? '' : 'selected'}>未确认</option>
+            <option value="已确认" ${singleStatus === '已确认' ? 'selected' : ''}>已确认</option>
           </select>
         </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:160px;">
-          <label class="form-label">面里�?/label>
+          <label class="form-label">面里料</label>
           <div class="radio-group">
             <label><input type="radio" name="m_fabricType" value="大货" ${sample.fabricType !== '代用' ? 'checked' : ''}>大货</label>
             <label><input type="radio" name="m_fabricType" value="代用" ${sample.fabricType === '代用' ? 'checked' : ''}>代用</label>
@@ -1319,7 +1272,7 @@ function openSampleModal(id) {
       ${isEdit ? `
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:120px;">
-          <label class="form-label">确认�?/label>
+          <label class="form-label">确认人</label>
           <input type="text" class="form-input" id="m_confirmedBy" value="${App.utils.escapeHtml(singleConfirmedBy)}" placeholder="请输入确认人">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;">
@@ -1329,14 +1282,14 @@ function openSampleModal(id) {
       </div>` : ''}
       <div class="form-group">
         <label class="form-label">备注</label>
-        <textarea class="form-textarea" id="m_techNotes" rows="2" placeholder="请输入备�?>${App.utils.escapeHtml(singleTechNotes)}</textarea>
+        <textarea class="form-textarea" id="m_techNotes" rows="2" placeholder="请输入备注">${App.utils.escapeHtml(singleTechNotes)}</textarea>
       </div>
     </div>
     <div id="multiRoundFields" style="display:none;">
       <div class="form-section-title">
         ✂️ 多轮寄样 & 确认
-        <span style="font-weight:normal;color:#6b7280;margin-left:8px;font-size:11px;">尺码�?/ 产前�?支持多次寄样与客户确�?/span>
-        <button type="button" class="btn btn-sm btn-primary" style="float:right;" onclick="addRound()">�?添加一�?/button>
+        <span style="font-weight:normal;color:#6b7280;margin-left:8px;font-size:11px;">尺码样 / 产前样 支持多次寄样与客户确认</span>
+        <button type="button" class="btn btn-sm btn-primary" style="float:right;" onclick="addRound()">➕ 添加一轮</button>
       </div>
       <div class="multi-round-list" id="roundListContainer"></div>
     </div>`;
@@ -1360,7 +1313,7 @@ function onStageChange(stageKey) {
     if (styleNo) {
       const check = checkPrerequisites(styleNo, stageKey);
       if (!check.ok) {
-        App.toast(`请先完成�?{check.missing.join('�?)}」的确认，再安排�?{def.name}」`, 'warning');
+        App.toast(`请先完成「${check.missing.join('、')}」的确认，再安排「${def.name}」`, 'warning');
         document.getElementById('m_stageKey').value = '0';
         onStageChange(0);
         return;
@@ -1379,25 +1332,25 @@ function onStageChange(stageKey) {
 }
 function onSingleStatusChange(status) {
   const today = new Date().toISOString().slice(0, 10);
-  if (status === '已确�?) { const input = document.getElementById('m_confirmedDate'); if (input && !input.value) input.value = today; }
+  if (status === '已确认') { const input = document.getElementById('m_confirmedDate'); if (input && !input.value) input.value = today; }
 }
 function renderRoundList() {
   const container = document.getElementById('roundListContainer'); if (!container) return;
-  if (_editingRounds.length === 0) { container.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;">暂无轮次，点击右上角"�?添加一�?</div>`; return; }
+  if (_editingRounds.length === 0) { container.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;">暂无轮次，点击右上角"➕ 添加一轮"</div>`; return; }
   const isEdit = !!editingId;
   const factories = getSampleFactories();
   const factoryOptions = factories.map(f => `<option value="${App.utils.escapeHtml(f.name)}">`).join('');
   container.innerHTML = _editingRounds.map((r, i) => `
     <div class="round-card" data-idx="${i}">
       <div class="round-card-header">
-        <span>�?${r.round || (i + 1)} 轮寄�?/span>
+        <span>第 ${r.round || (i + 1)} 轮寄样</span>
         ${_editingRounds.length > 1 ? `<button class="round-card-remove" onclick="removeRound(${i})" title="删除此轮">✖️ 删除</button>` : ''}
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:160px;margin:0 0 8px;">
           <label class="form-label">样衣工厂</label>
-          <input type="text" class="form-input" id="r_factory_${i}" list="r_factoryList_${i}" value="${App.utils.escapeHtml(r.factory || '样衣�?)}" placeholder="默认样衣�?>
-          <datalist id="r_factoryList_${i}"><option value="样衣�?>${factoryOptions}</datalist>
+          <input type="text" class="form-input" id="r_factory_${i}" list="r_factoryList_${i}" value="${App.utils.escapeHtml(r.factory || '样衣室')}" placeholder="默认样衣室">
+          <datalist id="r_factoryList_${i}"><option value="样衣室">${factoryOptions}</datalist>
         </div>
         <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
           <label class="form-label">安排日期</label>
@@ -1426,24 +1379,24 @@ function renderRoundList() {
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:180px;margin:0 0 8px;">
-          <label class="form-label">面料及克�?/label>
-          <input type="text" class="form-input" id="r_fabric_${i}" value="${App.utils.escapeHtml(r.fabric || '')}" placeholder="�?棉布 200g/m²">
+          <label class="form-label">面料及克重</label>
+          <input type="text" class="form-input" id="r_fabric_${i}" value="${App.utils.escapeHtml(r.fabric || '')}" placeholder="如 棉布 200g/m²">
         </div>
         <div class="form-group" style="flex:1;min-width:180px;margin:0 0 8px;">
-          <label class="form-label">里料及克�?/label>
-          <input type="text" class="form-input" id="r_lining_${i}" value="${App.utils.escapeHtml(r.lining || '')}" placeholder="�?涤塔�?80g/m²">
+          <label class="form-label">里料及克重</label>
+          <input type="text" class="form-input" id="r_lining_${i}" value="${App.utils.escapeHtml(r.lining || '')}" placeholder="如 涤塔夫 80g/m²">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
-          <label class="form-label">状�?/label>
+          <label class="form-label">状态</label>
           <select class="form-select" id="r_status_${i}" onchange="onRoundStatusChange(${i}, this.value)">
-            <option value="未确�? ${(r.status === '已确�?) ? '' : 'selected'}>未确�?/option>
-            <option value="已确�? ${(r.status === '已确�?) ? 'selected' : ''}>已确�?/option>
+            <option value="未确认" ${(r.status === '已确认') ? '' : 'selected'}>未确认</option>
+            <option value="已确认" ${(r.status === '已确认') ? 'selected' : ''}>已确认</option>
           </select>
         </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:160px;margin:0 0 8px;">
-          <label class="form-label">面里�?/label>
+          <label class="form-label">面里料</label>
           <div class="radio-group">
             <label><input type="radio" name="r_fabricType_${i}" value="大货" ${r.fabricType !== '代用' ? 'checked' : ''}>大货</label>
             <label><input type="radio" name="r_fabricType_${i}" value="代用" ${r.fabricType === '代用' ? 'checked' : ''}>代用</label>
@@ -1467,7 +1420,7 @@ function renderRoundList() {
       ${isEdit ? `
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
-          <label class="form-label">确认�?/label>
+          <label class="form-label">确认人</label>
           <input type="text" class="form-input" id="r_confirmedBy_${i}" value="${App.utils.escapeHtml(r.confirmedBy || '')}">
         </div>
         <div class="form-group" style="flex:1;min-width:120px;margin:0 0 8px;">
@@ -1477,29 +1430,29 @@ function renderRoundList() {
       </div>` : ''}
       <div class="form-group" style="margin:0;">
         <label class="form-label">客人意见 / 备注</label>
-        <textarea class="form-textarea" id="r_techNotes_${i}" rows="2" placeholder="客人对本轮样衣的意见、备�?..">${App.utils.escapeHtml(r.techNotes || '')}</textarea>
+        <textarea class="form-textarea" id="r_techNotes_${i}" rows="2" placeholder="客人对本轮样衣的意见、备注...">${App.utils.escapeHtml(r.techNotes || '')}</textarea>
       </div>
     </div>
   `).join('');
 }
 function onRoundStatusChange(idx, status) {
   const today = new Date().toISOString().slice(0, 10);
-  if (status === '已确�?) { const input = document.getElementById('r_confirmedDate_' + idx); if (input && !input.value) input.value = today; }
+  if (status === '已确认') { const input = document.getElementById('r_confirmedDate_' + idx); if (input && !input.value) input.value = today; }
 }
 function addRound() {
   const last = _editingRounds.length > 0 ? _editingRounds[_editingRounds.length - 1] : null;
   const today = new Date().toISOString().slice(0, 10);
-  _editingRounds.push({ round: _editingRounds.length + 1, arrangeDate: last ? (last.arrangeDate || today) : today, sampleDate: today, factory: last ? last.factory : '', size: last ? last.size : '', qty: last ? (last.qty || 0) : 0, unitPrice: last ? (last.unitPrice || 0) : 0, fabric: last ? (last.fabric || '') : '', lining: last ? (last.lining || '') : '', fabricType: last ? (last.fabricType || '大货') : '大货', colorType: last ? (last.colorType || '大货') : '大货', accessoryType: last ? (last.accessoryType || '大货') : '大货', status: '未确�?, confirmedBy: '', confirmedDate: '', techNotes: '' });
+  _editingRounds.push({ round: _editingRounds.length + 1, arrangeDate: last ? (last.arrangeDate || today) : today, sampleDate: today, factory: last ? last.factory : '', size: last ? last.size : '', qty: last ? (last.qty || 0) : 0, unitPrice: last ? (last.unitPrice || 0) : 0, fabric: last ? (last.fabric || '') : '', lining: last ? (last.lining || '') : '', fabricType: last ? (last.fabricType || '大货') : '大货', colorType: last ? (last.colorType || '大货') : '大货', accessoryType: last ? (last.accessoryType || '大货') : '大货', status: '未确认', confirmedBy: '', confirmedDate: '', techNotes: '' });
   renderRoundList();
 }
-function removeRound(idx) { App.confirm(`确定删除�?${idx + 1} 轮数据吗？`, () => { _editingRounds.splice(idx, 1); _editingRounds.forEach((r, i) => { r.round = i + 1; }); renderRoundList(); }); }
+function removeRound(idx) { App.confirm(`确定删除第 ${idx + 1} 轮数据吗？`, () => { _editingRounds.splice(idx, 1); _editingRounds.forEach((r, i) => { r.round = i + 1; }); renderRoundList(); }); }
 
 function saveSample() {
   const styleNo = document.getElementById('m_styleNo').value;
   if (!styleNo) { App.toast('请选择款号', 'warning'); return; }
   const stageKey = Number(document.getElementById('m_stageKey').value);
   const def = STAGE_DEFS[stageKey];
-  if (!editingId) { const check = checkPrerequisites(styleNo, stageKey); if (!check.ok) { App.toast(`请先完成�?{check.missing.join('�?)}」的确认，再安排�?{def.name}」`, 'warning'); return; } }
+  if (!editingId) { const check = checkPrerequisites(styleNo, stageKey); if (!check.ok) { App.toast(`请先完成「${check.missing.join('、')}」的确认，再安排「${def.name}」`, 'warning'); return; } }
   let data = { id: editingId || App.utils.genId('SM'), styleNo, stageKey };
   const getRadioVal = (name) => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; };
   if (def.multiRound) {
@@ -1510,7 +1463,7 @@ function saveSample() {
       const confirmedDateEl = document.getElementById('r_confirmedDate_' + i);
       rounds.push({ round: i + 1, sampleDate: document.getElementById('r_sampleDate_' + i).value, receivedSampleDate: document.getElementById('r_receivedSampleDate_' + i).value, factory: document.getElementById('r_factory_' + i).value, size: document.getElementById('r_size_' + i).value.trim(), qty: parseInt(document.getElementById('r_qty_' + i).value) || 0, unitPrice: parseFloat(document.getElementById('r_unitPrice_' + i).value) || 0, fabric: document.getElementById('r_fabric_' + i).value.trim(), lining: document.getElementById('r_lining_' + i).value.trim(), fabricType: getRadioVal(`r_fabricType_${i}`) || '大货', colorType: getRadioVal(`r_colorType_${i}`) || '大货', accessoryType: getRadioVal(`r_accessoryType_${i}`) || '大货', status: statusEl.value, confirmedBy: confirmedByEl ? confirmedByEl.value.trim() : '', confirmedDate: confirmedDateEl ? confirmedDateEl.value : '', techNotes: document.getElementById('r_techNotes_' + i).value.trim() });
     }
-    if (rounds.length === 0) { App.toast('请至少添加一轮寄样记�?, 'warning'); return; }
+    if (rounds.length === 0) { App.toast('请至少添加一轮寄样记录', 'warning'); return; }
     data.rounds = rounds; data.round = data.arrangeDate = data.sampleDate = data.receivedSampleDate = data.factory = data.size = data.qty = data.unitPrice = data.fabric = data.lining = data.fabricType = data.colorType = data.accessoryType = data.status = data.confirmedBy = data.confirmedDate = data.techNotes = undefined;
   } else {
     data.rounds = null;
@@ -1534,8 +1487,8 @@ function saveSample() {
     data.techNotes = document.getElementById('m_techNotes').value.trim();
   }
   const samples = getSamples();
-  if (editingId) { const idx = samples.findIndex(s => s.id === editingId); if (idx !== -1) samples[idx] = { ...samples[idx], ...data }; App.toast('样衣记录已更�?, 'success'); }
-  else { samples.push(data); App.toast('样衣记录已添�?, 'success'); }
+  if (editingId) { const idx = samples.findIndex(s => s.id === editingId); if (idx !== -1) samples[idx] = { ...samples[idx], ...data }; App.toast('样衣记录已更新', 'success'); }
+  else { samples.push(data); App.toast('样衣记录已添加', 'success'); }
   App.store.set('samples', samples);
   App.modal.close();
   renderStats();
@@ -1544,7 +1497,7 @@ function saveSample() {
 
 function viewSampleDetail(id) {
   const s = getSamples().find(x => x.id === id);
-  if (!s) { App.toast('记录不存�?, 'error'); return; }
+  if (!s) { App.toast('记录不存在', 'error'); return; }
   const def = STAGE_DEFS[Number(s.stageKey)];
   const styles = getStyles();
   const style = styles.find(x => x.styleNo === s.styleNo);
@@ -1558,24 +1511,24 @@ function viewSampleDetail(id) {
     body += `<div class=\"mt-16\" style=\"border-top:1px solid var(--border-light);padding-top:12px;\"><div class=\"detail-label mb-8\">✂️ 多轮寄样记录（共 ${s.rounds ? s.rounds.length : 0} 轮）</div>`;
     if (!s.rounds || s.rounds.length === 0) body += `<div class=\"text-muted\" style=\"padding:12px;text-align:center;\">暂无轮次数据</div>`;
     else body += s.rounds.map((r, i) => `
-      <div style="border:1px solid var(--border-light);border-radius:6px;padding:10px;margin-bottom:8px;background:${r.status === '已确�? ? '#f0fdf4' : (r.status === '不确�? ? '#fef2f2' : '#fafbfc')};">
-        <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:6px;">�?${r.round || (i + 1)} �?· ${App.statusTag(r.status)}</div>
+      <div style="border:1px solid var(--border-light);border-radius:6px;padding:10px;margin-bottom:8px;background:${r.status === '已确认' ? '#f0fdf4' : (r.status === '不确认' ? '#fef2f2' : '#fafbfc')};">
+        <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:6px;">第 ${r.round || (i + 1)} 轮 · ${App.statusTag(r.status)}</div>
         <div class="detail-grid">
-          ${field('安排日期', App.utils.formatDate(r.arrangeDate))}${field('寄样日期', App.utils.formatDate(r.sampleDate))}${field('收妥客寄样衣日期', App.utils.formatDate(r.receivedSampleDate))}${field('样衣工厂', App.utils.escapeHtml(r.factory))}${field('尺码', App.utils.escapeHtml(r.size))}${field('件数', r.qty ? r.qty + ' �? : '')}${field('单价', r.unitPrice ? '¥' + Number(r.unitPrice).toFixed(2) : '')}${field('面料及克�?, App.utils.escapeHtml(r.fabric))}${field('里料及克�?, App.utils.escapeHtml(r.lining))}${field('面里�?, r.fabricType ? '<span class=\"tag ' + (r.fabricType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.fabricType + '</span>' : '')}${field('颜色', r.colorType ? '<span class=\"tag ' + (r.colorType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.colorType + '</span>' : '')}${field('辅料', r.accessoryType ? '<span class=\"tag ' + (r.accessoryType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.accessoryType + '</span>' : '')}${field('确认�?, App.utils.escapeHtml(r.confirmedBy))}${field('确认日期', App.utils.formatDate(r.confirmedDate))}
+          ${field('安排日期', App.utils.formatDate(r.arrangeDate))}${field('寄样日期', App.utils.formatDate(r.sampleDate))}${field('收妥客寄样衣日期', App.utils.formatDate(r.receivedSampleDate))}${field('样衣工厂', App.utils.escapeHtml(r.factory))}${field('尺码', App.utils.escapeHtml(r.size))}${field('件数', r.qty ? r.qty + ' 件' : '')}${field('单价', r.unitPrice ? '¥' + Number(r.unitPrice).toFixed(2) : '')}${field('面料及克重', App.utils.escapeHtml(r.fabric))}${field('里料及克重', App.utils.escapeHtml(r.lining))}${field('面里料', r.fabricType ? '<span class=\"tag ' + (r.fabricType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.fabricType + '</span>' : '')}${field('颜色', r.colorType ? '<span class=\"tag ' + (r.colorType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.colorType + '</span>' : '')}${field('辅料', r.accessoryType ? '<span class=\"tag ' + (r.accessoryType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.accessoryType + '</span>' : '')}${field('确认人', App.utils.escapeHtml(r.confirmedBy))}${field('确认日期', App.utils.formatDate(r.confirmedDate))}
         </div>
         <div class="mt-8"><div class="detail-label mb-4">客人意见 / 备注</div><div style="background:#fff;border:1px solid var(--border-light);border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:32px;">${App.utils.escapeHtml(r.techNotes) || '<span class=\"text-muted\">暂无</span>'}</div></div>
       </div>`).join('');
     body += `</div>`;
   } else {
     body += `<div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;"><div class="detail-grid">
-      ${field('安排日期', App.utils.formatDate(s.arrangeDate))}${field('寄样日期', App.utils.formatDate(s.sampleDate))}${field('收妥客寄样衣日期', App.utils.formatDate(s.receivedSampleDate))}${field('样衣工厂', App.utils.escapeHtml(s.factory))}${field('尺码', App.utils.escapeHtml(s.size))}${field('件数', s.qty ? s.qty + ' �? : '')}${field('单价', s.unitPrice ? '¥' + Number(s.unitPrice).toFixed(2) : '')}${field('面料及克�?, App.utils.escapeHtml(s.fabric))}${field('里料及克�?, App.utils.escapeHtml(s.lining))}${field('面里�?, s.fabricType ? '<span class=\"tag ' + (s.fabricType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.fabricType + '</span>' : '')}${field('颜色', s.colorType ? '<span class=\"tag ' + (s.colorType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.colorType + '</span>' : '')}${field('辅料', s.accessoryType ? '<span class=\"tag ' + (s.accessoryType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.accessoryType + '</span>' : '')}${field('状�?, App.statusTag(s.status || '未确�?))}${field('确认�?, App.utils.escapeHtml(s.confirmedBy))}${field('确认日期', App.utils.formatDate(s.confirmedDate))}
+      ${field('安排日期', App.utils.formatDate(s.arrangeDate))}${field('寄样日期', App.utils.formatDate(s.sampleDate))}${field('收妥客寄样衣日期', App.utils.formatDate(s.receivedSampleDate))}${field('样衣工厂', App.utils.escapeHtml(s.factory))}${field('尺码', App.utils.escapeHtml(s.size))}${field('件数', s.qty ? s.qty + ' 件' : '')}${field('单价', s.unitPrice ? '¥' + Number(s.unitPrice).toFixed(2) : '')}${field('面料及克重', App.utils.escapeHtml(s.fabric))}${field('里料及克重', App.utils.escapeHtml(s.lining))}${field('面里料', s.fabricType ? '<span class=\"tag ' + (s.fabricType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.fabricType + '</span>' : '')}${field('颜色', s.colorType ? '<span class=\"tag ' + (s.colorType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.colorType + '</span>' : '')}${field('辅料', s.accessoryType ? '<span class=\"tag ' + (s.accessoryType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.accessoryType + '</span>' : '')}${field('状态', App.statusTag(s.status || '未确认'))}${field('确认人', App.utils.escapeHtml(s.confirmedBy))}${field('确认日期', App.utils.formatDate(s.confirmedDate))}
     </div>
     <div class="mt-8"><div class="detail-label mb-4">备注</div><div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:36px;">${App.utils.escapeHtml(s.techNotes) || '<span class=\"text-muted\">暂无备注</span>'}</div></div></div>`;
   }
   const footer = `<button class="btn" onclick="App.modal.close()">✖️</button><button class="btn btn-primary" onclick="App.modal.close(); openSampleModal('${s.id}')">✏️</button>`;
   App.modal.open({ title: '样衣详情', body, footer, size: 'lg' });
 }
-function deleteSample(id) { App.confirm('确定要删除这条样衣记录吗�?, () => { const samples = getSamples().filter(s => s.id !== id); App.store.set('samples', samples); _selectedIds.delete(id); App.toast('样衣记录已删�?, 'success'); renderStats(); renderSampleTable(); }); }
+function deleteSample(id) { App.confirm('确定要删除这条样衣记录吗？', () => { const samples = getSamples().filter(s => s.id !== id); App.store.set('samples', samples); _selectedIds.delete(id); App.toast('样衣记录已删除', 'success'); renderStats(); renderSampleTable(); }); }
 function resetFilter() { filterState = { search: '', status: '' }; renderFilterBar(); renderSampleTable(); }
 
 // ===== 页面初始化（等待 Supabase 就绪后执行） =====
@@ -1591,16 +1544,15 @@ renderTabs();
 renderFilterBar();
 renderSampleTable();
 
-// ===== 关键修复：SupabaseStore 初始化完成后，强制重新加载样衣计划数�?=====
-// 原因：_init �?SupabaseReady 后执行，�?SamplePlan 的初�?loadData() 可能在数据加载前已执�?
-// 此外确保「样衣计划」Tab 也能在切换到之前就加载到最新数�?
+// ===== 关键修复：SupabaseStore 初始化完成后，强制重新加载样衣计划数据 =====
+// 原因：_init 等 SupabaseReady 后执行，但 SamplePlan 的初始 loadData() 可能在数据加载前已执行
+// 此外确保「样衣计划」Tab 也能在切换到之前就加载到最新数据
 (function waitAndInitSamplePlan() {
   var tries = 0;
-  var maxTries = 30; // 最多等�?30 �?
+  var maxTries = 30; // 最多等待 30 次
   function check() {
     var store = window.SupabaseStore;
     var storeReady = store && store._isInitialized && store._isInitialized();
-    // 如果样衣计划数据在缓存中找到了（数组有长�?> 0）或者初始化完成，或者超�?�?强制 init
     var hasData = false;
     try {
       if (store && store.getSync) {
@@ -1608,65 +1560,50 @@ renderSampleTable();
         hasData = Array.isArray(d) && d.length > 0;
       }
     } catch(e) {}
-    
+
     if (storeReady || hasData || tries >= maxTries) {
       if (window.currentTab === '样衣计划' || !window._samplePlanInited) {
-        console.log('[sample.html] 初始化触�?SamplePlan.init() 时机:', 
+        console.log('[sample.html] 初始化触发 SamplePlan.init() 时机:',
           'storeReady=' + storeReady, 'hasData=' + hasData, 'tries=' + tries);
-        // 如果用户已经切到样衣计划 Tab 过了，需要重�?init�?
-        // 否则设置标志，等切换�?init 会从缓存读到最新数�?
         if (window._samplePlanInited) {
           SamplePlan.init();
         }
-        // 同时刷新通用的样衣表格（�?App.store 读取�?
-        renderStats();
-        renderTabs();
-        renderFilterBar();
-        renderSampleTable();
+        window._samplePlanInited = true;
       }
+      // 同时刷新通用的样衣表格（从 App.store 读取）
+      renderStats();
+      renderTabs();
+      renderFilterBar();
+      renderSampleTable();
       return;
     }
     tries++;
     setTimeout(check, 1000);
   }
-  setTimeout(check, 500); // 首次延迟 500ms 开始检�?
+  setTimeout(check, 500);
 })();
 
-// 监听云端数据变更�?5秒自动刷新）
+// 监听云端数据变更（15秒自动刷新）
 window.addEventListener('cloud-data-updated', function(e) {
   var keys = e.detail.keys || [];
   var hasShtSample = keys.indexOf('sht_sample_data_v2') >= 0;
   var hasShtSize = keys.indexOf('sht_size_tables_v2') >= 0;
   var hasSamples = keys.indexOf('samples') >= 0;
   var hasSizes = keys.indexOf('sizeSheets') >= 0;
-  
-  // ===== 关键防循环保�?=====
-  // 场景：独立写�?刷新触发�?cloud-data-updated �?这里重跑 SamplePlan.init()
-  //       �?syncSamplePlanToTabs() �?sht_sample_data_v2 同步�?samples key
-  //       �?调用 App.store.set('samples') �?再触�?cloud-data-updated
-  //       �?只有 samples 单个 key，且内容其实没变�?
-  // 规则�?
-  //   a) 如果事件�?ONLY �?samples（没有样衣计划专�?key），只刷新样衣记录表格（render* �?4 个函数）
-  //      绝不调用 SamplePlan.init()（避�?syncSamplePlanToTabs�?
-  //   b) 只有当存�?sht_sample_data_v2 / sht_size_tables_v2 / sizeSheets 等真正样衣计划专�?key 时，
-  //      才完整重�?SamplePlan.init()
+
   var onlySamples = (hasSamples && !hasShtSample && !hasShtSize && !hasSizes && keys.length === 1);
   var needRefresh = hasShtSample || hasShtSize || hasSamples || hasSizes;
-  
+
   if (needRefresh) {
-    console.log('[sample.html] 云端数据变更，刷新页面数�? keys=', keys.join(','),
+    console.log('[sample.html] 云端数据变更，刷新页面数据 keys=', keys.join(','),
       onlySamples ? '(仅samples→仅刷新表格，不重跑 SamplePlan)' : '');
-    // 刷新样衣记录表格（这是�?样衣"Tab，刷新永远安全）
     renderStats();
     renderTabs();
     renderFilterBar();
     renderSampleTable();
 
-    // ===== �?onlySamples 情况（真的有样衣计划专属数据变更）才�?SamplePlan.init =====
     if (!onlySamples && typeof SamplePlan !== 'undefined') {
-      // 重置标志以强制重入逻辑
       window._samplePlanInited = false;
-      // 把最新缓存同步到原始localStorage，确保loadData()不会读到旧本地数�?
       try {
         var store = window.SupabaseStore;
         var origLS = window._origLocalStorage || localStorage;
@@ -1690,8 +1627,8 @@ window.addEventListener('cloud-data-updated', function(e) {
 <script>
 /* ============================================================
  *  样衣计划 (SamplePlan) 模块
- *  集成�?sample arrangement/index.html（去掉登录窗口）
- *  所有函�?变量/ID 都加�?SamplePlan 命名空间�?sp_ 前缀
+ *  集成自 sample arrangement/index.html（去掉登录窗口）
+ *  所有函数/变量/ID 都加了 SamplePlan 命名空间和 sp_ 前缀
  * ============================================================ */
 (function(SP) {
   'use strict';
@@ -1706,16 +1643,15 @@ window.addEventListener('cloud-data-updated', function(e) {
     data: [], filteredData: [], currentPage: 1, pageSize: 20,
     sortField: '要求交期', sortDirection: 'asc',
     selectedId: null, editingId: null, sizeTables: [],
-    sizeSearchQuery: '', expandedSizeTables: new Set(),
-    _pendingPictureFile: null
+    sizeSearchQuery: '', expandedSizeTables: new Set()
   };
   const state = SP.state;
 
   SP.columns = [
     { key: 'index', label: '#', sortable: false, width: '36px' },
-    { key: '状�?, label: '状�?, sortable: true, width: '60px' },
-    { key: '面辅料准备情�?, label: '面辅�?, sortable: true, width: '80px' },
-    { key: '样衣�?, label: '样衣�?, sortable: true },
+    { key: '状态', label: '状态', sortable: true, width: '60px' },
+    { key: '面辅料准备情况', label: '面辅料', sortable: true, width: '80px' },
+    { key: '样衣工', label: '样衣工', sortable: true },
     { key: '款号', label: '款号', sortable: true },
     { key: '样衣类型', label: '样衣类型', sortable: true },
     { key: '打样轮次', label: '轮次', sortable: true, width: '46px' },
@@ -1729,9 +1665,9 @@ window.addEventListener('cloud-data-updated', function(e) {
   ];
   const columns = SP.columns;
 
-  SP.typeBadges = { '头样':'badge-blue', '尺码�?:'badge-purple', '产前�?:'badge-teal', '照片�?:'badge-orange', '船样':'badge-green' };
-  SP.statusBadges = { '未上�?:'badge-gray', '未出�?:'badge-orange', '已出�?:'badge-green' };
-  SP.matBadges = { '已到�?:'badge-green', '部分到位':'badge-orange', '未到�?:'badge-red' };
+  SP.typeBadges = { '头样':'badge-blue', '尺码样':'badge-purple', '产前样':'badge-teal', '照片样':'badge-orange', '船样':'badge-green' };
+  SP.statusBadges = { '未上手':'badge-gray', '未出样':'badge-orange', '已出样':'badge-green' };
+  SP.matBadges = { '已到位':'badge-green', '部分到位':'badge-orange', '未到位':'badge-red' };
   const typeBadges = SP.typeBadges, statusBadges = SP.statusBadges, matBadges = SP.matBadges;
 
   function esc(str) {
@@ -1739,52 +1675,38 @@ window.addEventListener('cloud-data-updated', function(e) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
   }
   SP.esc = esc;
-  function fmtDate(d) { return d || '<span style="color:var(--sp-muted)">�?/span>'; }
+  function fmtDate(d) { return d || '<span style="color:var(--sp-muted)">—</span>'; }
   function fmtExcelDate(val) {
     if (!val && val !== 0) return '';
     if (val instanceof Date) return val.toISOString().split('T')[0];
     if (typeof val === 'number') { const d = new Date((val - 25569) * 86400 * 1000); return d.toISOString().split('T')[0]; }
     const s = String(val).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.split('T')[0]; return s;
   }
-  function getStatus(row) { if (row['落手时间']) return '已出�?; if (row['上手时间']) return '未出�?; return '未上�?; }
+  function getStatus(row) { if (row['落手时间']) return '已出样'; if (row['上手时间']) return '未出样'; return '未上手'; }
   function countUniqueStyleNos(records) { return new Set(records.map(r => r['款号']).filter(Boolean)).size; }
 
   // ===== Storage =====
   function loadData() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      state.data = Array.isArray(parsed) ? parsed : [];
-      // 调试日志：帮助追踪数据来�?
-      console.log('[SamplePlan] loadData: �?getItem 获取', state.data.length, '条记�?, 
-        saved ? '(有数�?' : '(null/�?');
-    } catch(e) {
-      console.error('[SamplePlan] loadData 异常:', e);
-      state.data = [];
-    }
-    try {
-      const sizeSaved = localStorage.getItem(SIZE_TABLE_KEY);
-      const parsed = sizeSaved ? JSON.parse(sizeSaved) : [];
-      state.sizeTables = Array.isArray(parsed) ? parsed : [];
-    } catch(e) { state.sizeTables = []; }
+    try { const saved = localStorage.getItem(STORAGE_KEY); state.data = saved ? JSON.parse(saved) : []; } catch(e) { state.data = []; }
+    try { const sizeSaved = localStorage.getItem(SIZE_TABLE_KEY); state.sizeTables = sizeSaved ? JSON.parse(sizeSaved) : []; } catch(e) { state.sizeTables = []; }
   }
 
-  // ===== 样衣计划 �?头样/尺码�?产前�?船样/照片�?Tab 实时同步 =====
-  // 原则�?
+  // ===== 样衣计划 → 头样/尺码样/产前样/船样/照片样 Tab 实时同步 =====
+  // 原则：
   //  1) 不改变头样等 Tab 的表格列与字段结构，严格按原 samples record 字段写入
   //  2) 仅处理带 samplePlanId 标记的记录，原系统手动创建的记录永远保留不碰
-  //  3) �?样衣类型"�?stageKey 映射后自然进入对�?Tab 的过�?
+  //  3) 按"样衣类型"→ stageKey 映射后自然进入对应 Tab 的过滤
   function syncSamplePlanToTabs() {
     try {
       if (typeof App === 'undefined' || !App.store || typeof STAGE_DEFS === 'undefined') return;
       const typeToStageKey = {};
       STAGE_DEFS.forEach(d => { typeToStageKey[d.name] = d.key; });
 
-      const PLAN_PREFIX = 'SPL_';                 // 同步生成�?id 前缀，稳定更�?
+      const PLAN_PREFIX = 'SPL_';                 // 同步生成的 id 前缀，稳定更新
       const MARKER = 'samplePlanId';              // 专属标记：仅带此 key 的记录会被同步逻辑替换
       const allSamples = App.store.get('samples', []);
       if (!Array.isArray(allSamples)) return;
-      // 1) 先移除之前同步过来的所有记录（保留用户手动建的�?
+      // 1) 先移除之前同步过来的所有记录（保留用户手动建的）
       const preserved = allSamples.filter(s => !s[MARKER]);
       // 2) 按样衣类型重建同步记录；single/multiRound 分别按原系统字段规则
       const mapped = [];
@@ -1792,7 +1714,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       srcData.forEach(r => {
         const stageName = r['样衣类型'] || '';
         const stageKey = typeToStageKey[stageName];
-        if (stageKey === undefined || stageKey === null) return; // 类型未知则跳�?
+        if (stageKey === undefined || stageKey === null) return; // 类型未知则跳过
         const def = STAGE_DEFS[Number(stageKey)];
         if (!def) return;
         const base = {
@@ -1800,31 +1722,31 @@ window.addEventListener('cloud-data-updated', function(e) {
           styleNo: r['款号'] || '',
           stageKey: Number(stageKey),
           [MARKER]: String(r.id || ''),   // 原始 SamplePlan.id 关联标记
-          factory: r['样衣�?] || '',
+          factory: r['样衣工'] || '',
           size: r['尺码'] || '',
           qty: parseInt(r['数量']) || 0,
-          arrangeDate: r['要求交期'] || '',   // 表头不直接显示；要求交期作为打样安排�?
-          sampleDate: r['落手时间'] || '',    // 寄样日期 = 落手完成�?
+          arrangeDate: r['要求交期'] || '',   // 表头不直接显示；要求交期作为打样安排日
+          sampleDate: r['落手时间'] || '',    // 寄样日期 = 落手完成时
           receivedSampleDate: '',             // 客户收妥日期留空（计划阶段未知）
-          status: '未确�?,                    // 计划默认未确认，后续原系统手动确�?
+          status: '未确认',                    // 计划默认未确认，后续原系统手动确认
           confirmedBy: '',
           confirmedDate: '',
           techNotes: r['备注'] || '',
-          // 其它原系统字段保�?undefined，不破坏结构：fabric/lining/fabricType/colorType/accessoryType/unitPrice
+          // 其它原系统字段保持 undefined，不破坏结构：fabric/lining/fabricType/colorType/accessoryType/unitPrice
         };
         if (def.multiRound) {
-          // 尺码�?/ 产前样（stageKey=1, 2）→ rounds 数组；single-level 字段清空
+          // 尺码样 / 产前样（stageKey=1, 2）→ rounds 数组；single-level 字段清空
           base.rounds = [{
             round: parseInt(r['打样轮次']) || 1,
             arrangeDate: r['要求交期'] || '',
             sampleDate: r['落手时间'] || '',
             receivedSampleDate: '',
-            factory: r['样衣�?] || '',
+            factory: r['样衣工'] || '',
             size: r['尺码'] || '',
             qty: parseInt(r['数量']) || 0,
             unitPrice: 0, fabric: '', lining: '',
             fabricType: '大货', colorType: '大货', accessoryType: '大货',
-            status: '未确�?, confirmedBy: '', confirmedDate: '',
+            status: '未确认', confirmedBy: '', confirmedDate: '',
             techNotes: r['备注'] || '',
           }];
           base.round = base.arrangeDate = base.sampleDate = base.receivedSampleDate =
@@ -1845,16 +1767,15 @@ window.addEventListener('cloud-data-updated', function(e) {
         if (typeof renderSampleTable === 'function') renderSampleTable();
       }
     } catch (err) {
-      // 同步静默失败，不打断 SamplePlan 的正常保�?
+      // 同步静默失败，不打断 SamplePlan 的正常保存
       if (typeof console !== 'undefined' && console.error) console.error('[syncSamplePlanToTabs]', err);
     }
   }
 
-  // 数据同步队列：批量写�?Supabase，避免频繁请�?
+  // 数据同步队列：批量写入 Supabase，避免频繁请求
   let _spSyncTimer = null;
   let _spSyncPending = false;
   async function flushToSupabase() {
-    // 写入样衣数据
     if (state.data) {
       try {
         if (window.SupabaseStore && typeof window.SupabaseStore.set === 'function') {
@@ -1862,13 +1783,12 @@ window.addEventListener('cloud-data-updated', function(e) {
         }
       } catch(e) { console.warn('[SamplePlan] Supabase 同步失败:', e); }
     }
-    // 写入尺寸表数�?
     if (state.sizeTables) {
       try {
         if (window.SupabaseStore && typeof window.SupabaseStore.set === 'function') {
           await window.SupabaseStore.set(SIZE_TABLE_KEY, state.sizeTables);
         }
-      } catch(e) { console.warn('[SamplePlan] 尺寸�?Supabase 同步失败:', e); }
+      } catch(e) { console.warn('[SamplePlan] 尺寸表 Supabase 同步失败:', e); }
     }
     _spSyncPending = false;
   }
@@ -1883,15 +1803,11 @@ window.addEventListener('cloud-data-updated', function(e) {
 
   function saveData() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
-    catch(e) { showToast('保存失败：存储空间不�?, 'error'); }
+    catch(e) { showToast('保存失败：存储空间不足', 'error'); }
     scheduleSync();
     syncSamplePlanToTabs();
   }
-  function saveSizeTables() {
-    try { localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables)); }
-    catch(e) { showToast('保存失败：存储空间不�?, 'error'); }
-    scheduleSync();
-  }
+  function saveSizeTables() { try { localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables)); } catch(e) { showToast('保存失败：存储空间不足', 'error'); } }
 
   // ===== Dropdown =====
   SP.toggleDropdown = function(e, id) {
@@ -1921,15 +1837,15 @@ window.addEventListener('cloud-data-updated', function(e) {
     const data = state.filteredData;
     const total = data.length;
     const qtySum = data.reduce((s, r) => s + (parseInt(r['数量']) || 0), 0);
-    const typeCounts = { '头样':0, '尺码�?:0, '产前�?:0, '照片�?:0, '船样':0 };
+    const typeCounts = { '头样':0, '尺码样':0, '产前样':0, '照片样':0, '船样':0 };
     data.forEach(r => { if (typeCounts[r['样衣类型']] !== undefined) typeCounts[r['样衣类型']]++; });
     const today = new Date().toISOString().split('T')[0];
     const noEnd = data.filter(r => !r['落手时间']);
     const dueSoon = noEnd.filter(r => r['要求交期'] && r['要求交期'] >= today).length;
     const overdue = noEnd.filter(r => r['要求交期'] && r['要求交期'] < today).length;
-    const stNotStart = countUniqueStyleNos(data.filter(r => getStatus(r) === '未上�?));
-    const stInProgress = countUniqueStyleNos(data.filter(r => getStatus(r) === '未出�?));
-    const stDone = countUniqueStyleNos(data.filter(r => getStatus(r) === '已出�?));
+    const stNotStart = countUniqueStyleNos(data.filter(r => getStatus(r) === '未上手'));
+    const stInProgress = countUniqueStyleNos(data.filter(r => getStatus(r) === '未出样'));
+    const stDone = countUniqueStyleNos(data.filter(r => getStatus(r) === '已出样'));
     const ic = {
       list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>',
       qty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
@@ -1949,13 +1865,13 @@ window.addEventListener('cloud-data-updated', function(e) {
       { cls:'blue', svg:ic.list, val:total, label:'样衣总数' },
       { cls:'teal', svg:ic.qty, val:qtySum, label:'数量合计' },
       { cls:'blue', svg:ic.tou, val:typeCounts['头样'], label:'头样' },
-      { cls:'purple', svg:ic.chi, val:typeCounts['尺码�?], label:'尺码�? },
-      { cls:'teal', svg:ic.chan, val:typeCounts['产前�?], label:'产前�? },
-      { cls:'orange', svg:ic.zhao, val:typeCounts['照片�?], label:'照片�? },
+      { cls:'purple', svg:ic.chi, val:typeCounts['尺码样'], label:'尺码样' },
+      { cls:'teal', svg:ic.chan, val:typeCounts['产前样'], label:'产前样' },
+      { cls:'orange', svg:ic.zhao, val:typeCounts['照片样'], label:'照片样' },
       { cls:'green', svg:ic.chuan, val:typeCounts['船样'], label:'船样' },
-      { cls:'gray', svg:ic.wait, val:stNotStart, label:'未上�?款号)' },
-      { cls:'orange', svg:ic.run, val:stInProgress, label:'未出�?款号)' },
-      { cls:'green', svg:ic.done, val:stDone, label:'已出�?款号)' },
+      { cls:'gray', svg:ic.wait, val:stNotStart, label:'未上手(款号)' },
+      { cls:'orange', svg:ic.run, val:stInProgress, label:'未出样(款号)' },
+      { cls:'green', svg:ic.done, val:stDone, label:'已出样(款号)' },
       { cls:'orange', svg:ic.due, val:dueSoon, label:'即将到期' },
       { cls:'red', svg:ic.over, val:overdue, label:'已逾期' }
     ].map(c => `<div class="stat-card glass">${iconBox(c.cls, c.svg)}<div class="stat-info"><div class="stat-value">${c.val}</div><div class="stat-label">${c.label}</div></div></div>`).join('');
@@ -1963,16 +1879,13 @@ window.addEventListener('cloud-data-updated', function(e) {
 
   // ===== Table =====
   function renderTableHead() {
-    const thead = document.getElementById('sp_tableHead');
-    thead.innerHTML = '<tr>' + columns.map(col => {
+    document.getElementById('sp_tableHead').innerHTML = '<tr>' + columns.map(col => {
       const sorted = state.sortField === col.key ? 'sorted' : '';
       const sortClass = col.sortable ? '' : 'no-sort';
-      const sortIcon = col.sortable ? `<span class="sort-icon">${state.sortDirection === 'asc' ? '�? : '�?}</span>` : '';
+      const sortIcon = col.sortable ? `<span class="sort-icon">${state.sortDirection === 'asc' ? '▲' : '▼'}</span>` : '';
       const width = col.width ? `style="min-width:${col.width}"` : '';
       return `<th class="${sorted} ${sortClass}" ${width} onclick="${col.sortable ? `SamplePlan.handleSort('${col.key}')` : ''}">${col.label}${sortIcon}</th>`;
     }).join('') + '</tr>';
-    // Safari fix: force reflow after setting thead innerHTML
-    void thead.offsetHeight;
   }
   function renderTable() {
     const tbody = document.getElementById('sp_tableBody');
@@ -1980,7 +1893,7 @@ window.addEventListener('cloud-data-updated', function(e) {
     if (state.sortField) {
       data.sort((a, b) => {
         let va, vb;
-        if (state.sortField === '状�?) { va = getStatus(a); vb = getStatus(b); }
+        if (state.sortField === '状态') { va = getStatus(a); vb = getStatus(b); }
         else { va = a[state.sortField] || ''; vb = b[state.sortField] || ''; }
         if (typeof va === 'number' && typeof vb === 'number') return state.sortDirection === 'asc' ? va - vb : vb - va;
         va = String(va); vb = String(vb);
@@ -1991,74 +1904,50 @@ window.addEventListener('cloud-data-updated', function(e) {
     if (state.currentPage > totalPages) state.currentPage = totalPages;
     const start = (state.currentPage - 1) * state.pageSize;
     const pageData = data.slice(start, start + state.pageSize);
-    let newContent = '';
     if (pageData.length === 0) {
-      newContent = `<tr><td colspan="${columns.length}"><div class="empty-state">
+      tbody.innerHTML = `<tr><td colspan="${columns.length}"><div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <p>暂无数据</p></div></td></tr>`;
-    } else {
-      const today = new Date().toISOString().split('T')[0];
-      newContent = pageData.map((row, i) => {
-        const isSelected = state.selectedId === row.id;
-        const idx = start + i + 1;
-        const status = getStatus(row);
-        const sBadge = statusBadges[status] || 'badge-gray';
-        const tBadge = typeBadges[row['样衣类型']] || 'badge-gray';
-        const mBadge = matBadges[row['面辅料准备情�?]] || 'badge-gray';
-        let dotClass = 'dot-green';
-        if (!row['落手时间'] && row['要求交期']) {
-          const diff = (new Date(row['要求交期']) - new Date(today)) / (1000*60*60*24);
-          if (diff < 0) dotClass = 'dot-red';
-          else if (diff <= 3) dotClass = 'dot-orange';
-        }
-        const rowId = String(row.id || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<tr class="${isSelected ? 'selected' : ''}" onclick="SamplePlan.selectRow('${rowId}')">
+      renderPagination(); return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    tbody.innerHTML = pageData.map((row, i) => {
+      const isSelected = state.selectedId === row.id;
+      const idx = start + i + 1;
+      const status = getStatus(row);
+      const sBadge = statusBadges[status] || 'badge-gray';
+      const tBadge = typeBadges[row['样衣类型']] || 'badge-gray';
+      const mBadge = matBadges[row['面辅料准备情况']] || 'badge-gray';
+      let dotClass = 'dot-green';
+      if (!row['落手时间'] && row['要求交期']) {
+        const diff = (new Date(row['要求交期']) - new Date(today)) / (1000*60*60*24);
+        if (diff < 0) dotClass = 'dot-red';
+        else if (diff <= 3) dotClass = 'dot-orange';
+      }
+      return `<tr class="${isSelected ? 'selected' : ''}" onclick="SamplePlan.selectRow('${row.id}')">
         <td style="text-align:center;color:var(--sp-muted)">${idx}</td>
         <td title="${esc(status)}"><span class="badge ${sBadge}">${status}</span></td>
-        <td title="${esc(row['面辅料准备情�?] || '')}"><span class="badge ${mBadge}">${esc(row['面辅料准备情�?] || '')}</span></td>
-        <td title="${esc(row['样衣�?] || '')}">${esc(row['样衣�?] || '')}</td>
+        <td title="${esc(row['面辅料准备情况'] || '')}"><span class="badge ${mBadge}">${esc(row['面辅料准备情况'] || '')}</span></td>
+        <td title="${esc(row['样衣工'] || '')}">${esc(row['样衣工'] || '')}</td>
         <td title="${esc(row['款号'] || '')}"><strong>${esc(row['款号'] || '')}</strong></td>
         <td title="${esc(row['样衣类型'] || '')}"><span class="badge ${tBadge}">${esc(row['样衣类型'] || '')}</span></td>
-        <td style="text-align:center" title="�?{esc(row['打样轮次'] || 1)}�?>${row['打样轮次'] || 1}</td>
+        <td style="text-align:center" title="第${esc(row['打样轮次'] || 1)}轮">${row['打样轮次'] || 1}</td>
         <td title="${esc(row['尺码'] || '')}">${esc(row['尺码'] || '')}</td>
-        <td style="text-align:center" title="${row['数量'] || 0}�?>${row['数量'] || 0}</td>
+        <td style="text-align:center" title="${row['数量'] || 0}件">${row['数量'] || 0}</td>
         <td title="${esc(row['要求交期'] || '')}"><span class="urgent-dot ${dotClass}"></span>${fmtDate(row['要求交期'])}</td>
         <td title="${esc(row['上手时间'] || '')}">${fmtDate(row['上手时间'])}</td>
         <td title="${esc(row['落手时间'] || '')}">${fmtDate(row['落手时间'])}</td>
         <td title="${esc(row['备注'] || '')}">${esc(row['备注'] || '')}</td>
         <td class="td-actions"><div class="row-actions" onclick="event.stopPropagation()">
-          <button class="row-action-btn edit" onclick="SamplePlan.openForm('${rowId}')" title="编辑">
+          <button class="row-action-btn edit" onclick="SamplePlan.openForm('${row.id}')" title="编辑">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button class="row-action-btn delete" onclick="SamplePlan.deleteRecord('${rowId}')" title="删除">
+          <button class="row-action-btn delete" onclick="SamplePlan.deleteRecord('${row.id}')" title="删除">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div></td>
       </tr>`;
-      }).join('');
-    }
-    // Safari fix: clear tbody first, force reflow, then set new content
-    // This prevents Safari from failing to render rows after innerHTML changes
-    tbody.innerHTML = '';
-    // Force reflow (read offsetHeight to trigger layout)
-    void tbody.offsetHeight;
-    tbody.innerHTML = newContent;
-    // Force another reflow to ensure Safari renders the new rows
-    void tbody.offsetHeight;
-    // Debug: log rendering result
-    var rowCount = tbody.querySelectorAll('tr').length;
-    if (pageData.length > 0 && rowCount === 0) {
-      console.warn('[SamplePlan] ⚠️ Safari渲染异常：预�? + pageData.length + '行，实际' + rowCount + '行。尝试强制重�?..');
-      // Safari fallback: rebuild entire table structure
-      var table = document.getElementById('sp_sampleTable');
-      var thead = document.getElementById('sp_tableHead');
-      table.innerHTML = '';
-      table.appendChild(thead);
-      table.appendChild(tbody);
-      tbody.innerHTML = newContent;
-      void tbody.offsetHeight;
-      console.log('[SamplePlan] �?Safari重建完成，行�?', tbody.querySelectorAll('tr').length);
-    }
+    }).join('');
     renderPagination();
   }
   function renderPagination() {
@@ -2073,13 +1962,13 @@ window.addEventListener('cloud-data-updated', function(e) {
     let pages = '';
     for (let i = s; i <= e; i++) pages += `<button class="page-btn ${i === state.currentPage ? 'active' : ''}" onclick="SamplePlan.changePage(${i})">${i}</button>`;
     document.getElementById('sp_pagination').innerHTML = `
-      <div class="page-info">�?<b>${total}</b> 条记录，显示�?<b>${start}</b>-<b>${end}</b> �?/div>
+      <div class="page-info">共 <b>${total}</b> 条记录，显示第 <b>${start}</b>-<b>${end}</b> 条</div>
       <div class="page-controls">
         <select class="page-size-select" onchange="SamplePlan.changePageSize(this.value)">
-          <option value="10" ${state.pageSize===10?'selected':''}>10�?�?/option>
-          <option value="20" ${state.pageSize===20?'selected':''}>20�?�?/option>
-          <option value="50" ${state.pageSize===50?'selected':''}>50�?�?/option>
-          <option value="100" ${state.pageSize===100?'selected':''}>100�?�?/option>
+          <option value="10" ${state.pageSize===10?'selected':''}>10条/页</option>
+          <option value="20" ${state.pageSize===20?'selected':''}>20条/页</option>
+          <option value="50" ${state.pageSize===50?'selected':''}>50条/页</option>
+          <option value="100" ${state.pageSize===100?'selected':''}>100条/页</option>
         </select>
         <button class="page-btn" onclick="SamplePlan.changePage(1)" ${state.currentPage===1?'disabled':''}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg></button>
         <button class="page-btn" onclick="SamplePlan.changePage(${state.currentPage-1})" ${state.currentPage===1?'disabled':''}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -2103,7 +1992,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       if (q && !Object.values(row).some(v => String(v || '').toLowerCase().includes(q))) return false;
       if (fStatus && getStatus(row) !== fStatus) return false;
       if (fType && row['样衣类型'] !== fType) return false;
-      if (fMat && row['面辅料准备情�?] !== fMat) return false;
+      if (fMat && row['面辅料准备情况'] !== fMat) return false;
       if (fFrom && row['要求交期'] && row['要求交期'] < fFrom) return false;
       if (fTo && row['要求交期'] && row['要求交期'] > fTo) return false;
       return true;
@@ -2135,101 +2024,25 @@ window.addEventListener('cloud-data-updated', function(e) {
 
   // ===== Row Selection / Image Preview =====
   let panelJustOpened = false;
-  let currentPanelRowId = null; // 记录当前预览的行 ID，用于上�?删除操作
   SP.selectRow = function(id) {
     state.selectedId = id;
     renderTable();
     const row = state.data.find(r => r.id === id);
     if (row) showImagePreview(row);
   };
-
-  // 加载图片：优�?Supabase 上传图片，回退本地 picture 文件�?
-  async function loadImageForRow(row) {
+  function showImagePreview(row) {
+    panelJustOpened = true;
+    document.getElementById('sp_imagePanel').classList.add('active');
     const wrapper = document.getElementById('sp_imageWrapper');
     const styleNo = row['款号'] || '';
     const formats = ['jpg','jpeg','png','webp','gif'];
-
-    // 1) 优先加载 Supabase 上传的图片（使用存储�?picture_path�?
-    if (row['picture_path']) {
-      const ss = await ensureSupabase();
-      if (ss) {
-        try {
-          const url = await ss.getFileUrl(row['picture_path'], 300);
-          if (url) {
-            const img = new Image();
-            img.onload = () => {
-              wrapper.innerHTML = '';
-              img.style.cssText = 'max-width:100%;max-height:480px;width:auto;height:auto;object-fit:contain;display:block;border-radius:4px;';
-              wrapper.appendChild(img);
-              document.getElementById('sp_deletePicBtn').style.display = 'inline-flex';
-            };
-            img.onerror = () => {
-              console.warn('[SamplePlan] Supabase 图片加载失败，尝试按款号匹配');
-              tryMatchSupabaseThenLocal(wrapper, styleNo, formats, row);
-            };
-            img.src = url;
-            return;
-          }
-        } catch (e) {
-          console.warn('[SamplePlan] getFileUrl 失败，尝试按款号匹配:', e);
-        }
-      }
-    }
-
-    // 2) picture_path 不存在或失效 �?按款号在 Supabase 中查�?
-    tryMatchSupabaseThenLocal(wrapper, styleNo, formats, row);
-  }
-
-  // 先尝试在 Supabase 中按款号匹配文件，再回退本地
-  async function tryMatchSupabaseThenLocal(wrapper, styleNo, formats, row) {
-    const ss = await ensureSupabase();
-    if (ss && ss.findPictureByStyleNo) {
-      // 提取原始文件名中的扩展名用于精确匹配
-      const pictureName = row && row['picture_name'] ? row['picture_name'] : '';
-      let originalExt = null;
-      if (pictureName) {
-        const parts = pictureName.split('.');
-        if (parts.length >= 2) originalExt = parts.pop().toLowerCase();
-      }
-
-      try {
-        const matched = await ss.findPictureByStyleNo(styleNo, 'sample', originalExt);
-        if (matched && matched.signedUrl) {
-          const img = new Image();
-          img.onload = () => {
-            wrapper.innerHTML = '';
-            img.style.cssText = 'max-width:100%;max-height:480px;width:auto;height:auto;object-fit:contain;display:block;border-radius:4px;';
-            wrapper.appendChild(img);
-            // 自动补全 picture_path，避免下次再匹配
-            if (row && matched.path && row['picture_path'] !== matched.path) {
-              row['picture_path'] = matched.path;
-              saveData();
-            }
-          };
-          img.onerror = () => {
-            console.warn('[SamplePlan] 匹配到的 Supabase 图片加载失败，回退到本�?);
-            tryLocalPicture(wrapper, styleNo, formats);
-          };
-          img.src = matched.signedUrl;
-          return;
-        }
-      } catch (e) {
-        console.warn('[SamplePlan] findPictureByStyleNo 失败:', e);
-      }
-    }
-    // 3) 最终回退：本�?picture 文件�?
-    tryLocalPicture(wrapper, styleNo, formats);
-  }
-
-  function tryLocalPicture(wrapper, styleNo, formats) {
-    document.getElementById('sp_deletePicBtn').style.display = 'none';
     let fi = 0;
     function tryLoad() {
       if (fi >= formats.length) {
         wrapper.innerHTML = `<div class="image-placeholder">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <p>未找到图�?/p>
-          <p class="hint">点击「上传图片」按钮上传款式图<br>或将图片放入 picture 文件夹命名为�?{esc(styleNo)}.jpg�?/p>
+          <p>未找到图片</p>
+          <p class="hint">请将图片放入 picture 文件夹<br>命名为「${esc(styleNo)}.jpg」</p>
         </div>`;
         return;
       }
@@ -2239,28 +2052,20 @@ window.addEventListener('cloud-data-updated', function(e) {
       img.src = PICTURE_BASE + styleNo + '.' + formats[fi];
     }
     tryLoad();
-  }
-
-  function showImagePreview(row) {
-    panelJustOpened = true;
-    currentPanelRowId = row.id;
-    document.getElementById('sp_imagePanel').classList.add('active');
-    loadImageForRow(row);
-    const styleNo = row['款号'] || '';
-    const sBadge = statusBadges[getStatus(row)] || 'badge-gray';
-    const mBadge = matBadges[row['面辅料准备情�?]] || 'badge-gray';
     const tBadge = typeBadges[row['样衣类型']] || 'badge-gray';
+    const sBadge = statusBadges[getStatus(row)] || 'badge-gray';
+    const mBadge = matBadges[row['面辅料准备情况']] || 'badge-gray';
     const statusText = getStatus(row);
-    // 两列多行�?2 项，自动 6 行）
+    // 两列多行（12 项，自动 6 行）
     document.getElementById('sp_imageInfoGrid').innerHTML = `
-      <div class="image-info-item"><div class="label">状�?/div><div class="value"><span class="badge ${sBadge}">${statusText}</span></div></div>
-      <div class="image-info-item"><div class="label">面辅�?/div><div class="value"><span class="badge ${mBadge}">${esc(row['面辅料准备情�?]||'-')}</span></div></div>
+      <div class="image-info-item"><div class="label">状态</div><div class="value"><span class="badge ${sBadge}">${statusText}</span></div></div>
+      <div class="image-info-item"><div class="label">面辅料</div><div class="value"><span class="badge ${mBadge}">${esc(row['面辅料准备情况']||'-')}</span></div></div>
       <div class="image-info-item"><div class="label">款号</div><div class="value">${esc(styleNo)}</div></div>
       <div class="image-info-item"><div class="label">样衣类型</div><div class="value"><span class="badge ${tBadge}">${esc(row['样衣类型']||'')}</span></div></div>
-      <div class="image-info-item"><div class="label">样衣�?/div><div class="value">${esc(row['样衣�?]||'-')}</div></div>
-      <div class="image-info-item"><div class="label">打样轮次</div><div class="value">�?{row['打样轮次']||1}�?/div></div>
+      <div class="image-info-item"><div class="label">样衣工</div><div class="value">${esc(row['样衣工']||'-')}</div></div>
+      <div class="image-info-item"><div class="label">打样轮次</div><div class="value">第${row['打样轮次']||1}轮</div></div>
       <div class="image-info-item"><div class="label">尺码</div><div class="value">${esc(row['尺码']||'-')}</div></div>
-      <div class="image-info-item"><div class="label">数量</div><div class="value">${row['数量']||0} �?/div></div>
+      <div class="image-info-item"><div class="label">数量</div><div class="value">${row['数量']||0} 件</div></div>
       <div class="image-info-item"><div class="label">要求交期</div><div class="value">${fmtDate(row['要求交期'])}</div></div>
       <div class="image-info-item"><div class="label">上手时间</div><div class="value">${fmtDate(row['上手时间'])}</div></div>
       <div class="image-info-item"><div class="label">落手时间</div><div class="value">${fmtDate(row['落手时间'])}</div></div>
@@ -2269,110 +2074,8 @@ window.addEventListener('cloud-data-updated', function(e) {
   SP.closeImagePanel = function() {
     document.getElementById('sp_imagePanel').classList.remove('active');
     state.selectedId = null;
-    currentPanelRowId = null;
     renderTable();
   };
-
-  // ===== Picture Upload / Delete =====
-  // 等待 Supabase 模块加载完成（容错时序）
-  async function ensureSupabase() {
-    if (typeof window.SupabaseSubmit !== 'undefined') return window.SupabaseSubmit;
-    // 等待最�?5 �?
-    for (let i = 0; i < 50; i++) {
-      await new Promise(function(r) { setTimeout(r, 100); });
-      if (typeof window.SupabaseSubmit !== 'undefined') return window.SupabaseSubmit;
-    }
-    return null;
-  }
-
-  // 触发图片预览面板中的上传
-  SP.triggerUploadPicture = function() {
-    document.getElementById('sp_pictureInput').click();
-  };
-  // 处理图片预览面板中的文件选择
-  SP.handlePictureUpload = async function(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('图片超过 5MB 限制', 'error');
-      event.target.value = '';
-      return;
-    }
-    const ss = await ensureSupabase();
-    if (!ss) {
-      showToast('图片上传模块未加载，请刷新页�?, 'error');
-      event.target.value = '';
-      return;
-    }
-    const row = state.data.find(r => r.id === currentPanelRowId);
-    if (!row) { event.target.value = ''; return; }
-
-    // 删除旧图片（如果有）
-    if (row['picture_path']) {
-      await ss.deletePicture(row['picture_path']);
-    }
-
-    const result = await ss.uploadPicture(file, 'sample');
-    event.target.value = '';
-    if (!result) return;
-
-    // 更新记录
-    row['picture_path'] = result.path;
-    row['picture_name'] = result.fileName || file.name;
-    saveData();
-    showToast('图片上传成功', 'success');
-    // 重新加载图片
-    loadImageForRow(row);
-  };
-  // 删除上传的图�?
-  SP.deleteUploadedPicture = async function() {
-    const row = state.data.find(r => r.id === currentPanelRowId);
-    if (!row || !row['picture_path']) return;
-    if (!confirm('确定删除已上传的款式图吗�?)) return;
-    const ss = await ensureSupabase();
-    if (ss) await ss.deletePicture(row['picture_path']);
-    delete row['picture_path'];
-    saveData();
-    showToast('图片已删�?, 'success');
-    loadImageForRow(row);
-  };
-
-  // 表单中的图片上传
-  SP.triggerFormPictureUpload = function() {
-    document.getElementById('sp_formPictureInput').click();
-  };
-  SP.handleFormPictureChange = async function(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('图片超过 5MB 限制', 'error');
-      event.target.value = '';
-      return;
-    }
-    // 预览本地
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      document.getElementById('sp_formPictureImg').src = e.target.result;
-      document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
-      document.getElementById('sp_formPicturePreview').style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-    // 保存 file 引用，在 saveRecord 时上�?
-    state._pendingPictureFile = file;
-    event.target.value = '';
-  };
-  SP.clearFormPicture = function() {
-    state._pendingPictureFile = null;
-    const img = document.getElementById('sp_formPictureImg');
-    if (img) img.src = '';
-    const path = document.getElementById('sp_f_picturePath');
-    if (path) path.value = '';
-    const ph = document.getElementById('sp_formPicturePlaceholder');
-    if (ph) ph.style.display = 'block';
-    const pv = document.getElementById('sp_formPicturePreview');
-    if (pv) pv.style.display = 'none';
-  };
-
   SP.openSizeTableFromPreview = function() {
     const row = state.data.find(r => r.id === state.selectedId);
     if (!row) return;
@@ -2384,25 +2087,22 @@ window.addEventListener('cloud-data-updated', function(e) {
     const sizeTable = state.sizeTables.find(st => String(st['款号']) === styleNo);
     if (sizeTable) state.expandedSizeTables.add(sizeTable.id);
     renderSizeTables();
-    if (!sizeTable) showToast(`未找到款号�?{styleNo}」的尺寸表，请先导入`, 'info');
+    if (!sizeTable) showToast(`未找到款号「${styleNo}」的尺寸表，请先导入`, 'info');
     else setTimeout(() => { const card = document.getElementById('sp_size-card-' + sizeTable.id); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 200);
   };
 
   // ===== Form =====
   SP.openForm = function(id) {
     const overlay = document.getElementById('sp_modalOverlay');
-    if (!overlay) return;
     document.getElementById('sp_sampleForm').reset();
     document.getElementById('sp_editId').value = '';
-    state._pendingPictureFile = null;
     if (id) {
-      const srcData = Array.isArray(state.data) ? state.data : [];
-      const row = srcData.find(r => r.id === id);
+      const row = state.data.find(r => r.id === id);
       if (!row) return;
       document.getElementById('sp_modalTitle').textContent = '编辑样衣';
       state.editingId = id;
       document.getElementById('sp_editId').value = id;
-      document.getElementById('sp_f_worker').value = row['样衣�?] || '';
+      document.getElementById('sp_f_worker').value = row['样衣工'] || '';
       document.getElementById('sp_f_styleNo').value = row['款号'] || '';
       document.getElementById('sp_f_type').value = row['样衣类型'] || '头样';
       document.getElementById('sp_f_round').value = row['打样轮次'] || 1;
@@ -2411,63 +2111,12 @@ window.addEventListener('cloud-data-updated', function(e) {
       document.getElementById('sp_f_dueDate').value = row['要求交期'] || '';
       document.getElementById('sp_f_startDate').value = row['上手时间'] || '';
       document.getElementById('sp_f_endDate').value = row['落手时间'] || '';
-      document.getElementById('sp_f_material').value = row['面辅料准备情�?] || '已到�?;
+      document.getElementById('sp_f_material').value = row['面辅料准备情况'] || '已到位';
       document.getElementById('sp_f_remarks').value = row['备注'] || '';
-      // 回显已有图片
-      if (row['picture_path']) {
-        document.getElementById('sp_f_picturePath').value = row['picture_path'];
-        // 加载 signed URL 预览（异步，不阻塞表单）
-        ensureSupabase().then(function(ss) {
-          if (!ss) return;
-          ss.getFileUrl(row['picture_path'], 60).then(function(url) {
-            if (url) {
-              document.getElementById('sp_formPictureImg').src = url;
-              document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
-              document.getElementById('sp_formPicturePreview').style.display = 'block';
-            } else if (ss.findPictureByStyleNo) {
-              // picture_path 失效 �?按款号匹�?
-              const picName = row['picture_name'] || '';
-              let picExt = null;
-              if (picName) { const p = picName.split('.'); if (p.length >= 2) picExt = p.pop().toLowerCase(); }
-              ss.findPictureByStyleNo(row['款号'] || '', 'sample', picExt).then(function(matched) {
-                if (matched && matched.signedUrl) {
-                  document.getElementById('sp_formPictureImg').src = matched.signedUrl;
-                  document.getElementById('sp_f_picturePath').value = matched.path;
-                  row['picture_path'] = matched.path;
-                  saveData();
-                  document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
-                  document.getElementById('sp_formPicturePreview').style.display = 'block';
-                }
-              });
-            }
-          });
-        });
-      } else {
-        // picture_path 不存�?�?按款号在 Supabase 中查�?
-        SP.clearFormPicture();
-        const fPicName = row['picture_name'] || '';
-        let fPicExt = null;
-        if (fPicName) { const fp = fPicName.split('.'); if (fp.length >= 2) fPicExt = fp.pop().toLowerCase(); }
-        ensureSupabase().then(function(formSs) {
-          if (formSs && formSs.findPictureByStyleNo) {
-            formSs.findPictureByStyleNo(row['款号'] || '', 'sample', fPicExt).then(function(matched) {
-              if (matched && matched.signedUrl) {
-                document.getElementById('sp_formPictureImg').src = matched.signedUrl;
-                document.getElementById('sp_f_picturePath').value = matched.path;
-                row['picture_path'] = matched.path;
-                saveData();
-                document.getElementById('sp_formPicturePlaceholder').style.display = 'none';
-                document.getElementById('sp_formPicturePreview').style.display = 'block';
-              }
-            });
-          }
-        });
-      }
     } else {
       document.getElementById('sp_modalTitle').textContent = '添加样衣';
       state.editingId = null;
       document.getElementById('sp_f_dueDate').value = new Date().toISOString().split('T')[0];
-      SP.clearFormPicture();
     }
     overlay.classList.add('active');
     setTimeout(() => document.getElementById('sp_f_worker').focus(), 300);
@@ -2475,13 +2124,12 @@ window.addEventListener('cloud-data-updated', function(e) {
   SP.closeForm = function() {
     document.getElementById('sp_modalOverlay').classList.remove('active');
     state.editingId = null;
-    state._pendingPictureFile = null;
   };
-  SP.saveRecord = async function(event) {
+  SP.saveRecord = function(event) {
     event.preventDefault();
     const id = document.getElementById('sp_editId').value;
-    let record = {
-      样衣�? document.getElementById('sp_f_worker').value.trim(),
+    const record = {
+      样衣工: document.getElementById('sp_f_worker').value.trim(),
       款号: document.getElementById('sp_f_styleNo').value.trim(),
       样衣类型: document.getElementById('sp_f_type').value,
       打样轮次: parseInt(document.getElementById('sp_f_round').value) || 1,
@@ -2490,52 +2138,20 @@ window.addEventListener('cloud-data-updated', function(e) {
       要求交期: document.getElementById('sp_f_dueDate').value,
       上手时间: document.getElementById('sp_f_startDate').value,
       落手时间: document.getElementById('sp_f_endDate').value,
-      面辅料准备情�? document.getElementById('sp_f_material').value,
+      面辅料准备情况: document.getElementById('sp_f_material').value,
       备注: document.getElementById('sp_f_remarks').value.trim()
     };
-    if (!record['样衣�?] || !record['款号'] || !record['要求交期']) { showToast('请填写必填字�?, 'error'); return; }
-
-    // 处理图片上传
-    const pendingFile = state._pendingPictureFile;
-    const existingPath = document.getElementById('sp_f_picturePath').value;
-    let picturePath = existingPath || null;
-    let pictureName = null;
-    const ss = pendingFile ? await ensureSupabase() : (typeof window.SupabaseSubmit !== 'undefined' ? window.SupabaseSubmit : null);
-
-    if (pendingFile && ss) {
-      // 有新图片待上�?
-      const result = await ss.uploadPicture(pendingFile, 'sample');
-      if (result) {
-        // 删除旧图�?
-        if (existingPath && existingPath !== result.path) {
-          await ss.deletePicture(existingPath);
-        }
-        picturePath = result.path;
-        pictureName = result.fileName || pendingFile.name;
-      }
-    }
-    record.picture_path = picturePath || undefined;
-    // 保留 picture_name：仅在上传新图片时更�?
-    if (pendingFile && pictureName) {
-      record.picture_name = pictureName;
-    }
-    // 否则不设�?picture_name，让原有值通过 spread 保留
-
+    if (!record['样衣工'] || !record['款号'] || !record['要求交期']) { showToast('请填写必填字段', 'error'); return; }
     if (id) {
       const idx = state.data.findIndex(r => r.id === id);
       if (idx >= 0) { state.data[idx] = { ...state.data[idx], ...record }; showToast('修改成功', 'success'); }
     } else { record.id = Date.now().toString(); state.data.push(record); showToast('添加成功', 'success'); }
     saveData(); SP.applyFilters(); SP.closeForm();
   };
-  SP.deleteRecord = async function(id) {
+  SP.deleteRecord = function(id) {
     const row = state.data.find(r => r.id === id);
     if (!row) return;
-    if (!confirm(`确认删除款号�?{row['款号']}」的${row['样衣类型']}记录？`)) return;
-    // 删除 Supabase 图片
-    if (row['picture_path']) {
-      const ss = await ensureSupabase();
-      if (ss) await ss.deletePicture(row['picture_path']);
-    }
+    if (!confirm(`确认删除款号「${row['款号']}」的${row['样衣类型']}记录？`)) return;
     state.data = state.data.filter(r => r.id !== id);
     saveData();
     if (state.selectedId === id) SP.closeImagePanel();
@@ -2554,30 +2170,30 @@ window.addEventListener('cloud-data-updated', function(e) {
   SP.exportToExcel = async function() {
     document.querySelectorAll('#samplePlanContainer .dropdown-menu').forEach(m => m.classList.remove('active'));
     const data = state.filteredData;
-    if (data.length === 0) { showToast('暂无数据可导�?, 'error'); return; }
+    if (data.length === 0) { showToast('暂无数据可导出', 'error'); return; }
     if (typeof ExcelJS === 'undefined') {
       const exportData = data.map((r, i) => ({
-        '序号': i+1, '样衣�?: r['样衣�?]||'', '款号': r['款号']||'', '款式�?: '',
+        '序号': i+1, '样衣工': r['样衣工']||'', '款号': r['款号']||'', '款式图': '',
         '样衣类型': r['样衣类型']||'', '打样轮次': r['打样轮次']||1, '尺码': r['尺码']||'', '数量': r['数量']||0,
         '要求交期': r['要求交期']||'', '上手时间': r['上手时间']||'', '落手时间': r['落手时间']||'',
-        '面辅料准备情�?: r['面辅料准备情�?]||'', '备注': r['备注']||''
+        '面辅料准备情况': r['面辅料准备情况']||'', '备注': r['备注']||''
       }));
       const ws = XLSX.utils.json_to_sheet(exportData);
       ws['!cols'] = [{wch:6},{wch:10},{wch:16},{wch:12},{wch:10},{wch:8},{wch:8},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:30}];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '样衣管理');
       XLSX.writeFile(wb, `舜天汉唐_样衣数据导出_${new Date().toISOString().split('T')[0]}.xlsx`);
-      showToast(`已导�?${data.length} 条记录`, 'success', 5000);
+      showToast(`已导出 ${data.length} 条记录`, 'success', 5000);
       return;
     }
-    showToast('正在生成Excel，请稍�?..', 'info');
+    showToast('正在生成Excel，请稍候...', 'info');
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('样衣管理');
     ws.columns = [
       { header: '序号', key: '序号', width: 6 },
-      { header: '样衣�?, key: '样衣�?, width: 10 },
+      { header: '样衣工', key: '样衣工', width: 10 },
       { header: '款号', key: '款号', width: 16 },
-      { header: '款式�?, key: '款式�?, width: 12 },
+      { header: '款式图', key: '款式图', width: 12 },
       { header: '样衣类型', key: '样衣类型', width: 10 },
       { header: '打样轮次', key: '打样轮次', width: 8 },
       { header: '尺码', key: '尺码', width: 8 },
@@ -2585,7 +2201,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       { header: '要求交期', key: '要求交期', width: 12 },
       { header: '上手时间', key: '上手时间', width: 12 },
       { header: '落手时间', key: '落手时间', width: 12 },
-      { header: '面辅料准备情�?, key: '面辅料准备情�?, width: 12 },
+      { header: '面辅料准备情况', key: '面辅料准备情况', width: 12 },
       { header: '备注', key: '备注', width: 30 }
     ];
     ws.getRow(1).font = { bold: true };
@@ -2593,10 +2209,10 @@ window.addEventListener('cloud-data-updated', function(e) {
     for (let i = 0; i < data.length; i++) {
       const r = data[i];
       const row = ws.addRow({
-        '序号': i + 1, '样衣�?: r['样衣�?] || '', '款号': r['款号'] || '', '款式�?: '',
+        '序号': i + 1, '样衣工': r['样衣工'] || '', '款号': r['款号'] || '', '款式图': '',
         '样衣类型': r['样衣类型'] || '', '打样轮次': r['打样轮次'] || 1, '尺码': r['尺码'] || '', '数量': r['数量'] || 0,
         '要求交期': r['要求交期'] || '', '上手时间': r['上手时间'] || '', '落手时间': r['落手时间'] || '',
-        '面辅料准备情�?: r['面辅料准备情�?] || '', '备注': r['备注'] || ''
+        '面辅料准备情况': r['面辅料准备情况'] || '', '备注': r['备注'] || ''
       });
       ws.getRow(row.number).height = 32;
     }
@@ -2608,50 +2224,16 @@ window.addEventListener('cloud-data-updated', function(e) {
     a.download = `舜天汉唐_样衣数据导出_${new Date().toISOString().split('T')[0]}.xlsx`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast(`已导�?${data.length} 条记录`, 'success', 5000);
+    showToast(`已导出 ${data.length} 条记录`, 'success', 5000);
   };
-  SP.printRecords = async function() {
+  SP.printRecords = function() {
     const data = state.filteredData;
-    if (data.length === 0) { showToast('暂无数据可打�?, 'error'); return; }
+    if (data.length === 0) { showToast('暂无数据可打印', 'error'); return; }
     showToast('正在生成打印页面...', 'info');
     const formats = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
     const today = new Date().toISOString().split('T')[0];
     const baseUrl = (window.location.origin || '') + (window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1));
     const pictureBase = 'picture/';
-
-    // 预生�?Supabase signed URLs
-    const ss = await ensureSupabase();
-    const picUrlMap = {}; // { recordId: signedUrl }
-    if (ss) {
-      for (let i = 0; i < data.length; i++) {
-        const r = data[i];
-        // 1) 优先使用 picture_path
-        if (r['picture_path']) {
-          try {
-            const url = await ss.getFileUrl(r['picture_path'], 600); // 10分钟有效�?
-            if (url) { picUrlMap[r.id] = url; continue; }
-          } catch(e) {}
-        }
-        // 2) picture_path 缺失或失�?�?按款号匹�?
-        if (ss.findPictureByStyleNo) {
-          try {
-            const picName = r['picture_name'] || '';
-            let picExt = null;
-            if (picName) { const p = picName.split('.'); if (p.length >= 2) picExt = p.pop().toLowerCase(); }
-            const matched = await ss.findPictureByStyleNo(r['款号'] || '', 'sample', picExt);
-            if (matched && matched.signedUrl) {
-              picUrlMap[r.id] = matched.signedUrl;
-              // 自动补全 picture_path
-              if (r['picture_path'] !== matched.path) {
-                r['picture_path'] = matched.path;
-                saveData();
-              }
-            }
-          } catch(e) {}
-        }
-      }
-    }
-
     const printContent = `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -2683,63 +2265,39 @@ window.addEventListener('cloud-data-updated', function(e) {
 <body>
 <div class="print-header">
   <h1>舜天汉唐 - 样衣管理</h1>
-  <div class="subtitle">打印日期�?{today} | �?${data.length} 条记�?/div>
+  <div class="subtitle">打印日期：${today} | 共 ${data.length} 条记录</div>
 </div>
 <table>
   <thead><tr>
-    <th style="width:30px">序号</th><th style="width:55px">样衣�?/th><th style="width:80px">款号</th>
-    <th style="width:60px">款式�?/th><th style="width:55px">样衣类型</th><th style="width:40px">轮次</th>
+    <th style="width:30px">序号</th><th style="width:55px">样衣工</th><th style="width:80px">款号</th>
+    <th style="width:60px">款式图</th><th style="width:55px">样衣类型</th><th style="width:40px">轮次</th>
     <th style="width:40px">尺码</th><th style="width:30px">数量</th><th style="width:65px">要求交期</th>
     <th style="width:65px">上手时间</th><th style="width:65px">落手时间</th>
-    <th style="width:80px">面辅料准�?/th><th style="width:120px">备注</th>
+    <th style="width:80px">面辅料准备</th><th style="width:120px">备注</th>
   </tr></thead>
   <tbody>
     ${data.map((r, i) => {
       const styleNo = r['款号'] || '';
-      const hasSupabasePic = picUrlMap[r.id];
-      let imgHtml;
-      if (hasSupabasePic) {
-        imgHtml = `<div class="img-cell" data-pic-url="${hasSupabasePic}"><span class="img-loading">加载�?/span></div>`;
-      } else if (styleNo) {
-        imgHtml = `<div class="img-cell" data-style="${styleNo}"><span class="img-loading">加载�?/span></div>`;
-      } else {
-        imgHtml = '<div class="img-cell"></div>';
-      }
+      const imgHtml = styleNo
+        ? `<div class="img-cell" data-style="${styleNo}"><span class="img-loading">加载中</span></div>`
+        : '<div class="img-cell"></div>';
       return `<tr>
-        <td>${i + 1}</td><td>${esc(r['样衣�?] || '')}</td>
+        <td>${i + 1}</td><td>${esc(r['样衣工'] || '')}</td>
         <td style="font-weight:600">${esc(r['款号'] || '')}</td><td>${imgHtml}</td>
         <td>${esc(r['样衣类型'] || '')}</td><td>${r['打样轮次'] || 1}</td>
         <td>${esc(r['尺码'] || '')}</td><td>${r['数量'] || 0}</td>
         <td>${esc(r['要求交期'] || '')}</td><td>${esc(r['上手时间'] || '')}</td>
-        <td>${esc(r['落手时间'] || '')}</td><td>${esc(r['面辅料准备情�?] || '')}</td>
+        <td>${esc(r['落手时间'] || '')}</td><td>${esc(r['面辅料准备情况'] || '')}</td>
         <td style="text-align:left">${esc(r['备注'] || '')}</td></tr>`;
     }).join('')}
   </tbody>
 </table>
-<div class="print-footer">舜天汉唐样衣管理系统 | 打印日期�?{today}</div>
+<div class="print-footer">舜天汉唐样衣管理系统 | 打印日期：${today}</div>
 <script>
   const formats = ${JSON.stringify(formats)};
   const pictureBase = '${pictureBase}';
-  // 先尝�?Supabase signed URL
-  const supabaseCells = document.querySelectorAll('.img-cell[data-pic-url]');
-  supabaseCells.forEach(cell => {
-    const url = cell.getAttribute('data-pic-url');
-    const img = new Image();
-    img.onload = function() {
-      cell.innerHTML = '';
-      img.style.maxWidth = '55px';
-      img.style.maxHeight = '38px';
-      img.style.objectFit = 'contain';
-      cell.appendChild(img);
-    };
-    img.onerror = function() {
-      cell.innerHTML = '<span style="color:#ccc;font-size:9px">无图</span>';
-    };
-    img.src = url;
-  });
-  // 回退：本�?picture 文件�?
-  const localCells = document.querySelectorAll('.img-cell[data-style]');
-  localCells.forEach(cell => {
+  const imgCells = document.querySelectorAll('.img-cell[data-style]');
+  imgCells.forEach(cell => {
     const styleNo = cell.getAttribute('data-style');
     let idx = 0;
     function tryNext() {
@@ -2789,19 +2347,19 @@ window.addEventListener('cloud-data-updated', function(e) {
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        if (rows.length === 0) { showToast('文件中没有数�?, 'error'); return; }
-        if (!confirm(`将导�?${rows.length} 条记录，追加到现有数据中。确认继续？`)) { event.target.value = ''; return; }
+        if (rows.length === 0) { showToast('文件中没有数据', 'error'); return; }
+        if (!confirm(`将导入 ${rows.length} 条记录，追加到现有数据中。确认继续？`)) { event.target.value = ''; return; }
         const newRecords = rows.map(row => ({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-          '样衣�?: row['样衣�?]||'', '款号': row['款号']||'', '样衣类型': row['样衣类型']||'头样',
+          '样衣工': row['样衣工']||'', '款号': row['款号']||'', '样衣类型': row['样衣类型']||'头样',
           '打样轮次': parseInt(row['打样轮次'])||1, '尺码': row['尺码']||'', '数量': parseInt(row['数量'])||0,
           '要求交期': fmtExcelDate(row['要求交期']), '上手时间': fmtExcelDate(row['上手时间']),
-          '落手时间': fmtExcelDate(row['落手时间']), '面辅料准备情�?: row['面辅料准备情�?]||'已到�?, '备注': row['备注']||''
+          '落手时间': fmtExcelDate(row['落手时间']), '面辅料准备情况': row['面辅料准备情况']||'已到位', '备注': row['备注']||''
         }));
         state.data = state.data.concat(newRecords);
         saveData(); SP.applyFilters(); updateWorkerList();
-        showToast(`已导�?${newRecords.length} 条记录`, 'success');
-      } catch(err) { showToast('导入失败�? + err.message, 'error'); }
+        showToast(`已导入 ${newRecords.length} 条记录`, 'success');
+      } catch(err) { showToast('导入失败：' + err.message, 'error'); }
       event.target.value = '';
     };
     reader.readAsArrayBuffer(file);
@@ -2810,7 +2368,7 @@ window.addEventListener('cloud-data-updated', function(e) {
   // ===== Backup / Restore / Clear =====
   SP.backupData = function() {
     document.querySelectorAll('#samplePlanContainer .dropdown-menu').forEach(m => m.classList.remove('active'));
-    if (state.data.length === 0 && state.sizeTables.length === 0) { showToast('暂无数据可备�?, 'error'); return; }
+    if (state.data.length === 0 && state.sizeTables.length === 0) { showToast('暂无数据可备份', 'error'); return; }
     const backup = { version: '2.0', exportDate: new Date().toISOString(), app: '舜天汉唐样衣管理系统', data: { samples: state.data, sizeTables: state.sizeTables } };
     const json = JSON.stringify(backup, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -2818,7 +2376,7 @@ window.addEventListener('cloud-data-updated', function(e) {
     const a = document.createElement('a');
     a.href = url; a.download = `舜天汉唐_数据备份_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast(`备份成功：样衣数�?${state.data.length} 条，尺寸�?${state.sizeTables.length} 条`, 'success', 5000);
+    showToast(`备份成功：样衣数据 ${state.data.length} 条，尺寸表 ${state.sizeTables.length} 条`, 'success', 5000);
   };
   SP.restoreData = function() {
     document.querySelectorAll('#samplePlanContainer .dropdown-menu').forEach(m => m.classList.remove('active'));
@@ -2833,23 +2391,23 @@ window.addEventListener('cloud-data-updated', function(e) {
         if (!backup.data || !Array.isArray(backup.data.samples)) { showToast('文件格式不正确，请使用系统备份的JSON文件', 'error'); event.target.value = ''; return; }
         const sampleCount = backup.data.samples.length;
         const sizeTableCount = (backup.data.sizeTables && Array.isArray(backup.data.sizeTables)) ? backup.data.sizeTables.length : 0;
-        if (!confirm(`将恢复以下数据，当前数据将被覆盖：\n\n  样衣数据�?{sampleCount} 条\n  尺寸表数据：${sizeTableCount} 条\n\n确认继续？`)) { event.target.value = ''; return; }
+        if (!confirm(`将恢复以下数据，当前数据将被覆盖：\n\n  样衣数据：${sampleCount} 条\n  尺寸表数据：${sizeTableCount} 条\n\n确认继续？`)) { event.target.value = ''; return; }
         state.data = backup.data.samples;
         state.sizeTables = backup.data.sizeTables || [];
         saveData(); saveSizeTables(); SP.applyFilters(); updateWorkerList(); renderSizeTables();
-        showToast(`恢复成功：样衣数�?${sampleCount} 条，尺寸�?${sizeTableCount} 条`, 'success', 5000);
-      } catch(err) { showToast('恢复失败�? + err.message, 'error'); }
+        showToast(`恢复成功：样衣数据 ${sampleCount} 条，尺寸表 ${sizeTableCount} 条`, 'success', 5000);
+      } catch(err) { showToast('恢复失败：' + err.message, 'error'); }
       event.target.value = '';
     };
     reader.readAsText(file);
   };
   SP.clearAllData = function() {
     document.querySelectorAll('#samplePlanContainer .dropdown-menu').forEach(m => m.classList.remove('active'));
-    if (state.data.length === 0 && state.sizeTables.length === 0) { showToast('数据已为�?, 'info'); return; }
-    if (!confirm(`确认清空全部数据？\n\n  样衣数据�?{state.data.length} 条\n  尺寸表数据：${state.sizeTables.length} 条\n\n此操作不可撤销！`)) return;
+    if (state.data.length === 0 && state.sizeTables.length === 0) { showToast('数据已为空', 'info'); return; }
+    if (!confirm(`确认清空全部数据？\n\n  样衣数据：${state.data.length} 条\n  尺寸表数据：${state.sizeTables.length} 条\n\n此操作不可撤销！`)) return;
     state.data = []; state.sizeTables = [];
     saveData(); saveSizeTables(); SP.applyFilters(); renderSizeTables();
-    showToast('数据已清�?, 'success');
+    showToast('数据已清空', 'success');
   };
 
   // ===== Size Table =====
@@ -2875,10 +2433,10 @@ window.addEventListener('cloud-data-updated', function(e) {
         }
         const sizeTable = { id: Date.now().toString(), 款号: styleNo, 日期: templateDate, 类型: templateType, data: jsonData, fileName: file.name, importDate: new Date().toISOString().split('T')[0], rows: jsonData.length, cols: jsonData[0] ? jsonData[0].length : 0 };
         const existingIdx = state.sizeTables.findIndex(st => String(st['款号']) === String(styleNo));
-        if (existingIdx >= 0) { if (!confirm(`款号�?{styleNo}」已存在尺寸表，是否覆盖？`)) { event.target.value = ''; return; } state.sizeTables[existingIdx] = sizeTable; }
+        if (existingIdx >= 0) { if (!confirm(`款号「${styleNo}」已存在尺寸表，是否覆盖？`)) { event.target.value = ''; return; } state.sizeTables[existingIdx] = sizeTable; }
         else state.sizeTables.push(sizeTable);
-        saveSizeTables(); renderSizeTables(); showToast(`尺寸表已保存�?{styleNo}`, 'success');
-      } catch(err) { showToast('导入失败�? + err.message, 'error'); }
+        saveSizeTables(); renderSizeTables(); showToast(`尺寸表已保存：${styleNo}`, 'success');
+      } catch(err) { showToast('导入失败：' + err.message, 'error'); }
       event.target.value = '';
     };
     reader.readAsArrayBuffer(file);
@@ -2890,7 +2448,7 @@ window.addEventListener('cloud-data-updated', function(e) {
     if (filtered.length === 0) {
       list.innerHTML = `<div class="glass" style="padding:50px 20px;text-align:center;color:var(--sp-muted)">
         <svg style="width:44px;height:44px;margin-bottom:10px;opacity:0.3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <p style="font-size:14px">${q ? '未找到匹配的尺寸�? : '暂无尺寸表，请导入Excel文件'}</p></div>`;
+        <p style="font-size:14px">${q ? '未找到匹配的尺寸表' : '暂无尺寸表，请导入Excel文件'}</p></div>`;
       return;
     }
     list.innerHTML = filtered.map(st => {
@@ -2898,8 +2456,8 @@ window.addEventListener('cloud-data-updated', function(e) {
       const infoHTML = (st['日期'] || st['类型']) ? `<div class="size-card-info">
         ${st['日期'] ? `<span>日期: <b>${esc(st['日期'])}</b></span>` : ''}
         ${st['类型'] ? `<span>类型: <b>${esc(st['类型'])}</b></span>` : ''}
-        <span>${st.rows}�?× ${st.cols}�?/span><span>导入: ${st.importDate}</span></div>`
-        : `<div class="size-card-info"><span>${st.rows}�?× ${st.cols}�?/span><span>导入: ${st.importDate}</span></div>`;
+        <span>${st.rows}行 × ${st.cols}列</span><span>导入: ${st.importDate}</span></div>`
+        : `<div class="size-card-info"><span>${st.rows}行 × ${st.cols}列</span><span>导入: ${st.importDate}</span></div>`;
       let tableHTML = '';
       if (isExpanded) {
         tableHTML = `<div class="size-table-scroll"><table class="size-table-preview">
@@ -2942,7 +2500,7 @@ window.addEventListener('cloud-data-updated', function(e) {
   };
   SP.deleteSizeTable = function(id) {
     const st = state.sizeTables.find(s => s.id === id); if (!st) return;
-    if (!confirm(`确认删除款号�?{st['款号']}」的尺寸表？`)) return;
+    if (!confirm(`确认删除款号「${st['款号']}」的尺寸表？`)) return;
     state.sizeTables = state.sizeTables.filter(s => s.id !== id);
     state.expandedSizeTables.delete(id);
     saveSizeTables(); renderSizeTables(); showToast('删除成功', 'success');
@@ -2951,12 +2509,12 @@ window.addEventListener('cloud-data-updated', function(e) {
     const st = state.sizeTables.find(s => s.id === id); if (!st) return;
     const ws = XLSX.utils.aoa_to_sheet(st.data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '尺寸�?);
+    XLSX.utils.book_append_sheet(wb, ws, '尺寸表');
     XLSX.writeFile(wb, `尺寸表_${st['款号']}.xlsx`);
     showToast('导出成功', 'success');
   };
 
-  // ===== Tab Switch (子标�? =====
+  // ===== Tab Switch (子标签) =====
   SP.switchTab = function(tab) {
     document.querySelectorAll('#samplePlanContainer .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('#samplePlanContainer .tab-content').forEach(c => c.classList.toggle('active', c.id === 'sp_tab-' + tab));
@@ -2964,11 +2522,11 @@ window.addEventListener('cloud-data-updated', function(e) {
 
   // ===== Worker List =====
   function updateWorkerList() {
-    const workers = [...new Set(state.data.map(r => r['样衣�?]).filter(Boolean))];
+    const workers = [...new Set(state.data.map(r => r['样衣工']).filter(Boolean))];
     document.getElementById('sp_workerList').innerHTML = workers.map(w => `<option value="${esc(w)}">`).join('');
   }
 
-  // ===== Keyboard Events (仅限�?sample-plan 中生�? =====
+  // ===== Keyboard Events (仅限在 sample-plan 中生效) =====
   let _spKDListener = null;
   function bindSpKeyboard() {
     if (_spKDListener) return;
@@ -2979,8 +2537,8 @@ window.addEventListener('cloud-data-updated', function(e) {
       }
     };
     document.addEventListener('keydown', _spKDListener);
-    // 【已取消：点击遮罩空白自动关闭表单�?
-    // 避免误操作导致填了一半的数据丢失，现只允许用 取消按钮 / 保存 / ESC �?关闭表单
+    // 【已取消：点击遮罩空白自动关闭表单】
+    // 避免误操作导致填了一半的数据丢失，现只允许用 取消按钮 / 保存 / ESC 键 关闭表单
     // 旧代码：document.getElementById('sp_modalOverlay').addEventListener('click', function(e) { if (e.target === this) SP.closeForm(); });
     document.addEventListener('click', function(e) {
       if (panelJustOpened) { panelJustOpened = false; return; }
@@ -2989,7 +2547,7 @@ window.addEventListener('cloud-data-updated', function(e) {
     });
   }
 
-  // ===== Init (首次进入样衣计划 Tab 才调�? =====
+  // ===== Init (首次进入样衣计划 Tab 才调用) =====
   SP.init = function() {
     loadData();
     state.filteredData = [...state.data];
@@ -3000,17 +2558,15 @@ window.addEventListener('cloud-data-updated', function(e) {
     renderTable();
     renderSizeTables();
     bindSpKeyboard();
-    syncSamplePlanToTabs();   // 首次进入也同步一次（把历史的样衣计划推送到原系�?Tab�?
+    syncSamplePlanToTabs();   // 首次进入也同步一次（把历史的样衣计划推送到原系统 Tab）
 
-    // 页面关闭前确保数据写�?Supabase
+    // 页面关闭前确保数据写入 Supabase
     window.addEventListener('beforeunload', function() {
       if (_spSyncPending) {
-        // 同步写入（使�?fetch keepalive 或同步方式）
         try {
           if (window.SupabaseStore && window.SupabaseStore._flushSync) {
             window.SupabaseStore._flushSync();
           }
-          // 同时直接写入（绕过异步队列）
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
           localStorage.setItem(SIZE_TABLE_KEY, JSON.stringify(state.sizeTables));
         } catch(e) {}

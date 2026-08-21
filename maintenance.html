@@ -446,16 +446,17 @@
 <script src="js/auth-guard.js?v=20260813"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260820"></script>
-<script src="js/supabase-store.js?v=20260822e"></script>
-<script src="js/localstorage-patch.js?v=20260822e"></script>
+<script src="js/supabase-store.js?v=20260822g"></script>
+<script src="js/localstorage-patch.js?v=20260822g"></script>
 <script src="js/supabase-bridge.js?v=20260820d"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822e"></script>
+<script src="js/init-page.js?v=20260822g"></script>
 <script>
 // ===== 提前注册：云端数据变更监听器 =====
 var _MaintenanceInited = false;
+var _MaintenancePendingRefresh = false;
 window.addEventListener('cloud-data-updated', function(e) {
   var keys = e.detail.keys || [];
   var needRefresh = keys.some(function(k) {
@@ -463,7 +464,8 @@ window.addEventListener('cloud-data-updated', function(e) {
   });
   if (needRefresh) {
     if (!_MaintenanceInited) {
-      console.log('[maintenance.html] ⏳ 云端数据变化已缓存，等待 Maintenance.init() 读取:', keys.join(','));
+      console.log('[maintenance.html] PENDING 云端数据已缓存，Maintenance.init 后 reload:', keys.join(','));
+      _MaintenancePendingRefresh = true;
       return;
     }
     console.log('[maintenance.html] 云端数据变更，刷新页面数据:', keys.join(','));
@@ -2139,6 +2141,24 @@ App.initSampleData();
 App.enforcePagePermission('maintenance');
 
 Maintenance.init();
+_MaintenanceInited = true;
+
+// ===== 兜底 FORCE RELOAD =====
+if (_MaintenancePendingRefresh) {
+  console.log('[maintenance.html] 🔄 _init完成后FORCE RELOAD (pending事件)');
+  setTimeout(function() {
+    Maintenance.init();
+    _MaintenancePendingRefresh = false;
+  }, 200);
+}
+setTimeout(function() {
+  var fabrics = App.store.get('maintFabrics', []);
+  var accs = App.store.get('maintAccessories', []);
+  if (fabrics.length === 0 && accs.length === 0) {
+    console.log('[maintenance.html] 🔄 maintFabrics&Accessories仍均为空，2秒二次reload');
+    Maintenance.init();
+  }
+}, 2000);
 
 document.addEventListener('click', (e) => {
   ['fabricActionDropdown', 'accessoryActionDropdown', 'termActionDropdown'].forEach(id => {
@@ -2149,17 +2169,7 @@ document.addEventListener('click', (e) => {
   });
 });
 
-// 监听云端数据变更（15秒自动刷新）
-window.addEventListener('cloud-data-updated', function(e) {
-  var keys = e.detail.keys || [];
-  var needRefresh = keys.some(function(k) {
-    return k === 'maintFabrics' || k === 'maintAccessories';
-  });
-  if (needRefresh) {
-    console.log('[maintenance.html] 云端数据变更，刷新页面数据');
-    Maintenance.init();
-  }
-});
+// 注意：cloud-data-updated 监听器已在脚本块顶部同步注册，此处不要重复
 });
 </script>
 </body>
