@@ -198,7 +198,7 @@
       setTimeout(goLogin, 500);
       // signOut 放跳转之后异步执行，失败静默
       try {
-        if (window.supabase && typeof window.supabase.auth?.signOut === "function") {
+        if (window.supabase && window.supabase.auth && typeof window.supabase.auth.signOut === "function") {
           window.supabase.auth.signOut().catch(function(){});
         } else {
           import("./supabase.js")
