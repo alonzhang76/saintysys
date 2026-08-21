@@ -47,22 +47,32 @@ function _mapSupabaseUser(user) {
   if (!user) return null;
   var email = user.email || '';
   var meta = user.user_metadata || {};
-  // 关键修复：检查管理员邮箱列表（与 auth-guard.js 的 mapSupabaseUser 保持一致）
-  // 如果不检查，当 auth-guard.js 未加载或异步未完成时，管理员邮箱用户会被当作 'user' 角色
   var role = meta.role || 'user';
   var adminEmails = window.ADMIN_EMAILS || [];
   if (adminEmails.indexOf(email) >= 0) {
     role = 'admin';
   }
-  // 关键修复：如果 user_metadata.role 还是默认的 'user'（auth-guard 异步未完成），
-  // 优先使用「设置」页面中管理员在本地 users 列表配置的角色，
-  // 这样页面初次渲染（auth-guard 未完成时）也能用正确的角色查权限
-  if (role === 'user' && email && window.App) {
+  // 关键修复：从本地 users 列表按邮箱匹配角色（不区分大小写）
+  // 设置页面的用户列表（users key）是管理员配置的权威角色来源，
+  // 优先于 Supabase user_metadata.role 和 SQL user_roles 表
+  if (adminEmails.indexOf(email) < 0 && window.App) {
     try {
       var localUsers = App.store.get('users', []);
-      var localUser = localUsers.find(function(u) { return u.email === email; });
-      if (localUser && localUser.role) role = localUser.role;
-    } catch(e) {}
+      var emailLower = (email || '').toLowerCase().trim();
+      if (emailLower) {
+        var localUser = localUsers.find(function(u) {
+          return u.email && u.email.toLowerCase().trim() === emailLower;
+        });
+        if (localUser && localUser.role) {
+          role = localUser.role;
+          console.log('[common] 本地用户匹配成功: username=' + localUser.username + ', email=' + localUser.email + ', role=' + role);
+        } else {
+          console.log('[common] 本地用户未匹配: email=' + emailLower + ', 本地用户数=' + localUsers.length);
+        }
+      }
+    } catch(e) {
+      console.warn('[common] 读取本地 users 失败:', e);
+    }
   }
   return {
     id: user.id,
@@ -571,15 +581,15 @@ const App = {
   },
 
   // ===== 检查当前用户对某模块的权限 =====
-  // 返回: 'write' | 'read' | 'none'
+  // 返回: 'write' | 'read' | 'none' | 'hidden'
   getPermission(moduleKey) {
     const user = this.getCurrentUser();
     if (!user) return 'none';
-    
+
     // 管理员邮箱用户始终拥有全部读写权限
     const adminEmails = window.ADMIN_EMAILS || [];
     if (adminEmails.indexOf(user.email) >= 0) return 'write';
-    
+
     const roleKey = user.role || 'user';
     const roleDef = this.roles[roleKey];
 
@@ -591,27 +601,37 @@ const App = {
     if (roleDef.isAdmin) return 'write';
 
     // 关键修复：优先使用 settings 页面保存的权限矩阵（app_data_store 的 permissions key）
-    // 不再使用 auth-guard.js 从 module_permissions 表加载的 _userModulePerms，
-    // 因为 settings 页面不会写入 module_permissions 表，导致两处数据源不一致。
-    // _userModulePerms 只作为最后兜底（permissions key 中无此模块配置时）
     const perms = this.store.get('permissions', {});
     const modulePerm = perms[moduleKey];
     if (modulePerm) {
       const rolePerm = modulePerm[roleKey];
-      if (rolePerm === 'write' || rolePerm === 'read' || rolePerm === 'none' || rolePerm === 'hidden') return rolePerm;
+      if (rolePerm === 'write' || rolePerm === 'read' || rolePerm === 'none' || rolePerm === 'hidden') {
+        console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + rolePerm + ' (来自permissions矩阵)');
+        return rolePerm;
+      }
     }
 
     // 兜底：如果 permissions key 中无此模块配置，再检查 _userModulePerms
     const userPerms = this._userModulePerms || {};
     if (userPerms[moduleKey]) {
       const p = userPerms[moduleKey];
-      if (p === 'write' || p === 'read' || p === 'none' || p === 'hidden') return p;
+      if (p === 'write' || p === 'read' || p === 'none' || p === 'hidden') {
+        console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + p + ' (来自_userModulePerms兜底)');
+        return p;
+      }
     }
 
     // 无配置默认为读写
-    if (!modulePerm) return 'write';
+    if (!modulePerm) {
+      console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → write (无配置默认)');
+      return 'write';
+    }
     const rolePerm = modulePerm[roleKey];
-    if (!rolePerm) return 'write';
+    if (!rolePerm) {
+      console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → write (角色无配置默认)');
+      return 'write';
+    }
+    console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + rolePerm + ' (最终)');
     return rolePerm;
   },
 

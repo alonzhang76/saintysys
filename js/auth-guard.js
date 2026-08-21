@@ -80,25 +80,30 @@
     if (!user) return null;
     const email = user.email || "";
     const meta = user.user_metadata || {};
-    // 优先从 user_metadata 中读取角色（如果有设置）
     let role = meta.role || "user";
-    // 检查管理员邮箱列表（从 admin-config.js 暴露到 window）
     const adminEmails = window.ADMIN_EMAILS || [];
     if (adminEmails.indexOf(email) >= 0) {
       role = "admin";
     }
-    // 关键修复：如果 user_metadata.role 还是默认的 'user'（auth-guard 异步未完成），
-    // 优先使用「设置」页面中管理员在本地 users 列表配置的角色，
-    // 这样页面初次渲染（auth-guard 未完成时）也能用正确的角色查权限
-    if (role === "user" && email && window.App) {
+    // 关键修复：从本地 users 列表按邮箱匹配角色（不区分大小写）
+    // 设置页面的用户列表（users key）是管理员配置的权威角色来源
+    if (adminEmails.indexOf(email) < 0 && window.App) {
       try {
         const localUsers = window.App.store.get("users", []);
-        const localUser = localUsers.find((u) => u.email === email);
-        if (localUser && localUser.role) role = localUser.role;
-      } catch (e) {}
+        const emailLower = (email || "").toLowerCase().trim();
+        if (emailLower) {
+          const localUser = localUsers.find((u) => u.email && u.email.toLowerCase().trim() === emailLower);
+          if (localUser && localUser.role) {
+            role = localUser.role;
+            console.log("[auth-guard] 本地用户匹配成功: username=" + localUser.username + ", email=" + localUser.email + ", role=" + role);
+          } else {
+            console.log("[auth-guard] 本地用户未匹配: email=" + emailLower + ", 本地用户数=" + localUsers.length);
+          }
+        }
+      } catch (e) {
+        console.warn("[auth-guard] 读取本地 users 失败:", e);
+      }
     }
-    // 异步从 Supabase user_roles 表读取真实角色
-    // 如果 user_metadata 没有设置，会在异步守卫中更新
     return {
       id: user.id,
       username: meta.username || (email ? email.split("@")[0] : "用户"),
@@ -244,17 +249,26 @@
           ? rolesData.map(r => r.role)
           : [];
 
-        // 关键修复：优先使用「设置」页面中管理员配置的本地 users 列表的角色
-        // 因为 settings.html 的 saveUser() 只写入本地 users 列表，不写入 SQL user_roles 表，
-        // 如果不检查本地 users 列表，管理员在设置中分配的 manager/merchandiser 等角色不会生效
+        // 关键修复：从本地 users 列表按邮箱匹配角色（不区分大小写）
+        // 设置页面的用户列表（users key）是管理员配置的权威角色来源
         let localUserRole = null;
         try {
           if (window.App) {
             const localUsers = window.App.store.get('users', []);
-            const localUser = localUsers.find(u => u.email === user.email);
-            if (localUser && localUser.role) localUserRole = localUser.role;
+            const emailLower = (user.email || '').toLowerCase().trim();
+            if (emailLower) {
+              const localUser = localUsers.find(u => u.email && u.email.toLowerCase().trim() === emailLower);
+              if (localUser && localUser.role) {
+                localUserRole = localUser.role;
+                console.log('[auth-guard] 异步: 本地用户匹配成功 username=' + localUser.username + ', email=' + localUser.email + ', role=' + localUserRole);
+              } else {
+                console.log('[auth-guard] 异步: 本地用户未匹配 email=' + emailLower + ', 本地用户数=' + localUsers.length);
+              }
+            }
           }
-        } catch(e) {}
+        } catch(e) {
+          console.warn('[auth-guard] 异步: 读取本地 users 失败:', e);
+        }
 
         // 合并角色：本地 users 列表角色 + SQL user_roles 角色去重
         const allRoles = [];

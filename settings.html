@@ -216,11 +216,11 @@ function openUserModal(id) {
   const body = `
     <div class="form-group">
       <label class="form-label">用户名<span class="required">*</span></label>
-      <input type="text" class="form-input" id="m_username" value="${App.utils.escapeHtml(user.username || '')}" ${isEdit ? 'readonly' : ''} placeholder="登录用的用户名">
+      <input type="text" class="form-input" id="m_username" value="${App.utils.escapeHtml(user.username || '')}" placeholder="显示名称（登录用邮箱）">
     </div>
     <div class="form-group">
-      <label class="form-label">邮箱</label>
-      <input type="email" class="form-input" id="m_email" value="${App.utils.escapeHtml(user.email || '')}" placeholder="与Supabase登录邮箱一致">
+      <label class="form-label">邮箱<span class="required">*</span></label>
+      <input type="email" class="form-input" id="m_email" value="${App.utils.escapeHtml(user.email || '')}" placeholder="必须与Supabase登录邮箱完全一致">
     </div>
     <div class="form-group">
       <label class="form-label">密码${isEdit ? '（留空不修改）' : '<span class="required">*</span>'}</label>
@@ -265,6 +265,8 @@ function saveUser(id) {
   const status = document.getElementById('m_status').value;
 
   if (!username) { App.toast('请输入用户名', 'warning'); return; }
+  if (!email) { App.toast('请输入邮箱（必须与Supabase登录邮箱一致）', 'warning'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { App.toast('邮箱格式不正确', 'warning'); return; }
 
   const users = getUsers();
   const isEdit = !!id;
