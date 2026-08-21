@@ -35,10 +35,8 @@
       return;
     }
     if (initialized) {
-      // 如果已经初始化，直接执行
       runInit(fn);
     } else {
-      // 加入队列，等待 Supabase 就绪后执行
       initQueue.push(fn);
     }
   };
@@ -53,19 +51,17 @@
         tryRunAll();
       });
     } else {
-      // 没有 Supabase，直接执行
       tryRunAll();
     }
   }
 
-  // 如果 DOM 已就绪，立即开始等待
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', waitAndRun);
   } else {
     waitAndRun();
   }
 
-  // 超时兜底：15 秒后强制执行初始化（防止 SupabaseReady 永远不 resolve）
+  // 超时兜底
   setTimeout(function() {
     if (!initialized) {
       console.warn('[init-page] 超时（15s），强制执行初始化');
@@ -73,27 +69,83 @@
     }
   }, 15000);
 
-  // ===== 15 秒定时刷新云端数据（使用 setTimeout 递归，兼容 Safari 后台节流）=====
+  // ===== 15 秒定时刷新云端数据 =====
+  // 使用 Web Worker 实现定时器（完全不受 Safari/iOS 标签页节流限制）
   var _cloudRefreshActive = false;
+
   function startCloudRefresh() {
     if (_cloudRefreshActive) return;
     _cloudRefreshActive = true;
 
-    // 递归 setTimeout（比 setInterval 更抗 Safari 节流）
-    function scheduleNext() {
-      setTimeout(function() {
-        if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
-          window.SupabaseStore.refreshFromCloud().catch(function(e) {});
-        }
-        scheduleNext(); // 递归调度下一次
-      }, 15000); // 15 秒
+    function doRefresh() {
+      if (window.SupabaseStore && window.SupabaseStore._isInitialized()) {
+        window.SupabaseStore.refreshFromCloud()
+          .then(function(changed) {
+            if (changed && changed.length > 0) {
+              console.log('[init-page] ✅ 云端刷新完成:', changed.length, '个 key 变更');
+            }
+          })
+          .catch(function(e) {
+            console.warn('[init-page] 云端刷新出错:', e && e.message ? e.message : e);
+          });
+      }
     }
-    scheduleNext();
 
-    // Safari/iOS 后台标签页会暂停 setTimeout，切回前台时立即刷新
+    // 方案 1: 使用 Web Worker（最可靠，完全不受节流影响）
+    try {
+      var workerCode = [
+        'var timer = setInterval(function() {',
+        '  self.postMessage("tick");',
+        '}, 15000);',
+        'self.addEventListener("message", function(e) {',
+        '  if (e.data === "stop") { clearInterval(timer); timer = null; }',
+        '});'
+      ].join('\n');
+      var workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+      var workerUrl = URL.createObjectURL(workerBlob);
+      var worker = new Worker(workerUrl);
+      worker.addEventListener('message', function() {
+        doRefresh();
+      });
+      console.log('[init-page] 🔄 Web Worker 定时器已启动（15秒轮询）');
+    } catch (e) {
+      // 方案 2: Web Worker 不可用时，用递归 setTimeout（有节流风险）
+      console.warn('[init-page] Web Worker 不可用，降级为 setTimeout:', e.message);
+      function scheduleNext() {
+        setTimeout(function() {
+          doRefresh();
+          scheduleNext();
+        }, 15000);
+      }
+      scheduleNext();
+    }
+
+    // 立即执行一次（不等 15 秒）
+    setTimeout(doRefresh, 3000);
+
+    // 页面从后台切回时立即刷新（兼顾 visibilitychange 事件）
     document.addEventListener('visibilitychange', function() {
-      if (!document.hidden && window.SupabaseStore && window.SupabaseStore._isInitialized()) {
-        window.SupabaseStore.refreshFromCloud().catch(function(e) {});
+      if (!document.hidden) {
+        console.log('[init-page] 页面切回前台，立即刷新');
+        doRefresh();
+      }
+    });
+
+    // Safari 特定：mouseover / focus 事件也触发一次刷新
+    // （某些 Safari 版本 visibilitychange 不可靠）
+    var lastRefresh = 0;
+    document.addEventListener('mouseover', function() {
+      var now = Date.now();
+      if (now - lastRefresh > 5000) { // 至少间隔 5 秒
+        lastRefresh = now;
+        doRefresh();
+      }
+    });
+    window.addEventListener('focus', function() {
+      var now = Date.now();
+      if (now - lastRefresh > 5000) {
+        lastRefresh = now;
+        doRefresh();
       }
     });
   }
