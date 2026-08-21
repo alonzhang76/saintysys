@@ -288,6 +288,9 @@ async function init() {
 
     console.log('[SupabaseStore] ✅ Supabase 已就绪，开始加载数据...');
 
+    // 外层 try/catch：捕获整个初始化阶段的未处理异常
+    try {
+
     // 用户验证（仅用于写入权限，不阻塞读取）
     var user = null;
     try {

@@ -469,60 +469,123 @@
 
   // ===== 独立写入通道（绝对兜底，保证数据一定上传到云端）=====
   // 接收 localstorage-patch.js 发出的 cloud-write-request 事件
-  // 通过 REST API (URL 参数模式) 直接 upsert 到 Supabase，不依赖任何中间层
+  // 通过 REST API 直接 upsert 到 Supabase，不依赖任何中间层
   // 即使 SupabaseStore、setSync、UMD、ES Module 全部失败也能工作
   var WRITE_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
-  var WRITE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+  var WRITE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+  var WRITE_AUTH_KEY_NAME = 'sb-ugoyacuagslqhqguxyqe-auth-token'; // Supabase 默认的存储 key
   var _writeQueue = [];    // 待写入队列（key + value + ts）
   var _writeRunning = false;
   var _writeLastTs = {};   // 每个 key 的最后上传时间戳（用于去抖），避免频繁上传
 
-  // 处理一个写入请求（URL 参数 upsert）
+  // 获取当前登录用户的 access_token（从 Supabase Auth 本地存储）
+  // 写入必须带这个 token（RLS 允许登录用户写，不允许匿名写）
+  function getUserAccessToken() {
+    try {
+      var raw = localStorage.getItem(WRITE_AUTH_KEY_NAME);
+      // 注意：必须从 _origLocalStorage 读（绕过我们的 patch），否则会无限递归
+      if (!raw) {
+        try {
+          if (window._origLocalStorage) {
+            raw = window._origLocalStorage.getItem(WRITE_AUTH_KEY_NAME);
+          } else if (window.sessionStorage) {
+            raw = sessionStorage.getItem(WRITE_AUTH_KEY_NAME);
+          }
+        } catch(e) {}
+      }
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.access_token) {
+        return parsed.access_token;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  // 处理一个写入请求
   function executeWrite(req) {
-    var url = WRITE_URL + '?on_conflict=store_key&apikey=' + encodeURIComponent(WRITE_KEY);
+    var userToken = getUserAccessToken();
     var body = JSON.stringify({
       store_key: req.key,
       payload: req.value,
       updated_at: new Date().toISOString()
     });
-    return fetch(url, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
+
+    // ===== 方案 A：使用 Authorization Bearer 用户 token + apikey 头 =====
+    // 这是标准方式，也是能通过 RLS 写入策略的唯一方式（匿名没有写权限）
+    function tryStandard() {
+      var headers = {
         'Content-Type': 'application/json',
+        'apikey': WRITE_ANON_KEY,
         'Prefer': 'return=minimal, resolution=merge-duplicates'
-      },
-      body: body
-    }).then(function(resp) {
-      if (!resp.ok) {
-        // 如果自定义头触发了 CORS，再尝试一次不带自定义头的方式
-        if (resp.status === 0 || resp.type === 'cors') {
-          var url2 = WRITE_URL + '?on_conflict=store_key&apikey=' + encodeURIComponent(WRITE_KEY)
-            + '&Content-Type=application%2Fjson&Prefer=' + encodeURIComponent('return=minimal, resolution=merge-duplicates');
-          return fetch(url2, {
-            method: 'POST',
-            cache: 'no-store',
-            body: body
-          }).then(function(r2) {
-            if (!r2.ok) throw new Error('HTTP ' + r2.status);
-            return true;
-          });
-        }
-        throw new Error('HTTP ' + resp.status);
+      };
+      if (userToken) {
+        headers['Authorization'] = 'Bearer ' + userToken;
       }
-      return true;
+      var url = WRITE_URL + '?on_conflict=store_key';
+      return fetch(url, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: headers,
+        body: body
+      }).then(function(resp) {
+        if (!resp.ok) {
+          return { ok: false, status: resp.status, resp: resp };
+        }
+        return { ok: true };
+      });
+    }
+
+    // ===== 方案 B：Safari file:// CORS 预检失败兜底 =====
+    // 如果方案 A 失败是因为 CORS/network 问题（status=0 或 fetch 抛出 CORS error），
+    // 尝试使用 "简单请求"（simple request）——避免 OPTIONS 预检：
+    // Content-Type 改为 application/x-www-form-urlencoded（允许简单请求列表中的类型之一）
+    // 但是 body 必须转成 URL-encoded 形式，而且 Supabase 不接收 URL-encoded body 作为 JSON payload
+    // 所以这个方案不行。真正的兜底是让 SupabaseStore 正常工作。
+    // 如果方案 A 返回 401，那是 RLS 策略问题，不能通过 "简单请求" 绕过。
+    // 这里只打印更明确的错误信息给用户排查。
+
+    return tryStandard().then(function(r) {
+      if (r.ok) return true;
+
+      // 方案 A 失败，给出明确诊断
+      var msg = '';
+      switch(r.status) {
+        case 401:
+          msg = '401 未授权(R LS拒绝写入) → 用户JWT无效或已登出. 当前userToken=' + (userToken ? '有('+ userToken.slice(0,20)+'...)' : '无');
+          break;
+        case 403:
+          msg = '403 禁止(RLS policy 拒绝)';
+          break;
+        case 409:
+          msg = '409 on_conflict 参数冲突（检查列名）';
+          break;
+        case 400:
+          msg = '400 请求格式错误（JSON 或参数）';
+          break;
+        default:
+          msg = 'HTTP ' + r.status;
+      }
+      throw new Error(msg);
     });
   }
 
-  // 处理一个删除请求（URL 参数 delete）
+  // 处理一个删除请求（URL 参数 delete）—— DELETE 也必须带用户 JWT
   function executeDelete(key) {
-    var url = WRITE_URL + '?store_key=eq.' + encodeURIComponent(key)
-      + '&apikey=' + encodeURIComponent(WRITE_KEY);
+    var userToken = getUserAccessToken();
+    var url = WRITE_URL + '?store_key=eq.' + encodeURIComponent(key);
+    var headers = {
+      'apikey': WRITE_ANON_KEY
+    };
+    if (userToken) {
+      headers['Authorization'] = 'Bearer ' + userToken;
+    }
     return fetch(url, {
       method: 'DELETE',
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: headers
     }).then(function(resp) {
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      if (!resp.ok) throw new Error('DELETE HTTP ' + resp.status + (resp.status === 401 ? ' (需要用户JWT)' : ''));
       return true;
     });
   }
