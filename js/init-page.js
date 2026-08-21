@@ -79,14 +79,30 @@
 
     function doRefresh() {
       var store = window.SupabaseStore;
-      
-      // 兜底：即使 SupabaseStore 完全不可用，也通过独立轮询获取数据
+
+      // 兜底：即使 SupabaseStore 完全不可用，也通过独立 fetch 获取数据
       if (!store) {
         console.log('[init-page] ⚠️ SupabaseStore 未加载，使用独立 fetch 兜底...');
-        // 直接使用 fetch 获取数据（与 independentPoll 类似但更简单）
+        // 直接使用 fetch 获取数据（带用户 JWT，否则 RLS 会拒绝）
         var FALLBACK_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
         var FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(FALLBACK_KEY), {cache: 'no-store'})
+        // 获取用户 JWT
+        var fbUserJWT = null;
+        try {
+          var fbTokenKey = 'sb-ugoyacuagslqhqguxyqe-auth-token';
+          var fbRaw = null;
+          if (window._origLocalStorage && window._origLocalStorage.getItem) {
+            fbRaw = window._origLocalStorage.getItem(fbTokenKey);
+          }
+          if (!fbRaw) fbRaw = localStorage.getItem(fbTokenKey);
+          if (fbRaw) {
+            var fbParsed = JSON.parse(fbRaw);
+            if (fbParsed && fbParsed.access_token) fbUserJWT = fbParsed.access_token;
+          }
+        } catch(e) {}
+        var fbHeaders = { 'apikey': FALLBACK_KEY };
+        if (fbUserJWT) fbHeaders['Authorization'] = 'Bearer ' + fbUserJWT;
+        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at', {cache: 'no-store', headers: fbHeaders})
           .then(function(resp) { return resp.ok ? resp.json() : Promise.reject(resp.status); })
           .then(function(rows) {
             if (!Array.isArray(rows)) return;
@@ -97,7 +113,7 @@
               origLS.setItem(row.store_key, JSON.stringify(row.payload));
               changedKeys.push(row.store_key);
             }
-            console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key');
+            console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key (JWT=' + (fbUserJWT ? '有' : '无') + ')');
             if (changedKeys.length > 0) {
               window.dispatchEvent(new CustomEvent('cloud-data-updated', {
                 detail: { keys: changedKeys }
@@ -329,13 +345,63 @@
     _independentRunning = true;
 
     var isFirstRun = (_independentLastHashes === null);
-    var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
-    
-    fetch(url, {
-      // 不使用自定义头（避免 CORS 预检请求被 Safari file:// 阻止）
-      // API key 通过 URL 查询参数传递
-      cache: 'no-store'
-    })
+
+    // 关键修复：必须携带用户 JWT，否则 RLS 策略 auth.role() = 'authenticated' 会拒绝
+    // anon key 的 role 是 'anon'，无法通过 RLS，会返回空数组 []
+    var userJWT = null;
+    try {
+      var tokenKey = 'sb-ugoyacuagslqhqguxyqe-auth-token';
+      var raw = null;
+      if (window._origLocalStorage && window._origLocalStorage.getItem) {
+        raw = window._origLocalStorage.getItem(tokenKey);
+      }
+      if (!raw) {
+        raw = localStorage.getItem(tokenKey);
+      }
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.access_token) {
+          userJWT = parsed.access_token;
+        }
+      }
+    } catch(e) {}
+
+    // 路径1: 使用标准头 + 用户 JWT（HTTPS 站点下正常工作，触发 CORS 预检但 Supabase 允许）
+    function fetchWithJWT() {
+      var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at';
+      var headers = { 'apikey': INDEPENDENT_API_KEY };
+      if (userJWT) {
+        headers['Authorization'] = 'Bearer ' + userJWT;
+      }
+      return fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: headers
+      });
+    }
+
+    // 路径2: URL 参数方式（无 JWT，RLS 会拒绝，仅作为 file:// 兜底）
+    function fetchWithUrlParam() {
+      var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
+      return fetch(url, { cache: 'no-store' });
+    }
+
+    var fetchPromise;
+    if (userJWT) {
+      // 有 JWT 时优先用标准头方式
+      fetchPromise = fetchWithJWT().catch(function(e) {
+        console.warn('[init-page] 独立轮询(标准头+JWT)失败，降级为URL参数:', e && e.message ? e.message : e);
+        return fetchWithUrlParam();
+      });
+    } else {
+      // 无 JWT 时用 URL 参数方式（RLS 可能会拒绝）
+      if (isFirstRun) {
+        console.warn('[init-page] ⚠️ 独立轮询: 未找到用户JWT，RLS可能拒绝匿名访问');
+      }
+      fetchPromise = fetchWithUrlParam();
+    }
+
+    fetchPromise
     .then(function(resp) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.json();
@@ -346,6 +412,12 @@
         return;
       }
 
+      // 关键诊断：如果云端返回空数组但有 JWT，说明 RLS 拒绝了或云端确实无数据
+      if (rows.length === 0 && isFirstRun) {
+        console.warn('[init-page] ⚠️ 独立轮询首次基线: 云端返回0行 ' +
+          '(JWT=' + (userJWT ? '有' : '无') + ')。可能原因: RLS拒绝 或 云端表为空');
+      }
+
       var changedKeys = [];
       var newHashes = {};
       var prevHashes = _independentLastHashes || {};
@@ -354,7 +426,7 @@
         var row = rows[i];
         var key = row.store_key;
         var payload = row.payload;
-        
+
         // 计算内容哈希用于变化检测
         var hash = '';
         try {
@@ -421,7 +493,7 @@
       _independentLastHashes = newHashes;
 
       if (changedKeys.length > 0) {
-        console.log('[init-page] 🛡️ 独立轮询' + (isFirstRun ? '(首次基线+触发)' : '检测到变更') + ':', 
+        console.log('[init-page] 🛡️ 独立轮询' + (isFirstRun ? '(首次基线+触发)' : '检测到变更') + ':',
           changedKeys.join(', '), '(共' + changedKeys.length + '个)');
         // 触发云数据更新事件（供各页面刷新 UI）
         window.dispatchEvent(new CustomEvent('cloud-data-updated', {
@@ -429,7 +501,7 @@
         }));
       } else {
         if (isFirstRun) {
-          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端均为空数据)');
+          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端返回' + rows.length + '行)');
           // 首次运行云端为空 → 可能数据正在通过独立写入通道上传中
           // 5 秒后立即再执行一次轮询（不等15秒），快速捕获刚上传完成的数据
           setTimeout(function() { independentPoll(); }, 5000);
@@ -477,6 +549,23 @@
   var _writeQueue = [];    // 待写入队列（key + value + ts）
   var _writeRunning = false;
   var _writeLastTs = {};   // 每个 key 的最后上传时间戳（用于去抖），避免频繁上传
+  var _writeLastHash = {}; // 每个 key 的最后上传内容 hash（严格去重，相同内容直接跳过）
+
+  // 计算内容的快速 hash（用于判断是否真的变化了需要上传）
+  function hashValue(val) {
+    try {
+      var s = (val === null || val === undefined) ? '' : JSON.stringify(val);
+      // DJB2 简单 hash，32 位整数
+      var h = 5381;
+      for (var i = 0; i < s.length; i++) {
+        h = ((h << 5) + h) + s.charCodeAt(i);
+        h |= 0;
+      }
+      return s.length.toString(36) + '_' + h.toString(36);
+    } catch(e) {
+      return 'x_' + Date.now();
+    }
+  }
 
   // 获取当前登录用户的 access_token（从 Supabase Auth 本地存储）
   // 写入必须带这个 token（RLS 允许登录用户写，不允许匿名写）
@@ -604,7 +693,10 @@
     }
     p.then(function(ok) {
       var count = Array.isArray(req.value) ? req.value.length + ' 条' : typeof req.value;
-      console.log('[init-page] ✨ 独立写入成功:', req.key, count);
+      // 精简日志：数组长度为 0 的不打印（防止刷新时刷屏）
+      if (!(Array.isArray(req.value) && req.value.length === 0)) {
+        console.log('[init-page] ✨ 独立写入成功:', req.key, count);
+      }
       // 上传成功后，更新 SupabaseStore._cache（如果存在）
       try {
         var st = window.SupabaseStore;
@@ -613,12 +705,14 @@
           cache[req.key] = JSON.parse(JSON.stringify(req.value));
         }
       } catch(e) {}
-      // 写入成功后，主动广播一次事件 → 让当前设备的页面UI立即刷新（不用等15秒轮询）
-      try {
-        window.dispatchEvent(new CustomEvent('cloud-data-updated', {
-          detail: { keys: [req.key], source: 'direct-write' }
-        }));
-      } catch(e) {}
+      // ===== 关键修复 1：成功后把本次内容 hash 记录下来 =====
+      // 下次同样内容再来 cloud-write-request 时，会被去重拦截，不入队
+      if (req.hash) {
+        _writeLastHash[req.key] = req.hash;
+      } else if (req.type !== 'delete') {
+        _writeLastHash[req.key] = hashValue(req.value);
+      }
+      // ===== 关键修复 2：绝对不要在这里广播 cloud-data-updated！ =====
     }).catch(function(err) {
       console.warn('[init-page] ✨ 独立写入失败，重新入队:', req.key, err && err.message ? err.message : err);
       // 失败则放回队列尾部（最多保留 50 条去重）
@@ -637,9 +731,16 @@
     var value = e.detail.value;
     var ts = e.detail.ts || Date.now();
 
-    // 去抖：1.5 秒内同一 key 的多次写入只保留最后一次（避免连续编辑触发多次上传）
+    // ==== 第一层去重：严格内容 hash 比对 ====
+    // 如果新内容和最近一次成功上传的内容 hash 一样 → 直接跳过（根本不需要入队）
+    var newHash = hashValue(value);
+    if (_writeLastHash[key] && _writeLastHash[key] === newHash) {
+      // 绝对相同内容，跳过不打日志
+      return;
+    }
+
+    // ==== 第二层去抖：1.5 秒内同 key 多次写入只保留最后一次 ====
     if (_writeLastTs[key] && ts - _writeLastTs[key] < 1500) {
-      // 移除队列中已有的同 key 旧条目
       for (var i = _writeQueue.length - 1; i >= 0; i--) {
         if (_writeQueue[i].type !== 'delete' && _writeQueue[i].key === key) {
           _writeQueue.splice(i, 1);
@@ -647,12 +748,16 @@
       }
     }
     _writeLastTs[key] = ts;
-    _writeQueue.push({ type: 'write', key: key, value: value, ts: ts });
+    // 把 hash 存到请求对象里，成功后再更新 _writeLastHash
+    _writeQueue.push({ type: 'write', key: key, value: value, ts: ts, hash: newHash });
 
-    // 打印日志（提示 Windows 用户现在有独立上传通道了）
-    console.log('[init-page] ✨ 独立写入入队:', key, 
-      Array.isArray(value) ? ('[' + value.length + ' 条]') : '',
-      '| 队列长度=' + _writeQueue.length);
+    // 日志精简（非数组空数据场景省略，防止刷屏）
+    var isEmptyArr = Array.isArray(value) && value.length === 0;
+    if (!isEmptyArr) {
+      console.log('[init-page] ✨ 独立写入入队:', key, 
+        Array.isArray(value) ? ('[' + value.length + ' 条]') : '',
+        '| 队列长度=' + _writeQueue.length);
+    }
 
     // 立即启动处理器
     setTimeout(flushWriteQueue, 100);
@@ -668,7 +773,12 @@
 
   // 启动后 10 秒：把当前所有 SUPERSET_KEYS 的本地数据一次性"检查并上传"
   // 用于在 Supabase 表为空（前一版 Bug 清空）时把 localStorage 中的已有数据补到云端
-  setTimeout(function() {
+  var _lastBackupTs = 0;
+  function runAutoBackup() {
+    // 60 秒冷却，避免频繁切前台重复触发
+    if (Date.now() - _lastBackupTs < 60000) return;
+    _lastBackupTs = Date.now();
+
     var ALL_KEYS = [
       'styles', 'orders', 'fabrics', 'accessories', 'samples',
       'feedbacks', 'productions', 'invoices', 'payments', 'collections',
@@ -682,12 +792,10 @@
     ];
     var origLS = window._origLocalStorage || window.localStorage;
     var needBackup = 0;
-    // 只在云端目前是空时（rows.length === 0），或者自己本地有数据时才补上传
     ALL_KEYS.forEach(function(k) {
       try {
         var raw = origLS.getItem(k);
         if (raw && raw !== '[]' && raw !== 'null') {
-          // 直接触发一次 cloud-write-request
           window.dispatchEvent(new CustomEvent('cloud-write-request', {
             detail: { key: k, value: JSON.parse(raw), ts: Date.now() }
           }));
@@ -696,8 +804,26 @@
       } catch(e) {}
     });
     if (needBackup > 0) {
-      console.log('[init-page] 🔎 启动时检测到', needBackup, '个本地数据集有内容，已加入独立上传队列');
+      console.log('[init-page] 🔎 自动备份：检测到', needBackup, '个本地数据集有内容，已加入独立上传队列');
+    } else {
+      console.log('[init-page] 🔎 自动备份：本地无待补的数据集');
     }
-  }, 10000);
+  }
+  setTimeout(runAutoBackup, 10000);
+
+  // 页面切回前台时强制立即执行一次独立轮询 + 自动备份（带冷却）
+  // 典型场景：
+  //   - 在 Windows 编辑了其他模块（寄样/订单/通讯录...），切到 Mac Safari 前台立即拉取
+  //   - 在 Mac 编辑了数据，切回 Windows 前台时发现仍有漏网的本地数据 → 立即补上传
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      setTimeout(independentPoll, 200);
+      setTimeout(runAutoBackup, 500);
+    }
+  });
+  window.addEventListener('pageshow', function() {
+    setTimeout(independentPoll, 200);
+    setTimeout(runAutoBackup, 500);
+  });
 
 })(window);

@@ -339,7 +339,7 @@ table.data-table {
   border-bottom: 1px solid #f1f5f9;
 }
 .company-table tr.handler-row td:first-child::before {
-  content: '└ ';
+  content: '�?';
   color: #cbd5e1;
 }
 .company-table tr.handler-row td.num { font-variant-numeric: tabular-nums; }
@@ -491,12 +491,12 @@ table.data-table {
   <div class="sidebar" id="sidebar"></div>
   <div class="main-area">
     <div class="app-header">
-      <button class="header-toggle">☰</button>
+      <button class="header-toggle">�?/button>
       <span class="header-title">舜天汉唐寄件管理</span>
       <div class="header-actions">
         <button class="btn btn-sm" onclick="App.backupData()" title="备份全部数据">📦</button>
-        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
-        <button class="btn btn-sm" onclick="App.logout()" title="退出登录">🚪</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理�?/span></div>
+        <button class="btn btn-sm" onclick="App.logout()" title="退出登�?>🚪</button>
       </div>
     </div>
     <div class="app-content">
@@ -506,7 +506,7 @@ table.data-table {
       <!-- Form Section -->
       <div class="section">
         <div class="section-header">
-          <div class="section-title"><span class="dot"></span> 新增快递记录</div>
+          <div class="section-title"><span class="dot"></span> 新增快递记�?/div>
         </div>
         <div class="form-grid" id="formGrid">
           <div class="form-group">
@@ -514,7 +514,7 @@ table.data-table {
             <input type="date" class="form-input" id="f_date">
           </div>
           <div class="form-group">
-            <label class="form-label">快递公司 <span class="req">*</span></label>
+            <label class="form-label">快递公�?<span class="req">*</span></label>
             <select class="form-select" id="f_company" onchange="onCompanyChange()">
               <option value="">请选择</option>
             </select>
@@ -525,23 +525,23 @@ table.data-table {
           </div>
           <div class="form-group">
             <label class="form-label">款号</label>
-            <input type="text" class="form-input" id="f_styleNo" placeholder="如: A1303">
+            <input type="text" class="form-input" id="f_styleNo" placeholder="�? A1303">
           </div>
           <div class="form-group">
             <label class="form-label">物品</label>
-            <input type="text" class="form-input" id="f_item" placeholder="如: 面料/样衣/辅料">
+            <input type="text" class="form-input" id="f_item" placeholder="�? 面料/样衣/辅料">
           </div>
           <div class="form-group">
             <label class="form-label">寄件地区</label>
-            <input type="text" class="form-input" id="f_from" value="无锡" placeholder="如: 无锡" list="cityList">
+            <input type="text" class="form-input" id="f_from" value="无锡" placeholder="�? 无锡" list="cityList">
           </div>
           <div class="form-group">
             <label class="form-label">到件地区</label>
-            <input type="text" class="form-input" id="f_to" placeholder="如: 宿迁 / 以色列-特拉维夫" list="destList" onfocus="syncDestList()">
+            <input type="text" class="form-input" id="f_to" placeholder="�? 宿迁 / 以色�?特拉维夫" list="destList" onfocus="syncDestList()">
           </div>
           <div class="form-group span2">
             <label class="form-label">对方公司名称</label>
-            <input type="text" class="form-input" id="f_companyName" placeholder="收/寄件方公司（可手工录入或从通讯录选择）" list="contactCompanyList">
+            <input type="text" class="form-input" id="f_companyName" placeholder="�?寄件方公司（可手工录入或从通讯录选择�? list="contactCompanyList">
           </div>
           <div class="form-group">
             <label class="form-label">计费重量(kg)</label>
@@ -561,7 +561,7 @@ table.data-table {
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">费用(元) <span class="req">*</span></label>
+            <label class="form-label">费用(�? <span class="req">*</span></label>
             <input type="number" class="form-input" id="f_cost" step="0.01" min="0" placeholder="0.00" oninput="calcAmount()">
           </div>
           <div class="form-group">
@@ -573,8 +573,8 @@ table.data-table {
             <input type="text" class="form-input readonly" id="f_amount" readonly placeholder="自动计算">
           </div>
           <div class="form-group">
-            <label class="form-label">经手人</label>
-            <input type="text" class="form-input" id="f_handler" placeholder="经办人" list="handlerList">
+            <label class="form-label">经手�?/label>
+            <input type="text" class="form-input" id="f_handler" placeholder="经办�? list="handlerList">
           </div>
           <div class="form-group">
             <label class="form-label">服务类型</label>
@@ -587,22 +587,22 @@ table.data-table {
           </div>
         </div>
         <div class="form-actions">
-          <button class="express-btn express-btn-outline" onclick="resetForm()">↻ 重置</button>
-          <button class="express-btn express-btn-primary" onclick="addRecord()">＋ 添加记录</button>
+          <button class="express-btn express-btn-outline" onclick="resetForm()">�?重置</button>
+          <button class="express-btn express-btn-primary" onclick="addRecord()">�?添加记录</button>
         </div>
       </div>
 
       <!-- Records Table -->
       <div class="section">
         <div class="section-header">
-          <div class="section-title"><span class="dot"></span> 快递记录明细</div>
+          <div class="section-title"><span class="dot"></span> 快递记录明�?/div>
           <div class="section-actions">
             <button class="btn-icon toolbar" onclick="document.getElementById('importFile').click()" title="恢复数据(JSON)">📂</button>
-            <button class="btn-icon toolbar" onclick="clearAllRecords()" title="一键清空">🗑️</button>
+            <button class="btn-icon toolbar" onclick="clearAllRecords()" title="一键清�?>🗑�?/button>
             <button class="btn-icon toolbar" onclick="exportExcel()" title="导出Excel">📗</button>
             <button class="btn-icon toolbar" onclick="document.getElementById('importExcelFile').click()" title="导入Excel">📘</button>
             <button class="btn-icon toolbar" onclick="document.getElementById('compareExcelFile').click()" title="单号对比">🔍</button>
-            <span style="font-size:11px;color:var(--text-muted)" id="recordCount">共 0 条</span>
+            <span style="font-size:11px;color:var(--text-muted)" id="recordCount">�?0 �?/span>
           </div>
         </div>
         <div class="filter-bar">
@@ -611,7 +611,7 @@ table.data-table {
           <span class="filter-label">公司:</span>
           <select id="filterCompany" onchange="renderTable()"><option value="">全部</option></select>
           <span class="filter-label">搜索:</span>
-          <input type="text" class="search-input" id="searchInput" placeholder="运单号/公司/款号/物品..." oninput="renderTable()">
+          <input type="text" class="search-input" id="searchInput" placeholder="运单�?公司/款号/物品..." oninput="renderTable()">
         </div>
         <div class="table-summary" id="tableSummary"></div>
         <div class="table-wrapper" style="max-height:420px;overflow-y:auto">
@@ -619,7 +619,7 @@ table.data-table {
             <thead>
               <tr>
                 <th>日期</th>
-                <th>快递公司</th>
+                <th>快递公�?/th>
                 <th>运单号码</th>
                 <th>款号</th>
                 <th>物品</th>
@@ -632,7 +632,7 @@ table.data-table {
                 <th class="num">费用</th>
                 <th class="num">折扣</th>
                 <th class="num">应付</th>
-                <th>经手人</th>
+                <th>经手�?/th>
                 <th>服务</th>
                 <th class="center">操作</th>
               </tr>
@@ -661,22 +661,22 @@ table.data-table {
       <datalist id="countryList">
         <option value="美国">
         <option value="美国-纽约">
-        <option value="美国-洛杉矶">
-        <option value="美国-迈阿密">
-        <option value="以色列">
-        <option value="以色列-特拉维夫">
-        <option value="以色列-耶路撒冷">
+        <option value="美国-洛杉�?>
+        <option value="美国-迈阿�?>
+        <option value="以色�?>
+        <option value="以色�?特拉维夫">
+        <option value="以色�?耶路撒冷">
         <option value="英国">
         <option value="英国-伦敦">
         <option value="德国">
         <option value="德国-法兰克福">
         <option value="法国">
         <option value="法国-巴黎">
-        <option value="意大利">
-        <option value="意大利-米兰">
-        <option value="西班牙">
+        <option value="意大�?>
+        <option value="意大�?米兰">
+        <option value="西班�?>
         <option value="荷兰">
-        <option value="荷兰-阿姆斯特丹">
+        <option value="荷兰-阿姆斯特�?>
         <option value="日本">
         <option value="日本-东京">
         <option value="日本-大阪">
@@ -684,19 +684,19 @@ table.data-table {
         <option value="韩国-首尔">
         <option value="澳大利亚">
         <option value="澳大利亚-悉尼">
-        <option value="加拿大">
-        <option value="加拿大-多伦多">
+        <option value="加拿�?>
+        <option value="加拿�?多伦�?>
         <option value="巴西">
         <option value="印度">
         <option value="土耳其">
-        <option value="土耳其-伊斯坦布尔">
-        <option value="阿联酋">
-        <option value="阿联酋-迪拜">
-        <option value="新加坡">
+        <option value="土耳其-伊斯坦布�?>
+        <option value="阿联�?>
+        <option value="阿联�?迪拜">
+        <option value="新加�?>
         <option value="马来西亚">
         <option value="泰国">
         <option value="越南">
-        <option value="墨西哥">
+        <option value="墨西�?>
         <option value="南非">
       </datalist>
       <datalist id="handlerList"></datalist>
@@ -707,7 +707,7 @@ table.data-table {
       <div class="modal-overlay" id="delModal">
         <div class="modal">
           <div class="modal-header">确认删除</div>
-          <div class="modal-body" id="delMsg">确定要删除这条快递记录吗？此操作不可撤销。</div>
+          <div class="modal-body" id="delMsg">确定要删除这条快递记录吗？此操作不可撤销�?/div>
           <div class="modal-footer">
             <button class="express-btn express-btn-outline" onclick="closeDelModal()">取消</button>
             <button class="express-btn express-btn-danger" onclick="confirmDelete()">删除</button>
@@ -718,7 +718,7 @@ table.data-table {
       <!-- Compare Result Modal -->
       <div class="modal-overlay" id="compareModal">
         <div class="modal compare-modal">
-          <div class="modal-header">快递单号对比结果</div>
+          <div class="modal-header">快递单号对比结�?/div>
           <div class="modal-body" id="compareBody"></div>
           <div class="modal-footer">
             <button class="express-btn express-btn-outline" onclick="closeCompareModal()">取消</button>
@@ -734,16 +734,36 @@ table.data-table {
 <script src="js/common.js?v=20260812"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260813"></script>
-<!-- Supabase 存储层：localStorage → Supabase -->
-<script type="module" src="js/supabase.js?v=20260820"></script>
-<script src="js/supabase-store.js?v=20260822d"></script>
-<script src="js/localstorage-patch.js?v=20260822d"></script>
-<script src="js/supabase-bridge.js?v=20260820d"></script>
+<!-- Supabase 存储层：localStorage �?Supabase -->
+<script type="module" src="js/supabase.js?v=20260822f"></script>
+<script src="js/supabase-store.js?v=20260822f"></script>
+<script src="js/localstorage-patch.js?v=20260822f"></script>
+<script src="js/supabase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260813"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260822d"></script>
+<script src="js/init-page.js?v=20260822f"></script>
 <script>
+// ===== 提前注册：云端数据变更监听器 =====
+// 必须�?<script> 块同步阶段立即注册（不能放到 _init 异步回调里），否则会错过 independentPoll 的首次基线事�?
+// （independentPoll 首次基线�?setTimeout(800ms) 触发，可能比 App.init→checkLogin→_init 回调更早完成�?
+var _expressInited = false;
+window.addEventListener('cloud-data-updated', function(e) {
+  var keys = e.detail.keys || [];
+  var needRefresh = keys.some(function(k) {
+    return k === 'express_delivery_data_v2' || k === 'contacts';
+  });
+  if (needRefresh) {
+    if (!_expressInited) {
+      // initExpress() 还没执行 �?不用重跑，因为随�?initExpress() 会立�?loadData() 读到最新（independentPoll 已写�?_origLocalStorage�?
+      console.log('[express.html] �?云端数据变化已缓存，等待 initExpress() 读取:', keys.join(','));
+      return;
+    }
+    console.log('[express.html] 云端数据变更，刷新页面数�?', keys.join(','));
+    initExpress();
+  }
+});
+
 // ===== Data =====
 const STORAGE_KEY = 'express_delivery_data_v2';
 let records = [];
@@ -753,28 +773,28 @@ let deleteId = null;
 // ===== Express Companies Config =====
 const COMPANIES = [
   { name: '顺丰速运', prefix: 'SF', badge: 'sf',
-    products: ['顺丰标快','顺丰特快','顺丰即日','陆运包裹','生鲜专递','顺丰特惠'] },
+    products: ['顺丰标快','顺丰特快','顺丰即日','陆运包裹','生鲜专�?,'顺丰特惠'] },
   { name: '京东物流', prefix: 'JD', badge: 'jd',
-    products: ['京东标快','京东特快','京东快运','京尊达'] },
-  { name: '中通快递', prefix: 'ZTO', badge: 'zto',
-    products: ['中通标快','中通快运'] },
-  { name: '圆通速递', prefix: 'YT', badge: 'yt',
-    products: ['圆通标快','圆通准达','圆通国际'] },
-  { name: '韵达快递', prefix: 'YD', badge: 'yd',
+    products: ['京东标快','京东特快','京东快运','京尊�?] },
+  { name: '中通快�?, prefix: 'ZTO', badge: 'zto',
+    products: ['中通标�?,'中通快�?] },
+  { name: '圆通速�?, prefix: 'YT', badge: 'yt',
+    products: ['圆通标�?,'圆通准�?,'圆通国�?] },
+  { name: '韵达快�?, prefix: 'YD', badge: 'yd',
     products: ['韵达标快','韵达特快','韵达冷链'] },
-  { name: '申通快递', prefix: 'STO', badge: 'sto',
-    products: ['申通标快','申通快运'] },
+  { name: '申通快�?, prefix: 'STO', badge: 'sto',
+    products: ['申通标�?,'申通快�?] },
   { name: 'EMS', prefix: 'EMS', badge: 'ems',
-    products: ['EMS标准快递','EMS经济快递','e邮宝'] },
-  { name: 'DHL国际快递', prefix: '', badge: 'dhl', international: true,
+    products: ['EMS标准快�?,'EMS经济快�?,'e邮宝'] },
+  { name: 'DHL国际快�?, prefix: '', badge: 'dhl', international: true,
     products: ['DHL Express Worldwide','DHL Express 12:00','DHL Express 9:00','DHL Economy Select','DHL Medical Express','DHL Global Mail'] },
-  { name: 'UPS国际快递', prefix: '', badge: 'ups', international: true,
+  { name: 'UPS国际快�?, prefix: '', badge: 'ups', international: true,
     products: ['UPS Express','UPS Express 12:00','UPS Express Saver','UPS Expedited','UPS Ground','UPS Next Day Air'] },
-  { name: '德邦快递', prefix: 'DBL', badge: 'dbl',
+  { name: '德邦快�?, prefix: 'DBL', badge: 'dbl',
     products: ['德邦标快','德邦大件','德邦快运'] },
-  { name: '极兔速递', prefix: 'JT', badge: 'jt',
+  { name: '极兔速�?, prefix: 'JT', badge: 'jt',
     products: ['极兔标快','极兔快运'] },
-  { name: '其他', prefix: '', badge: 'other', products: ['标准快递','快运'] },
+  { name: '其他', prefix: '', badge: 'other', products: ['标准快�?,'快运'] },
 ];
 
 const COMPANY_MAP = {};
@@ -784,15 +804,15 @@ COMPANIES.forEach(c => COMPANY_MAP[c.name] = c);
 const TRACKING_URLS = {
   '顺丰速运': 'https://www.sf-express.com/sf-service-owf-web/service/route/newQuery/routeQuery?trackingNum={t}',
   '京东物流': 'https://www.jdwl.com/track/route?billCode={t}',
-  '中通快递': 'https://www.zto.com/Track/billnum/{t}.html',
-  '圆通速递': 'https://www.yto.net.cn/query?waybillNo={t}',
-  '韵达快递': 'https://www.yunda.com/Path/Query?trackingNum={t}',
-  '申通快递': 'https://www.sto.cn/track/{t}.html',
+  '中通快�?: 'https://www.zto.com/Track/billnum/{t}.html',
+  '圆通速�?: 'https://www.yto.net.cn/query?waybillNo={t}',
+  '韵达快�?: 'https://www.yunda.com/Path/Query?trackingNum={t}',
+  '申通快�?: 'https://www.sto.cn/track/{t}.html',
   'EMS': 'https://www.ems.com.cn/queryList?mailNum={t}',
-  'DHL国际快递': 'https://www.dhl.com/cn-zh/home/tracking/tracking-express.html?submit=1&tracking-id={t}',
-  'UPS国际快递': 'https://www.ups.com/track?tracknum={t}',
-  '德邦快递': 'https://www.deppon.com/dop/track/waybill?waybillNo={t}',
-  '极兔速递': 'https://www.jtexpress.com/Track?id={t}',
+  'DHL国际快�?: 'https://www.dhl.com/cn-zh/home/tracking/tracking-express.html?submit=1&tracking-id={t}',
+  'UPS国际快�?: 'https://www.ups.com/track?tracknum={t}',
+  '德邦快�?: 'https://www.deppon.com/dop/track/waybill?waybillNo={t}',
+  '极兔速�?: 'https://www.jtexpress.com/Track?id={t}',
 };
 // Universal fallback - kuaidi100 auto-detects company by tracking number
 const TRACKING_URL_FALLBACK = 'https://www.kuaidi100.com/chaxun?nu={t}';
@@ -814,7 +834,7 @@ function initExpress() {
   COMPANIES.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.name;
-    opt.textContent = c.name + (c.prefix ? `（${c.prefix}）` : '');
+    opt.textContent = c.name + (c.prefix ? `�?{c.prefix}）` : '');
     sel.appendChild(opt);
   });
   // Default to 顺丰速运
@@ -867,7 +887,7 @@ function syncToPayments() {
       p.amount = parseFloat(remaining[p.invoiceNo].total.toFixed(2));
       keptIds.add(p.id);
       delete remaining[p.invoiceNo];
-    } else if (p.status !== '已付款') {
+    } else if (p.status !== '已付�?) {
       // No matching express data and still pending: remove stale record
     } else {
       // Already paid: keep it
@@ -889,7 +909,7 @@ function syncToPayments() {
       amount: parseFloat(g.total.toFixed(2)),
       payee: g.company,
       method: '',
-      status: '待付款',
+      status: '待付�?,
       source: 'express',
     });
   });
@@ -899,8 +919,8 @@ function syncToPayments() {
 
 // ===== Clear all records =====
 function clearAllRecords() {
-  if (records.length === 0) { showToast('暂无记录可清空', 'info'); return; }
-  App.confirm(`确定要清空全部 ${records.length} 条快递记录吗？此操作不可撤销，关联的待付款记录也将被清理。`, () => {
+  if (records.length === 0) { showToast('暂无记录可清�?, 'info'); return; }
+  App.confirm(`确定要清空全�?${records.length} 条快递记录吗？此操作不可撤销，关联的待付款记录也将被清理。`, () => {
     records = [];
     saveData();
     populateDatalists();
@@ -990,9 +1010,9 @@ function addRecord() {
   const cost = parseFloat(document.getElementById('f_cost').value);
 
   if (!date) { showToast('请选择日期', 'error'); return; }
-  if (!company) { showToast('请选择快递公司', 'error'); return; }
-  if (!tracking) { showToast('请输入运单号码', 'error'); return; }
-  if (isNaN(cost) || cost < 0) { showToast('请输入有效费用', 'error'); return; }
+  if (!company) { showToast('请选择快递公�?, 'error'); return; }
+  if (!tracking) { showToast('请输入运单号�?, 'error'); return; }
+  if (isNaN(cost) || cost < 0) { showToast('请输入有效费�?, 'error'); return; }
 
   const record = {
     id: Date.now(),
@@ -1042,7 +1062,7 @@ function getFilteredRecords() {
 function renderTable() {
   const filtered = getFilteredRecords();
   const tbody = document.getElementById('tableBody');
-  document.getElementById('recordCount').textContent = `共 ${filtered.length} 条`;
+  document.getElementById('recordCount').textContent = `�?${filtered.length} 条`;
 
   // Render summary bar
   const sumCost = filtered.reduce((s, r) => s + (r.cost || 0), 0);
@@ -1054,21 +1074,21 @@ function renderTable() {
       <span class="table-summary-value">${filtered.length}</span>
     </div>
     <div class="table-summary-item">
-      <span class="table-summary-label">费用合计：</span>
+      <span class="table-summary-label">费用合计�?/span>
       <span class="table-summary-value green">¥${sumCost.toFixed(2)}</span>
     </div>
     <div class="table-summary-item">
-      <span class="table-summary-label">折扣合计：</span>
+      <span class="table-summary-label">折扣合计�?/span>
       <span class="table-summary-value orange">¥${sumDiscount.toFixed(2)}</span>
     </div>
     <div class="table-summary-item">
-      <span class="table-summary-label">应付合计：</span>
+      <span class="table-summary-label">应付合计�?/span>
       <span class="table-summary-value primary">¥${sumAmount.toFixed(2)}</span>
     </div>
   ` : '';
 
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="17">暂无快递记录，请添加</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="17">暂无快递记录，请添�?/td></tr>';
     return;
   }
 
@@ -1093,30 +1113,30 @@ function renderTable() {
         <td><input type="text" class="cell-edit" id="e_handler_${r.id}" value="${r.handler}"></td>
         <td><select class="cell-edit" id="e_svc_${r.id}"><option value="运费" ${r.service==='运费'?'selected':''}>运费</option><option value="保价" ${r.service==='保价'?'selected':''}>保价</option><option value="包装服务" ${r.service==='包装服务'?'selected':''}>包装服务</option><option value="其他" ${r.service==='其他'?'selected':''}>其他</option></select></td>
         <td class="center" style="white-space:nowrap">
-          <button class="btn-icon save" onclick="saveEdit(${r.id})" title="保存">✓</button>
-          <button class="btn-icon cancel" onclick="cancelEdit()" title="取消">✕</button>
+          <button class="btn-icon save" onclick="saveEdit(${r.id})" title="保存">�?/button>
+          <button class="btn-icon cancel" onclick="cancelEdit()" title="取消">�?/button>
         </td>
       </tr>`;
     }
     return `<tr data-id="${r.id}">
       <td>${formatDate(r.date)}</td>
       <td><span class="badge ${comp.badge}">${r.company}</span></td>
-      <td class="tracking-num">${r.tracking ? `<a href="${getTrackingUrl(r.company, r.tracking)}" target="_blank" rel="noopener" class="tracking-link" title="点击查询物流">${r.tracking}<span class="track-icon">🔍</span></a>` : '—'}</td>
-      <td>${r.styleNo || '—'}</td>
-      <td>${r.item || '—'}</td>
-      <td>${r.fromArea || '—'}</td>
-      <td>${r.toArea || '—'}</td>
-      <td>${r.companyName || '—'}</td>
-      <td class="num">${r.weight > 0 ? r.weight.toFixed(3) : '—'}</td>
-      <td>${r.productType || '—'}</td>
+      <td class="tracking-num">${r.tracking ? `<a href="${getTrackingUrl(r.company, r.tracking)}" target="_blank" rel="noopener" class="tracking-link" title="点击查询物流">${r.tracking}<span class="track-icon">🔍</span></a>` : '�?}</td>
+      <td>${r.styleNo || '�?}</td>
+      <td>${r.item || '�?}</td>
+      <td>${r.fromArea || '�?}</td>
+      <td>${r.toArea || '�?}</td>
+      <td>${r.companyName || '�?}</td>
+      <td class="num">${r.weight > 0 ? r.weight.toFixed(3) : '�?}</td>
+      <td>${r.productType || '�?}</td>
       <td><span class="tag-pay ${r.payType==='寄付'?'ji':'dao'}">${r.payType}</span></td>
       <td class="num">${r.cost.toFixed(2)}</td>
-      <td class="num">${r.discount > 0 ? r.discount.toFixed(2) : '—'}</td>
+      <td class="num">${r.discount > 0 ? r.discount.toFixed(2) : '�?}</td>
       <td class="num" style="font-weight:600;color:var(--primary)">${r.amount.toFixed(2)}</td>
-      <td>${r.handler || '—'}</td>
-      <td>${r.service || '—'}</td>
+      <td>${r.handler || '�?}</td>
+      <td>${r.service || '�?}</td>
       <td class="center" style="white-space:nowrap">
-        <button class="btn-icon edit" onclick="startEdit(${r.id})" title="编辑">✎</button>
+        <button class="btn-icon edit" onclick="startEdit(${r.id})" title="编辑">�?/button>
         <button class="btn-icon del" onclick="askDelete(${r.id})" title="删除">🗑</button>
       </td>
     </tr>`;
@@ -1179,7 +1199,7 @@ function saveEdit(id) {
   populateDatalists();
   editId = null;
   renderAll();
-  showToast('记录已更新', 'success');
+  showToast('记录已更�?, 'success');
 }
 
 function askDelete(id) {
@@ -1195,7 +1215,7 @@ function confirmDelete() {
   saveData();
   closeDelModal();
   renderAll();
-  showToast('记录已删除', 'success');
+  showToast('记录已删�?, 'success');
 }
 
 // ===== Stats =====
@@ -1214,28 +1234,28 @@ function renderStatsCards() {
       <div class="stat-icon blue">💰</div>
       <div class="stat-info">
         <div class="stat-label">本月应付总额</div>
-        <div class="stat-value">¥${totalCost.toFixed(2)}<span class="stat-unit"> 元</span></div>
+        <div class="stat-value">¥${totalCost.toFixed(2)}<span class="stat-unit"> �?/span></div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon green">📦</div>
       <div class="stat-info">
-        <div class="stat-label">本月快递件数</div>
-        <div class="stat-value">${totalCount}<span class="stat-unit"> 件</span></div>
+        <div class="stat-label">本月快递件�?/div>
+        <div class="stat-value">${totalCount}<span class="stat-unit"> �?/span></div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon orange">🏢</div>
       <div class="stat-info">
-        <div class="stat-label">涉及快递公司</div>
-        <div class="stat-value">${companies}<span class="stat-unit"> 家</span></div>
+        <div class="stat-label">涉及快递公�?/div>
+        <div class="stat-value">${companies}<span class="stat-unit"> �?/span></div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon purple">📊</div>
       <div class="stat-info">
         <div class="stat-label">平均每单费用</div>
-        <div class="stat-value">¥${avgCost.toFixed(2)}<span class="stat-unit"> 元</span></div>
+        <div class="stat-value">¥${avgCost.toFixed(2)}<span class="stat-unit"> �?/span></div>
       </div>
     </div>
   `;
@@ -1259,7 +1279,7 @@ function renderMonthTabs() {
   }
   tabs.innerHTML = months.map(m => {
     const [y, mo] = m.split('-');
-    return `<button class="tab-btn ${m===activeMonth?'active':''}" onclick="switchMonth('${m}')">${y}年${parseInt(mo)}月</button>`;
+    return `<button class="tab-btn ${m===activeMonth?'active':''}" onclick="switchMonth('${m}')">${y}�?{parseInt(mo)}�?/button>`;
   }).join('');
 }
 
@@ -1278,7 +1298,7 @@ function renderMonthlyContent() {
 
   const monthRecords = records.filter(r => r.date.startsWith(activeMonth));
   if (monthRecords.length === 0) {
-    content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">该月份暂无数据</div>';
+    content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">该月份暂无数�?/div>';
     return;
   }
 
@@ -1293,7 +1313,7 @@ function renderMonthlyContent() {
     companyStats[r.company].discount += r.discount;
     companyStats[r.company].amount += r.amount;
     // Per-handler tracking
-    const h = r.handler || '未指定';
+    const h = r.handler || '未指�?;
     if (!companyStats[r.company].handlers[h]) {
       companyStats[r.company].handlers[h] = { count: 0, cost: 0, discount: 0, amount: 0 };
     }
@@ -1318,7 +1338,7 @@ function renderMonthlyContent() {
   content.innerHTML = `
     <div class="monthly-summary">
       <div class="mini-stat">
-        <div class="mini-stat-label">${y}年${parseInt(mo)}月 应付总额</div>
+        <div class="mini-stat-label">${y}�?{parseInt(mo)}�?应付总额</div>
         <div class="mini-stat-value blue">¥${totalAmount.toFixed(2)}</div>
       </div>
       <div class="mini-stat">
@@ -1326,20 +1346,20 @@ function renderMonthlyContent() {
         <div class="mini-stat-value green">¥${totalCost.toFixed(2)} <span style="font-size:13px;color:var(--text-muted)">/ ¥${totalDiscount.toFixed(2)}</span></div>
       </div>
       <div class="mini-stat">
-        <div class="mini-stat-label">总件数 / 快递公司数</div>
-        <div class="mini-stat-value orange">${totalCount} <span style="font-size:13px;color:var(--text-muted)">件 / ${companyArr.length} 家</span></div>
+        <div class="mini-stat-label">总件�?/ 快递公司数</div>
+        <div class="mini-stat-value orange">${totalCount} <span style="font-size:13px;color:var(--text-muted)">�?/ ${companyArr.length} �?/span></div>
       </div>
     </div>
     <table class="company-table">
       <thead>
         <tr>
-          <th>快递公司 / 经手人</th>
+          <th>快递公�?/ 经手�?/th>
           <th class="num">件数</th>
-          <th class="num">费用合计(元)</th>
-          <th class="num">折扣合计(元)</th>
-          <th class="num">应付金额(元)</th>
+          <th class="num">费用合计(�?</th>
+          <th class="num">折扣合计(�?</th>
+          <th class="num">应付金额(�?</th>
           <th class="num">占比</th>
-          <th style="width:200px">费用占比可视化</th>
+          <th style="width:200px">费用占比可视�?/th>
         </tr>
       </thead>
       <tbody>
@@ -1399,7 +1419,7 @@ function renderFilters() {
   const currentMonthVal = monthSel.value;
   monthSel.innerHTML = '<option value="">全部月份</option>' + months.map(m => {
     const [y, mo] = m.split('-');
-    return `<option value="${m}" ${m===currentMonthVal?'selected':''}>${y}年${parseInt(mo)}月</option>`;
+    return `<option value="${m}" ${m===currentMonthVal?'selected':''}>${y}�?{parseInt(mo)}�?/option>`;
   }).join('');
 
   const companies = [...new Set(records.map(r => r.company))].sort();
@@ -1414,7 +1434,7 @@ function populateDatalists() {
   document.getElementById('cityList').innerHTML = cities.map(c => `<option value="${App.utils.escapeHtml(c)}">`).join('');
   const handlers = [...new Set(records.map(r => r.handler).filter(Boolean))].sort();
   document.getElementById('handlerList').innerHTML = handlers.map(h => `<option value="${App.utils.escapeHtml(h)}">`).join('');
-  // 对方公司名称：从通讯录加载单位名称，支持手工录入+关键字筛选
+  // 对方公司名称：从通讯录加载单位名称，支持手工录入+关键字筛�?
   const contactCompanies = [...new Set(App.store.get('contacts', []).map(c => c.name).filter(Boolean))].sort();
   document.getElementById('contactCompanyList').innerHTML = contactCompanies.map(c => `<option value="${App.utils.escapeHtml(c)}">`).join('');
   // Refresh destination datalist (cities + countries for international)
@@ -1441,7 +1461,7 @@ function exportData() {
   a.download = `快递费用_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('数据已备份', 'success');
+  showToast('数据已备�?, 'success');
 }
 
 function importData(event) {
@@ -1458,10 +1478,10 @@ function importData(event) {
         renderAll();
         showToast(`成功恢复 ${data.length} 条记录`, 'success');
       } else {
-        showToast('文件格式不正确', 'error');
+        showToast('文件格式不正�?, 'error');
       }
     } catch(err) {
-      showToast('导入失败：' + err.message, 'error');
+      showToast('导入失败�? + err.message, 'error');
     }
   };
   reader.readAsText(file);
@@ -1471,7 +1491,7 @@ function importData(event) {
 // ===== Excel Export =====
 const EXCEL_COLUMNS = [
   {header: '日期', key: 'date', w: 10},
-  {header: '快递公司', key: 'company', w: 12},
+  {header: '快递公�?, key: 'company', w: 12},
   {header: '运单号码', key: 'tracking', w: 20},
   {header: '款号', key: 'styleNo', w: 10},
   {header: '物品', key: 'item', w: 10},
@@ -1481,10 +1501,10 @@ const EXCEL_COLUMNS = [
   {header: '计费重量', key: 'weight', w: 10},
   {header: '产品类型', key: 'productType', w: 12},
   {header: '付款方式', key: 'payType', w: 8},
-  {header: '费用(元)', key: 'cost', w: 10},
+  {header: '费用(�?', key: 'cost', w: 10},
   {header: '折扣/促销', key: 'discount', w: 10},
   {header: '应付金额', key: 'amount', w: 10},
-  {header: '经手人', key: 'handler', w: 10},
+  {header: '经手�?, key: 'handler', w: 10},
   {header: '服务', key: 'service', w: 8},
 ];
 
@@ -1602,15 +1622,15 @@ function exportExcel() {
   // Header / Footer (printed on every page)
   ws['!headerFooter'] = {
     oddHeader: '&L&\"Microsoft YaHei\"&9江苏舜天汉唐贸易有限公司&R&\"Microsoft YaHei\"&9部门：徐正清',
-    oddFooter: '&L&\"Microsoft YaHei\"&9打印日期：&D&C&\"Microsoft YaHei\"&9第 &P 页 / 共 &N 页',
+    oddFooter: '&L&\"Microsoft YaHei\"&9打印日期�?D&C&\"Microsoft YaHei\"&9�?&P �?/ �?&N �?,
     evenHeader: '&L&\"Microsoft YaHei\"&9江苏舜天汉唐贸易有限公司&R&\"Microsoft YaHei\"&9部门：徐正清',
-    evenFooter: '&L&\"Microsoft YaHei\"&9打印日期：&D&C&\"Microsoft YaHei\"&9第 &P 页 / 共 &N 页',
+    evenFooter: '&L&\"Microsoft YaHei\"&9打印日期�?D&C&\"Microsoft YaHei\"&9�?&P �?/ �?&N �?,
   };
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '快递费用');
+  XLSX.utils.book_append_sheet(wb, ws, '快递费�?);
   XLSX.writeFile(wb, `快递费用_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast(`已导出 ${filtered.length} 条记录到Excel`, 'success');
+  showToast(`已导�?${filtered.length} 条记录到Excel`, 'success');
 }
 
 // ===== Excel Import =====
@@ -1631,7 +1651,7 @@ function importExcel(event) {
       let headerRowIdx = -1;
       for (let i = 0; i < Math.min(aoa.length, 10); i++) {
         const row = aoa[i].map(c => String(c).trim());
-        if (row.includes('日期') && (row.includes('运单号码') || row.includes('快递公司'))) {
+        if (row.includes('日期') && (row.includes('运单号码') || row.includes('快递公�?))) {
           headerRowIdx = i;
           break;
         }
@@ -1705,7 +1725,7 @@ function importExcel(event) {
       renderAll();
       showToast(`成功导入 ${imported.length} 条Excel记录`, 'success');
     } catch(err) {
-      showToast('Excel导入失败：' + err.message, 'error');
+      showToast('Excel导入失败�? + err.message, 'error');
     }
   };
   reader.readAsArrayBuffer(file);
@@ -1763,7 +1783,7 @@ function compareTrackingNumbers(event) {
       }
 
       const importedCount = Object.keys(importedMap).length;
-      if (importedCount === 0) { showToast('未在Excel中找到快递单号', 'error'); return; }
+      if (importedCount === 0) { showToast('未在Excel中找到快递单�?, 'error'); return; }
 
       // Build system tracking map (lowercase -> record)
       const systemMap = {};
@@ -1806,9 +1826,9 @@ function compareTrackingNumbers(event) {
 
       renderCompareResult();
       document.getElementById('compareModal').classList.add('show');
-      showToast(`对比完成：匹配 ${matched.length}，系统不存在 ${notInSystem.length}，系统多余 ${extraInSystem.length}`, 'success');
+      showToast(`对比完成：匹�?${matched.length}，系统不存在 ${notInSystem.length}，系统多�?${extraInSystem.length}`, 'success');
     } catch (err) {
-      showToast('对比失败：' + err.message, 'error');
+      showToast('对比失败�? + err.message, 'error');
     }
   };
   reader.readAsArrayBuffer(file);
@@ -1821,47 +1841,47 @@ function renderCompareResult() {
   const dateStr = timestamp.toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
 
   const notInSystemRows = notInSystem.length === 0
-    ? '<tr class="empty"><td colspan="2">无</td></tr>'
+    ? '<tr class="empty"><td colspan="2">�?/td></tr>'
     : notInSystem.map((t, i) => `<tr><td class="num">${i+1}</td><td class="tracking-num">${t}</td></tr>`).join('');
 
   const extraRows = extraInSystem.length === 0
-    ? '<tr class="empty"><td colspan="6">无</td></tr>'
+    ? '<tr class="empty"><td colspan="6">�?/td></tr>'
     : extraInSystem.map((r, i) => `<tr>
         <td class="num">${i+1}</td>
-        <td class="tracking-num">${r.tracking ? `<a href="${getTrackingUrl(r.company, r.tracking)}" target="_blank" rel="noopener" class="tracking-link" title="点击查询物流">${r.tracking}<span class="track-icon">🔍</span></a>` : '—'}</td>
-        <td>${r.company || '—'}</td>
-        <td>${r.date || '—'}</td>
-        <td>${r.styleNo || '—'}</td>
-        <td>${r.handler || '—'}</td>
+        <td class="tracking-num">${r.tracking ? `<a href="${getTrackingUrl(r.company, r.tracking)}" target="_blank" rel="noopener" class="tracking-link" title="点击查询物流">${r.tracking}<span class="track-icon">🔍</span></a>` : '�?}</td>
+        <td>${r.company || '�?}</td>
+        <td>${r.date || '�?}</td>
+        <td>${r.styleNo || '�?}</td>
+        <td>${r.handler || '�?}</td>
       </tr>`).join('');
 
   document.getElementById('compareBody').innerHTML = `
     <div class="compare-summary">
-      <div>对比时间：<strong>${dateStr}</strong></div>
+      <div>对比时间�?strong>${dateStr}</strong></div>
       <div>导入单号数：<strong>${importedCount}</strong></div>
       <div>系统单号数：<strong>${systemCount}</strong></div>
       <div class="success">匹配数：<strong>${matchedCount}</strong></div>
       <div class="danger">系统不存在：<strong>${notInSystem.length}</strong></div>
-      <div class="warning">系统多余：<strong>${extraInSystem.length}</strong></div>
+      <div class="warning">系统多余�?strong>${extraInSystem.length}</strong></div>
     </div>
     <div class="compare-sections">
       <div class="compare-section">
-        <h4><span class="dot danger"></span>系统不存在的快递单号 (${notInSystem.length})</h4>
+        <h4><span class="dot danger"></span>系统不存在的快递单�?(${notInSystem.length})</h4>
         <table class="compare-table">
-          <thead><tr><th style="width:50px">序号</th><th>快递单号</th></tr></thead>
+          <thead><tr><th style="width:50px">序号</th><th>快递单�?/th></tr></thead>
           <tbody>${notInSystemRows}</tbody>
         </table>
       </div>
       <div class="compare-section">
-        <h4><span class="dot warning"></span>系统多余的快递单号 (${extraInSystem.length})</h4>
+        <h4><span class="dot warning"></span>系统多余的快递单�?(${extraInSystem.length})</h4>
         <table class="compare-table">
           <thead><tr>
             <th style="width:50px">序号</th>
-            <th>快递单号</th>
-            <th>快递公司</th>
+            <th>快递单�?/th>
+            <th>快递公�?/th>
             <th>日期</th>
             <th>款号</th>
-            <th>经手人</th>
+            <th>经手�?/th>
           </tr></thead>
           <tbody>${extraRows}</tbody>
         </table>
@@ -1880,25 +1900,25 @@ function printCompareResult() {
   const dateStr = timestamp.toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
 
   const notInSystemRows = notInSystem.length === 0
-    ? '<tr class="empty"><td colspan="2">无</td></tr>'
+    ? '<tr class="empty"><td colspan="2">�?/td></tr>'
     : notInSystem.map((t, i) => `<tr><td class="num">${i+1}</td><td class="tracking-num">${t}</td></tr>`).join('');
 
   const extraRows = extraInSystem.length === 0
-    ? '<tr class="empty"><td colspan="6">无</td></tr>'
+    ? '<tr class="empty"><td colspan="6">�?/td></tr>'
     : extraInSystem.map((r, i) => `<tr>
         <td class="num">${i+1}</td>
         <td class="tracking-num">${r.tracking}</td>
-        <td>${r.company || '—'}</td>
-        <td>${r.date || '—'}</td>
-        <td>${r.styleNo || '—'}</td>
-        <td>${r.handler || '—'}</td>
+        <td>${r.company || '�?}</td>
+        <td>${r.date || '�?}</td>
+        <td>${r.styleNo || '�?}</td>
+        <td>${r.handler || '�?}</td>
       </tr>`).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>快递单号对比结果</title>
+<title>快递单号对比结�?/title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -2002,36 +2022,36 @@ function printCompareResult() {
   <div class="print-header">
     <div class="company">江苏舜天汉唐贸易有限公司</div>
     <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD</div>
-    <div class="title">快递单号对比结果</div>
+    <div class="title">快递单号对比结�?/div>
   </div>
   <div class="compare-info">
     <span>部门：徐正清</span>
-    <span>对比时间：${dateStr}</span>
+    <span>对比时间�?{dateStr}</span>
   </div>
   <div class="summary">
     <div>导入单号数：<strong>${importedCount}</strong></div>
     <div>系统单号数：<strong>${systemCount}</strong></div>
     <div class="success">匹配数：<strong>${matchedCount}</strong></div>
     <div class="danger">系统不存在：<strong>${notInSystem.length}</strong></div>
-    <div class="warning">系统多余：<strong>${extraInSystem.length}</strong></div>
+    <div class="warning">系统多余�?strong>${extraInSystem.length}</strong></div>
   </div>
   <div class="section danger">
-    <h4>系统不存在的快递单号 (${notInSystem.length})</h4>
+    <h4>系统不存在的快递单�?(${notInSystem.length})</h4>
     <table>
-      <thead><tr><th style="width:50px">序号</th><th>快递单号</th></tr></thead>
+      <thead><tr><th style="width:50px">序号</th><th>快递单�?/th></tr></thead>
       <tbody>${notInSystemRows}</tbody>
     </table>
   </div>
   <div class="section warning">
-    <h4>系统多余的快递单号 (${extraInSystem.length})</h4>
+    <h4>系统多余的快递单�?(${extraInSystem.length})</h4>
     <table>
       <thead><tr>
         <th style="width:50px">序号</th>
-        <th>快递单号</th>
-        <th>快递公司</th>
+        <th>快递单�?/th>
+        <th>快递公�?/th>
         <th>日期</th>
         <th>款号</th>
-        <th>经手人</th>
+        <th>经手�?/th>
       </tr></thead>
       <tbody>${extraRows}</tbody>
     </table>
@@ -2068,18 +2088,9 @@ App.initSampleData();
 App.enforcePagePermission('express');
 
 initExpress();
+_expressInited = true; // 标记 initExpress 已执行，监听器现在可以响应事件了
 
-// 监听云端数据变更（15秒自动刷新）
-window.addEventListener('cloud-data-updated', function(e) {
-  var keys = e.detail.keys || [];
-  var needRefresh = keys.some(function(k) {
-    return k === 'express_delivery_data_v2' || k === 'contacts';
-  });
-  if (needRefresh) {
-    console.log('[express.html] 云端数据变更，刷新页面数据');
-    initExpress();
-  }
-});
+// 注意：cloud-data-updated 监听器已经在脚本块顶部同步注册过了，这里不要重复注册
 });
 </script>
 </body>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>云端数据诊断</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+  h1 { color: #004D6D; }
+  h2 { color: #004D6D; margin-top: 30px; border-bottom: 2px solid #004D6D; padding-bottom: 5px; }
+  .key-row { padding: 8px 12px; border: 1px solid #ddd; margin: 4px 0; border-radius: 4px; background: #f9f9f9; }
+  .key-name { font-weight: bold; color: #004D6D; }
+  .key-meta { color: #666; font-size: 13px; margin-left: 12px; }
+  .key-empty { color: #999; font-style: italic; }
+  .has-data { border-left: 4px solid #22c55e; }
+  .no-data { border-left: 4px solid #ccc; }
+  .error { color: #dc2626; padding: 10px; background: #fef2f2; border-radius: 4px; }
+  .success { color: #16a34a; padding: 10px; background: #f0fdf4; border-radius: 4px; }
+  button { padding: 8px 16px; background: #004D6D; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 4px 0; }
+  button:hover { background: #003553; }
+  pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 200px; font-size: 12px; }
+  .tabs { display: flex; gap: 8px; margin: 10px 0; }
+  .tab { padding: 6px 12px; border: 1px solid #004D6D; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .tab.active { background: #004D6D; color: white; }
+</style>
+</head>
+<body>
+<h1>云端数据诊断工具</h1>
+<p>此页面用于检查 Supabase 云端 app_data_store 表中的数据。需要在已登录的浏览器中打开。</p>
+
+<button onclick="loadCloudData()">🔄 加载云端数据</button>
+<button onclick="checkLoginStatus()">👤 检查登录状态</button>
+<button onclick="forceUploadLocal()">⬆️ 强制上传本地数据到云端</button>
+
+<div id="status"></div>
+
+<h2>云端数据列表</h2>
+<div id="cloudData"><p class="key-empty">点击上方"加载云端数据"按钮开始</p></div>
+
+<h2>本地 localStorage 数据</h2>
+<button onclick="showLocalData()">📁 显示本地数据</button>
+<div id="localData"></div>
+
+<script type="module">
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './js/supabase.js';
+window.supabase = supabase;
+window.SUPABASE_URL = SUPABASE_URL;
+window.SUPABASE_PUBLISHABLE_KEY = SUPABASE_PUBLISHABLE_KEY;
+
+const TARGET_KEYS = [
+  'express_delivery_data_v2',
+  'sht_sample_data_v2', 'sht_size_tables_v2', 'samples', 'sizeSheets',
+  'contacts', 'orders', 'styles', 'fabrics', 'accessories',
+  'shippings', 'maintFabrics', 'maintAccessories',
+  'pl_records_v1', 'pl_draft_v1'
+];
+
+window.loadCloudData = async function() {
+  const statusEl = document.getElementById('status');
+  const dataEl = document.getElementById('cloudData');
+  statusEl.innerHTML = '<p>正在加载云端数据...</p>';
+  dataEl.innerHTML = '';
+
+  try {
+    const { data, error } = await supabase
+      .from('app_data_store')
+      .select('store_key, payload, updated_at, user_id')
+      .order('store_key');
+
+    if (error) {
+      statusEl.innerHTML = '<p class="error">查询失败: ' + error.message + '</p>';
+      console.error('查询错误:', error);
+      return;
+    }
+
+    statusEl.innerHTML = '<p class="success">✅ 查询成功，云端共有 ' + data.length + ' 条数据</p>';
+
+    if (data.length === 0) {
+      dataEl.innerHTML = '<p class="error">⚠️ 云端表为空！没有任何数据。这就是其他设备同步不到数据的原因。</p>';
+      return;
+    }
+
+    // 重点检查的目标 keys
+    const targetSet = new Set(TARGET_KEYS);
+    const targetRows = data.filter(r => targetSet.has(r.store_key));
+    const otherRows = data.filter(r => !targetSet.has(r.store_key));
+
+    let html = '<h3>业务数据 (' + targetRows.length + ' 条)</h3>';
+    if (targetRows.length === 0) {
+      html += '<p class="error">⚠️ 云端没有任何业务数据！需要先在已登录的浏览器中"强制上传本地数据"。</p>';
+    } else {
+      targetRows.forEach(row => {
+        const payload = row.payload;
+        const isArray = Array.isArray(payload);
+        const count = isArray ? payload.length : (payload ? Object.keys(payload).length : 0);
+        const hasData = count > 0;
+        const cls = hasData ? 'has-data' : 'no-data';
+        const dataStr = isArray ? count + ' 条记录' : count + ' 个字段';
+        html += '<div class="key-row ' + cls + '">';
+        html += '<span class="key-name">' + row.store_key + '</span>';
+        html += '<span class="key-meta">| ' + (hasData ? '✅ ' + dataStr : '❌ 空') + ' | updated: ' + (row.updated_at || '未知') + '</span>';
+        if (hasData && isArray && payload.length > 0) {
+          html += '<pre>' + JSON.stringify(payload.slice(0, 2), null, 2) + (payload.length > 2 ? '\n... 共 ' + payload.length + ' 条' : '') + '</pre>';
+        }
+        html += '</div>';
+      });
+    }
+
+    if (otherRows.length > 0) {
+      html += '<h3>其他数据 (' + otherRows.length + ' 条)</h3>';
+      otherRows.forEach(row => {
+        html += '<div class="key-row no-data"><span class="key-name">' + row.store_key + '</span><span class="key-meta">| updated: ' + (row.updated_at || '未知') + '</span></div>';
+      });
+    }
+
+    dataEl.innerHTML = html;
+  } catch (e) {
+    statusEl.innerHTML = '<p class="error">异常: ' + e.message + '</p>';
+    console.error('异常:', e);
+  }
+};
+
+window.checkLoginStatus = async function() {
+  const statusEl = document.getElementById('status');
+  statusEl.innerHTML = '<p>检查登录状态...</p>';
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data || !data.user) {
+      statusEl.innerHTML = '<p class="error">❌ 未登录或会话失效: ' + (error ? error.message : '无用户') + '</p>';
+    } else {
+      statusEl.innerHTML = '<p class="success">✅ 已登录: ' + data.user.email + ' (ID: ' + data.user.id + ')</p>';
+    }
+  } catch (e) {
+    statusEl.innerHTML = '<p class="error">异常: ' + e.message + '</p>';
+  }
+};
+
+window.forceUploadLocal = async function() {
+  const statusEl = document.getElementById('status');
+  statusEl.innerHTML = '<p>开始上传本地数据...</p>';
+
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) {
+    statusEl.innerHTML = '<p class="error">❌ 未登录，无法上传</p>';
+    return;
+  }
+
+  let uploaded = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const key of TARGET_KEYS) {
+    const raw = localStorage.getItem(key);
+    if (!raw || raw === '[]' || raw === 'null' || raw === '{}') {
+      skipped++;
+      continue;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch (e) {
+      payload = raw;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('app_data_store')
+        .upsert({
+          user_id: user.id,
+          store_key: key,
+          payload: payload,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'store_key' });
+
+      if (error) {
+        console.error('上传失败:', key, error);
+        failed++;
+      } else {
+        const cnt = Array.isArray(payload) ? payload.length + ' 条' : '对象';
+        console.log('✅ 已上传:', key, cnt);
+        uploaded++;
+      }
+    } catch (e) {
+      console.error('上传异常:', key, e);
+      failed++;
+    }
+  }
+
+  statusEl.innerHTML = '<p class="success">✅ 上传完成: ' + uploaded + ' 个上传, ' + skipped + ' 个跳过(本地无数据), ' + failed + ' 个失败</p>';
+};
+
+window.showLocalData = function() {
+  const el = document.getElementById('localData');
+  let html = '';
+  TARGET_KEYS.forEach(key => {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      html += '<div class="key-row no-data"><span class="key-name">' + key + '</span><span class="key-meta">| 本地无数据</span></div>';
+    } else {
+      let count = 0;
+      try {
+        const parsed = JSON.parse(raw);
+        count = Array.isArray(parsed) ? parsed.length : Object.keys(parsed).length;
+      } catch (e) {
+        count = raw.length + ' 字符';
+      }
+      const cls = count > 0 ? 'has-data' : 'no-data';
+      html += '<div class="key-row ' + cls + '"><span class="key-name">' + key + '</span><span class="key-meta">| ' + count + ' 项 | ' + raw.length + ' 字符</span></div>';
+    }
+  });
+  el.innerHTML = html;
+};
+</script>
+</body>
+</html>

@@ -346,21 +346,30 @@ async function init() {
     }
 
     // REST API 回退：当 JS 客户端不可用时，直接用 fetch 调用 Supabase REST API
-    // 双路径：先尝试标准头，失败后使用 URL 参数（Safari file:// 兼容）
+    // 关键修复：必须使用用户 JWT（不能用 anon key），否则 RLS 会拒绝并返回空数组
     if (!queryOk) {
-      console.log('[SupabaseStore] 🔄 尝试 REST API 直接查询...');
+      console.log('[SupabaseStore] 🔄 尝试 REST API 直接查询（带用户JWT）...');
       var REST_URL = "https://ugoyacuagslqhqguxyqe.supabase.co";
       var REST_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI";
       var restSuccess = false;
+      var initUserJWT = getUserJWT();
+      if (!initUserJWT) {
+        console.warn('[SupabaseStore] init: 未找到用户 JWT，REST 查询会被 RLS 拒绝');
+      }
 
-      // 路径1: 自定义头
+      // 路径1: 自定义头（包含用户 JWT）
       try {
+        var initHeaders = {
+          'apikey': REST_KEY,
+          'Prefer': 'return=representation'
+        };
+        if (initUserJWT) {
+          initHeaders['Authorization'] = 'Bearer ' + initUserJWT;
+        } else {
+          initHeaders['Authorization'] = 'Bearer ' + REST_KEY;
+        }
         var resp1 = await fetch(REST_URL + '/rest/v1/app_data_store?select=store_key,payload,updated_at', {
-          headers: {
-            'apikey': REST_KEY,
-            'Authorization': 'Bearer ' + REST_KEY,
-            'Prefer': 'return=representation'
-          }
+          headers: initHeaders
         });
         if (resp1.ok) {
           var data1 = await resp1.json();
@@ -373,14 +382,16 @@ async function init() {
             });
             queryOk = true;
             restSuccess = true;
-            console.log('[SupabaseStore] ✅ REST API(头) 回退成功，获取到', data1.length, '条数据');
+            console.log('[SupabaseStore] ✅ REST API(头+JWT) 回退成功，获取到', data1.length, '条数据');
           }
+        } else {
+          console.warn('[SupabaseStore] REST API(头) HTTP ' + resp1.status + ' (JWT=' + (initUserJWT ? '有' : '无') + ')');
         }
       } catch (e1) {
         console.warn('[SupabaseStore] REST API(头) 失败:', e1 && e1.message ? e1.message : e1);
       }
 
-      // 路径2: URL 参数（Safari file:// 兼容）
+      // 路径2: URL 参数（无法携带 JWT，RLS 会拒绝，仅作为最后兜底）
       if (!restSuccess) {
         try {
           var resp2 = await fetch(REST_URL + '/rest/v1/app_data_store?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(REST_KEY), {
@@ -396,7 +407,7 @@ async function init() {
               }
             });
             queryOk = true;
-            console.log('[SupabaseStore] ✅ REST API(URL参数) 回退成功，获取到', data2.length, '条数据');
+            console.log('[SupabaseStore] ✅ REST API(URL参数,无JWT) 获取到', data2.length, '条数据 (可能因RLS为空)');
           }
         } catch (e2) {
           console.error('[SupabaseStore] REST API(URL参数) 也失败:', e2 && e2.message ? e2.message : e2);
@@ -1038,31 +1049,74 @@ function _oldStringify(key) {
 var _REST_URL = "https://ugoyacuagslqhqguxyqe.supabase.co";
 var _REST_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI";
 
+// 获取当前登录用户的 access_token（JWT）
+// RLS 策略要求 auth.role() = 'authenticated'，anon key 的 role 是 'anon' 会被拒绝
+// 必须用真实用户 JWT 才能通过 RLS
+function getUserJWT() {
+  try {
+    // Supabase v2 默认存储键名: sb-<project-ref>-auth-token
+    var tokenKey = 'sb-ugoyacuagslqhqguxyqe-auth-token';
+    // 必须从原始 localStorage 读（绕过 patch），否则会递归
+    var raw = null;
+    if (window._origLocalStorage && window._origLocalStorage.getItem) {
+      raw = window._origLocalStorage.getItem(tokenKey);
+    }
+    if (!raw) {
+      raw = localStorage.getItem(tokenKey);
+    }
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (parsed && parsed.access_token) {
+      return parsed.access_token;
+    }
+  } catch(e) {
+    console.warn('[SupabaseStore] getUserJWT 异常:', e && e.message ? e.message : e);
+  }
+  return null;
+}
+
 async function refreshViaREST() {
-  // 双路径策略：先尝试标准头方式，失败后使用 URL 参数方式（Safari file:// 兼容）
+  // 关键修复：必须使用用户 JWT，不能用 anon key
+  // RLS 策略 using (auth.role() = 'authenticated') 要求已认证用户
+  // anon key 的 role 是 'anon'，会被 RLS 拒绝，返回空数组 []
+  var userJWT = getUserJWT();
+  if (!userJWT) {
+    console.warn('[SupabaseStore] refreshViaREST: 未找到用户 JWT，RLS 会拒绝匿名访问');
+  }
+
   var lastError = null;
 
-  // 路径1: 使用自定义头（标准方式，但 Safari file:// 可能触发 CORS 预检）
+  // 路径1: 使用自定义头（包含用户 JWT，触发 CORS 预检但在 HTTPS 站点下正常工作）
   try {
+    var headers1 = {
+      'apikey': _REST_KEY,
+      'Prefer': 'return=representation'
+    };
+    if (userJWT) {
+      headers1['Authorization'] = 'Bearer ' + userJWT;
+    } else {
+      headers1['Authorization'] = 'Bearer ' + _REST_KEY;
+    }
     var resp1 = await fetch(_REST_URL + '/rest/v1/app_data_store?select=store_key,payload,updated_at', {
-      headers: {
-        'apikey': _REST_KEY,
-        'Authorization': 'Bearer ' + _REST_KEY,
-        'Prefer': 'return=representation'
-      }
+      headers: headers1
     });
     if (resp1.ok) {
       var rows1 = await resp1.json();
       if (Array.isArray(rows1)) {
-        return _processRestRows(rows1, 'headers');
+        console.log('[SupabaseStore] REST 路径1(标准头+用户JWT) 成功:', rows1.length, '行');
+        return _processRestRows(rows1, 'headers+JWT');
       }
+    } else {
+      console.warn('[SupabaseStore] REST 路径1 HTTP ' + resp1.status + ' (JWT=' + (userJWT ? '有' : '无') + ')');
     }
     lastError = new Error('路径1失败: HTTP ' + resp1.status);
   } catch (e1) {
     lastError = e1;
+    console.warn('[SupabaseStore] REST 路径1异常:', e1 && e1.message ? e1.message : e1);
   }
 
-  // 路径2: 使用 URL 查询参数（避免 CORS 预检，Safari file:// 兼容）
+  // 路径2: URL 参数方式（避免 CORS 预检，但无法携带用户 JWT，RLS 会拒绝）
+  // 仅作为最后兜底（如果 RLS 策略改为允许 anon 读取时才有用）
   try {
     var resp2 = await fetch(_REST_URL + '/rest/v1/app_data_store?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(_REST_KEY), {
       cache: 'no-store'
@@ -1070,9 +1124,10 @@ async function refreshViaREST() {
     if (!resp2.ok) throw new Error('HTTP ' + resp2.status);
     var rows2 = await resp2.json();
     if (!Array.isArray(rows2)) return [];
+    console.log('[SupabaseStore] REST 路径2(URL参数,无JWT) 成功:', rows2.length, '行 (可能因RLS返回空)');
     return _processRestRows(rows2, 'url-param');
   } catch (e2) {
-    console.warn('[SupabaseStore] REST 刷新两条路径均失败:', 
+    console.warn('[SupabaseStore] REST 刷新两条路径均失败:',
       '路径1:', lastError && lastError.message ? lastError.message : lastError,
       '路径2:', e2 && e2.message ? e2.message : e2);
     return [];
