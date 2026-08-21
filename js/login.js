@@ -159,12 +159,47 @@ async function handleLogin(event) {
 // 暴露到全局，供 login.html 的 onsubmit 调用
 window.handleLogin = handleLogin;
 
-// 如果已经登录，直接跳首页
+// 如果已经登录（同步检查 Supabase 会话 token），立即跳首页
+// 先用同步方式读 localStorage，避免异步 getUser() 失败/卡住时停留在登录页
+(function redirectIfAuthedSync() {
+  try {
+    const keys = Object.keys(localStorage);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") >= 0) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.user) {
+              const go = () => {
+                try { window.location.replace("index.html"); }
+                catch (e) { window.location.href = "index.html"; }
+              };
+              go();
+              setTimeout(go, 30);
+              setTimeout(go, 300);
+              return;
+            }
+          } catch(_) {}
+        }
+      }
+    }
+  } catch(_) {}
+})();
+
+// 异步再确认一次（权威 getUser）
 (async function redirectIfAuthed() {
   try {
     const { data } = await supabase.auth.getUser();
     if (data && data.user) {
-      window.location.replace("index.html");
+      const go = () => {
+        try { window.location.replace("index.html"); }
+        catch (e) { window.location.href = "index.html"; }
+      };
+      go();
+      setTimeout(go, 30);
+      setTimeout(go, 300);
     }
   } catch (e) {
     // 忽略，停留在登录页

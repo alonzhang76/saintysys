@@ -40,6 +40,11 @@ function _clearAllAuthState() {
       sessionStorage.removeItem(k);
     });
   } catch (e) {}
+  // 防残留：清除当前用户缓存，防止内存中还保留旧用户对象
+  try {
+    if (window.App) window.App._currentUser = null;
+  } catch(_) {}
+  window.currentSupabaseUser = null;
 }
 
 // 把 Supabase user 映射为系统原有用户结构（保持 App.* 方法兼容）

@@ -73,6 +73,11 @@
         }
       );
     } catch (e) {}
+    // 防残留：清除当前用户缓存，防止 App.getCurrentUser 仍返回旧用户
+    try {
+      if (window.App) window.App._currentUser = null;
+    } catch(e) {}
+    window.currentSupabaseUser = null;
   }
 
   // 把 Supabase user 映射为系统原有的用户结构，保证 App.* 兼容
@@ -118,76 +123,89 @@
   /* ---------- 同步覆盖 App 方法 ----------
    * 这些方法在页面内联脚本调用 App.checkLogin() / enforcePagePermission() 时
    * 已经可用，因为本文件是经典脚本，会先于页面底部内联脚本执行
+   * 注意：必须与 js/common.js 中的逻辑保持一致，尤其：
+   *   - 角色必须按邮箱匹配本地 users 列表（设置页的权威角色来源）
+   *   - 显示名必须读本地 users 列表（管理员配置的用户名）
+   *   - logout 必须是乐观跳转：先清+跳，signOut 异步，不能被失败阻塞
    */
   function overrideAppSync() {
     if (typeof window.App === "undefined" || !window.App) return;
 
-    // App.checkLogin：同步检查 localStorage 中的 Supabase 会话
+    // ---- App.checkLogin：同步检查 Supabase 会话，无会话立即跳登录页 ----
     App.checkLogin = function () {
       const session = readSupabaseSession();
       if (!session || !session.user) {
         clearAllAuthState();
-        try {
-          window.location.replace("login.html");
-        } catch (e) {
-          window.location.href = "login.html";
-        }
+        const goLogin = function() {
+          try { window.location.replace("login.html"); }
+          catch (e) { window.location.href = "login.html"; }
+        };
+        goLogin();
+        setTimeout(goLogin, 30);
+        setTimeout(goLogin, 300);
         return false;
       }
       return true;
     };
 
-    // App.getCurrentUser：返回映射后的 Supabase 用户
+    // ---- App.getCurrentUser：每次都从最新 users 列表重新映射角色 ----
     App.getCurrentUser = function () {
-      // 优先使用异步守卫已设置的 window.currentSupabaseUser
-      if (window.currentSupabaseUser) {
-        return mapSupabaseUser(window.currentSupabaseUser);
-      }
-      const session = readSupabaseSession();
-      if (session && session.user) {
-        return mapSupabaseUser(session.user);
-      }
-      return null;
+      const cu = window.currentSupabaseUser
+        || ((readSupabaseSession() || {}).user);
+      return cu ? mapSupabaseUser(cu) : null;
     };
 
-    // App.loadUserInfo：用 Supabase 用户名更新顶栏
+    // ---- App.loadUserInfo：优先使用本地 users 列表的显示名（管理员在设置页配置的） ----
     App.loadUserInfo = function () {
-      let username = "管理员";
-      const cu = window.currentSupabaseUser;
-      if (cu) {
-        username =
-          (cu.user_metadata && cu.user_metadata.username) ||
-          (cu.email ? cu.email.split("@")[0] : "用户");
-      } else {
-        const session = readSupabaseSession();
-        if (session && session.user) {
-          const u = session.user;
-          username =
-            (u.user_metadata && u.user_metadata.username) ||
-            (u.email ? u.email.split("@")[0] : "用户");
+      let username = "";
+      let userEmail = "";
+      try {
+        const cu = window.currentSupabaseUser
+          || ((readSupabaseSession() || {}).user);
+        if (cu) {
+          userEmail = cu.email || "";
+          username = (cu.user_metadata && cu.user_metadata.username) || "";
         }
-      }
+        // 核心修复：本地 users 列表（管理员权威配置）按邮箱匹配的用户名优先级最高
+        if (userEmail && window.App && typeof window.App.store !== "undefined") {
+          try {
+            const localUsers = window.App.store.get("users", []);
+            const emailLower = userEmail.toLowerCase().trim();
+            const matched = localUsers.find(function(u) {
+              return u.email && u.email.toLowerCase().trim() === emailLower;
+            });
+            if (matched && matched.username) username = matched.username;
+          } catch(e) {}
+        }
+        if (!username) {
+          username = userEmail ? userEmail.split("@")[0] : "用户";
+        }
+      } catch (e) {}
       const userEl = document.querySelector(".header-user .user-name");
       if (userEl) userEl.textContent = username;
     };
 
-    // App.logout：先清本地态，再异步 signOut，最后跳登录页
-    // （若异步守卫已覆盖此方法为更完整版本，会以异步守卫版本为准）
+    // ---- App.logout：乐观退出——先清本地+立即跳，signOut 异步 ----
+    // 绝对保证"点击退出一定跳登录页"，signOut 网络失败不能阻断跳转
     App.logout = function () {
       clearAllAuthState();
-      // 尽力调用 signOut（动态 import，失败不影响跳转）
-      import("./supabase.js")
-        .then(function (mod) {
-          return mod.supabase.auth.signOut().catch(function () {});
-        })
-        .catch(function () {})
-        .finally(function () {
-          try {
-            window.location.replace("login.html");
-          } catch (e) {
-            window.location.href = "login.html";
-          }
-        });
+      const goLogin = function() {
+        try { window.location.replace("login.html"); }
+        catch (e) { window.location.href = "login.html"; }
+      };
+      goLogin();
+      setTimeout(goLogin, 50);
+      setTimeout(goLogin, 500);
+      // signOut 放跳转之后异步执行，失败静默
+      try {
+        if (window.supabase && typeof window.supabase.auth?.signOut === "function") {
+          window.supabase.auth.signOut().catch(function(){});
+        } else {
+          import("./supabase.js")
+            .then(function(mod) { if (mod.supabase) mod.supabase.auth.signOut().catch(function(){}); })
+            .catch(function(){});
+        }
+      } catch(e) {}
     };
   }
 
@@ -198,12 +216,16 @@
   var _preSession = readSupabaseSession();
   if (!_preSession || !_preSession.user) {
     clearAllAuthState();
-    try {
-      window.location.replace("login.html");
-    } catch (e) {
-      window.location.href = "login.html";
-    }
-    // 标记，让异步守卫不再执行
+    // 关键修复：无会话时的跳转也用"乐观多次跳转"
+    // 避免 Safari 或 file:/// 协议下 replace 被静默吞掉
+    const goLogin = function() {
+      try { window.location.replace("login.html"); }
+      catch (e) { window.location.href = "login.html"; }
+    };
+    goLogin();
+    setTimeout(goLogin, 20);
+    setTimeout(goLogin, 200);
+    setTimeout(goLogin, 1500); // 最终兜底
     window.__authGuardRedirected = true;
   } else {
     overrideAppSync();
@@ -223,14 +245,16 @@
       const { data, error } = await supabase.auth.getUser();
 
       if (error || !data || !data.user) {
-        // 会话无效或已过期
         console.error("[auth-guard] 未登录或会话失效:", error);
         clearAllAuthState();
-        try {
-          window.location.replace("login.html");
-        } catch (e) {
-          window.location.href = "login.html";
-        }
+        const goLogin = function() {
+          try { window.location.replace("login.html"); }
+          catch (e) { window.location.href = "login.html"; }
+        };
+        goLogin();
+        setTimeout(goLogin, 20);
+        setTimeout(goLogin, 200);
+        setTimeout(goLogin, 1500);
         return;
       }
 
