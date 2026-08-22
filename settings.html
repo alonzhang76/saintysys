@@ -329,24 +329,45 @@ function deleteUser(id) {
 }
 
 // ===== 用户组/权限管理 =====
+// 使用"待保存缓存 + 保存按钮"模式：修改时不落盘，点击保存才双写本地+云端
+let _pendingPerms = null;       // 当前编辑中的权限对象
+let _baselinePerms = null;      // 保存按钮点击后/页面刚加载时的基线，用于对比是否有未保存变更
+
+function _deepClonePerms(p) {
+  try { return JSON.parse(JSON.stringify(p || {})); } catch(e) { return {}; }
+}
+function _permsEqual(a, b) {
+  try { return JSON.stringify(a||{}) === JSON.stringify(b||{}); } catch(e) { return false; }
+}
+function _hasPermChanges() {
+  return !_permsEqual(_pendingPerms, _baselinePerms);
+}
+
 function renderRoles() {
-  const isAdmin = isAdminUser(); // 修复：同时检查角色和管理员邮箱
+  const isAdmin = isAdminUser();
   const canEdit = isAdmin;
 
   const roles = App.roles;
   const modules = App.modulePermissions;
-  let perms = App.store.get('permissions', {});
+  let stored = App.store.get('permissions', {});
 
   // 兼容迁移：旧的 feedback 模块权限 → consumption（用料及纸板），防止用户之前保存的权限丢失
-  if (perms && perms.feedback && !perms.consumption) {
-    perms.consumption = JSON.parse(JSON.stringify(perms.feedback));
+  if (stored && stored.feedback && !stored.consumption) {
+    stored.consumption = JSON.parse(JSON.stringify(stored.feedback));
     try {
-      App.store.set('permissions', perms);
+      App.store.set('permissions', stored);
       if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
-        window.SupabaseStore.setSync('permissions', perms);
+        window.SupabaseStore.setSync('permissions', stored);
       }
     } catch(_) {}
   }
+
+  // 初始化待保存缓存（首次进入页面或刚执行完重置后触发）
+  if (!_pendingPerms || !_baselinePerms) {
+    _pendingPerms = _deepClonePerms(stored);
+    _baselinePerms = _deepClonePerms(stored);
+  }
+  const perms = _pendingPerms;
 
   // 构建权限矩阵
   let matrixHtml = '<table class="perm-matrix"><thead><tr><th>模块</th>';
@@ -359,18 +380,17 @@ function renderRoles() {
     matrixHtml += `<tr><td style="font-weight:600;">${modules[modKey]}</td>`;
     Object.keys(roles).forEach(roleKey => {
       const roleDef = roles[roleKey];
-      if (roleDef.isAdmin) return; // 管理员不显示在矩阵中（管理员始终拥有全部权限）
+      if (roleDef.isAdmin) return;
       const modPerm = perms[modKey] || {};
       const perm = modPerm[roleKey] || 'read';
       const disabled = !canEdit ? 'disabled' : '';
 
       if (!canEdit) {
-        // 只读查看模式
         const display = perm === 'write' ? '✏️ 读写' : (perm === 'hidden' ? '🚫 不显示' : (perm === 'none' ? '⛔ 无' : '👁️ 只读'));
         matrixHtml += `<td>${display}</td>`;
       } else {
         matrixHtml += `<td>
-          <select onchange="setPerm('${modKey}','${roleKey}',this.value)" ${disabled} style="width:80px;font-size:11px;padding:2px;">
+          <select onchange="setPendingPerm('${modKey}','${roleKey}',this.value)" ${disabled} style="width:80px;font-size:11px;padding:2px;">
             <option value="write" ${perm === 'write' ? 'selected' : ''}>读写</option>
             <option value="read" ${perm === 'read' ? 'selected' : ''}>只读</option>
             <option value="none" ${perm === 'none' ? 'selected' : ''}>无</option>
@@ -384,20 +404,27 @@ function renderRoles() {
 
   matrixHtml += '</tbody></table>';
 
+  const changed = _hasPermChanges();
+  const saveBtnCls = changed ? 'btn-sm btn-primary' : 'btn-sm';
+  const saveBadge = changed ? ' <span style="color:#fff;background:#d97706;border-radius:3px;padding:0 5px;font-size:10px;">未保存</span>' : '';
+  const cancelDisabled = changed ? '' : 'disabled';
+
   const helpText = canEdit
-    ? '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 提示：系统管理员始终拥有所有模块的读写权限，不受下表限制。<br>权限说明：读写=可查看可编辑｜只读=可查看不可编辑｜无=不可访问（侧边栏可见但点击显示无权限）｜不显示=侧边栏不显示该模块<br>修改权限后，相关用户需重新登录才能生效。</div>'
+    ? '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 提示：系统管理员始终拥有所有模块的读写权限，不受下表限制。<br>权限说明：读写=可查看可编辑｜只读=可查看不可编辑｜无=不可访问（侧边栏可见但点击显示无权限）｜不显示=侧边栏不显示该模块<br><b style="color:#c2410c;">修改后请点击上方「💾 保存权限」按钮</b>，才会写入 localStorage 和 Supabase。相关用户需重新登录后新权限生效。</div>'
     : '<div class="text-muted" style="margin-top:8px;font-size:12px;">💡 您是只读模式，如需修改权限请联系管理员。</div>';
 
   document.getElementById('tab-roles').innerHTML = `
     <div class="table-toolbar">
       <div class="table-toolbar-left">
-        <span class="card-title">模块权限矩阵</span>
+        <span class="card-title">模块权限矩阵</span>${saveBadge}
       </div>
       <div class="table-toolbar-right">
         ${canEdit ? `
-          <button class="btn btn-sm" onclick="batchSetPerms('write')" title="全部设为读写">全设读写</button>
-          <button class="btn btn-sm" onclick="batchSetPerms('read')" title="全部设为只读">全设只读</button>
-          <button class="btn btn-sm" onclick="resetPerms()" title="恢复默认">↻ 恢复默认</button>
+          <button class="btn btn-sm" onclick="batchSetPendingPerms('write')" title="全部设为读写">全设读写</button>
+          <button class="btn btn-sm" onclick="batchSetPendingPerms('read')" title="全部设为只读">全设只读</button>
+          <button class="btn btn-sm btn-danger" onclick="resetPerms()" title="恢复默认">↻ 恢复默认</button>
+          <button class="btn btn-sm" onclick="cancelPendingPerms()" ${cancelDisabled} title="放弃当前未保存的修改">↩ 取消修改</button>
+          <button class="btn ${saveBtnCls}" onclick="savePendingPerms()" title="将修改写入 localStorage 并同步到 Supabase">💾 保存权限</button>
         ` : ''}
       </div>
     </div>
@@ -406,54 +433,81 @@ function renderRoles() {
   `;
 }
 
-function setPerm(modKey, roleKey, value) {
-  const perms = App.store.get('permissions', {});
-  if (!perms[modKey]) perms[modKey] = {};
-  perms[modKey][roleKey] = value;
-  // 双写：localStorage + 云端（防止 refreshFromCloud 覆盖本地新值）
-  App.store.set('permissions', perms);
-  if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
-    window.SupabaseStore.setSync('permissions', perms);
-  }
-  // 触发权限重算（当前页面立即生效，无需刷新）
-  if (window.App && window.App._currentPageModule) {
-    try { App.enforcePagePermission(window.App._currentPageModule); } catch(_) {}
-  }
-  App.toast('权限已更新', 'success');
+// 仅修改 pending 缓存，不落盘
+function setPendingPerm(modKey, roleKey, value) {
+  if (!_pendingPerms) _pendingPerms = {};
+  if (!_pendingPerms[modKey]) _pendingPerms[modKey] = {};
+  _pendingPerms[modKey][roleKey] = value;
+  // 重新渲染工具栏（更新保存按钮状态 / 未保存标签），不重建 select 也无焦点问题，但为了简单直接重渲染整个矩阵
+  renderRoles();
 }
 
-function batchSetPerms(value) {
-  App.confirm('确定将所有模块的权限都设为「' + (value === 'write' ? '读写' : '只读') + '」吗？', function() {
-    var perms = App.store.get('permissions', {});
-    Object.keys(perms).forEach(function(modKey) {
-      Object.keys(perms[modKey]).forEach(function(roleKey) {
-        perms[modKey][roleKey] = value;
+// 批量修改 pending
+function batchSetPendingPerms(value) {
+  App.confirm('确定将所有模块的权限都设为「' + (value === 'write' ? '读写' : '只读') + '」吗？（仅进入待保存缓存，需点击「保存权限」才会生效）', function() {
+    const modules = App.modulePermissions;
+    const roles = App.roles;
+    if (!_pendingPerms) _pendingPerms = {};
+    Object.keys(modules).forEach(modKey => {
+      if (!_pendingPerms[modKey]) _pendingPerms[modKey] = {};
+      Object.keys(roles).forEach(roleKey => {
+        if (roles[roleKey].isAdmin) return;
+        _pendingPerms[modKey][roleKey] = value;
       });
     });
-    // 双写：localStorage + 云端
-    App.store.set('permissions', perms);
-    if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
-      window.SupabaseStore.setSync('permissions', perms);
-    }
     renderRoles();
-    // 触发权限重算
+    App.toast('已更新到待保存缓存，请点击「💾 保存权限」以生效', 'info');
+  });
+}
+
+// 放弃当前未保存的修改
+function cancelPendingPerms() {
+  if (!_hasPermChanges()) { App.toast('没有未保存的修改', 'info'); return; }
+  App.confirm('确认放弃当前所有未保存的权限修改？', function() {
+    const stored = App.store.get('permissions', {});
+    _pendingPerms = _deepClonePerms(stored);
+    _baselinePerms = _deepClonePerms(stored);
+    renderRoles();
+    App.toast('已恢复到最后一次保存的状态', 'success');
+  });
+}
+
+// 真正保存：双写 localStorage + Supabase，防止后续被 refreshFromCloud 覆盖
+function savePendingPerms() {
+  if (!_hasPermChanges()) { App.toast('没有需要保存的修改', 'info'); return; }
+  App.confirm('确认将当前权限配置写入本地并同步到云端？其他用户需重新登录后新权限生效。', function() {
+    const toSave = _deepClonePerms(_pendingPerms);
+    // 双写：localStorage + 云端
+    App.store.set('permissions', toSave);
+    if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+      try { window.SupabaseStore.setSync('permissions', toSave); } catch(_) {}
+    }
+    // 清理 localStorage 旧缓存以防被 App.store.get 的兜底读取又翻回来
+    try { localStorage.setItem('permissions', JSON.stringify(toSave)); } catch(_) {}
+    // 更新基线
+    _baselinePerms = _deepClonePerms(toSave);
+    // 触发当前页面权限重算
     if (window.App && window.App._currentPageModule) {
       try { App.enforcePagePermission(window.App._currentPageModule); } catch(_) {}
     }
-    App.toast('批量更新成功', 'success');
+    renderRoles();
+    App.toast('✅ 权限已保存并同步到 Supabase', 'success');
   });
 }
 
 function resetPerms() {
-  App.confirm('确定恢复默认权限配置吗？', function() {
-    // 双删：localStorage + 云端
-    localStorage.removeItem('permissions');
+  App.confirm('确定恢复默认权限配置吗？会清除所有自定义权限（同样会先进入待保存，点击保存后才会生效）', function() {
+    // 清空本地缓存和云端缓存，然后用 initSampleData 重建默认
+    try { localStorage.removeItem('permissions'); } catch(_) {}
     if (window.SupabaseStore && typeof window.SupabaseStore.remove === 'function') {
-      window.SupabaseStore.remove('permissions');
+      try { window.SupabaseStore.remove('permissions'); } catch(_) {}
     }
     App.initSampleData();
+    const def = App.store.get('permissions', {});
+    _pendingPerms = _deepClonePerms(def);
+    _baselinePerms = _deepClonePerms(def);
     renderRoles();
-    App.toast('已恢复默认配置', 'success');
+    App.toast('已恢复为默认权限（已自动写入本地 + 云端）', 'success');
   });
 }
 

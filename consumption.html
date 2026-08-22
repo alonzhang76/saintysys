@@ -188,58 +188,65 @@
 }
 .consumption .form-textarea { resize: vertical; min-height: 60px; }
 
-/* ===== 图片上传控件（加前缀） ===== */
-.consumption .pic-upload-box {
-  border: 1.5px dashed rgba(150,200,245,0.6); border-radius: 12px; padding: 14px;
-  background: rgba(255,255,255,0.55); margin-top: 6px; transition: all .15s;
-}
-.consumption .pic-upload-box:hover { border-color: rgba(0,77,109,0.55); background: rgba(255,255,255,0.8); }
-.consumption .pic-upload-row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
-.consumption .pic-upload-preview {
-  width: 120px; height: 120px; border-radius: 10px; background: rgba(245,248,252,0.8);
-  border: 1px solid rgba(150,200,245,0.4); display: flex; align-items: center; justify-content: center;
-  overflow: hidden; flex-shrink: 0;
-}
-.consumption .pic-upload-preview img { width: 100%; height: 100%; object-fit: contain; }
-.consumption .pic-upload-preview svg { width: 36px; height: 36px; opacity: .3; color: #6ca6d8; }
-.consumption .pic-upload-right { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
-.consumption .pic-upload-tip { font-size: 11px; color: #5b7a98; line-height: 1.5; }
-.consumption .pic-upload-tip b { color: var(--primary, #004D6D); }
-.consumption .pic-upload-status { font-size: 12px; font-weight: 600; }
-.consumption .pic-upload-status.ok { color: var(--success, #2d9d5f); }
-.consumption .pic-upload-status.err { color: var(--error, #d44848); }
-.consumption .pic-upload-status.loading { color: var(--primary, #004D6D); }
-.consumption .pic-upload-filename {
-  font-size: 11px; color: #3a5b7a; word-break: break-all;
-  background: rgba(220,240,255,0.5); padding: 4px 8px; border-radius: 6px;
-}
-.consumption .pic-upload-btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.consumption .pic-upload-label-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 8px;
-  border: 1px solid rgba(0,77,109,0.35);
-  background: linear-gradient(135deg, var(--primary, #004D6D), #00618a);
-  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,77,109,0.22);
-}
-.consumption .pic-upload-label-btn:hover { filter: brightness(1.05); }
-.consumption .pic-upload-del-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 6px 10px; border-radius: 8px;
-  border: 1px solid rgba(212,72,72,0.35);
-  background: #fff; color: var(--error, #d44848);
-  font-size: 12px; font-weight: 600; cursor: pointer;
-}
-.consumption .pic-upload-del-btn:hover { background: #fef2f2; }
-.consumption .pic-upload-del-btn:disabled { opacity: .4; cursor: not-allowed; }
+/* ===== 图片上传控件（虚线大框风格，与截图一致） ===== */
 .consumption .img-upload-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 10px 0 16px;
 }
+.consumption .drop-upload-label {
+  display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px; color: var(--ink);
+}
+.consumption .drop-upload-sub {
+  display: block; margin-bottom: 6px; font-size: 11px; color: var(--muted); font-weight: 400;
+}
+.consumption .drop-upload-box {
+  position: relative;
+  border: 2px dashed #3B82F6; border-radius: 6px;
+  height: 200px; background: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; overflow: hidden; transition: all .15s;
+}
+.consumption .drop-upload-box.muted { border-color: #d1d5db; background: #fafafa; }
+.consumption .drop-upload-box:hover { background: #f5faff; }
+.consumption .drop-upload-box.muted:hover { background: #f5f5f5; }
+.consumption .drop-upload-box .drop-icon { font-size: 44px; margin-bottom: 8px; line-height: 1; }
+.consumption .drop-upload-box .drop-icon.camera { color: #6b7280; }
+.consumption .drop-upload-box .drop-text { font-size: 13px; color: #6b7280; font-weight: 500; }
+.consumption .drop-upload-box .drop-sub-text { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+.consumption .drop-upload-box img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  background: #fff; z-index: 1;
+}
+.consumption .drop-upload-box .drop-del-btn {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(0,0,0,0.55); color: #fff; border: none; cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1; font-weight: 700;
+}
+.consumption .drop-upload-box.has-img .drop-del-btn { display: inline-flex; }
+.consumption .drop-upload-box .drop-status {
+  position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 3;
+  font-size: 11px; padding: 3px 8px; border-radius: 4px; text-align: center; display: none;
+}
+.consumption .drop-upload-box .drop-status.loading { display: block; background: rgba(59,130,246,0.1); color: #1d4ed8; }
+.consumption .drop-upload-box .drop-status.error   { display: block; background: rgba(220,38,38,0.1); color: #b91c1c; }
+.consumption .drop-upload-box .drop-status.ok      { display: block; background: rgba(16,185,129,0.1); color: #047857; }
+
 @media (max-width: 720px) {
   .consumption .img-upload-grid { grid-template-columns: 1fr; }
   .consumption .form-grid { grid-template-columns: 1fr 1fr; }
   .consumption .form-grid .span2 { grid-column: span 2; }
 }
+
+/* ===== 面料/辅料 section 快捷按钮 ===== */
+.consumption .cat-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; }
+.consumption .cat-shortcut-btn {
+  padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border,#e5e7eb);
+  background: #fff; font-size: 12px; font-weight: 500; cursor: pointer; color: #374151;
+}
+.consumption .cat-shortcut-btn:hover { background: #f9fafb; }
+.consumption .cat-shortcut-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.consumption .cat-shortcut-btn.primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
 
 /* ===== 动态表格（面料/规格） ===== */
 .consumption .dyn-table-wrap { overflow-x: auto; margin-top: 8px; }
@@ -470,9 +477,6 @@
     </div>
     <div class="app-content">
       <div class="consumption" id="consumptionApp">
-        <!-- 统计卡片 -->
-        <div class="stat-grid" id="statCards"></div>
-
         <!-- 主标签页 -->
         <div class="tabs">
           <div class="tab-item active" data-tab="list" onclick="Cons.switchTab('list')">款式管理</div>
@@ -670,12 +674,17 @@ var Cons = {
     if (!currentCats || !Array.isArray(currentCats) || currentCats.length === 0) {
       this.setCategories(['面料','里料','辅料','无纺衬','其他']);
     }
-    // 确保示例
-    var data = this.getConsumptions();
-    if (!data || data.length === 0) {
-      data = [this.createSampleStyle()];
-      this.setConsumptions(data);
-    }
+    // 初始化时仅首次注入示例；避免用户删除最后一条后又自动创建一条导致"删除无效"
+    var seededKey = '_consumption_seeded_v1';
+    try {
+      if (!localStorage.getItem(seededKey)) {
+        var data = this.getConsumptions();
+        if (!data || data.length === 0) {
+          this.setConsumptions([this.createSampleStyle()]);
+        }
+        localStorage.setItem(seededKey, '1');
+      }
+    } catch(_e) {}
   },
 
   createSampleStyle: function() {
@@ -769,6 +778,44 @@ var Cons = {
     } catch(e) { return Promise.resolve(null); }
   },
 
+  // ===== 根据 prefix 还原 kind（style=款式图 / full=大图） =====
+  _kindOfPrefix: function(prefix) {
+    return prefix.indexOf('style') >= 0 ? 'style' : (prefix.indexOf('full') >= 0 ? 'full' : 'style');
+  },
+
+  // ===== 设置上传框状态 =====
+  _setBoxState: function(prefix, state) {
+    var box = document.getElementById(prefix + 'box');
+    if (!box) return;
+    var previewImg = document.getElementById(prefix + 'picPreview');
+    // kind
+    var isStyle = this._kindOfPrefix(prefix) === 'style';
+    var icon = isStyle ? '📷' : '🏞️';
+    var mainText = isStyle ? '点击上传款式图' : '点击上传大图';
+    var subText = isStyle ? '' : '（可选，打印时为第2页）';
+    // 找到占位符容器（preview不存在时才插入）
+    if (state === 'empty') {
+      box.classList.remove('has-img');
+      if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
+      // 移除可能的占位符节点
+      ['drop-icon','drop-text','drop-sub-text'].forEach(function(c){
+        var n = box.querySelector('.' + c);
+        if (n) n.parentNode.removeChild(n);
+      });
+      var iconEl = document.createElement('div'); iconEl.className = 'drop-icon camera'; iconEl.textContent = icon;
+      var tEl = document.createElement('div'); tEl.className = 'drop-text'; tEl.textContent = mainText;
+      box.appendChild(iconEl); box.appendChild(tEl);
+      if (subText) { var sEl = document.createElement('div'); sEl.className = 'drop-sub-text'; sEl.textContent = subText; box.appendChild(sEl); }
+    } else if (state === 'has-img') {
+      box.classList.add('has-img');
+      ['drop-icon','drop-text','drop-sub-text'].forEach(function(c){
+        var n = box.querySelector('.' + c);
+        if (n) n.parentNode.removeChild(n);
+      });
+      if (previewImg) previewImg.style.display = 'block';
+    }
+  },
+
   // ===== 图片上传回调 =====
   onPicFileChange: async function(prefix, inputEl) {
     var file = inputEl.files && inputEl.files[0];
@@ -776,17 +823,16 @@ var Cons = {
     var statusEl = document.getElementById(prefix + 'picStatus');
     var pathEl = document.getElementById(prefix + 'picture_path');
     var nameEl = document.getElementById(prefix + 'picture_name');
-    var fnameEl = document.getElementById(prefix + 'picFilename');
-    var delBtn = document.getElementById(prefix + 'picDelBtn');
     var previewImg = document.getElementById(prefix + 'picPreview');
-    if (!statusEl) return;
+    var box = document.getElementById(prefix + 'box');
+    if (!statusEl || !box) { inputEl.value = ''; return; }
     if (!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function') {
-      statusEl.className = 'pic-upload-status err';
+      statusEl.className = 'drop-status error';
       statusEl.textContent = '上传模块未加载，请刷新页面后重试';
       inputEl.value = ''; return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      statusEl.className = 'pic-upload-status err';
+      statusEl.className = 'drop-status error';
       statusEl.textContent = '图片超过 5MB 限制';
       inputEl.value = ''; return;
     }
@@ -795,33 +841,35 @@ var Cons = {
     if (oldPath && !oldPath.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
       try { await SupabaseSubmit.deletePicture(oldPath); } catch(e) {}
     }
-    statusEl.className = 'pic-upload-status loading';
+    statusEl.className = 'drop-status loading';
     statusEl.textContent = '正在上传中... ' + file.name;
     try {
       var localUrl = URL.createObjectURL(file);
-      if (previewImg) { previewImg.src = localUrl; previewImg.style.display = 'block'; }
+      if (previewImg) { previewImg.src = localUrl; }
+      this._setBoxState(prefix, 'has-img');
     } catch(_e) {}
     try {
       var result = await SupabaseSubmit.uploadPicture(file, 'consumption');
       if (!result || !result.path) {
-        statusEl.className = 'pic-upload-status err';
+        statusEl.className = 'drop-status error';
         statusEl.textContent = '上传失败，请重试';
+        this._setBoxState(prefix, 'empty');
         inputEl.value = ''; return;
       }
       pathEl.value = result.path;
       nameEl.value = result.fileName || file.name;
-      fnameEl.textContent = result.fileName || file.name;
-      fnameEl.style.display = '';
-      delBtn.disabled = false;
-      statusEl.className = 'pic-upload-status ok';
+      statusEl.className = 'drop-status ok';
       statusEl.textContent = '✓ 上传成功：' + (result.fileName || file.name);
       try {
         var s = await this.getSignedUrl(result.path);
         if (s && previewImg) previewImg.src = s;
       } catch(_x) {}
+      // 几秒后隐藏 status 条
+      var _p = prefix; var _s = statusEl;
+      setTimeout(function(){ if (_s && _s.className.indexOf('ok')>=0) { _s.className = 'drop-status'; _s.textContent = ''; } }, 2000);
     } catch (err) {
       console.error('[consumption] upload exception:', err);
-      statusEl.className = 'pic-upload-status err';
+      statusEl.className = 'drop-status error';
       statusEl.textContent = '上传异常：' + (err && err.message ? err.message : String(err));
     } finally {
       inputEl.value = '';
@@ -831,20 +879,15 @@ var Cons = {
   onPicDelete: async function(prefix) {
     var pathEl = document.getElementById(prefix + 'picture_path');
     var nameEl = document.getElementById(prefix + 'picture_name');
-    var fnameEl = document.getElementById(prefix + 'picFilename');
     var statusEl = document.getElementById(prefix + 'picStatus');
-    var delBtn = document.getElementById(prefix + 'picDelBtn');
-    var previewImg = document.getElementById(prefix + 'picPreview');
     var oldPath = (pathEl && pathEl.value) || '';
     if (oldPath && !oldPath.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
       try { await SupabaseSubmit.deletePicture(oldPath); } catch(e) { console.warn('[consumption] deletePicture warn:', e); }
     }
     if (pathEl) pathEl.value = '';
     if (nameEl) nameEl.value = '';
-    if (fnameEl) { fnameEl.textContent = ''; fnameEl.style.display = 'none'; }
-    if (statusEl) { statusEl.className = 'pic-upload-status'; statusEl.textContent = '尚未上传图片'; }
-    if (delBtn) delBtn.disabled = true;
-    if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
+    if (statusEl) { statusEl.className = 'drop-status'; statusEl.textContent = ''; }
+    this._setBoxState(prefix, 'empty');
   },
 
   hydratePicPreview: async function(prefix) {
@@ -854,47 +897,40 @@ var Cons = {
     var p = pathEl.value; if (!p) return;
     try {
       var signed = await this.getSignedUrl(p);
-      if (signed) { previewImg.src = signed; previewImg.style.display = 'block'; return; }
+      if (signed) { previewImg.src = signed; previewImg.style.display = 'block'; this._setBoxState(prefix, 'has-img'); return; }
     } catch(_e) {}
-    previewImg.style.display = 'none';
+    previewImg.src = p; previewImg.style.display = 'block'; this._setBoxState(prefix, 'has-img');
   },
 
-  // ===== 生成图片上传区块 HTML =====
-  buildUploadBlock: function(prefix, defPath, defName, title, tipExtra) {
+  // ===== 生成图片上传区块 HTML（虚线大框风格） =====
+  // kind: 'style' | 'full'
+  buildUploadBlock: function(prefix, defPath, defName, kind) {
     var _dp = (defPath || '').replace(/"/g, '&quot;');
     var _dn = (defName || '').replace(/"/g, '&quot;');
-    var escName = (defName || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    var statusClass = defPath ? 'ok' : '';
-    var statusText = defPath ? '✓ 已有上传图片（可重新上传或删除）' : '尚未上传图片';
-    var displayName = defName ? '' : 'display:none';
-    var disabledAttr = defPath ? '' : 'disabled';
-    var hasPreview = !!defPath;
-    var self = this;
-    var previewInner = hasPreview
-      ? '<img id="' + prefix + 'picPreview" src="" alt="preview" onerror="this.style.display=\'none\'">'
-      : '<img id="' + prefix + 'picPreview" style="display:none" alt="preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
-    var tip = '上传<b>' + title + '</b>（支持 JPG / PNG / WebP，最大 5MB）。' + (tipExtra || '');
-    return '<div class="pic-upload-box">' +
-      '<input type="hidden" id="' + prefix + 'picture_path" value="' + _dp + '">' +
-      '<input type="hidden" id="' + prefix + 'picture_name" value="' + _dn + '">' +
-      '<input type="file" id="' + prefix + 'picFile" accept="image/*" style="display:none" onchange="Cons.onPicFileChange(\'' + prefix + '\', this)">' +
-      '<div class="pic-upload-row">' +
-        '<div class="pic-upload-preview">' + previewInner + '</div>' +
-        '<div class="pic-upload-right">' +
-          '<div class="pic-upload-tip">' + tip + '</div>' +
-          '<div id="' + prefix + 'picStatus" class="pic-upload-status ' + statusClass + '">' + statusText + '</div>' +
-          '<div id="' + prefix + 'picFilename" class="pic-upload-filename" style="' + displayName + '">' + escName + '</div>' +
-          '<div class="pic-upload-btn-row">' +
-            '<label class="pic-upload-label-btn" for="' + prefix + 'picFile">' +
-              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
-              ' 选择图片上传' +
-            '</label>' +
-            '<button type="button" class="pic-upload-del-btn" id="' + prefix + 'picDelBtn" onclick="Cons.onPicDelete(\'' + prefix + '\')" ' + disabledAttr + '>' +
-              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
-              ' 移除图片' +
-            '</button>' +
-          '</div>' +
-        '</div>' +
+    var isStyle = kind === 'style';
+    var mutedCls = isStyle ? '' : ' muted';
+    var hasImg = !!defPath;
+    var hasImgCls = hasImg ? ' has-img' : '';
+    var label = isStyle ? '款式图（小图，显示在主页面）' : '大图（独立打印页，满A4）';
+    var icon = isStyle ? '📷' : '🏞️';
+    var mainText = isStyle ? '点击上传款式图' : '点击上传大图';
+    var subText = isStyle ? '' : '（可选，打印时为第2页）';
+    var boxInner = hasImg
+      ? '<img id="' + prefix + 'picPreview" src="" alt="款式图">'
+      : '<img id="' + prefix + 'picPreview" src="" alt="" style="display:none;">' +
+        '<div class="drop-icon camera">' + icon + '</div>' +
+        '<div class="drop-text">' + mainText + '</div>' +
+        (subText ? '<div class="drop-sub-text">' + subText + '</div>' : '');
+    return '<div>' +
+      '<label class="drop-upload-label">' + label + '</label>' +
+      '<div class="drop-upload-box' + mutedCls + hasImgCls + '" id="' + prefix + 'box">' +
+        '<input type="hidden" id="' + prefix + 'picture_path" value="' + _dp + '">' +
+        '<input type="hidden" id="' + prefix + 'picture_name" value="' + _dn + '">' +
+        '<input type="file" id="' + prefix + 'picFile" accept="image/*" style="display:none" onchange="Cons.onPicFileChange(\'' + prefix + '\', this)">' +
+        '<label for="' + prefix + 'picFile" style="position:absolute;inset:0;z-index:2;cursor:pointer;"></label>' +
+        boxInner +
+        '<button type="button" class="drop-del-btn" onclick="var e=arguments[0]||window.event;if(e){try{e.preventDefault();e.stopPropagation();}catch(_x){}}Cons.onPicDelete(\'' + prefix + '\')">×</button>' +
+        '<div class="drop-status" id="' + prefix + 'picStatus"></div>' +
       '</div>' +
     '</div>';
   },
@@ -919,77 +955,67 @@ var Cons = {
       self.specData.push({ part: '', size: '', remark: '' });
     }
 
-    var catShortcuts = cats.map(function(c){
-      return '<button class="cat-shortcut-btn" type="button" onclick="Cons.addFabricRow(\'' + c.replace(/'/g, "\\'") + '\')">+' + App.utils.escapeHtml(c) + '</button>';
-    }).join('');
+    // 用户截图的按钮顺序：+面料(蓝底)/+里料/+辅料/+无纺衬/+其他/⚙类别管理
+    var defaultOrder = cats && cats.length ? cats.slice() : ['面料','里料','辅料','无纺衬','其他'];
+    var catShortcuts = defaultOrder.map(function(c, idx){
+      var cls = 'cat-shortcut-btn' + (idx === 0 ? ' primary' : '');
+      return '<button class="' + cls + '" type="button" onclick="Cons.addFabricRow(\'' + c.replace(/'/g, "\\'") + '\')">+' + App.utils.escapeHtml(c) + '</button>';
+    }).join('') +
+      '<button class="cat-shortcut-btn" type="button" onclick="Cons.openCategoryManager()" title="类别管理">⚙ 类别管理</button>';
 
     var body =
-      // 基本信息
-      '<div class="form-section">' +
-        '<div class="form-section-title">📋 基本信息</div>' +
-        '<div class="form-grid">' +
-          '<div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="c_f_date" value="' + (item.date || today) + '"></div>' +
-          '<div class="form-group"><label class="form-label">设计师</label><input type="text" class="form-input" id="c_f_designer" value="' + App.utils.escapeHtml(item.designer || '') + '" placeholder="姓名"></div>' +
-          '<div class="form-group"><label class="form-label">Season</label><input type="text" class="form-input" id="c_f_season" value="' + App.utils.escapeHtml(item.season || '') + '" placeholder="如：2024春夏"></div>' +
-          '<div class="form-group"><label class="form-label">款号 <span class="required">*</span></label><input type="text" class="form-input" id="c_f_styleNo" value="' + App.utils.escapeHtml(item.styleNo || '') + '" placeholder="如：GW27-003"></div>' +
-          '<div class="form-group"><label class="form-label">品名</label><input type="text" class="form-input" id="c_f_name" value="' + App.utils.escapeHtml(item.name || '') + '" placeholder="如：童裤"></div>' +
-          '<div class="form-group"><label class="form-label">报价</label><input type="text" class="form-input" id="c_f_price" value="' + App.utils.escapeHtml(item.price || '') + '" placeholder="如：18"></div>' +
-        '</div>' +
+      // 基本信息（无 section title）
+      '<div class="form-grid" style="margin-bottom:14px;">' +
+        '<div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="c_f_date" value="' + (item.date || today) + '"></div>' +
+        '<div class="form-group"><label class="form-label">设计师</label><input type="text" class="form-input" id="c_f_designer" value="' + App.utils.escapeHtml(item.designer || '') + '" placeholder="CAD"></div>' +
+        '<div class="form-group"><label class="form-label">Season</label><input type="text" class="form-input" id="c_f_season" value="' + App.utils.escapeHtml(item.season || '') + '" placeholder="如：2024春夏"></div>' +
+        '<div class="form-group"><label class="form-label">款号 <span class="required">*</span></label><input type="text" class="form-input" id="c_f_styleNo" value="' + App.utils.escapeHtml(item.styleNo || '') + '" placeholder="如：GW27-003"></div>' +
+        '<div class="form-group"><label class="form-label">品名</label><input type="text" class="form-input" id="c_f_name" value="' + App.utils.escapeHtml(item.name || '') + '" placeholder="如：童裤"></div>' +
+        '<div class="form-group"><label class="form-label">参考加工费</label><input type="text" class="form-input" id="c_f_price" value="' + App.utils.escapeHtml(item.price || '') + '" placeholder="如：18"></div>' +
       '</div>' +
 
-      // 图片上传
-      '<div class="form-section">' +
-        '<div class="form-section-title">🖼️ 图片上传</div>' +
-        '<div class="img-upload-grid">' +
-          '<div>' +
-            '<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:2px;">款式图（主页/打印页右上角显示）</div>' +
-            self.buildUploadBlock('c_style_', item.styleImg_path || '', item.styleImg_name || '', '款式图', '') +
-          '</div>' +
-          '<div>' +
-            '<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:2px;">大图（可选，打印第2页满A4显示）</div>' +
-            self.buildUploadBlock('c_full_', item.fullImg_path || '', item.fullImg_name || '', '大图', '如未上传，则打印仅1页。') +
-          '</div>' +
-        '</div>' +
+      // 图片上传（两列大虚线框）
+      '<div class="img-upload-grid">' +
+        self.buildUploadBlock('c_style_', item.styleImg_path || '', item.styleImg_name || '', 'style') +
+        self.buildUploadBlock('c_full_',  item.fullImg_path  || '', item.fullImg_name  || '', 'full') +
       '</div>' +
 
-      // 面料明细
-      '<div class="form-section">' +
-        '<div class="form-section-title">' +
-          '<span>📋 面料 / 辅料明细</span>' +
-          '<span class="cat-shortcuts">' + catShortcuts +
-            '<button class="cat-shortcut-btn" type="button" onclick="Cons.openCategoryManager()" title="类别管理" style="background:var(--primary-light);">⚙ 类别管理</button>' +
-          '</span>' +
+      // 面料 / 辅料明细
+      '<div style="margin-bottom:14px;">' +
+        '<div class="form-section-title" style="margin:0 0 8px;">' +
+          '<span style="font-size:13px;font-weight:600;color:var(--primary,#004D6D);">面料 / 辅料明细</span>' +
+          '<span class="cat-shortcuts">' + catShortcuts + '</span>' +
         '</div>' +
         '<div class="dyn-table-wrap"><table class="dyn-table" id="c_fabricTable"><thead><tr>' +
           '<th style="width:60px;">类别</th><th style="width:120px;">规格（名称）</th><th>成份</th><th style="width:70px;">洗前克重</th><th style="width:70px;">洗后克重</th>' +
-          '<th style="width:60px;">门幅(米)</th><th style="width:60px;">规格</th><th style="width:65px;">耗料(米)</th>' +
+          '<th style="width:60px;">门幅（米）</th><th style="width:60px;">规格</th><th style="width:65px;">耗料（米）</th>' +
           '<th style="width:100px;">使用部位</th><th style="width:80px;">缩率</th><th style="width:90px;">备注</th>' +
           '<th class="op-col">操作</th>' +
         '</tr></thead><tbody id="c_fabricBody"></tbody></table></div>' +
       '</div>' +
 
-      // 工艺说明
-      '<div class="form-section">' +
-        '<div class="form-section-title">✂️ 特殊工艺说明</div>' +
-        '<textarea class="form-textarea" id="c_f_craft" placeholder="如司马克、对条、对格等...">' + App.utils.escapeHtml(item.craft || '') + '</textarea>' +
+      // 特殊工艺说明
+      '<div style="margin-bottom:14px;">' +
+        '<div style="font-size:13px;font-weight:600;color:#111;margin:0 0 6px;">特殊工艺说明</div>' +
+        '<textarea class="form-textarea" id="c_f_craft" placeholder="如司马克、对条、对格等" style="min-height:64px;">' + App.utils.escapeHtml(item.craft || '') + '</textarea>' +
       '</div>' +
 
-      // 规格尺寸
-      '<div class="form-section">' +
-        '<div class="form-section-title">' +
-          '<span>📏 主要规格尺寸</span>' +
+      // 主要规格尺寸
+      '<div style="margin-bottom:14px;">' +
+        '<div class="form-section-title" style="margin:0 0 8px;">' +
+          '<span style="font-size:13px;font-weight:600;color:#111;">主要规格尺寸</span>' +
           '<button class="btn btn-sm btn-primary" type="button" onclick="Cons.addSpecRow()">+ 添加尺寸</button>' +
         '</div>' +
         '<div class="spec-table-wrap"><table class="spec-table" id="c_specTable"><thead><tr>' +
-          '<th style="width:34%;">部位</th><th style="width:28%;">尺寸（cm）</th><th>备注</th><th class="op-col" style="width:80px;">操作</th>' +
+          '<th style="width:34%;">部位</th><th style="width:28%;">尺寸（cm）</th><th>常规档差</th><th class="op-col" style="width:80px;">操作</th>' +
         '</tr></thead><tbody id="c_specBody"></tbody></table></div>' +
       '</div>' +
 
-      // 底部按钮
+      // 底部按钮（按截图：取消 / 🖨 打印 / 保存）
       '<div class="modal-actions">' +
         '<button class="btn" onclick="App.modal.close()">取消</button>' +
-        '<button class="btn" onclick="Cons.printPreviewFromEditor()">🖨️ 打印预览</button>' +
-        '<button class="btn btn-primary" onclick="Cons.saveStyle()">💾 保存</button>' +
+        '<button class="btn btn-primary" onclick="Cons.printPreviewFromEditor()">🖨 打印</button>' +
+        '<button class="btn btn-primary" onclick="Cons.saveStyle()">保存</button>' +
       '</div>';
 
     App.modal.open({
@@ -1064,7 +1090,7 @@ var Cons = {
       return '<tr>' +
         '<td><input type="text" value="' + App.utils.escapeHtml(s.part || '') + '" oninput="Cons.specData[' + idx + '].part=this.value" placeholder="如：裤长"></td>' +
         '<td><input type="text" value="' + App.utils.escapeHtml(s.size || '') + '" oninput="Cons.specData[' + idx + '].size=this.value" placeholder="50"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(s.remark || '') + '" oninput="Cons.specData[' + idx + '].remark=this.value" placeholder="备注"></td>' +
+        '<td><input type="text" value="' + App.utils.escapeHtml(s.remark || '') + '" oninput="Cons.specData[' + idx + '].remark=this.value" placeholder="如：±1cm"></td>' +
         '<td class="op-col">' +
           '<button class="row-action-btn" title="上移" onclick="Cons.moveSpec(' + idx + ',-1)">↑</button>' +
           '<button class="row-action-btn" title="下移" onclick="Cons.moveSpec(' + idx + ',1)">↓</button>' +
@@ -1500,7 +1526,7 @@ ${html}
 // ======================================================
 // ===== 渲染：款式列表、对比表、统计
 // ======================================================
-function renderStats() { Cons.renderStats(); }
+// （原 renderStats 桥接已移除，因不再需要统计卡片）
 
 function renderList() {
   var data = Cons.getConsumptions();
@@ -1527,7 +1553,6 @@ function renderList() {
     if (s.styleImg_path) { imgs.push(s.styleImg_path); imgPaths.push(s.styleImg_path); }
     if (s.fullImg_path)  { imgs.push(s.fullImg_path);  imgPaths.push(s.fullImg_path);  }
     var hasImgs = imgs.length > 0;
-    var fabricCount = (s.fabrics && s.fabrics.length) || 0;
 
     var thumbClick = hasImgs
       ? 'onclick="event.stopPropagation(); Cons.openFullscreen([' + imgPaths.map(function(p){return "'"+p.replace(/'/g,"\\'")+"'";}).join(',') + '], 0);"'
@@ -1550,8 +1575,7 @@ function renderList() {
         '<span><b>品名：</b>' + App.utils.escapeHtml(s.name || '-') + '</span>' +
         '<span><b>设计师：</b>' + App.utils.escapeHtml(s.designer || '-') + '</span>' +
         '<span><b>Season：</b>' + App.utils.escapeHtml(s.season || '-') + '</span>' +
-        '<span><b>报价：</b>' + App.utils.escapeHtml(s.price || '-') + ' 元</span>' +
-        '<span><b>面料数：</b>' + fabricCount + ' 条</span>' +
+        '<span><b>参考加工费：</b>' + App.utils.escapeHtml(s.price || '-') + ' 元</span>' +
       '</div>' +
       '<div class="style-card-actions" onclick="event.stopPropagation()">' +
         '<button class="btn btn-sm btn-primary" onclick="Cons.openEditor(\'' + s.id + '\')">编辑</button>' +
@@ -1641,7 +1665,7 @@ function buildCompareTableHTML(list, forPrint) {
 
   // 基本信息
   var hasBasic = false, basicHtml = '';
-  [['date','日期'],['designer','设计师'],['season','Season'],['styleNo','款号'],['name','品名'],['price','报价'],['craft','特殊工艺']].forEach(function(kv){
+  [['date','日期'],['designer','设计师'],['season','Season'],['styleNo','款号'],['name','品名'],['price','参考加工费'],['craft','特殊工艺']].forEach(function(kv){
     var k = kv[0], label = kv[1];
     var values = list.map(function(s){ var v = s[k]; return (v === undefined || v === null || v === '') ? '-' : String(v); });
     if (allEmpty(values)) return;
@@ -1725,14 +1749,14 @@ function buildCompareTableHTML(list, forPrint) {
       if (allEmpty(values)) return;
       hasRem = true;
       var allSame = values.every(function(v){ return v === values[0]; });
-      remHtml += '<tr><td class="field-name">' + App.utils.escapeHtml(part) + ' - 备注</td>';
+      remHtml += '<tr><td class="field-name">' + App.utils.escapeHtml(part) + ' - 常规档差</td>';
       values.forEach(function(v){
         remHtml += '<td' + (!allSame && !isEmpty(v) ? ' class="diff-highlight"' : '') + '>' + App.utils.escapeHtml(v) + '</td>';
       });
       remHtml += '</tr>';
     });
     if (hasRem) {
-      html += '<tr class="section-header"><td colspan="' + (list.length + 1) + '">规格尺寸 - 备注</td></tr>' + remHtml;
+      html += '<tr class="section-header"><td colspan="' + (list.length + 1) + '">规格尺寸 - 常规档差</td></tr>' + remHtml;
     }
   }
   html += '</tbody></table>';
@@ -1759,7 +1783,7 @@ function generatePrintPageHTML(style, forPreview) {
       '<div class="print-info-line"><span class="print-label">Season：</span><span class="print-tag tag-yellow">' + App.utils.escapeHtml(style.season || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">款号：</span><span class="print-tag tag-red">' + App.utils.escapeHtml(style.styleNo || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">品名：</span><span class="print-tag tag-red">' + App.utils.escapeHtml(style.name || '-') + '</span></div>' +
-      '<div class="print-info-line"><span class="print-label">报价：</span><span class="print-tag tag-green">' + App.utils.escapeHtml(style.price || '-') + ' 元</span></div>' +
+      '<div class="print-info-line"><span class="print-label">参考加工费：</span><span class="print-tag tag-green">' + App.utils.escapeHtml(style.price || '-') + ' 元</span></div>' +
     '</div>' +
     '<div class="print-title-right">服装用料及纸板单<div class="print-date">日期：' + App.utils.escapeHtml(style.date || '-') + '</div></div>' +
   '</div>';
@@ -1808,7 +1832,7 @@ function generatePrintPageHTML(style, forPreview) {
   if (style.specs && style.specs.length > 0) {
     html += '<div class="print-section"><h4>主要规格尺寸</h4>' +
       '<table class="print-table print-spec-table"><thead><tr>' +
-      '<th style="width:30%;">部位</th><th style="width:30%;">尺寸（cm）</th><th>备注</th>' +
+      '<th style="width:30%;">部位</th><th style="width:30%;">尺寸（cm）</th><th>常规档差</th>' +
       '</tr></thead><tbody>';
     style.specs.forEach(function(s){
       html += '<tr>' +
@@ -1930,9 +1954,8 @@ ${pageHtml}
 
 // ===== renderAll =====
 function renderAll() {
-  // 数据保证
+  // 数据保证（仅初始化迁移用，不再自动创建示例数据）
   Cons.migrateAndEnsure();
-  Cons.renderStats();
   // 更新新增按钮显示偏好
   try {
     var btn = document.getElementById('btnAddStyle');
