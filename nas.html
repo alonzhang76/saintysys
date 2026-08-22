@@ -6,70 +6,181 @@
 <title>云盘 NAS - 舜天汉唐服装外贸系统</title>
 <link rel="stylesheet" href="css/common.css?v=20260822">
 <style>
-  /* ===== 页面布局风格（与 consumption 等一致） ===== */
-  .nas { padding: 16px 20px; }
-  .nas .card { background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:16px;margin-bottom:14px; }
-  .nas .card-title-row { display:flex;justify-content:space-between;align-items:center;margin-bottom:12px; }
-  .nas .card-title { font-size:14px;font-weight:600;color:#111827; }
-  .nas .toolbar { display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px; }
-  .nas .toolbar .flex-spacer { flex:1; }
+  /* ===== 全局 ===== */
+  html, body { height: 100%; margin: 0; }
+  .nas {
+    display: flex; flex-direction: column; height: calc(100vh - 48px);
+    padding: 0; background: #fff;
+  }
+  .nas .topbar {
+    flex: 0 0 auto;
+    background: #fff; border-bottom: 1px solid #e5e7eb;
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .nas .status-dot { display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#9ca3af;vertical-align:middle; }
+  .nas .status-dot.ok { background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+  .nas .status-dot.err { background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15); }
+  .nas .status-dot.warn { background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.15); }
+  .nas .conn-title { font-weight:600;font-size:14px;color:#0f172a;display:inline-flex;align-items:center; }
   .nas .search {
     padding:6px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;min-width:220px;
     background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") 8px 50% no-repeat; padding-left:28px;
   }
-  .nas .status-dot { display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#9ca3af; }
-  .nas .status-dot.ok { background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.15); }
-  .nas .status-dot.err { background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15); }
-  .nas .status-dot.warn { background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.15); }
+  .nas .toolbar-filler { flex:1; }
 
+  /* ===== 地址栏（面包屑） ===== */
   .nas .breadcrumb {
+    flex: 0 0 auto;
     display:flex;align-items:center;gap:4px;flex-wrap:wrap;
-    padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;margin-bottom:12px;font-size:13px;
+    padding:8px 14px;border-bottom:1px solid #e5e7eb;background:#fafafa;
+    font-size:13px;
   }
   .nas .breadcrumb .crumb {
-    padding:2px 8px;border-radius:4px;cursor:pointer;color:#2563eb;
+    padding:3px 10px;border-radius:4px;cursor:pointer;color:#2563eb;transition:background .12s;
+    max-width: 260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .nas .breadcrumb .crumb:hover { background:#eff6ff; }
-  .nas .breadcrumb .crumb.home { color:#111;font-weight:600; }
-  .nas .breadcrumb .sep { color:#9ca3af; }
-  .nas .breadcrumb .current { color:#111;font-weight:600;background:#f3f4f6;border-radius:4px;padding:2px 8px; }
-
-  .nas .upload-zone {
-    position:relative;border:2px dashed #cbd5e1;border-radius:8px;padding:14px;margin-bottom:14px;background:#fafafa;transition:all .15s;
+  .nas .breadcrumb .crumb.home { color:#111;font-weight:600;background:#eef2ff;border:1px solid #c7d2fe; }
+  .nas .breadcrumb .crumb.home:hover { background:#e0e7ff; }
+  .nas .breadcrumb .sep { color:#9ca3af; padding:0 2px; }
+  .nas .breadcrumb .current {
+    color:#111;font-weight:600;background:#fff;border:1px solid #d1d5db;
+    border-radius:4px;padding:3px 10px;
+    max-width: 360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .nas .upload-zone.drag { border-color:#2563eb;background:#eff6ff; }
-  .nas .upload-zone .hint { color:#64748b;font-size:12px;text-align:center; }
+  .nas .breadcrumb .spacer { flex:1; }
+  .nas .breadcrumb .info { color:#64748b; font-size:12px; }
 
+  /* ===== Explorer 主体：左树 + 右内容 ===== */
+  .nas .explorer { flex:1 1 auto; display:flex; min-height:0; overflow:hidden; }
+  .nas .tree {
+    width: 240px; min-width: 180px; flex: 0 0 240px;
+    border-right:1px solid #e5e7eb; overflow-y:auto; background:#fafbfc;
+    padding: 8px 0;
+  }
+  .nas .tree .tree-node { user-select:none; }
+  .nas .tree .tree-row {
+    display:flex; align-items:center; gap:4px;
+    padding:4px 8px 4px 2px; cursor:pointer;
+    border:1px solid transparent; border-radius:4px;
+    font-size:13px; margin:0 6px;
+    transition: background .1s;
+    white-space:nowrap;
+  }
+  .nas .tree .tree-row:hover { background:#eef2ff; }
+  .nas .tree .tree-row.active {
+    background:#dbeafe; border-color:#93c5fd; color:#1e3a8a; font-weight:600;
+  }
+  .nas .tree .tree-row.drop-target {
+    background:#bbf7d0; border-color:#22c55e;
+  }
+  .nas .tree .chev {
+    display:inline-flex; align-items:center; justify-content:center;
+    width: 18px; height: 18px; flex: 0 0 18px;
+    font-size: 10px; color:#64748b;
+    transition: transform .12s ease-out;
+  }
+  .nas .tree .chev.open { transform: rotate(90deg); }
+  .nas .tree .chev.empty { visibility: hidden; }
+  .nas .tree .t-ico { flex:0 0 20px; display:inline-flex; justify-content:center; font-size:15px; }
+  .nas .tree .t-label {
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .nas .tree .tree-children {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .18s ease-out;
+  }
+  .nas .tree .tree-children.open {
+    max-height: 10000px;
+  }
+  .nas .tree .tree-level-0 .tree-row { padding-left: 4px; }
+  .nas .tree .tree-level-1 { padding-left: 12px; }
+  .nas .tree .tree-level-2 { padding-left: 12px; }
+  .nas .tree .tree-level-3 { padding-left: 12px; }
+  .nas .tree .tree-level-4 { padding-left: 12px; }
+  .nas .tree .tree-level-5 { padding-left: 12px; }
+
+  /* ===== 右侧内容区 ===== */
+  .nas .content {
+    flex:1 1 auto; min-width:0; display:flex; flex-direction:column;
+    background:#fff;
+  }
+  .nas .content .content-inner {
+    flex:1 1 auto; overflow:auto; padding: 10px 14px 20px;
+    position:relative;
+  }
+
+  /* 内容区：文件表格（Win 风格） */
   .nas .file-table {
-    width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;
+    width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;
+    border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;
   }
-  .nas .file-table th, .nas .file-table td { border-bottom:1px solid #f1f5f9;padding:10px 12px;text-align:left;vertical-align:middle; }
+  .nas .file-table th, .nas .file-table td {
+    border-bottom:1px solid #f1f5f9;padding:7px 12px;text-align:left;vertical-align:middle;
+  }
   .nas .file-table th {
-    background:#f8fafc;color:#334155;font-weight:600;font-size:12px;white-space:nowrap;
+    background:#f3f4f6;color:#374151;font-weight:600;font-size:12px;white-space:nowrap;
+    position: sticky; top:0; z-index: 1;
+    border-bottom:1px solid #e5e7eb;
   }
-  .nas .file-table tbody tr:hover { background:#fafbfc; }
+  .nas .file-table th.sortable { cursor:pointer; user-select:none; padding-right:20px; position:relative; transition: background .1s; }
+  .nas .file-table th.sortable:hover { background:#e5e7eb; }
+  .nas .file-table th.sortable::after {
+    content:'↕'; position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    color:#9ca3af; font-size:12px; font-weight:400; opacity:.7;
+  }
+  .nas .file-table th.sortable.sort-asc::after,
+  .nas .file-table th.sortable.sort-desc::after {
+    opacity:1; color:#2563eb; font-weight:700;
+  }
+  .nas .file-table th.sortable.sort-asc::after { content:'▲'; }
+  .nas .file-table th.sortable.sort-desc::after { content:'▼'; }
+  .nas .file-table tbody tr { cursor: pointer; transition: background .08s; }
+  .nas .file-table tbody tr:hover { background:#eff6ff; }
+  .nas .file-table tbody tr.selected { background:#dbeafe; }
+  .nas .file-table tbody tr.drop-target { background:#bbf7d0; }
+  .nas .file-table tbody td:last-child { border-right: none; }
   .nas .file-table td.name-cell {
-    display:flex;align-items:center;gap:10px;cursor:pointer;
+    display:flex;align-items:center;gap:10px;
   }
   .nas .file-table .file-ico {
-    font-size:22px;width:36px;height:36px;flex:0 0 36px;
-    display:flex;align-items:center;justify-content:center;border-radius:6px;background:#f3f4f6;
+    font-size:20px;width:30px;height:30px;flex:0 0 30px;
+    display:flex;align-items:center;justify-content:center;border-radius:5px;background:#f3f4f6;
   }
   .nas .file-table .file-ico.img { background:#eef2ff; }
   .nas .file-table .file-ico.folder { background:#fef3c7; }
   .nas .file-table .thumb {
-    width:36px;height:36px;object-fit:cover;border-radius:6px;background:#000;border:1px solid #e5e7eb;
+    width:30px;height:30px;object-fit:cover;border-radius:5px;background:#000;border:1px solid #e5e7eb;flex:0 0 30px;
   }
   .nas .file-table .meta { display:flex;flex-direction:column;gap:2px; }
   .nas .file-table .meta .fname { font-weight:500;color:#0f172a;word-break:break-all; }
   .nas .file-table .meta .fsize { font-size:11px;color:#94a3b8; }
+  .nas .file-table .op-cell { white-space:nowrap; }
   .nas .file-table .op-cell button { margin-right:4px; }
-  .nas .empty {
-    padding:50px 12px;text-align:center;color:#94a3b8;
-  }
-  .nas .empty .ico { font-size:48px;margin-bottom:8px; }
 
-  /* 上传进度条 */
+  .nas .empty {
+    padding:60px 12px;text-align:center;color:#94a3b8;
+  }
+  .nas .empty .ico { font-size:56px;margin-bottom:10px; opacity: .7; }
+
+  /* ===== 拖放遮罩 ===== */
+  .nas-drop-mask {
+    position: fixed; inset:0; background: rgba(37, 99, 235, .08);
+    border: 4px dashed #2563eb; z-index: 9990;
+    display: none; align-items:center; justify-content:center;
+    font-size: 28px; font-weight: 700; color:#1e40af; pointer-events:none;
+    backdrop-filter: blur(1px);
+  }
+  .nas-drop-mask.active { display:flex; }
+  .nas-drop-mask .inner {
+    background:#fff; padding:28px 40px; border-radius:14px;
+    box-shadow: 0 14px 36px rgba(30, 64, 175, .2);
+    text-align: center; pointer-events:none;
+  }
+  .nas-drop-mask .sub { font-size: 13px; color:#475569; font-weight:400; margin-top: 8px; }
+
+  /* 上传进度 */
   .nas .upload-progress {
     position:fixed;top:0;left:0;right:0;height:3px;background:#e5e7eb;z-index:9999;
   }
@@ -78,12 +189,13 @@
   }
   .nas .upload-toasts {
     position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;z-index:9998;
+    max-height:40vh; overflow-y:auto;
   }
   .nas .upload-toast {
-    min-width:280px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;
+    min-width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;
     box-shadow:0 6px 20px rgba(15,23,42,.12);font-size:12px;
   }
-  .nas .upload-toast .t-title { font-weight:600;margin-bottom:4px;color:#0f172a; }
+  .nas .upload-toast .t-title { font-weight:600;margin-bottom:4px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px; }
   .nas .upload-toast .t-bar { height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden; }
   .nas .upload-toast .t-bar > span { display:block;height:100%;background:#2563eb;width:0%;transition:width .1s; }
   .nas .upload-toast.ok { border-color:#bbf7d0; }
@@ -113,7 +225,7 @@
   }
   .perm-overlay.active { display:flex; }
   .perm-modal {
-    width:100%;max-width:680px;background:#fff;border-radius:10px;box-shadow:0 12px 40px rgba(15,23,42,.25);
+    width:100%;max-width:700px;background:#fff;border-radius:10px;box-shadow:0 12px 40px rgba(15,23,42,.25);
     max-height:90vh;overflow-y:auto;
   }
   .perm-modal .pm-h { padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center; }
@@ -131,7 +243,96 @@
   .perm-modal .pm-footer { padding:14px 20px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px; }
   .perm-modal .pm-hint { font-size:12px;color:#64748b;margin-top:8px;line-height:1.7; }
 
+  /* ===== 视图切换按钮 ===== */
+  .nas .view-switch {
+    display:inline-flex; align-items:center; background:#f3f4f6; border:1px solid #e5e7eb;
+    border-radius:6px; padding:2px; gap:2px;
+  }
+  .nas .view-switch button {
+    background:transparent; border:none; padding:4px 9px; cursor:pointer;
+    border-radius:4px; font-size:13px; color:#475569; transition: all .1s;
+  }
+  .nas .view-switch button:hover { background:#fff; }
+  .nas .view-switch button.active {
+    background:#fff; color:#1d4ed8; box-shadow:0 1px 3px rgba(0,0,0,.08); font-weight:600;
+  }
+
+  /* ===== 大图标 / 小图标 视图 ===== */
+  .nas .view-grid {
+    display:flex; flex-wrap:wrap; gap:12px; padding: 14px 10px 24px;
+  }
+  /* 大图标：96×112 卡片 */
+  .nas .item-card {
+    position:relative; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    padding:10px 6px 8px; border-radius:8px; cursor:pointer;
+    border:1px solid transparent; transition: all .12s; text-align:center;
+    overflow:hidden;
+  }
+  .nas .item-card:hover { background:#eff6ff; border-color:#bfdbfe; }
+  .nas .item-card.selected { background:#dbeafe; border-color:#93c5fd; }
+  .nas .item-card.drop-target { background:#bbf7d0; border-color:#22c55e; }
+  .nas .item-card.lg { width: 116px; min-height: 120px; }
+  .nas .item-card.lg .card-ico {
+    width:68px; height:68px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    background:#f3f4f6; font-size:40px; margin-bottom:8px; flex:0 0 68px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.05);
+  }
+  .nas .item-card.lg .card-ico.folder { background:#fef3c7; }
+  .nas .item-card.lg .card-ico.img { background:#eef2ff; }
+  .nas .item-card.lg img.card-thumb {
+    width:68px; height:68px; object-fit:cover; border-radius:10px; border:1px solid #e5e7eb;
+    background:#000; margin-bottom:8px;
+  }
+  .nas .item-card.lg .card-name {
+    font-size:12px; line-height:1.35; color:#0f172a; font-weight:500;
+    max-width:100%; word-break:break-all;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .nas .item-card.lg .card-meta {
+    font-size:11px; color:#94a3b8; margin-top:4px; white-space:nowrap;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis;
+  }
+  /* 小图标：紧凑 160 宽一行两个 */
+  .nas .view-small {
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap:4px 16px; padding:14px 14px 24px;
+  }
+  .nas .item-card.sm {
+    flex-direction:row; align-items:center; gap:8px; padding:4px 6px; min-height:30px;
+    justify-content:flex-start; text-align:left;
+    border-radius:6px;
+  }
+  .nas .item-card.sm .card-ico {
+    width:22px; height:22px; border-radius:4px; flex:0 0 22px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; background:#f3f4f6;
+  }
+  .nas .item-card.sm .card-ico.folder { background:#fef3c7; }
+  .nas .item-card.sm .card-ico.img { background:#eef2ff; }
+  .nas .item-card.sm img.card-thumb {
+    width:22px; height:22px; object-fit:cover; border-radius:4px; border:1px solid #e5e7eb; flex:0 0 22px;
+  }
+  .nas .item-card.sm .card-name {
+    font-size:13px; color:#0f172a; font-weight:500;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0;
+  }
+  .nas .item-card.sm .card-meta {
+    font-size:11px; color:#94a3b8; white-space:nowrap; flex:0 0 auto;
+  }
+
+  /* ===== 重命名输入框 ===== */
+  .nas .rename-input {
+    width:100%; font-size:inherit; padding:2px 4px;
+    border:1px solid #2563eb; border-radius:3px; background:#fff;
+    outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.18);
+  }
+  .nas .item-card.lg .rename-input { text-align:center; }
+  .nas tr .name-wrap { display:contents; }
+
   /* 响应式 */
+  @media (max-width: 900px) {
+    .nas .tree { display:none; }
+  }
   @media (max-width: 768px) {
     .nas .toolbar .search { min-width:100%; }
     .nas .file-table th:nth-child(3), .nas .file-table td:nth-child(3),
@@ -157,33 +358,52 @@
       <div class="upload-progress" id="uploadProgress" style="display:none;"><div id="uploadProgressBar"></div></div>
       <div class="upload-toasts" id="uploadToasts"></div>
 
-      <div class="card">
-        <div class="card-title-row">
-          <span class="card-title">☁️ 绿联 NAS 云盘 · <span id="connStatus"><span class="status-dot"></span>正在读取配置...</span></span>
-          <span style="display:flex;gap:6px;flex-wrap:wrap;">
-            <span id="adminBtns" style="display:none;">
-              <button class="btn btn-sm" onclick="NAS.initRoot()">✨ 初始化根目录</button>
-            </span>
-            <span id="writeBtns" style="display:none;">
-              <button class="btn btn-sm" onclick="NAS.mkDir()">📂 新建文件夹</button>
-              <button class="btn btn-sm btn-primary" onclick="NAS.pickUpload()">⬆️ 上传文件</button>
-              <input type="file" id="filePicker" multiple style="display:none;" onchange="NAS.onFilePick(event)">
-            </span>
-            <button class="btn btn-sm" onclick="NAS.refresh()">🔄 刷新</button>
-            <input type="text" class="search" id="searchInput" placeholder="搜索当前目录文件名..." oninput="NAS.renderList()">
-          </span>
+      <!-- 顶部工具栏 -->
+      <div class="topbar">
+        <span class="conn-title"><span id="connStatus"><span class="status-dot"></span>正在读取配置...</span></span>
+        <span id="adminBtns" style="display:none;">
+          <button class="btn btn-sm" onclick="NAS.initRoot()" title="在 NAS 上创建系统根目录">✨初始化根</button>
+        </span>
+        <span id="writeBtns" style="display:none;">
+          <button class="btn btn-sm" onclick="NAS.mkDir()" title="在当前目录新建文件夹">📂新建文件夹</button>
+          <button class="btn btn-sm btn-primary" onclick="NAS.pickUpload()" title="从本地选择文件上传到当前目录">⬆️上传文件</button>
+          <button class="btn btn-sm" onclick="NAS.renameSelected()" title="重命名选中的文件或文件夹（也可按 F2 或双击名称）">✏️重命名</button>
+          <input type="file" id="filePicker" multiple style="display:none;" onchange="NAS.onFilePick(event)">
+        </span>
+        <button class="btn btn-sm" onclick="NAS.refresh()" title="重新加载当前目录">🔄刷新</button>
+        <div class="view-switch" id="viewSwitch" title="切换查看方式">
+          <button data-view="large" onclick="NAS.setViewMode('large')" title="大图标">🔲大图标</button>
+          <button data-view="small" onclick="NAS.setViewMode('small')" title="小图标">▫️小图标</button>
+          <button data-view="details" onclick="NAS.setViewMode('details')" title="详细信息">☰详细信息</button>
         </div>
+        <div class="toolbar-filler"></div>
+        <input type="text" class="search" id="searchInput" placeholder="搜索当前目录文件名..." oninput="NAS.renderList()">
+      </div>
 
-        <!-- 面包屑 -->
-        <div class="breadcrumb" id="breadcrumb"></div>
+      <!-- 地址栏 -->
+      <div class="breadcrumb" id="breadcrumb"></div>
 
-        <!-- 拖放上传区 + 文件列表 -->
-        <div class="upload-zone" id="dropZone">
-          <div id="fileListArea"></div>
-          <div class="hint" id="dropHint" style="display:none;">⬆️ 拖入文件到此区域以上传到当前目录</div>
+      <!-- Explorer 主体 -->
+      <div class="explorer">
+        <!-- 左侧树形目录 -->
+        <div class="tree" id="treeHost"></div>
+        <!-- 右侧内容 -->
+        <div class="content">
+          <div class="content-inner" id="dropZone">
+            <div id="fileListArea"></div>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 拖放遮罩 -->
+<div class="nas-drop-mask" id="dropMask">
+  <div class="inner">
+    <div style="font-size:52px;margin-bottom:8px;">⬆️</div>
+    <div>释放以上传文件到：<b id="dropTargetPath">当前目录</b></div>
+    <div class="sub">支持多文件、整个文件夹（保留原始目录结构）</div>
   </div>
 </div>
 
@@ -207,7 +427,7 @@
       <div class="pm-path">📁 路径：<span id="permPath"></span></div>
       <table>
         <thead>
-          <tr><th style="width:32%;">角色</th><th>✅ 读取</th><th>✏️ 读写</th><th>🚫 禁止</th></tr>
+          <tr><th style="width:32%;">角色</th><th>✅ 读取</th><th>✏️ 读写</th><th>🚫 禁止</th><th>↩️ 继承</th></tr>
         </thead>
         <tbody id="permTbody"></tbody>
       </table>
@@ -237,32 +457,44 @@
 <script>
 // ==============================================
 // 云盘 NAS 主逻辑：WebDAV + 文件夹级权限（角色）
+//   新版：左树右内容（Win 资源管理器风格）+ 整页拖放 + 拖文件夹保留目录结构
 // ==============================================
 (function(){
   var NAS = {
     // ===== 内部状态 =====
-    currentPath: '/',
-    rawList: [],           // 当前目录缓存 {name,href,isFolder,size,lastModified}
+    currentPath: '/',        // 逻辑路径（相对系统根 rootFolder），永远以 / 开头
+    rawList: [],             // 当前目录缓存
     cfg: null,
-    canWrite: false,       // 模块级写权限
+    canWrite: false,
     isAdmin: false,
     roleKey: 'user',
-    permsEditing: null,    // 权限模态框当前编辑的 {folderPath, rules}
+    permsEditing: null,
+    // 树缓存：logicPath -> { open:true/false, children: [node] | null, loaded:true/false }
+    treeCache: {},
+    // 选择态
+    selectedPath: null,
+    // 拖放：当前悬停的目标逻辑路径
+    dragTargetLogicPath: null,
+    // 排序
+    sortBy: 'name',          // name | date | type | size
+    sortAsc: true,
+    // 视图：details（详细信息）| small（小图标）| large（大图标）
+    viewMode: 'details',
+    // 正在重命名的名称（避免重复）
+    _renamingOldName: null,
 
     init: function() {
       var self = this;
       var modPerm = App.getPermission('nasDrive');
       if (modPerm === 'hidden' || modPerm === 'none') {
         document.querySelector('.app-content').innerHTML = `
-          <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 16px;color:#6b7280;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 16px;color:#6b7280;">
             <div style="font-size:64px;margin-bottom:16px;">🔒</div>
             <div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>
             <div style="font-size:14px;">您当前的角色无权访问「云盘 NAS」，请联系管理员在 设置 → 用户组 中开通</div>
           </div>`;
         return;
       }
-
-      // 角色 / 管理员判定
       var u = App.getCurrentUser();
       if (u) {
         self.roleKey = u.role || 'user';
@@ -271,28 +503,37 @@
       }
       self.canWrite = (modPerm === 'write' || self.isAdmin);
       document.getElementById('userName').textContent = (u && u.username) || '管理员';
-
-      // 按钮显示
       document.getElementById('writeBtns').style.display = self.canWrite ? 'inline-flex' : 'none';
       document.getElementById('adminBtns').style.display = self.isAdmin ? 'inline-flex' : 'none';
 
-      // 读取配置
       self.cfg = self._loadCfg();
+      self._restoreSort();
+      self._restoreViewMode();
       if (!self.cfg.serverUrl) {
         self.setStatus('warn', '未配置：请先在 设置 → ☁️云盘NAS 中填写 WebDAV 连接参数');
         self.renderBreadcrumb();
-        self.showEmpty('🗂️ 尚未连接 NAS', '请联系管理员在「设置 → ☁️ 云盘 NAS」中配置好 WebDAV 服务器地址/账号后再使用。<br>· 局域网：填写 http://192.168.x.x:9008<br>· 外网：填写绿联云 ugreen.link DDNS 或端口映射 HTTPS');
+        self.renderTree();
+        self.showEmpty('🗂️ 尚未连接 NAS', '请联系管理员在「设置 → ☁️ 云盘 NAS」中配置好 WebDAV 服务器地址/账号后再使用。');
         return;
       }
       self.setStatus('warn', '正在连接 NAS...');
+      self._bindDragAndDrop();
+      // F2 快捷键：重命名选中项
+      window.addEventListener('keydown', function(e){
+        if (e.key === 'F2') {
+          var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+          if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+          e.preventDefault();
+          NAS.renameSelected();
+        }
+      });
       self.refresh();
-      self._bindDrag();
     },
 
-    // ===== 读 / 写 配置（与 settings 保持一致结构） =====
+    // ===== 配置读取 =====
     _loadCfg: function() {
       var def = {
-        serverUrl: '', webdavPath: '/webdav', rootFolder: '/服装外贸系统',
+        serverUrl: '', webdavPath: '/webdav', rootFolder: '/saintydoc',
         username: '', password: '', mode: 'lan', uploadMaxMb: 500, verifySsl: true
       };
       try {
@@ -302,7 +543,6 @@
       } catch (e) { return def; }
     },
 
-    // ===== 连接状态灯 =====
     setStatus: function(kind, text) {
       var el = document.getElementById('connStatus');
       if (!el) return;
@@ -310,7 +550,7 @@
       el.innerHTML = '<span class="status-dot ' + cls + '"></span>' + text;
     },
 
-    // ===== WebDAV =====
+    // ===== WebDAV 路径 =====
     _davBase: function() {
       var c = this.cfg;
       if (!c || !c.serverUrl) return null;
@@ -318,23 +558,61 @@
       var wd = c.webdavPath.startsWith('/') ? c.webdavPath : '/' + c.webdavPath;
       return base + wd;
     },
-    _absUrl: function(logicPath) {
-      // logicPath 是相对于系统根目录的逻辑路径。例：/根目录/123 款
-      var c = this.cfg; var rawBase = this._davBase();
-      if (!rawBase) return null;
-      // 去掉 base 末尾斜杠，再和以 / 开头的规范化路径拼接，避免 http:// 被误伤
-      var base = rawBase.replace(/\/+$/, '');
+    // 把「逻辑路径」转成 WebDAV 服务器上的绝对 path（不含协议主机，便于 self 判定）
+    _absDavPath: function(logicPath) {
+      var c = this.cfg;
+      var wd = c.webdavPath.startsWith('/') ? c.webdavPath : '/' + c.webdavPath;
       var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
-      if (!logicPath || logicPath === '/') {
-        var p0 = root.replace(/\/+/g, '/');
-        if (p0.length > 1 && p0.charAt(p0.length - 1) === '/') p0 = p0.slice(0, -1);
-        return base + (p0.charAt(0) === '/' ? p0 : '/' + p0);
-      }
-      if (logicPath.charAt(0) !== '/') logicPath = '/' + logicPath;
-      var p = root === '/' ? logicPath : (root + logicPath);
-      p = p.replace(/\/+/g, '/');
-      if (p.length > 1 && p.charAt(p.length - 1) === '/') p = p.slice(0, -1);
-      return base + (p.charAt(0) === '/' ? p : '/' + p);
+      var lp = logicPath;
+      if (!lp || lp === '') lp = '/';
+      if (lp.charAt(0) !== '/') lp = '/' + lp;
+      if (lp === '/') lp = '';
+      var p = (wd + root + lp).replace(/\/+/g, '/');
+      return p;
+    },
+    _absUrl: function(logicPath) {
+      var rawBase = this._davBase();
+      if (!rawBase) return null;
+      var base = rawBase.replace(/\/+$/, '');
+      var c = this.cfg;
+      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
+      root = root.replace(/\/+$/g, '');
+      if (!root.startsWith('/')) root = '/' + root;
+      var lp = logicPath;
+      if (!lp || lp === '') lp = '/';
+      if (lp.charAt(0) !== '/') lp = '/' + lp;
+      if (lp === '/') lp = '';
+      // rootFolder + logicPath 作为相对 davBase 的路径部分
+      var pathPart = (root + lp).replace(/\/+/g, '/');
+      if (pathPart.length > 1 && pathPart.charAt(pathPart.length - 1) === '/') pathPart = pathPart.slice(0, -1);
+      return base + pathPart;
+    },
+    _absUrlEncoded: function(logicPath) {
+      var base = this._davBase();
+      if (!base) return null;
+      var c = this.cfg;
+      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
+      root = root.replace(/\/+$/g, '');
+      if (!root.startsWith('/')) root = '/' + root;
+      var lp = logicPath;
+      if (!lp || lp === '') lp = '/';
+      if (lp.charAt(0) !== '/') lp = '/' + lp;
+      if (lp === '/') lp = '';
+      var raw = (root + lp).replace(/\/+/g, '/');
+      if (raw.length > 1 && raw.charAt(raw.length - 1) === '/') raw = raw.slice(0, -1);
+      var encoded = raw.split('/').map(encodeURIComponent).join('/');
+      return base.replace(/\/+$/, '') + encoded;
+    },
+    // 直接构造「物理 WebDAV 路径」的 URL，不走 rootFolder 映射（供 initRoot 等用）
+    _physicalUrlEncoded: function(relDavPath) {
+      var base = this._davBase();
+      if (!base) return null;
+      var rel = relDavPath || '';
+      if (rel && !rel.startsWith('/')) rel = '/' + rel;
+      rel = rel.replace(/\/+/g, '/');
+      if (rel.length > 1 && rel.charAt(rel.length - 1) === '/') rel = rel.slice(0, -1);
+      var encoded = rel.split('/').map(encodeURIComponent).join('/');
+      return base.replace(/\/+$/, '') + encoded;
     },
     _headers: function(extra) {
       var h = extra ? Object.assign({}, extra) : {};
@@ -344,20 +622,12 @@
       }
       return h;
     },
-    // 编码 logic path 片段
-    _encPath: function(p) {
-      if (!p || p === '/') return '/';
-      var parts = p.split('/').map(function(s){ return encodeURIComponent(s); });
-      return parts.join('/');
-    },
 
-    // PROPFIND -> [{name,isFolder,href,size,lastModified}]
+    // ===== 读取目录 =====
     listFolder: async function(logicPath) {
       var self = this;
-      var url = self._absUrl(logicPath);
-      if (!url) return [];
-      // 必须对 URL 路径编码（空格/中文），但 PROPFIND 的 HOST header 不允许多次编码
       var encUrl = self._absUrlEncoded(logicPath);
+      if (!encUrl) return [];
       var resp = await fetch(encUrl, {
         method: 'PROPFIND',
         headers: self._headers({ 'Depth': '1' }),
@@ -370,37 +640,21 @@
       return self._parseMultistatus(xmlTxt, logicPath);
     },
 
-    _absUrlEncoded: function(logicPath) {
-      var c = this.cfg;
-      var base = this._davBase();
-      if (!base) return null;
-      // base 含 serverUrl + webdavPath，webdavPath 单独编码
-      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
-      if (!logicPath || logicPath === '/') logicPath = '/';
-      if (logicPath.charAt(0) !== '/') logicPath = '/' + logicPath;
-      var full = root === '/' ? logicPath : (root + logicPath);
-      full = full.replace(/\/+/g, '/');
-      // 仅对 path 部分逐段编码（保留 "/"）
-      var encoded = full.split('/').map(encodeURIComponent).join('/');
-      // serverUrl 可能包含端口，已经是合法 URL 形式；如果 serverUrl 末位没有 / 也要处理正确（_davBase 会把 webdavPath 带上 /）
-      return base.replace(/\/+$/, '') + (encoded.startsWith('/') ? encoded : '/' + encoded);
-    },
-
     _parseMultistatus: function(xmlTxt, logicPath) {
+      var self = this;
       var parser = new DOMParser();
       var doc = parser.parseFromString(xmlTxt, 'application/xml');
       if (!doc || doc.documentElement.nodeName === 'parsererror') throw new Error('WebDAV 响应解析失败，可能不是 WebDAV 服务');
       var responses = doc.getElementsByTagNameNS('DAV:', 'response');
       if (responses.length === 0) responses = doc.getElementsByTagName('response');
       var items = [];
-      var targetHref = null; // 传入目录本身的 href，需要跳过
+      var davAbsPathOfCurrent = self._absDavPath(logicPath);
+      if (!davAbsPathOfCurrent.endsWith('/')) davAbsPathOfCurrent += '/';
       for (var i = 0; i < responses.length; i++) {
-        var item = this._parseResponse(responses[i], logicPath);
-        if (!item) continue;
-        if (item._isSelf) { targetHref = item.href; continue; }
+        var item = self._parseResponse(responses[i], logicPath, davAbsPathOfCurrent);
+        if (!item || item._isSelf) continue;
         items.push(item);
       }
-      // 排序：文件夹优先，再按名字自然排序
       items.sort(function(a,b){
         if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
         return a.name.localeCompare(b.name, 'zh');
@@ -414,23 +668,19 @@
       if (!list || list.length === 0) return null;
       return (list[0].textContent || '').trim();
     },
-    _parseResponse: function(respEl, logicPath) {
+    _parseResponse: function(respEl, logicPath, davAbsPathOfCurrent) {
       var self = this;
       var href = self._textOf(respEl, 'href');
       if (!href) return null;
-      // href 可能是完整 URL 也可能是 path（相对 server），只取 path 部分
       try { if (href.indexOf('http') === 0) { var u = new URL(href); href = u.pathname; } } catch(e) {}
-      // 找 propstat 或 prop
+      // 规范化 href
       var props = null;
       var propstatEls = respEl.getElementsByTagNameNS('DAV:', 'propstat');
       if (!propstatEls || propstatEls.length === 0) propstatEls = respEl.getElementsByTagName('propstat');
       if (propstatEls && propstatEls.length) {
         for (var j = 0; j < propstatEls.length; j++) {
           var st = self._textOf(propstatEls[j], 'status') || '';
-          if (st.indexOf(' 200 ') > 0) {
-            props = propstatEls[j];
-            break;
-          }
+          if (st.indexOf(' 200 ') > 0) { props = propstatEls[j]; break; }
         }
         if (!props) props = propstatEls[0];
       } else {
@@ -451,40 +701,34 @@
       size = size ? parseInt(size, 10) : 0;
       if (isNaN(size)) size = 0;
       var lastMod = self._textOf(props, 'getlastmodified') || '';
-      var name = decodeURIComponent(href.replace(/\/+$/, '').split('/').pop());
-      // 判断这条是否为自身（depth=1 时第一项通常是父目录本身）
-      var logicTrail = (logicPath === '/' ? '' : logicPath);
-      var isSelf = (href.endsWith('/' + name + '/') && logicTrail.indexOf('/' + name) === logicTrail.length - ('/' + name).length)
-                   || (logicPath === '/' && href === self._relWebdavPathOfRoot());
+      // 规范化 href 为 DavPath
+      var hrefNorm = href.replace(/\/+$/g, '');
+      var name = decodeURIComponent(hrefNorm.split('/').pop() || '');
+      if (!name) return null;
+      // 判断 self：如果 href 的 path 去掉末尾 / 后 等于 davAbsPathOfCurrent 去掉末尾 /
+      var hrefForCmp = (href.replace(/\/+$/, '') + '/');
+      var isSelf = (hrefForCmp === davAbsPathOfCurrent);
       return {
         name: name,
         href: href,
         isFolder: isFolder,
         size: size,
         lastModified: lastMod,
-        _isSelf: false,
+        _isSelf: isSelf,
       };
-    },
-    // 尝试从配置解析 WebDAV 根+系统根目录后的 path 用于判断 self（粗略）
-    _relWebdavPathOfRoot: function() {
-      var c = this.cfg;
-      var wd = c.webdavPath.startsWith('/') ? c.webdavPath : '/' + c.webdavPath;
-      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
-      var r = (wd + root).replace(/\/+/g, '/');
-      return r.charAt(r.length - 1) === '/' ? r : (r + '/');
     },
 
     // ===== 新建文件夹 MKCOL =====
-    mkDir: async function(name) {
+    mkDir: async function(name, logicPath) {
       if (!this.canWrite) { App.toast('您对当前模块无写权限', 'error'); return; }
+      if (logicPath == null) logicPath = this.currentPath;
       if (!name) name = prompt('请输入新文件夹名称：', '新建文件夹');
       if (!name) return;
       name = name.trim().replace(/[\\/:*?"<>|]/g, '');
       if (!name) return App.toast('文件夹名称不合法', 'error');
-      // 权限校验
-      if (!this._folderWriteable(this.currentPath)) { App.toast('您在当前文件夹没有创建权限', 'error'); return; }
+      if (!this._folderWriteable(logicPath)) { App.toast('您在当前文件夹没有创建权限', 'error'); return; }
       try {
-        var target = this.currentPath === '/' ? ('/' + name) : (this.currentPath + '/' + name);
+        var target = logicPath === '/' ? ('/' + name) : (logicPath + '/' + name);
         var url = this._absUrlEncoded(target);
         var resp = await fetch(url, { method: 'MKCOL', headers: this._headers(), credentials: 'omit' });
         if (!resp.ok) {
@@ -492,6 +736,8 @@
           if (resp.status === 409) throw new Error('父目录不存在(409)');
           throw new Error('HTTP ' + resp.status);
         }
+        // 清 tree cache 使父级下次重列
+        this._invalidateTreeCache(logicPath);
         App.toast('✅ 文件夹已创建：' + name, 'success');
         this.refresh();
       } catch (e) {
@@ -500,38 +746,38 @@
       }
     },
 
-    // ===== 初始化根目录（仅管理员） =====
+    // ===== 初始化根目录 =====
     initRoot: async function() {
       if (!this.isAdmin) { App.toast('仅管理员可执行初始化', 'error'); return; }
-      if (!confirm('将在 WebDAV 上创建根目录「' + (this.cfg.rootFolder || '/') + '」（若不存在），是否继续？')) return;
+      var root = (this.cfg.rootFolder || '/');
+      if (!confirm('将在 WebDAV 上创建系统根目录「' + root + '」（若不存在），是否继续？')) return;
+      var self = this;
       try {
-        var c = this.cfg;
-        var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
-        // 先尝试 PROPFIND 看是否存在
-        var url = this._absUrlEncoded('/');
-        var resp = await fetch(url, { method: 'PROPFIND', headers: this._headers({ 'Depth': '0' }), credentials: 'omit' });
+        // 检查是否存在：用逻辑 / 对应的物理 URL（已拼 rootFolder）
+        var url = self._absUrlEncoded('/');
+        var resp = await fetch(url, { method: 'PROPFIND', headers: self._headers({ 'Depth': '0' }), credentials: 'omit' });
         if (resp.ok) {
           App.toast('✅ 根目录已就绪：' + root, 'success');
-          this.refresh();
+          self.refresh();
           return;
         }
         if (resp.status === 404) {
-          // 需要逐级 MKCOL：从 webdavPath 之后看 root 是否有嵌套
-          var parts = root.split('/').filter(Boolean);
+          // 逐级创建：built 是「物理路径片段（相对 davBase）」，直接走 _physicalUrlEncoded
+          var parts = (root.startsWith('/') ? root.slice(1) : root).split('/').filter(Boolean);
           var built = '';
           for (var i = 0; i < parts.length; i++) {
             built += '/' + parts[i];
-            var sub = this._absUrlEncoded(built);
-            var r = await fetch(sub, { method: 'PROPFIND', headers: this._headers({ 'Depth': '0' }), credentials: 'omit' });
+            var sub = self._physicalUrlEncoded(built);  // 不走 rootFolder 映射，避免叠加
+            var r = await fetch(sub, { method: 'PROPFIND', headers: self._headers({ 'Depth': '0' }), credentials: 'omit' });
             if (r.ok) continue;
             if (r.status !== 404) throw new Error('创建「' + built + '」失败 HTTP ' + r.status);
-            var rr = await fetch(sub, { method: 'MKCOL', headers: this._headers(), credentials: 'omit' });
+            var rr = await fetch(sub, { method: 'MKCOL', headers: self._headers(), credentials: 'omit' });
             if (!rr.ok) throw new Error('创建「' + built + '」失败 HTTP ' + rr.status);
           }
-          // 初始化根目录权限：所有角色默认可读写（管理员可之后细调）
-          this._ensureRootFolderPerm();
+          self._ensureRootFolderPerm();
+          self.treeCache = {};
           App.toast('✅ 根目录初始化成功：' + root, 'success');
-          this.refresh();
+          self.refresh();
           return;
         }
         throw new Error('HTTP ' + resp.status);
@@ -546,12 +792,12 @@
       if (!item) return;
       if (!confirm('确认删除 ' + (item.isFolder ? '文件夹' : '文件') + ' 「' + item.name + '」？' + (item.isFolder ? '\n⚠️ 文件夹内所有内容都会被删除。' : ''))) return;
       var sub = this.currentPath === '/' ? '/' + item.name : this.currentPath + '/' + item.name;
-      // 权限：非管理员不能删无 write 的目录（root 级禁止）
       if (!this._folderWriteable(this.currentPath)) { App.toast('您在当前目录无删除权限', 'error'); return; }
       try {
         var url = this._absUrlEncoded(sub) + (item.isFolder ? '/' : '');
         var resp = await fetch(url, { method: 'DELETE', headers: this._headers(), credentials: 'omit' });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        this._invalidateTreeCache(this.currentPath);
         App.toast('✅ 已删除 ' + item.name, 'success');
         this.refresh();
       } catch (e) {
@@ -561,10 +807,7 @@
 
     // ===== 下载 =====
     downloadItem: async function(item) {
-      if (item.isFolder) {
-        App.toast('暂不支持文件夹整体打包下载，请逐个文件下载', 'warning');
-        return;
-      }
+      if (item.isFolder) { App.toast('暂不支持文件夹整体打包下载，请逐个文件下载', 'warning'); return; }
       var sub = this.currentPath === '/' ? '/' + item.name : this.currentPath + '/' + item.name;
       try {
         var url = this._absUrlEncoded(sub);
@@ -572,8 +815,7 @@
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         var blob = await resp.blob();
         var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = item.name;
+        a.href = URL.createObjectURL(blob); a.download = item.name;
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
       } catch (e) {
@@ -581,9 +823,13 @@
       }
     },
 
-    // ===== 预览（图片、PDF） =====
+    // ===== 预览 =====
     previewItem: async function(item) {
-      if (item.isFolder) { this.cd('/' + item.name); return; }
+      if (item.isFolder) {
+        var sub = this.currentPath === '/' ? '/' + item.name : this.currentPath + '/' + item.name;
+        this.cd(sub);
+        return;
+      }
       var ext = (item.name.indexOf('.')>=0 ? item.name.split('.').pop().toLowerCase() : '');
       var isImg = ['png','jpg','jpeg','gif','bmp','webp','svg','ico','avif'].indexOf(ext) >= 0;
       if (!isImg && ['pdf'].indexOf(ext) < 0) {
@@ -593,8 +839,7 @@
       var sub = this.currentPath === '/' ? '/' + item.name : this.currentPath + '/' + item.name;
       try {
         var url = this._absUrlEncoded(sub);
-        var base64Auth = null;
-        if (this.cfg.username) base64Auth = btoa(this.cfg.username + ':' + (this.cfg.password || ''));
+        var base64Auth = this.cfg.username ? btoa(this.cfg.username + ':' + (this.cfg.password || '')) : null;
         var resp = await fetch(url, {
           method: 'GET',
           headers: base64Auth ? { 'Authorization': 'Basic ' + base64Auth } : {},
@@ -603,10 +848,7 @@
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         var blob = await resp.blob();
         var obj = URL.createObjectURL(blob);
-        if (['pdf'].indexOf(ext) >= 0) {
-          window.open(obj, '_blank');
-          return;
-        }
+        if (['pdf'].indexOf(ext) >= 0) { window.open(obj, '_blank'); return; }
         document.getElementById('previewImg').src = obj;
         document.getElementById('previewCaption').textContent = item.name + '  ·  ' + this._fmtSize(item.size) + '  ·  ' + (item.lastModified || '-');
         document.getElementById('previewOverlay').classList.add('active');
@@ -622,77 +864,540 @@
       if (src && src.indexOf('blob:') === 0) try { URL.revokeObjectURL(src); } catch(e) {}
     },
 
-    // ===== 上传 =====
+    // ===== 视图切换 =====
+    setViewMode: function(mode) {
+      if (['details','small','large'].indexOf(mode) < 0) mode = 'details';
+      this.viewMode = mode;
+      // 同步按钮 active 态
+      var sw = document.getElementById('viewSwitch');
+      if (sw) {
+        var btns = sw.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.toggle('active', btns[i].getAttribute('data-view') === mode);
+        }
+      }
+      try { App.store.set('nas_viewMode', mode); } catch(_) {}
+      this.renderList();
+    },
+    _restoreViewMode: function() {
+      try {
+        var s = App.store.get('nas_viewMode', null);
+        if (s && ['details','small','large'].indexOf(s) >= 0) this.viewMode = s;
+      } catch(_) {}
+      var sw = document.getElementById('viewSwitch');
+      if (sw) {
+        var btns = sw.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.toggle('active', btns[i].getAttribute('data-view') === this.viewMode);
+        }
+      }
+    },
+
+    // ===== 排序 =====
+    toggleSort: function(field) {
+      if (['name','date','type','size'].indexOf(field) < 0) return;
+      if (this.sortBy === field) this.sortAsc = !this.sortAsc;
+      else { this.sortBy = field; this.sortAsc = (field === 'date' ? false : true); }  // 修改日期默认新→旧
+      try {
+        App.store.set('nas_sort', { by: this.sortBy, asc: this.sortAsc });
+      } catch(_) {}
+      this.renderList();
+    },
+    _restoreSort: function() {
+      try {
+        var s = App.store.get('nas_sort', null);
+        if (s && typeof s === 'object' && s.by) {
+          if (['name','date','type','size'].indexOf(s.by) >= 0) this.sortBy = s.by;
+          this.sortAsc = !!s.asc;
+        }
+      } catch(_) {}
+    },
+    _tsOfDate: function(s) {
+      try {
+        if (!s) return 0;
+        var d = new Date(s);
+        if (isNaN(d.getTime())) return 0;
+        return d.getTime();
+      } catch(e) { return 0; }
+    },
+    _typeOf: function(item) {
+      if (item.isFolder) return '文件夹';
+      var n = item.name || '';
+      var idx = n.lastIndexOf('.');
+      if (idx < 0 || idx === n.length - 1) return '文件';
+      var ext = n.substring(idx + 1).toLowerCase();
+      var map = {
+        png:'PNG 图片', jpg:'JPEG 图片', jpeg:'JPEG 图片', gif:'GIF 图片',
+        bmp:'BMP 图片', webp:'WebP 图片', svg:'SVG 图片', ico:'图标', avif:'AVIF 图片',
+        pdf:'PDF 文档', doc:'Word 文档', docx:'Word 文档',
+        xls:'Excel 表格', xlsx:'Excel 表格', csv:'CSV 表格',
+        ppt:'PPT 演示', pptx:'PPT 演示',
+        txt:'文本文件', md:'Markdown',
+        zip:'压缩包', rar:'压缩包', '7z':'压缩包', tar:'压缩包', gz:'压缩包',
+        js:'JavaScript', ts:'TypeScript', html:'网页', css:'样式表', json:'JSON',
+        mp3:'音频', wav:'音频', flac:'音频', aac:'音频',
+        mp4:'视频', mov:'视频', avi:'视频', mkv:'视频',
+      };
+      return map[ext] ? map[ext] : (ext.toUpperCase() + ' 文件');
+    },
+    _extOf: function(item) {
+      if (item.isFolder) return '';
+      var n = item.name || '';
+      var idx = n.lastIndexOf('.');
+      if (idx < 0 || idx === n.length - 1) return '';
+      return n.substring(idx + 1).toLowerCase();
+    },
+    _sortList: function(list) {
+      var self = this;
+      var f = self.sortBy, asc = self.sortAsc ? 1 : -1;
+      return list.slice().sort(function(a,b){
+        // 文件夹永远在前
+        if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+        var va, vb;
+        switch (f) {
+          case 'date':
+            va = self._tsOfDate(a.lastModified); vb = self._tsOfDate(b.lastModified);
+            if (va === vb) break;
+            return (va - vb) * asc;
+          case 'size':
+            va = (a.isFolder ? 0 : (a.size || 0)); vb = (b.isFolder ? 0 : (b.size || 0));
+            if (va === vb) break;
+            return (va - vb) * asc;
+          case 'type':
+            va = self._typeOf(a); vb = self._typeOf(b);
+            if (va === vb) break;
+            return va.localeCompare(vb, 'zh') * asc;
+          case 'name':
+          default:
+            va = a.name; vb = b.name;
+            if (va === vb) return 0;
+            return va.localeCompare(vb, 'zh') * asc;
+        }
+        // 次排序：名称
+        return a.name.localeCompare(b.name, 'zh');
+      });
+    },
+
+    // ===== 重命名 =====
+    renameSelected: function() {
+      var self = this;
+      var name = self.selectedPath ? self.selectedPath.split('/').pop() : null;
+      if (!name) { App.toast('请先选中要重命名的文件或文件夹', 'info'); return; }
+      var item = self.findItemByName(name);
+      if (!item) { App.toast('未找到选中项', 'info'); return; }
+      self.renameItem(item);
+    },
+    renameByName: function(name) {
+      var item = this.findItemByName(name);
+      if (!item) return;
+      this.renameItem(item);
+    },
+    renameItem: function(item) {
+      if (!this.canWrite) { App.toast('无写权限', 'error'); return; }
+      if (!item) return;
+      if (!this._folderWriteable(this.currentPath)) { App.toast('当前目录无修改权限', 'error'); return; }
+      // 找到 DOM 上对应条目，触发内联重命名
+      var sel = null;
+      if (this.viewMode === 'details') {
+        sel = document.querySelector('#fileListArea tr[data-name="' + CSS.escape(item.name) + '"]');
+      } else {
+        sel = document.querySelector('#fileListArea .item-card[data-name="' + CSS.escape(item.name) + '"]');
+      }
+      if (sel) this._beginInlineRename(sel, item);
+      else this._promptRename(item);  // fallback
+    },
+    _promptRename: function(item) {
+      var self = this;
+      var n = prompt('请输入新的名称：', item.name);
+      if (n == null) return;
+      n = n.trim();
+      if (!n || n === item.name) return;
+      self._doRename(item.name, n);
+    },
+    _beginInlineRename: function(el, item) {
+      var self = this;
+      self._renamingOldName = item.name;
+      // 找名称文本位置替换成 input
+      // details 视图：td 内 .fname；图标视图：.card-name
+      var nameEl = el.querySelector('.fname') || el.querySelector('.card-name');
+      if (!nameEl) { self._promptRename(item); return; }
+      var oldHtml = nameEl.innerHTML;
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'rename-input';
+      input.value = item.name;
+      // 选中主文件名（不含扩展名，文件夹全选）
+      var selEnd = item.name.length;
+      if (!item.isFolder) {
+        var idx = item.name.lastIndexOf('.');
+        if (idx > 0) selEnd = idx;
+      }
+      nameEl.innerHTML = '';
+      nameEl.appendChild(input);
+      setTimeout(function(){
+        input.focus();
+        try { input.setSelectionRange(0, selEnd); } catch(e) { input.select(); }
+      }, 10);
+      function commit(cancel) {
+        if (!input.parentElement) return;
+        var newName = input.value.trim();
+        nameEl.innerHTML = oldHtml;
+        self._renamingOldName = null;
+        if (cancel || !newName || newName === item.name) return;
+        self._doRename(item.name, newName);
+      }
+      input.addEventListener('blur', function(){ commit(false); });
+      input.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') { e.preventDefault(); commit(false); }
+        else if (e.key === 'Escape') { e.preventDefault(); commit(true); }
+      });
+      input.addEventListener('click', function(e){ e.stopPropagation(); });
+    },
+    _doRename: async function(oldName, newName) {
+      var self = this;
+      if (!oldName || !newName || oldName === newName) return;
+      // 基础校验
+      if (/[\\/:*?"<>|]/.test(newName)) { App.toast('名称不能包含 \\ / : * ? " < > |', 'error'); return; }
+      var cleanNew = newName.trim();
+      if (!cleanNew) return;
+      if (cleanNew === oldName) return;
+      // 同级重名检查
+      var exist = (self.rawList || []).find(function(x){ return x.name.toLowerCase() === cleanNew.toLowerCase(); });
+      if (exist) { App.toast('该目录下已存在同名项：' + cleanNew, 'error'); return; }
+      var logicOld = self.currentPath === '/' ? '/' + oldName : self.currentPath + '/' + oldName;
+      var logicNew = self.currentPath === '/' ? '/' + cleanNew : self.currentPath + '/' + cleanNew;
+      try {
+        var srcUrl = self._absUrlEncoded(logicOld);
+        var destAbsPath = self._absDavPath(logicNew);  // 服务器上的绝对路径
+        // Destination 需要用完整 URL 才兼容多数 WebDAV 实现
+        var destFullUrl = self._absUrl(logicNew);
+        var resp = await fetch(srcUrl, {
+          method: 'MOVE',
+          headers: self._headers({
+            'Destination': destFullUrl,
+            'Overwrite': 'F'
+          }),
+          credentials: 'omit'
+        });
+        if (!resp.ok) {
+          if (resp.status === 409) throw new Error('目标路径不存在(409)');
+          if (resp.status === 412) throw new Error('已存在同名项(412)');
+          throw new Error('HTTP ' + resp.status);
+        }
+        self._invalidateTreeCache(self.currentPath);
+        App.toast('✅ 已重命名：' + oldName + ' → ' + cleanNew, 'success');
+        // 若有选中，同步刷新
+        self.selectedPath = null;
+        self.refresh();
+      } catch (e) {
+        console.warn('[NAS] rename err:', e);
+        App.toast('❌ 重命名失败：' + (e && e.message ? e.message : String(e)), 'error');
+      }
+    },
+
+    // ===== 上传：多选 + 拖放文件夹（保留相对结构） =====
     pickUpload: function() {
       var el = document.getElementById('filePicker');
-      if (el) el.click();
+      if (el) el.setAttribute('webkitdirectory', ''), el.setAttribute('directory', ''), el.click();
     },
     onFilePick: function(ev) {
       if (!ev || !ev.target || !ev.target.files || ev.target.files.length === 0) return;
-      this.uploadFiles(Array.from(ev.target.files));
+      var list = this._fileListToEntries(Array.from(ev.target.files), ev.target);
+      this.uploadEntries(list, this.currentPath);
       ev.target.value = '';
     },
-    _bindDrag: function() {
-      var zone = document.getElementById('dropZone');
-      if (!zone || !this.canWrite) return;
-      var self = this;
-      var hint = document.getElementById('dropHint');
-      var dragCount = 0;
-      zone.addEventListener('dragenter', function(e){
-        if (!self.canWrite) return;
-        e.preventDefault(); dragCount++;
-        zone.classList.add('drag');
-        if (hint) hint.style.display = 'block';
+    // 把 FileList + (optional) webkitRelativePath 转成统一的「条目」数组：{relPath, file}
+    _fileListToEntries: function(files, pickerEl) {
+      var out = [];
+      files.forEach(function(f){
+        var rel = (f.webkitRelativePath || f.name || '').replace(/\\/g, '/');
+        // 若有 webkitRelativePath，形如 "我的文件夹/子目录/a.png"，其首段就是顶层选择的文件夹名；
+        // 如果只是多选文件则无相对路径
+        out.push({ relPath: rel, file: f });
       });
-      zone.addEventListener('dragover', function(e){ e.preventDefault(); });
-      zone.addEventListener('dragleave', function(e){
-        dragCount = Math.max(0, dragCount - 1);
-        if (dragCount === 0) {
-          zone.classList.remove('drag');
-          if (hint) hint.style.display = 'none';
-        }
-      });
-      zone.addEventListener('drop', function(e){
-        e.preventDefault(); dragCount = 0;
-        zone.classList.remove('drag');
-        if (hint) hint.style.display = 'none';
-        if (!self.canWrite) return;
-        var files = [];
-        if (e.dataTransfer && e.dataTransfer.files) {
-          for (var i = 0; i < e.dataTransfer.files.length; i++) files.push(e.dataTransfer.files[i]);
-        }
-        if (files.length) self.uploadFiles(files);
-      });
+      return out;
     },
-    uploadFiles: async function(fileList) {
+    // 拖放：绑定整页
+    _bindDragAndDrop: function() {
+      var self = this;
+      if (!self.canWrite) return;
+      var dragCount = 0;
+      var mask = document.getElementById('dropMask');
+      var content = document.querySelector('.nas .content-inner');
+      var treeHost = document.getElementById('treeHost');
+
+      function showMask(target) {
+        if (!mask) return;
+        mask.classList.add('active');
+        var dp = document.getElementById('dropTargetPath');
+        if (dp) dp.textContent = self._logicPathDisplay(target || self.currentPath);
+      }
+      function hideMask() {
+        if (mask) mask.classList.remove('active');
+        self._clearDragHighlights();
+        self.dragTargetLogicPath = null;
+      }
+
+      // 全局 dragenter/dragleave 控制遮罩
+      window.addEventListener('dragenter', function(e){
+        if (!self._isFileDrag(e)) return;
+        e.preventDefault();
+        dragCount++;
+        // 找悬停目标
+        var t = self._resolveDragTarget(e);
+        self.dragTargetLogicPath = t;
+        showMask(t);
+        self._highlightDragTarget(t);
+      }, true);
+      window.addEventListener('dragover', function(e){
+        if (!self._isFileDrag(e)) return;
+        e.preventDefault();
+        var t = self._resolveDragTarget(e);
+        if (t !== self.dragTargetLogicPath) {
+          self.dragTargetLogicPath = t;
+          self._highlightDragTarget(t);
+          var dp = document.getElementById('dropTargetPath');
+          if (dp) dp.textContent = self._logicPathDisplay(t || self.currentPath);
+        }
+        if (e.dataTransfer) try { e.dataTransfer.dropEffect = 'copy'; } catch(_) {}
+      }, true);
+      window.addEventListener('dragleave', function(e){
+        if (!self._isFileDrag(e)) return;
+        dragCount = Math.max(0, dragCount - 1);
+        if (dragCount === 0) hideMask();
+      }, true);
+      window.addEventListener('drop', function(e){
+        if (!self._isFileDrag(e)) return;
+        e.preventDefault(); dragCount = 0;
+        var target = self.dragTargetLogicPath || self.currentPath;
+        hideMask();
+        if (!self._folderWriteable(target)) { App.toast('目标文件夹没有上传权限', 'error'); return; }
+        self._handleDrop(e, target);
+      }, true);
+    },
+    _isFileDrag: function(e) {
+      if (!e || !e.dataTransfer) return false;
+      var types = e.dataTransfer.types;
+      if (!types) return false;
+      for (var i = 0; i < types.length; i++) if (types[i] === 'Files') return true;
+      return false;
+    },
+    _resolveDragTarget: function(e) {
+      var self = this;
+      // 优先：悬停在左树某个 tree-row 上
+      var tr = e.target && e.target.closest ? e.target.closest('.tree-row') : null;
+      if (tr) {
+        var lp = tr.getAttribute('data-logic-path');
+        if (lp != null) return lp;
+      }
+      // 其次：悬停在右内容区的表格行（文件夹行）
+      var row = e.target && e.target.closest ? e.target.closest('tbody tr') : null;
+      if (row) {
+        var nameEl = row.querySelector('.name-cell .fname');
+        if (!nameEl) return self.currentPath;
+        var nm = nameEl.textContent;
+        var entry = self.rawList && self.rawList.find(function(x){ return x.name === nm; });
+        if (entry && entry.isFolder) {
+          return self.currentPath === '/' ? '/' + nm : self.currentPath + '/' + nm;
+        }
+      }
+      // 再其次：悬停在图标视图（大/小图标）的 item-card 上
+      var card = e.target && e.target.closest ? e.target.closest('.item-card') : null;
+      if (card) {
+        var nm2 = card.getAttribute('data-name');
+        if (nm2) {
+          var entry2 = self.rawList && self.rawList.find(function(x){ return x.name === nm2; });
+          if (entry2 && entry2.isFolder) {
+            return self.currentPath === '/' ? '/' + nm2 : self.currentPath + '/' + nm2;
+          }
+        }
+      }
+      return self.currentPath;
+    },
+    _highlightDragTarget: function(logicPath) {
+      var self = this;
+      this._clearDragHighlights();
+      if (!logicPath) return;
+      // 树行高亮
+      var treeRow = document.querySelector('.tree .tree-row[data-logic-path="' + CSS.escape(logicPath) + '"]');
+      if (treeRow) treeRow.classList.add('drop-target');
+      // 内容表格行高亮（仅文件夹）
+      if (logicPath.length >= this.currentPath.length && logicPath.indexOf(this.currentPath) === 0) {
+        var rel = logicPath.substring(this.currentPath.length).replace(/^\//, '');
+        if (rel && rel.indexOf('/') === -1) {
+          // details 视图：tr
+          var trs = document.querySelectorAll('#fileListArea tbody tr');
+          for (var i = 0; i < trs.length; i++) {
+            var t = trs[i].querySelector('.fname');
+            if (t && t.textContent === rel) { trs[i].classList.add('drop-target'); break; }
+          }
+          // 图标视图：item-card
+          try {
+            var cards = document.querySelectorAll('#fileListArea .item-card[data-name="' + CSS.escape(rel) + '"]');
+            for (var j = 0; j < cards.length; j++) cards[j].classList.add('drop-target');
+          } catch(e) {}
+        }
+      }
+    },
+    _clearDragHighlights: function() {
+      document.querySelectorAll('.drop-target').forEach(function(el){ el.classList.remove('drop-target'); });
+    },
+    _logicPathDisplay: function(lp) {
+      if (!lp || lp === '/') return this._rootDisplayName();
+      return this._rootDisplayName() + lp;
+    },
+    _rootDisplayName: function() {
+      var r = (this.cfg && this.cfg.rootFolder) ? this.cfg.rootFolder : '/';
+      r = r.replace(/\/+/g, '/');
+      var parts = r.split('/').filter(Boolean);
+      if (!parts.length) return '📁 根';
+      return '📁 ' + parts[parts.length - 1];
+    },
+
+    _handleDrop: async function(e, targetLogicPath) {
+      var self = this;
+      var dt = e.dataTransfer;
+      if (!dt) return;
+      var entries = [];
+      // 优先用 DataTransferItem + webkitGetAsEntry（支持文件夹递归）
+      if (dt.items && dt.items.length) {
+        try {
+          for (var i = 0; i < dt.items.length; i++) {
+            var it = dt.items[i];
+            if (it.kind !== 'file') continue;
+            var entry = (it.webkitGetAsEntry && it.webkitGetAsEntry()) || null;
+            if (entry) entries.push({ __entry: entry, relPrefix: '' });
+            else {
+              // fallback 到 file
+              var f = it.getAsFile();
+              if (f) entries.push({ __file: f, relPrefix: '' });
+            }
+          }
+        } catch(_) {}
+      }
+      if (entries.length === 0 && dt.files && dt.files.length) {
+        Array.from(dt.files).forEach(function(f){ entries.push({ __file: f, relPrefix: '' }); });
+      }
+      if (!entries.length) return;
+      var flat = await self._flattenEntries(entries);
+      if (!flat || !flat.length) return;
+      self.uploadEntries(flat, targetLogicPath);
+    },
+    // 把 DataTransferItem Entry（含目录结构）递归扁平化：[{relPath, file}]
+    _flattenEntries: function(entries) {
+      var self = this;
+      var out = [];
+      function readDir(entry, prefix) {
+        return new Promise(function(res){
+          var reader = entry.createReader();
+          var all = [];
+          function step() {
+            reader.readEntries(function(results){
+              if (!results || !results.length) return res(all);
+              all = all.concat(results);
+              step();
+            }, function(){ res(all); });
+          }
+          step();
+        });
+      }
+      async function walk(e, prefix) {
+        if (e.__file) {
+          out.push({ relPath: prefix + e.__file.name, file: e.__file });
+          return;
+        }
+        var entry = e.__entry;
+        var pfx = e.relPrefix || prefix || '';
+        if (!entry) return;
+        if (entry.isFile) {
+          await new Promise(function(res){
+            entry.file(function(f){
+              out.push({ relPath: pfx + entry.name, file: f });
+              res();
+            }, function(){ res(); });
+          });
+        } else if (entry.isDirectory) {
+          var subPrefix = pfx + entry.name + '/';
+          var children = await readDir(entry, pfx);
+          for (var i = 0; i < children.length; i++) {
+            await walk({ __entry: children[i], relPrefix: subPrefix }, subPrefix);
+          }
+        }
+      }
+      return Promise.all(entries.map(function(e){ return walk(e, ''); })).then(function(){ return out; });
+    },
+
+    uploadEntries: async function(entryList, targetLogicPath) {
       var self = this;
       if (!self.canWrite) { App.toast('无写权限', 'error'); return; }
-      if (!self._folderWriteable(self.currentPath)) { App.toast('您在当前目录没有上传权限', 'error'); return; }
-      if (!fileList || !fileList.length) return;
+      if (!self._folderWriteable(targetLogicPath)) { App.toast('目标文件夹没有上传权限', 'error'); return; }
+      if (!entryList || !entryList.length) return;
       var maxMb = (self.cfg && self.cfg.uploadMaxMb) || 500;
-      for (var i = 0; i < fileList.length; i++) {
-        var f = fileList[i];
-        if (f.size > maxMb * 1024 * 1024) {
-          App.toast('「' + f.name + '」超过 ' + maxMb + 'MB，已跳过', 'warning');
-          continue;
+      // 分组：按 relPath 的父级目录，先 MKCOL 所有父级目录，再逐个 PUT 文件
+      var needDirs = new Set();
+      var safeList = [];
+      entryList.forEach(function(e){
+        var rel = (e.relPath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+        if (!rel) rel = e.file ? e.file.name : '';
+        if (!rel) return;
+        var segs = rel.split('/');
+        if (segs.length > 1) {
+          var acc = '';
+          for (var i = 0; i < segs.length - 1; i++) {
+            acc += (acc ? '/' : '') + segs[i];
+            needDirs.add(acc);
+          }
         }
-        try { await self.uploadOne(f); } catch (e) { console.warn('[NAS] upload err:', e); }
+        if (e.file.size > maxMb * 1024 * 1024) {
+          App.toast('「' + (e.file.name || rel) + '」超过 ' + maxMb + 'MB，已跳过', 'warning');
+          return;
+        }
+        safeList.push({ relPath: rel, file: e.file });
+      });
+      // 逐层 MKCOL（先短后长，依赖父）
+      var sortedDirs = Array.from(needDirs).sort(function(a,b){ return a.length - b.length; });
+      for (var i = 0; i < sortedDirs.length; i++) {
+        var dirRel = sortedDirs[i];
+        var logicDir = targetLogicPath === '/' ? '/' + dirRel : targetLogicPath + '/' + dirRel;
+        try {
+          var u = self._absUrlEncoded(logicDir);
+          var r = await fetch(u, { method: 'PROPFIND', headers: self._headers({ 'Depth':'0' }), credentials:'omit' });
+          if (!r.ok && r.status === 404) {
+            var rr = await fetch(u, { method: 'MKCOL', headers: self._headers(), credentials:'omit' });
+            if (!rr.ok && rr.status !== 405) console.warn('[NAS] mkcol upload dir fail:', logicDir, rr.status);
+          }
+        } catch(err) { console.warn('[NAS] ensureDir err:', logicDir, err); }
       }
+      // 上传文件（并发控制 2 个）
+      var idx = 0; var ok = 0, err = 0;
+      async function worker() {
+        while (idx < safeList.length) {
+          var cur = idx++;
+          var ent = safeList[cur];
+          var logicFile = targetLogicPath === '/' ? '/' + ent.relPath : targetLogicPath + '/' + ent.relPath;
+          try { await self.uploadOne(ent.file, logicFile); ok++; }
+          catch (e) { err++; console.warn('[NAS] upload err:', ent.relPath, e); }
+        }
+      }
+      await Promise.all([worker(), worker()]);
+      self._invalidateTreeCache(targetLogicPath);
       self.refresh();
+      if (safeList.length) {
+        App.toast('✅ 上传完成：成功 ' + ok + '，失败 ' + err, err ? 'warning' : 'success');
+      }
     },
-    uploadOne: function(file) {
+
+    uploadOne: function(file, logicPath) {
       var self = this;
+      var url = self._absUrlEncoded(logicPath);
+      var displayName = file.name;
       return new Promise(function(resolve, reject){
-        var name = file.name;
-        var sub = self.currentPath === '/' ? '/' + name : self.currentPath + '/' + name;
-        var url = self._absUrlEncoded(sub);
         var xhr = new XMLHttpRequest();
-        var toastId = self._showUploadToast(name);
+        var toastId = self._showUploadToast(displayName);
         xhr.open('PUT', url, true);
         if (self.cfg && self.cfg.username) {
           xhr.setRequestHeader('Authorization', 'Basic ' + btoa(self.cfg.username + ':' + (self.cfg.password || '')));
         }
-        // 进度（上传进度绑定 xhr.upload）
         var bar = self._getUploadToastBar(toastId);
         if (xhr.upload) {
           xhr.upload.onprogress = function(e){
@@ -716,21 +1421,19 @@
         };
         xhr.onerror = function(){
           self._setUploadProgress(0);
-          self._setUploadToast(toastId, 0, 'err', '✗ 上传失败（网络错误或 CORS 未开启）');
+          self._setUploadToast(toastId, 0, 'err', '✗ 网络错误或 CORS 未开启');
           reject(new Error('network'));
         };
         xhr.send(file);
       });
     },
+
     _setUploadProgress: function(pct) {
       var el = document.getElementById('uploadProgress');
       var bar = document.getElementById('uploadProgressBar');
       if (!el || !bar) return;
-      if (pct <= 0 || pct >= 100) {
-        el.style.display = 'none'; bar.style.width = '0%';
-      } else {
-        el.style.display = 'block'; bar.style.width = pct + '%';
-      }
+      if (pct <= 0 || pct >= 100) { el.style.display = 'none'; bar.style.width = '0%'; }
+      else { el.style.display = 'block'; bar.style.width = pct + '%'; }
     },
     _showUploadToast: function(name) {
       var host = document.getElementById('uploadToasts');
@@ -761,16 +1464,14 @@
       if (el) { setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 400); }
     },
 
-    // ===== 列表渲染 =====
+    // ===== 导航 & 刷新 =====
     cd: function(logicSub) {
-      // logicSub 如 /2024春夏 或 /
       if (!logicSub) logicSub = '/';
       if (logicSub.charAt(0) !== '/') logicSub = '/' + logicSub;
-      // 规范化去掉重复斜杠，末尾不要斜（除根）
-      this.currentPath = logicSub.replace(/\/+/g, '/');
-      if (this.currentPath.length > 1 && this.currentPath.charAt(this.currentPath.length - 1) === '/') {
-        this.currentPath = this.currentPath.substring(0, this.currentPath.length - 1);
-      }
+      var s = logicSub.replace(/\/+/g, '/');
+      if (s.length > 1 && s.charAt(s.length - 1) === '/') s = s.substring(0, s.length - 1);
+      this.currentPath = s;
+      this.selectedPath = null;
       this.refresh();
     },
     refresh: async function() {
@@ -779,56 +1480,206 @@
         var list = await self.listFolder(self.currentPath);
         self.rawList = list;
         self.setStatus('ok', '已连接：' + (self.cfg.serverUrl || '') + ' · 共 ' + list.length + ' 项');
+        // 把当前目录在树中标记 open 并尝试展开父级路径
+        await self._ensureTreeAncestorsLoaded(self.currentPath);
+        self._markTreeCacheOpen(self.currentPath, true);
         self.renderBreadcrumb();
+        self.renderTree();
         self.renderList();
       } catch (e) {
         console.warn('[NAS] refresh err:', e);
         var msg = e && e.message ? e.message : String(e);
         self.setStatus('err', '连接失败：' + msg);
         self.renderBreadcrumb();
+        self.renderTree();
         if (msg.indexOf('CORS') >= 0 || msg.indexOf('Failed to fetch') >= 0) {
           self.showEmpty('🚫 浏览器 CORS 拦截',
-            'WebDAV 请求被浏览器跨域策略拦截。请在 NAS 侧给 WebDAV 加响应头 <code>Access-Control-Allow-Origin</code>：<br>· 若使用绿联 NAS（UGOS Pro），可在 控制面板 → 站点/反代 → 为 WebDAV 端口(9008/9009) 自定义响应头，或通过 「反向代理」叠加 CORS 头；<br>· 或使用本机同源服务做中转。<br><br>错误信息：<span style="color:#ef4444;">' + App.utils.escapeHtml(msg) + '</span>');
+            'WebDAV 请求被浏览器跨域策略拦截。请在 NAS 侧给 WebDAV 加响应头 <code>Access-Control-Allow-Origin</code>。<br><br>错误信息：<span style="color:#ef4444;">' + App.utils.escapeHtml(msg) + '</span>');
         } else if (msg.indexOf('404') >= 0) {
           self.showEmpty('📁 根目录不存在(404)',
-            '请先点击右上角「✨ 初始化根目录」（仅管理员），或在 设置→云盘NAS 中修改系统根目录路径。<br><span style="color:#ef4444;">' + App.utils.escapeHtml(msg) + '</span>');
+            '请先点击左上角「✨初始化根」按钮（仅管理员），或在 设置→云盘NAS 修改系统根目录路径。<br><span style="color:#ef4444;">' + App.utils.escapeHtml(msg) + '</span>');
         } else if (msg.indexOf('401') >= 0) {
           self.showEmpty('🔐 认证失败(401)', 'NAS 账号或密码不正确，或该账号未开通 WebDAV 权限。<br>请前往 设置 → ☁️云盘NAS 修改。');
         } else {
-          self.showEmpty('⚠️ 读取失败：' + App.utils.escapeHtml(msg), '请检查服务器地址/WebDAV路径/网络，点击 🔄 刷新重试。');
+          self.showEmpty('⚠️ 读取失败：' + App.utils.escapeHtml(msg), '请检查服务器地址/WebDAV路径/网络，点击 🔄刷新 重试。');
         }
       }
     },
 
-    // ===== 过滤：当前用户看不到禁止访问的文件夹 =====
-    _visibleFilter: function(item) {
-      var self = this;
-      // 管理员所有都可见
-      if (self.isAdmin) return true;
-      if (!item.isFolder) return true;
-      var subPath = self.currentPath === '/' ? '/' + item.name : self.currentPath + '/' + item.name;
-      var p = self._resolveFolderPerm(subPath, self.roleKey);
-      return p !== 'deny';
-    },
-
-    // ===== 渲染面包屑 =====
+    // ===== 面包屑 =====
     renderBreadcrumb: function() {
       var host = document.getElementById('breadcrumb');
       if (!host) return;
       var parts = this.currentPath.split('/').filter(Boolean);
-      var html = '<span class="crumb home" onclick="NAS.cd(\'/\')">🏠 根</span>';
+      var rootName = this._rootLabelShort();
+      var html = '<span class="crumb home" onclick="NAS.cd(\'/\')" title="系统根">🏠 ' + App.utils.escapeHtml(rootName) + '</span>';
       var acc = '';
       parts.forEach(function(p, i){
         acc += '/' + p;
-        var encoded = acc.replace(/'/g, "\\'");
+        var enc = acc.replace(/'/g, "\\'");
         html += '<span class="sep">›</span>';
-        if (i === parts.length - 1) html += '<span class="current">' + App.utils.escapeHtml(p) + '</span>';
-        else html += '<span class="crumb" onclick="NAS.cd(\'' + encoded + '\')">' + App.utils.escapeHtml(p) + '</span>';
+        if (i === parts.length - 1) {
+          html += '<span class="current">' + App.utils.escapeHtml(p) + '</span>';
+        } else {
+          html += '<span class="crumb" onclick="NAS.cd(\'' + enc + '\')">' + App.utils.escapeHtml(p) + '</span>';
+        }
       });
+      html += '<span class="spacer"></span>';
+      html += '<span class="info" id="pathInfo"></span>';
       host.innerHTML = html;
+      var info = document.getElementById('pathInfo');
+      if (info) info.textContent = (this.rawList ? this.rawList.length + ' 项' : '');
+    },
+    _rootLabelShort: function() {
+      var r = (this.cfg && this.cfg.rootFolder) ? this.cfg.rootFolder : '/';
+      r = r.replace(/\/+/g, '/');
+      var parts = r.split('/').filter(Boolean);
+      if (!parts.length) return '根';
+      return parts[parts.length - 1];
     },
 
-    // ===== 渲染文件列表 =====
+    // ===== 树形目录（懒加载） =====
+    // treeCache[logicPath] = { open:bool, children:[{name,isFolder}], loaded:bool }
+    _invalidateTreeCache: function(ancestorLogicPath) {
+      // 清 ancestor 及其所有父节点的 loaded（触发重新读）
+      var c = {};
+      for (var k in this.treeCache) {
+        if (k === ancestorLogicPath || ancestorLogicPath.indexOf(k + '/') === 0 || ancestorLogicPath === '/' + k === '/') continue;
+        c[k] = this.treeCache[k];
+      }
+      var arr = this._ancestorsOf(ancestorLogicPath);
+      for (var i = 0; i < arr.length; i++) delete c[arr[i]];
+      this.treeCache = c;
+    },
+    _ancestorsOf: function(logicPath) {
+      var out = [];
+      var parts = logicPath.split('/').filter(Boolean);
+      var acc = '';
+      out.push('/');
+      for (var i = 0; i < parts.length - 1; i++) {
+        acc += '/' + parts[i];
+        out.push(acc);
+      }
+      return out;
+    },
+    async _ensureTreeAncestorsLoaded(logicPath) {
+      var self = this;
+      var anc = self._ancestorsOf(logicPath);
+      anc.push(logicPath);
+      for (var i = 0; i < anc.length; i++) {
+        var lp = anc[i];
+        if (!self.treeCache[lp] || !self.treeCache[lp].loaded) {
+          try {
+            var list = await self.listFolder(lp);
+            var kids = list.filter(function(x){ return x.isFolder; })
+                           .filter(function(x){
+                              var sub = lp === '/' ? '/' + x.name : lp + '/' + x.name;
+                              return self._visibleFilterLogic(sub, true /*tree*/);
+                            })
+                           .map(function(x){ return { name:x.name, isFolder:true }; });
+            self.treeCache[lp] = self.treeCache[lp] || { open:false };
+            self.treeCache[lp].children = kids;
+            self.treeCache[lp].loaded = true;
+          } catch(e) { /* 读不到就算了 */ if (!self.treeCache[lp]) self.treeCache[lp] = { open:false, children:[], loaded:false }; }
+        }
+      }
+    },
+    // 仅懒加载某一级（树节点点击 ▶ 时）
+    _loadTreeLevel: async function(logicPath) {
+      var self = this;
+      try {
+        var list = await self.listFolder(logicPath);
+        var kids = list.filter(function(x){ return x.isFolder; })
+                       .filter(function(x){
+                          var sub = logicPath === '/' ? '/' + x.name : logicPath + '/' + x.name;
+                          return self._visibleFilterLogic(sub, true);
+                        })
+                       .map(function(x){ return { name:x.name, isFolder:true }; });
+        self.treeCache[logicPath] = self.treeCache[logicPath] || { open:false };
+        self.treeCache[logicPath].children = kids;
+        self.treeCache[logicPath].loaded = true;
+        return kids;
+      } catch(e) { return []; }
+    },
+    _markTreeCacheOpen: function(logicPath, open) {
+      if (!this.treeCache[logicPath]) this.treeCache[logicPath] = { open:false, children:[], loaded:false };
+      this.treeCache[logicPath].open = !!open;
+    },
+
+    renderTree: function() {
+      var host = document.getElementById('treeHost');
+      if (!host) return;
+      var self = this;
+      // 根：系统根目录（逻辑 / 对应 WebDAV 上的 /rootFolder）
+      var html = self._renderTreeNode('/', self._rootLabelShort(), 0, true);
+      host.innerHTML = html;
+    },
+    _renderTreeNode: function(logicPath, displayName, level, isRoot) {
+      var self = this;
+      var node = self.treeCache[logicPath] || { open:false, children:[], loaded:false };
+      var hasChildFolders = (node.children && node.children.length > 0) || !node.loaded;
+      // 未 loaded 假设先显示三角（点了再读）
+      var chevClass = 'chev' + ((!hasChildFolders && node.loaded) ? ' empty' : (node.open ? ' open' : ''));
+      var chevron = '<span class="' + chevClass + '" data-toggle-path="' + (logicPath === '/' ? '/' : logicPath) + '">' + (hasChildFolders ? '▶' : '·') + '</span>';
+      var rowClass = 'tree-row' + (logicPath === self.currentPath ? ' active' : '');
+      var attrs =
+        ' data-logic-path="' + (logicPath === '/' ? '/' : logicPath) + '"' +
+        ' onclick="NAS._onTreeClick(event, \'' + (logicPath === '/' ? '/' : logicPath.replace(/'/g, "\\'")) + '\')"';
+      var title = isRoot ? ('系统根：' + ((self.cfg && self.cfg.rootFolder) ? self.cfg.rootFolder : '/')) : displayName;
+      var row = '<div class="tree-level-' + (level + 0) + '"><div class="tree-row ' + rowClass + '" title="' + App.utils.escapeHtml(title) + '"' + attrs + '>' +
+        chevron +
+        '<span class="t-ico">📁</span>' +
+        '<span class="t-label">' + App.utils.escapeHtml(displayName) + '</span>' +
+        '</div>';
+      if (node.open) {
+        var childrenHtml = '';
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+          var k = kids[i];
+          var childPath = logicPath === '/' ? '/' + k.name : logicPath + '/' + k.name;
+          childrenHtml += self._renderTreeNode(childPath, k.name, level + 1, false);
+        }
+        row += '<div class="tree-children tree-level-' + (level + 1) + ' open">' + childrenHtml + '</div>';
+      } else if (!node.loaded || (node.children && node.children.length)) {
+        // 占位空容器（点击后展开会重渲染）
+        row += '<div class="tree-children tree-level-' + (level + 1) + '"></div>';
+      }
+      row += '</div>';
+      return row;
+    },
+
+    _onTreeClick: async function(e, logicPath) {
+      var self = this;
+      // 判断是否点在三角上
+      if (e.target.classList && e.target.classList.contains('chev') && !e.target.classList.contains('empty')) {
+        e.stopPropagation();
+        var node = self.treeCache[logicPath];
+        if (!node || !node.loaded) {
+          await self._loadTreeLevel(logicPath);
+          self._markTreeCacheOpen(logicPath, true);
+        } else {
+          self._markTreeCacheOpen(logicPath, !node.open);
+        }
+        self.renderTree();
+        return;
+      }
+      // 否则：切换到该目录
+      self.cd(logicPath);
+    },
+
+    // ===== 内容区渲染 =====
+    _visibleFilter: function(item) {
+      if (this.isAdmin) return true;
+      if (!item.isFolder) return true;
+      var subPath = this.currentPath === '/' ? '/' + item.name : this.currentPath + '/' + item.name;
+      return this._visibleFilterLogic(subPath, false);
+    },
+    _visibleFilterLogic: function(logicSubPath, _tree) {
+      if (this.isAdmin) return true;
+      var p = this._resolveFolderPerm(logicSubPath, this.roleKey);
+      return p !== 'deny';
+    },
+
     renderList: function() {
       var self = this;
       var host = document.getElementById('fileListArea');
@@ -836,89 +1687,186 @@
       var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
       var list = (self.rawList || []).filter(self._visibleFilter.bind(self));
       if (q) list = list.filter(function(x){ return x.name.toLowerCase().indexOf(q) >= 0; });
+      list = self._sortList(list);
 
       if (list.length === 0) {
         host.innerHTML = `
           <div class="empty">
             <div class="ico">📭</div>
-            <div style="font-size:14px;">当前目录为空</div>
-            <div style="font-size:12px;margin-top:6px;">
-              ${self.canWrite ? '可以点击「📂新建文件夹」或「⬆️上传文件」开始使用' : '当前目录没有您可查看的文件，请联系管理员'}
+            <div style="font-size:15px;font-weight:600;">当前目录为空</div>
+            <div style="font-size:13px;margin-top:6px;color:#64748b;">
+              ${self.canWrite ? '可以点击「📂新建文件夹」「⬆️上传文件」或把文件拖入窗口开始使用' : '当前目录没有您可查看的文件，请联系管理员'}
             </div>
           </div>`;
         return;
       }
+
+      // 构建每个条目的统一「元数据 + 按钮」
       var selfIsAdmin = self.isAdmin;
       var canWriteHere = self._folderWriteable(self.currentPath);
-      var rows = list.map(function(item){
+      var currentSelName = self.selectedPath ? self.selectedPath.split('/').pop() : null;
+
+      function itemMeta(item) {
         var ext = (item.name.indexOf('.') >= 0 ? item.name.split('.').pop().toLowerCase() : '');
         var isImg = ['png','jpg','jpeg','gif','bmp','webp','svg','ico','avif'].indexOf(ext) >= 0;
-        var icon;
-        if (item.isFolder) icon = '<div class="file-ico folder">📁</div>';
-        else if (isImg) icon = '<div class="file-ico img">🖼️</div>';
-        else icon = '<div class="file-ico">📄</div>';
-        var thumb = '';
-        // 缩略图（只有当前用户有读权限才能显示）
-        if (isImg && !item.isFolder) {
-          var subPath = self.currentPath === '/' ? '/' + item.name : self.currentPath + '/' + item.name;
-          var encoded = subPath.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          thumb = '<img class="thumb" alt="" loading="lazy" src="javascript:void(0);" data-sub="' + App.utils.escapeHtml(subPath) + '" onclick="event.stopPropagation();event.preventDefault();NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))">';
-        }
         var sizeHtml = item.isFolder
           ? '<span style="color:#9ca3af;">—</span>'
           : '<span>' + self._fmtSize(item.size) + '</span>';
-        var clickAction = item.isFolder
-          ? 'NAS.cd(\'' + (self.currentPath === '/' ? '/' + item.name : self.currentPath + '/' + item.name).replace(/'/g, "\\'") + '\')'
-          : 'NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))';
+        var subPath = self.currentPath === '/' ? '/' + item.name : self.currentPath + '/' + item.name;
+        var clickSub = item.isFolder ? subPath : null;
+        // 操作按钮 HTML（仅 details 视图用）
         var opHtml = '';
-        // 下载
         opHtml += '<button class="btn btn-xs" onclick="event.stopPropagation();NAS.downloadItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))">⬇下载</button>';
-        // 预览（图片/pdf）
         if (!item.isFolder && (isImg || ext === 'pdf')) {
           opHtml += '<button class="btn btn-xs btn-primary" onclick="event.stopPropagation();NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))">👁预览</button>';
         }
-        // 权限配置按钮（仅管理员 且 文件夹）
         if (selfIsAdmin && item.isFolder) {
-          var folderPath = self.currentPath === '/' ? '/' + item.name : self.currentPath + '/' + item.name;
-          opHtml += '<button class="btn btn-xs" onclick="event.stopPropagation();NAS.openPermModal(\'' + folderPath.replace(/'/g, "\\'") + '\')" style="background:#fff7ed;border-color:#fed7aa;color:#c2410c;">🔧权限</button>';
+          opHtml += '<button class="btn btn-xs" onclick="event.stopPropagation();NAS.openPermModal(\'' + subPath.replace(/'/g, "\\'") + '\')" style="background:#fff7ed;border-color:#fed7aa;color:#c2410c;">🔧权限</button>';
         }
-        // 删除（写权限才显示）
         if (canWriteHere) {
+          opHtml += '<button class="btn btn-xs" onclick="event.stopPropagation();NAS.renameByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\')" title="重命名">✏️改</button>';
           opHtml += '<button class="btn btn-xs" onclick="event.stopPropagation();NAS.deleteItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))" style="color:#ef4444;border-color:#fecaca;">🗑删</button>';
         }
-        return '<tr>' +
-          '<td><div class="name-cell" onclick="' + clickAction + '">' +
-            (thumb || icon) +
-            '<div class="meta"><span class="fname">' + App.utils.escapeHtml(item.name) + '</span><span class="fsize">' + (item.isFolder ? '文件夹' : self._fmtSize(item.size)) + '</span></div>' +
-          '</div></td>' +
-          '<td style="width:110px;color:#64748b;font-size:12px;">' + sizeHtml + '</td>' +
-          '<td style="width:170px;color:#64748b;font-size:12px;">' + self._fmtDate(item.lastModified) + '</td>' +
-          '<td style="width:360px;" class="op-cell">' + opHtml + '</td>' +
-        '</tr>';
-      }).join('');
+        return {
+          ext: ext, isImg: isImg, sizeHtml: sizeHtml, subPath: subPath,
+          clickSub: clickSub, opHtml: opHtml
+        };
+      }
 
-      host.innerHTML = `
-        <table class="file-table">
-          <thead>
-            <tr>
-              <th style="width:calc(100% - 740px);min-width:260px;">名称</th>
-              <th style="width:110px;">大小</th>
-              <th style="width:170px;">修改时间</th>
-              <th style="width:360px;">操作</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      `;
-      // 加载缩略图（异步，避免 render 时阻塞）
+      var mode = self.viewMode;
+
+      if (mode === 'details') {
+        // ===== 详细信息（表格）：名称 / 修改日期 / 类型 / 大小 / 操作 =====
+        var sortCls = function(f){
+          var c = 'sortable';
+          if (self.sortBy === f) c += (self.sortAsc ? ' sort-asc' : ' sort-desc');
+          return c;
+        };
+        var rows = list.map(function(item){
+          var m = itemMeta(item);
+          var icon = item.isFolder ? '<div class="file-ico folder">📁</div>'
+                   : (m.isImg ? '<div class="file-ico img">🖼️</div>'
+                            : '<div class="file-ico">📄</div>');
+          var thumb = '';
+          if (m.isImg && !item.isFolder) {
+            thumb = '<img class="thumb" alt="" loading="lazy" src="javascript:void(0);" data-sub="' + App.utils.escapeHtml(m.subPath) + '" onclick="event.stopPropagation();event.preventDefault();NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))">';
+          }
+          var clickAction = item.isFolder
+            ? 'NAS.cd(\'' + m.subPath.replace(/'/g, "\\'") + '\')'
+            : 'NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))';
+          var selClass = (currentSelName === item.name) ? 'selected' : '';
+          var ondblclick = canWriteHere
+            ? ' ondblclick="event.stopPropagation();NAS.renameByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\')"'
+            : '';
+          return '<tr class="' + selClass + '" data-name="' + App.utils.escapeHtml(item.name) + '"' +
+            ' onclick="NAS._onSelectItem(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\')" ' + ondblclick + '>' +
+            '<td><div class="name-cell" onclick="' + clickAction + '">' +
+              (thumb || icon) +
+              '<div class="meta"><span class="fname">' + App.utils.escapeHtml(item.name) + '</span><span class="fsize">' + (item.isFolder ? '文件夹' : self._fmtSize(item.size)) + '</span></div>' +
+            '</div></td>' +
+            '<td style="width:170px;color:#64748b;font-size:12px;">' + self._fmtDate(item.lastModified) + '</td>' +
+            '<td style="width:140px;color:#64748b;font-size:12px;">' + self._typeOf(item) + '</td>' +
+            '<td style="width:110px;color:#64748b;font-size:12px;">' + m.sizeHtml + '</td>' +
+            '<td style="width:420px;" class="op-cell">' + m.opHtml + '</td>' +
+          '</tr>';
+        }).join('');
+        host.innerHTML = `
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th style="min-width:260px;" class="${sortCls('name')}" onclick="NAS.toggleSort('name')">名称</th>
+                <th style="width:170px;" class="${sortCls('date')}" onclick="NAS.toggleSort('date')">修改日期</th>
+                <th style="width:140px;" class="${sortCls('type')}" onclick="NAS.toggleSort('type')">类型</th>
+                <th style="width:110px;" class="${sortCls('size')}" onclick="NAS.toggleSort('size')">大小</th>
+                <th style="width:420px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      } else if (mode === 'large') {
+        // ===== 大图标 =====
+        var cards = list.map(function(item){
+          var m = itemMeta(item);
+          var selClass = (currentSelName === item.name) ? 'selected' : '';
+          var clickAction = item.isFolder
+            ? 'NAS.cd(\'' + m.subPath.replace(/'/g, "\\'") + '\')'
+            : 'NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))';
+          var icoCls = item.isFolder ? 'folder' : (m.isImg ? 'img' : '');
+          var iconOrImg;
+          if (m.isImg && !item.isFolder) {
+            iconOrImg = '<img class="card-thumb" alt="" loading="lazy" src="javascript:void(0);" data-sub="' + App.utils.escapeHtml(m.subPath) + '" onclick="event.stopPropagation();event.preventDefault();' + clickAction + '">';
+          } else {
+            var emo = item.isFolder ? '📁' : (m.isImg ? '🖼️' : '📄');
+            iconOrImg = '<div class="card-ico ' + icoCls + '">' + emo + '</div>';
+          }
+          var metaLine = item.isFolder ? '文件夹' : (self._fmtSize(item.size) + ' · ' + self._typeOf(item));
+          var ondblclick = canWriteHere
+            ? ' ondblclick="event.stopPropagation();NAS.renameByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\')"'
+            : '';
+          return '<div class="item-card lg ' + selClass + '" data-name="' + App.utils.escapeHtml(item.name) + '"' +
+            ' onclick="event.stopPropagation();NAS._onSelectItem(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'); ' + clickAction + '" ' + ondblclick + '>' +
+            iconOrImg +
+            '<div class="card-name">' + App.utils.escapeHtml(item.name) + '</div>' +
+            '<div class="card-meta">' + App.utils.escapeHtml(metaLine) + '</div>' +
+          '</div>';
+        }).join('');
+        host.innerHTML = `<div class="view-grid">${cards}</div>`;
+      } else {
+        // ===== 小图标 =====
+        var cards = list.map(function(item){
+          var m = itemMeta(item);
+          var selClass = (currentSelName === item.name) ? 'selected' : '';
+          var clickAction = item.isFolder
+            ? 'NAS.cd(\'' + m.subPath.replace(/'/g, "\\'") + '\')'
+            : 'NAS.previewItem(NAS.findItemByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'))';
+          var icoCls = item.isFolder ? 'folder' : (m.isImg ? 'img' : '');
+          var iconOrImg;
+          if (m.isImg && !item.isFolder) {
+            iconOrImg = '<img class="card-thumb" alt="" loading="lazy" src="javascript:void(0);" data-sub="' + App.utils.escapeHtml(m.subPath) + '" onclick="event.stopPropagation();event.preventDefault();' + clickAction + '">';
+          } else {
+            var emo = item.isFolder ? '📁' : (m.isImg ? '🖼️' : '📄');
+            iconOrImg = '<div class="card-ico ' + icoCls + '">' + emo + '</div>';
+          }
+          var meta = item.isFolder ? '' : self._fmtSize(item.size);
+          var ondblclick = canWriteHere
+            ? ' ondblclick="event.stopPropagation();NAS.renameByName(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\')"'
+            : '';
+          return '<div class="item-card sm ' + selClass + '" data-name="' + App.utils.escapeHtml(item.name) + '"' +
+            ' onclick="event.stopPropagation();NAS._onSelectItem(\'' + App.utils.escapeHtml(item.name).replace(/'/g, "\\'") + '\'); ' + clickAction + '" ' + ondblclick + '>' +
+            iconOrImg +
+            '<div class="card-name">' + App.utils.escapeHtml(item.name) + '</div>' +
+            '<div class="card-meta">' + meta + '</div>' +
+          '</div>';
+        }).join('');
+        host.innerHTML = `<div class="view-small">${cards}</div>`;
+      }
       self._lazyThumbs();
+    },
+    _onSelectItem: function(name) {
+      var self = this;
+      var sub = self.currentPath === '/' ? '/' + name : self.currentPath + '/' + name;
+      self.selectedPath = sub;
+      // 更新 UI 的 selected 类
+      var area = document.getElementById('fileListArea');
+      if (!area) return;
+      var sel = null;
+      if (self.viewMode === 'details') sel = area.querySelectorAll('tr.selected');
+      else sel = area.querySelectorAll('.item-card.selected');
+      for (var i = 0; i < sel.length; i++) sel[i].classList.remove('selected');
+      var tgt = null;
+      try {
+        if (self.viewMode === 'details') tgt = area.querySelector('tr[data-name="' + CSS.escape(name) + '"]');
+        else tgt = area.querySelector('.item-card[data-name="' + CSS.escape(name) + '"]');
+      } catch(e) {}
+      if (tgt) tgt.classList.add('selected');
     },
     findItemByName: function(name) {
       return (this.rawList || []).find(function(x){ return x.name === name; }) || null;
     },
     _lazyThumbs: function() {
       var self = this;
-      var imgs = document.querySelectorAll('#fileListArea img.thumb[data-sub]');
+      var imgs = document.querySelectorAll('#fileListArea img[data-sub]');
       if (!imgs || !imgs.length) return;
       var idx = 0;
       function step() {
@@ -932,7 +1880,7 @@
         fetch(url, { method: 'GET', headers: headers, credentials: 'omit' })
           .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
           .then(function(b){ el.src = URL.createObjectURL(b); })
-          .catch(function(){ /* noop */ })
+          .catch(function(){})
           .then(function(){ setTimeout(step, 10); });
       }
       step();
@@ -960,18 +1908,13 @@
         <div class="empty">
           <div class="ico">📂</div>
           <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#0f172a;">${title}</div>
-          <div style="font-size:13px;line-height:1.8;">${htmlSub || ''}</div>
+          <div style="font-size:13px;line-height:1.8;color:#475569;">${htmlSub || ''}</div>
         </div>`;
     },
 
-    // ============================================
-    // 文件夹级权限模型（nas_folder_perms）
-    // ============================================
+    // ===== 文件夹级权限 =====
     _getFolderPermsStore: function() {
-      try {
-        var s = App.store.get('nas_folder_perms', null);
-        return (s && typeof s === 'object') ? s : {};
-      } catch(e) { return {}; }
+      try { var s = App.store.get('nas_folder_perms', null); return (s && typeof s === 'object') ? s : {}; } catch(e) { return {}; }
     },
     _saveFolderPermsStore: function(obj) {
       App.store.set('nas_folder_perms', obj);
@@ -980,7 +1923,6 @@
         try { window.SupabaseStore.setSync('nas_folder_perms', obj); } catch(e) {}
       }
     },
-    // 首次打开页面时确保根目录有权限（若不存在就初始化角色默认读写）
     _ensureRootFolderPerm: function() {
       var store = this._getFolderPermsStore();
       if (store && store['/']) return;
@@ -991,7 +1933,6 @@
         if (r && r.isAdmin) root[rk] = 'write';
         else root[rk] = 'read';
       });
-      // 给常见角色默认 write（用户自定义角色如果没在 App.roles 里也没关系，继承机制兜底）
       ['merchandiser','purchaser','designer','qc','finance','documentary','manager','user'].forEach(function(rk){
         if (!root[rk]) root[rk] = 'read';
       });
@@ -1000,7 +1941,6 @@
       store['/'] = root;
       this._saveFolderPermsStore(store);
     },
-    // 解析某角色在某逻辑路径的权限：从叶子向 / 查找，找到第一个有定义的；deny 高优先级
     _resolveFolderPerm: function(logicPath, roleKey) {
       var store = this._getFolderPermsStore();
       if (!store) return 'read';
@@ -1008,7 +1948,6 @@
       if (!p || p === '' || p.charAt(0) !== '/') p = '/' + (p || '');
       p = p.replace(/\/+/g, '/');
       if (p.length > 1 && p.charAt(p.length - 1) === '/') p = p.substring(0, p.length - 1);
-      // 先看当前及其所有父目录是否有 deny（deny 高优）
       var pathArr = p.split('/').filter(Boolean);
       var perm = null;
       while (true) {
@@ -1022,29 +1961,24 @@
         if (key === '/') break;
         pathArr.pop();
       }
-      // 根目录兜底默认：读
       return perm || 'read';
     },
     _folderWriteable: function(logicPath) {
       if (this.isAdmin) return true;
-      if (!this.canWrite) return false; // 模块级
+      if (!this.canWrite) return false;
       return this._resolveFolderPerm(logicPath, this.roleKey) === 'write';
     },
-
     // ===== 权限模态框 =====
     openPermModal: function(folderPath) {
       if (!this.isAdmin) { App.toast('仅管理员可配置权限', 'error'); return; }
       this._ensureRootFolderPerm();
       var store = this._getFolderPermsStore();
       var rules = (store[folderPath] ? JSON.parse(JSON.stringify(store[folderPath])) : {});
-      // 收集所有 App.roles 里的角色 + 常见角色
       var rolesMap = {};
       Object.keys(App.roles || {}).forEach(function(rk){ rolesMap[rk] = App.roles[rk] && App.roles[rk].name ? App.roles[rk].name : rk; });
+      var nameMap = { merchandiser:'业务员', purchaser:'采购', designer:'设计', qc:'QC', finance:'财务', documentary:'跟单', manager:'经理', user:'普通用户' };
       ['merchandiser','purchaser','designer','qc','finance','documentary','manager','user'].forEach(function(rk){
-        if (!rolesMap[rk]) {
-          var map = { merchandiser:'业务员', purchaser:'采购', designer:'设计', qc:'QC', finance:'财务', documentary:'跟单', manager:'经理', user:'普通用户' };
-          rolesMap[rk] = map[rk] || rk;
-        }
+        if (!rolesMap[rk]) rolesMap[rk] = nameMap[rk] || rk;
       });
       document.getElementById('permPath').textContent = folderPath;
       var rows = Object.keys(rolesMap).map(function(rk){
@@ -1057,8 +1991,8 @@
           '<td><label><input type="radio" name="perm_' + rk + '" value=""' + (!cur ? ' checked' : '') + ' onclick="delete NAS.permsEditing.rules[\'' + rk + '\']">继承</label></td>' +
         '</tr>';
       }).join('');
-      // 在 thead 追加「继承」列
-      document.getElementById('permTbody').parentNode.querySelector('thead').innerHTML = '<tr><th style=\'width:32%;\'>角色</th><th>✅ 读取</th><th>✏️ 读写</th><th>🚫 禁止</th><th>↩️ 继承</th></tr>';
+      document.getElementById('permTbody').parentNode.querySelector('thead').innerHTML =
+        '<tr><th style=\'width:32%;\'>角色</th><th>✅ 读取</th><th>✏️ 读写</th><th>🚫 禁止</th><th>↩️ 继承</th></tr>';
       document.getElementById('permTbody').innerHTML = rows;
       this.permsEditing = { folderPath: folderPath, rules: rules };
       document.getElementById('permOverlay').classList.add('active');
@@ -1071,7 +2005,6 @@
       if (!this.permsEditing) return;
       var fp = this.permsEditing.folderPath;
       var rules = this.permsEditing.rules || {};
-      // 把 rules 里的空字段去掉
       Object.keys(rules).forEach(function(k){ if (!rules[k]) delete rules[k]; });
       var store = this._getFolderPermsStore();
       if (Object.keys(rules).length === 0) delete store[fp];
@@ -1079,29 +2012,25 @@
       this._saveFolderPermsStore(store);
       App.toast('✅ 文件夹权限已保存（同步到云端）', 'success');
       this.closePermModal();
-      this.renderList(); // 刷新当前目录（隐藏被设为 deny 的文件夹）
+      this.renderList();
+      this.renderTree();
     },
   };
 
-  // 监听云端 nas_folder_perms/nas_config 变化 -> 刷新
+  // 云端同步监听
   window.addEventListener('cloud-data-updated', function(e){
     var keys = (e && e.detail && e.detail.keys) || [];
     if (keys.indexOf('nas_folder_perms') >= 0 || keys.indexOf('nas_config') >= 0) {
-      try {
-        NAS.cfg = NAS._loadCfg();
-        NAS.renderList();
-      } catch(_) {}
+      try { NAS.cfg = NAS._loadCfg(); NAS.renderList(); NAS.renderTree(); } catch(_) {}
     }
   });
 
-  // 暴露全局
   window.NAS = NAS;
 
-  // 页面 ready
+  // ready
   document.addEventListener('DOMContentLoaded', function(){
     App.init('nasDrive');
     App.initSampleData();
-    // 首次确保根级权限映射存在（若尚未创建）
     try { NAS._ensureRootFolderPerm(); } catch(_) {}
     try { NAS.init(); } catch(e) { console.error(e); }
   });

@@ -566,7 +566,7 @@ function _defaultNasConfig() {
   return {
     serverUrl: '',            // 如 http://192.168.1.50:9008 或 https://xxx.ugreen.link:9009
     webdavPath: '/webdav',    // 绿联 NAS WebDAV 默认路径通常是 /webdav，可按需改成 /dav 等
-    rootFolder: '/服装外贸系统',   // 在 WebDAV 里的基础目录（可自定义）
+    rootFolder: '/saintydoc',   // 在 WebDAV 里的基础目录（所有用户共享该目录作为逻辑根）
     username: '',
     password: '',             // 明文保存在 localStorage，注意：浏览器端存储密码不是绝对安全，建议创建 NAS 端专用低权限账号
     mode: 'lan',              // lan / ugreen_ddns / portmap（仅提示用户，方便备注）
@@ -674,7 +674,7 @@ function renderNas() {
         <tr><td style="padding:8px;">WebDAV 路径</td>
             <td style="padding:8px;"><input type="text" id="nas_webdavPath" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.webdavPath)}" placeholder="绿联默认：/webdav；其它品牌可能是 /dav"></td></tr>
         <tr><td style="padding:8px;">系统根目录</td>
-            <td style="padding:8px;"><input type="text" id="nas_rootFolder" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.rootFolder)}" placeholder="例：/服装外贸系统 （所有用户共享该目录作为根）"></td></tr>
+            <td style="padding:8px;"><input type="text" id="nas_rootFolder" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.rootFolder)}" placeholder="例：/saintydoc（系统以此目录作为逻辑根，所有用户共享）"></td></tr>
         <tr><td style="padding:8px;">访问模式</td>
             <td style="padding:8px;"><select id="nas_mode" class="input" style="width:100%;">${modeOpts}</select></td></tr>
         <tr><td style="padding:8px;">NAS 账号</td>
