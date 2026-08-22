@@ -1246,7 +1246,7 @@ var Cons = {
           '<div class="form-group"><label>Season</label><input type="text" id="c_f_season" class="form-input" value="' + App.utils.escapeHtml(item.season || '') + '" placeholder="如：2024春夏"></div>' +
           '<div class="form-group"><label>款号 <span class="required">*</span></label><input type="text" id="c_f_styleNo" class="form-input" value="' + App.utils.escapeHtml(item.styleNo || '') + '" placeholder="如：GW27-003"></div>' +
           '<div class="form-group"><label>品名</label><input type="text" id="c_f_name" class="form-input" value="' + App.utils.escapeHtml(item.name || '') + '" placeholder="如：童裤"></div>' +
-          '<div class="form-group"><label>参考加工费</label><input type="text" id="c_f_price" class="form-input" value="' + App.utils.escapeHtml(item.price || '') + '" placeholder="如：18"></div>' +
+          '<div class="form-group"><label>工费</label><input type="text" id="c_f_price" class="form-input" value="' + App.utils.escapeHtml(item.price || '') + '" placeholder="如：18"></div>' +
         '</div>' +
 
         // ===== 图片上传（两列大虚线框） =====
@@ -1883,7 +1883,7 @@ function renderList() {
         '<span><b>品名：</b>' + App.utils.escapeHtml(s.name || '-') + '</span>' +
         '<span><b>CAD：</b>' + App.utils.escapeHtml(s.designer || '-') + '</span>' +
         '<span><b>Season：</b>' + App.utils.escapeHtml(s.season || '-') + '</span>' +
-        '<span><b>参考加工费：</b>' + App.utils.escapeHtml(s.price || '-') + ' 元</span>' +
+        '<span><b>工费：</b>' + App.utils.escapeHtml(s.price || '-') + ' 元</span>' +
       '</div>' +
       (s.remark ? '<div class="style-remark" title="' + App.utils.escapeHtml(s.remark) + '">' + App.utils.escapeHtml(s.remark) + '</div>' : '') +
       '<div class="style-card-actions" onclick="event.stopPropagation()">' +
@@ -2010,7 +2010,7 @@ function buildCompareTableHTML(list, forPrint) {
 
   // 基本信息
   var hasBasic = false, basicHtml = '';
-  [['date','日期'],['designer','设计师'],['season','Season'],['styleNo','款号'],['name','品名'],['price','参考加工费'],['craft','特殊工艺'],['remark','备注']].forEach(function(kv){
+  [['date','日期'],['designer','设计师'],['season','Season'],['styleNo','款号'],['name','品名'],['price','工费'],['craft','特殊工艺'],['remark','备注']].forEach(function(kv){
     var k = kv[0], label = kv[1];
     var values = list.map(function(s){ var v = s[k]; return (v === undefined || v === null || v === '') ? '-' : String(v); });
     if (allEmpty(values)) return;
@@ -2128,7 +2128,7 @@ function generatePrintPageHTML(style, forPreview) {
       '<div class="print-info-line"><span class="print-label">Season：</span><span class="print-tag tag-yellow">' + App.utils.escapeHtml(style.season || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">款号：</span><span class="print-tag tag-red">' + App.utils.escapeHtml(style.styleNo || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">品名：</span><span class="print-tag tag-red">' + App.utils.escapeHtml(style.name || '-') + '</span></div>' +
-      '<div class="print-info-line"><span class="print-label">参考加工费：</span><span class="print-tag tag-green">' + App.utils.escapeHtml(style.price || '-') + ' 元</span></div>' +
+      '<div class="print-info-line"><span class="print-label">工费：</span><span class="print-tag tag-green">' + App.utils.escapeHtml(style.price || '-') + ' 元</span></div>' +
     '</div>' +
     '<div class="print-title-right">Counter用料表<div class="print-date">收到样衣/资料日期：' + App.utils.escapeHtml(style.date || '-') + '</div></div>' +
   '</div>';
