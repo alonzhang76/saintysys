@@ -129,7 +129,7 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.settings-tab').forEach(el => el.classList.remove('active'));
   if (event && event.target) event.target.classList.add('active');
-  else { var t = document.querySelector('.settings-tab[onclick*="switchTab(\''+tab+'\'')]; if (t) t.classList.add('active'); }
+  else { var t = document.querySelector(`.settings-tab[onclick*="switchTab('${tab}')"]`); if (t) t.classList.add('active'); }
   document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
   document.getElementById('tab-roles').style.display = tab === 'roles' ? 'block' : 'none';
   document.getElementById('tab-advanced').style.display = tab === 'advanced' ? 'block' : 'none';
