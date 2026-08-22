@@ -1159,7 +1159,7 @@ var Cons = {
         // ===== 基本信息（form-row：6 列） =====
         '<div class="form-row">' +
           '<div class="form-group"><label>收到样衣/资料日期</label><input type="date" id="c_f_date" class="form-input" value="' + (item.date || today) + '"></div>' +
-          '<div class="form-group"><label>设计师</label><input type="text" id="c_f_designer" class="form-input" value="CAD" readonly style="background:#f3f4f6;color:#6b7280;cursor:not-allowed;"></div>' +
+          '<div class="form-group"><label>CAD</label><input type="text" id="c_f_designer" class="form-input" value="' + App.utils.escapeHtml(item.designer || '周红良') + '"></div>' +
           '<div class="form-group"><label>Season</label><input type="text" id="c_f_season" class="form-input" value="' + App.utils.escapeHtml(item.season || '') + '" placeholder="如：2024春夏"></div>' +
           '<div class="form-group"><label>款号 <span class="required">*</span></label><input type="text" id="c_f_styleNo" class="form-input" value="' + App.utils.escapeHtml(item.styleNo || '') + '" placeholder="如：GW27-003"></div>' +
           '<div class="form-group"><label>品名</label><input type="text" id="c_f_name" class="form-input" value="' + App.utils.escapeHtml(item.name || '') + '" placeholder="如：童裤"></div>' +
