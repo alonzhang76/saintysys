@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -35,13 +35,13 @@
         <div id="recentOrders"></div>
       </div>
 
-      <!-- 待处理客户意见 -->
+      <!-- 用料及纸板速览 -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">待处理客户意见</span>
-          <a href="feedback.html" class="btn btn-sm">查看全部 →</a>
+          <span class="card-title">用料及纸板速览</span>
+          <a href="consumption.html" class="btn btn-sm">查看全部 →</a>
         </div>
-        <div id="pendingFeedback"></div>
+        <div id="consumptionOverview"></div>
       </div>
 
       <!-- 款号状态分布 -->
@@ -72,8 +72,8 @@
 // ===== 云端同步：提前注册监听器 =====
 var PageDataSyncGuard = {
   inited: false, pending: false,
-  watchKeys: ["styles","orders","fabrics","samples","feedbacks","productions","collections","customers","contacts","invoices","payments"],
-  emptyCheckKeys: ["styles","orders","fabrics","samples","feedbacks","productions","collections"],
+  watchKeys: ["styles","orders","fabrics","samples","feedbacks","consumptions","consumption_categories","productions","collections","customers","contacts","invoices","payments"],
+  emptyCheckKeys: ["styles","orders","fabrics","samples","feedbacks","consumptions","productions","collections"],
   afterInit: function() {
     var self = this; this.inited = true;
     function doRefresh() {
@@ -81,6 +81,7 @@ var PageDataSyncGuard = {
         if (typeof window.renderStats === 'function') window.renderStats();
         if (typeof window.renderRecent === 'function') window.renderRecent();
         if (typeof window.renderProblems === 'function') window.renderProblems();
+        if (typeof window.renderConsumptionOverview === 'function') window.renderConsumptionOverview();
       } catch(e) {}
     }
     if (self.pending) setTimeout(doRefresh, 200);
@@ -101,6 +102,7 @@ window.addEventListener('cloud-data-updated', function(e){
       if (typeof window.renderStats === 'function') window.renderStats();
       if (typeof window.renderRecent === 'function') window.renderRecent();
       if (typeof window.renderProblems === 'function') window.renderProblems();
+      if (typeof window.renderConsumptionOverview === 'function') window.renderConsumptionOverview();
     } catch(e){}
   }
 });
@@ -116,6 +118,7 @@ const orders = App.store.get('orders', []);
 const fabrics = App.store.get('fabrics', []);
 const samples = App.store.get('samples', []);
 const feedbacks = App.store.get('feedbacks', []);
+const consumptions = App.store.get('consumptions', []);
 const productions = App.store.get('productions', []);
 const collections = App.store.get('collections', []);
 
@@ -123,13 +126,13 @@ const collections = App.store.get('collections', []);
 function renderStats() {
   const totalRevenue = collections.filter(c => c.status === '已收汇').reduce((s, c) => s + (c.amount || 0), 0);
   const inProduction = productions.filter(p => p.status === '生产中').length;
-  const pendingFeedback = feedbacks.filter(f => !f.resolved).length;
-  
+  const consumptionCount = consumptions.length || (App.store.get('consumptions', [])).length;
+
   const cards = [
     { icon: '👗', bg: '#e8f1f5', color: '#004D6D', label: '款号总数', value: styles.length, sub: '本季在产款式' },
     { icon: '📋', bg: '#ecfdf5', color: '#2d9d5f', label: '订单总数', value: orders.length, sub: `${orders.filter(o => o.status === '生产中').length} 个生产中` },
     { icon: '🏭', bg: '#fff8ed', color: '#d9883a', label: '在产工单', value: inProduction, sub: '服装厂+水洗厂' },
-    { icon: '💬', bg: '#fef2f2', color: '#d44848', label: '待处理意见', value: pendingFeedback, sub: '客户未确认意见' },
+    { icon: '📐', bg: '#fef2f2', color: '#d44848', label: '在用料款数', value: consumptionCount, sub: '用料及纸板记录' },
     { icon: '💰', bg: '#f5f3ff', color: '#6d28d9', label: '已收汇(USD)', value: App.utils.formatMoney(totalRevenue), sub: '本季收汇总计' },
     { icon: '✂️', bg: '#ecfdfa', color: '#0d9488', label: '样衣总数', value: samples.length, sub: `${samples.filter(s => s.status === '需修改').length} 个待修改` },
   ];
@@ -166,26 +169,31 @@ function renderRecentOrders() {
   });
 }
 
-// 渲染待处理意见
-function renderPendingFeedback() {
-  const pending = feedbacks.filter(f => !f.resolved);
-  if (pending.length === 0) {
-    document.getElementById('pendingFeedback').innerHTML = `
+// 渲染用料及纸板速览
+function renderConsumptionOverview() {
+  const list = App.store.get('consumptions', []);
+  const sorted = list.slice().sort(function(a, b) {
+    return (b.date || '').localeCompare(a.date || '');
+  });
+  const top5 = sorted.slice(0, 5);
+  if (top5.length === 0) {
+    document.getElementById('consumptionOverview').innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">✅</div>
-        <div class="empty-text">暂无待处理意见</div>
+        <div class="empty-icon">📐</div>
+        <div class="empty-text">暂无用料记录，前往「用料及纸板」录入</div>
       </div>`;
     return;
   }
-  App.renderTable('pendingFeedback', {
+  App.renderTable('consumptionOverview', {
     columns: [
-      { key: 'styleNo', title: '款号', width: '160px' },
-      { key: 'feedbackType', title: '类型', width: '80px', render: (v) => `<span class="tag tag-blue">${v}</span>` },
-      { key: 'content', title: '意见内容' },
-      { key: 'priority', title: '优先级', width: '80px', render: (v) => App.statusTag(v) },
-      { key: 'feedbackDate', title: '日期', width: '110px' },
+      { key: 'styleNo', title: '款号', width: '140px', render: function(v){ return `<b style="color:#004D6D;">${v || '-'}</b>`; } },
+      { key: 'name', title: '品名', width: '140px' },
+      { key: 'designer', title: '设计师', width: '90px' },
+      { key: 'season', title: 'Season', width: '100px' },
+      { key: 'fabrics', title: '面料明细', width: '100px', render: function(v){ return (v ? v.length : 0) + ' 条'; } },
+      { key: 'date', title: '日期', width: '110px' }
     ],
-    data: pending
+    data: top5
   });
 }
 
@@ -221,7 +229,7 @@ function renderStyleStatus() {
 
 renderStats();
 renderRecentOrders();
-renderPendingFeedback();
+renderConsumptionOverview();
 renderStyleStatus();
 </script>
 </body>

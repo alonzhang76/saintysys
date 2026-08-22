@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -335,7 +335,18 @@ function renderRoles() {
 
   const roles = App.roles;
   const modules = App.modulePermissions;
-  const perms = App.store.get('permissions', {});
+  let perms = App.store.get('permissions', {});
+
+  // 兼容迁移：旧的 feedback 模块权限 → consumption（用料及纸板），防止用户之前保存的权限丢失
+  if (perms && perms.feedback && !perms.consumption) {
+    perms.consumption = JSON.parse(JSON.stringify(perms.feedback));
+    try {
+      App.store.set('permissions', perms);
+      if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+        window.SupabaseStore.setSync('permissions', perms);
+      }
+    } catch(_) {}
+  }
 
   // 构建权限矩阵
   let matrixHtml = '<table class="perm-matrix"><thead><tr><th>模块</th>';
@@ -490,7 +501,7 @@ function renderAdvanced() {
 }
 
 function exportData() {
-  const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'users', 'permissions'];
+  const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'consumptions', 'consumption_categories', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'users', 'permissions'];
   const backup = { exportTime: new Date().toISOString(), version: localStorage.getItem('dataVersion') };
   keys.forEach(key => {
     const data = localStorage.getItem(key);

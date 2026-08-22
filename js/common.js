@@ -147,10 +147,10 @@ const App = {
     { group: '物料管理' },
     { key: 'fabric', text: '面里衬管理', icon: '🧵', url: 'fabric.html' },
     { key: 'accessory', text: '辅料管理', icon: '🔩', url: 'accessory.html' },
-    { group: '样衣与意见' },
+    { group: '样衣与技术' },
     { key: 'wash', text: '水洗管理', icon: '🌊', url: 'wash.html' },
     { key: 'sample', text: '样衣管理', icon: '✂️', url: 'sample.html' },
-    { key: 'feedback', text: '客户意见', icon: '💬', url: 'feedback.html' },
+    { key: 'consumption', text: '用料及纸板', icon: '📐', url: 'consumption.html' },
     { group: '生产与财务' },
     { key: 'production', text: '生产管理', icon: '🏭', url: 'production.html' },
     { key: 'shipping', text: '出运管理', icon: '🚢', url: 'shipping.html' },
@@ -518,7 +518,7 @@ const App = {
 
   // ===== 备份数据 =====
   backupData() {
-    const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'express_delivery_data_v2', 'pl_records_v1'];
+    const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'consumptions', 'consumption_categories', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'express_delivery_data_v2', 'pl_records_v1'];
     const backup = { backupTime: new Date().toISOString() };
     keys.forEach(key => {
       const data = localStorage.getItem(key);
@@ -613,7 +613,7 @@ const App = {
     accessory:    '辅料管理',
     wash:         '水洗管理',
     sample:       '样衣管理',
-    feedback:     '客户意见',
+    consumption:  '用料及纸板',
     production:   '生产管理',
     shipping:     '出运管理',
     express:      '寄件管理',
@@ -848,7 +848,7 @@ App.initSampleData = function() {
       accessory:    { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
       wash:         { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
       sample:       { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
-      feedback:     { merchandiser: 'write', purchaser: 'read', designer: 'read', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
+      consumption:  { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
       production:   { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'write', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
       shipping:     { merchandiser: 'write', purchaser: 'read', designer: 'none', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
       express:      { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
