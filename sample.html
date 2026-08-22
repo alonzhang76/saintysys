@@ -626,6 +626,37 @@ input[type="number"] { -moz-appearance: textfield; }
   .sp-modal-overlay .form-grid.cols-4,
   .sp-modal-overlay .form-grid.cols-3 { grid-template-columns: 1fr 1fr; }
 }
+/* ===== 图片上传控件（两个表单通用） ===== */
+.pic-upload-box { border:1.5px dashed rgba(150,200,245,0.6); border-radius:12px; padding:14px; background:rgba(255,255,255,0.55); margin-top:6px; transition:all .15s; }
+.pic-upload-box:hover { border-color:rgba(0,122,255,0.55); background:rgba(255,255,255,0.8); }
+.pic-upload-row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+.pic-upload-preview { width:120px; height:120px; border-radius:10px; background:rgba(245,248,252,0.8); border:1px solid rgba(150,200,245,0.4); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+.pic-upload-preview img { width:100%; height:100%; object-fit:contain; }
+.pic-upload-preview svg { width:36px; height:36px; opacity:.3; color:#6ca6d8; }
+.pic-upload-right { flex:1; min-width:220px; display:flex; flex-direction:column; gap:8px; }
+.pic-upload-tip { font-size:11px; color:#5b7a98; line-height:1.5; }
+.pic-upload-tip b { color:#17466c; }
+.pic-upload-status { font-size:12px; font-weight:600; }
+.pic-upload-status.ok { color:#2d9d5f; }
+.pic-upload-status.err { color:#d44848; }
+.pic-upload-status.loading { color:#007AFF; }
+.pic-upload-filename { font-size:11px; color:#3a5b7a; word-break:break-all; background:rgba(220,240,255,0.5); padding:4px 8px; border-radius:6px; }
+.pic-upload-btn-row { display:flex; gap:6px; flex-wrap:wrap; }
+.pic-upload-label-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:6px 12px; border-radius:8px; border:1px solid rgba(0,122,255,0.35);
+  background:linear-gradient(135deg,#007AFF,#5856D6); color:#fff;
+  font-size:12px; font-weight:600; cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,122,255,0.22);
+}
+.pic-upload-label-btn:hover { filter:brightness(1.05); }
+.pic-upload-del-btn {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:6px 10px; border-radius:8px; border:1px solid rgba(212,72,72,0.35);
+  background:#fff; color:#d44848; font-size:12px; font-weight:600; cursor:pointer;
+}
+.pic-upload-del-btn:hover { background:#fef2f2; }
+.pic-upload-del-btn:disabled { opacity:.4; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -915,6 +946,37 @@ input[type="number"] { -moz-appearance: textfield; }
         </div>
       </div>
 
+      <div class="form-section-title">🖼️ 款式图片上传</div>
+      <div class="pic-upload-box">
+        <input type="hidden" id="sp_f_picture_path" value="">
+        <input type="hidden" id="sp_f_picture_name" value="">
+        <input type="file" id="sp_f_picFile" accept="image/*" style="display:none" onchange="onSamplePicFileChange('sp_f_', this)">
+        <div class="pic-upload-row">
+          <div class="pic-upload-preview">
+            <img id="sp_f_picPreview" style="display:none" alt="preview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" id="sp_f_picPlaceholder"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="pic-upload-right">
+            <div class="pic-upload-tip">
+              上传<b>款号对应</b>的款式图片（支持 JPG / PNG / WebP，最大 5MB）。<br>
+              图片上传后自动按「款号」在<b>款式图片预览</b>中匹配显示。
+            </div>
+            <div id="sp_f_picStatus" class="pic-upload-status">尚未上传图片</div>
+            <div id="sp_f_picFilename" class="pic-upload-filename" style="display:none"></div>
+            <div class="pic-upload-btn-row">
+              <label class="pic-upload-label-btn" for="sp_f_picFile">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                选择图片上传
+              </label>
+              <button type="button" class="pic-upload-del-btn" id="sp_f_picDelBtn" onclick="onSamplePicDelete('sp_f_')" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                移除图片
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-footer">
         <button type="button" class="btn btn-secondary" onclick="SamplePlan.closeForm()">取消</button>
         <button type="submit" class="btn btn-primary">保存</button>
@@ -1156,6 +1218,144 @@ function renderSampleTable() {
   container.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
 }
 
+/* ===== 图片上传：通用辅助函数 ===== */
+// 生成图片上传区块 HTML（适用于 App.modal.open 的动态注入表单）
+// prefix: 表单字段前缀（如 'm_' 或 'sp_f_'）
+function buildImageUploadBlock(prefix, defPath, defName) {
+  var _dp = (defPath || '').replace(/"/g, '&quot;');
+  var _dn = (defName || '').replace(/"/g, '&quot;');
+  var escName = (defName || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var statusClass = defPath ? 'ok' : '';
+  var statusText = defPath ? '\u2713 \u5DF2\u6709\u4E0A\u4F20\u56FE\u7247\uFF08\u53EF\u91CD\u65B0\u4E0A\u4F20\u6216\u5220\u9664\uFF09' : '\u5C1A\u672A\u4E0A\u4F20\u56FE\u7247';
+  var displayName = defName ? '' : 'display:none';
+  var disabledAttr = defPath ? '' : 'disabled';
+  var previewInner = defPath
+    ? '<img id="' + prefix + 'picPreview" src="" alt="preview" onerror="this.style.display=\'none\'">'
+    : '<img id="' + prefix + 'picPreview" style="display:none" alt="preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  return '<div class="form-section-title">\uD83D\uDDBC\uFE0F \u6B3E\u5F0F\u56FE\u7247\u4E0A\u4F20</div>' +
+    '<div class="pic-upload-box">' +
+      '<input type="hidden" id="' + prefix + 'picture_path" value="' + _dp + '">' +
+      '<input type="hidden" id="' + prefix + 'picture_name" value="' + _dn + '">' +
+      '<input type="file" id="' + prefix + 'picFile" accept="image/*" style="display:none" onchange="onSamplePicFileChange(\'' + prefix + '\', this)">' +
+      '<div class="pic-upload-row">' +
+        '<div class="pic-upload-preview">' + previewInner + '</div>' +
+        '<div class="pic-upload-right">' +
+          '<div class="pic-upload-tip">' +
+            '\u4E0A\u4F20<b>\u6B3E\u53F7\u5BF9\u5E94</b>\u7684\u6B3E\u5F0F\u56FE\u7247\uFF08\u652F\u6301 JPG / PNG / WebP\uFF0C\u6700\u5927 5MB\uFF09\u3002<br>' +
+            '\u56FE\u7247\u4E0A\u4F20\u540E\u81EA\u52A8\u6309\u300C\u6B3E\u53F7\u300D\u5728<b>\u6B3E\u5F0F\u56FE\u7247\u9884\u89C8</b>\u4E2D\u5339\u914D\u663E\u793A\u3002' +
+          '</div>' +
+          '<div id="' + prefix + 'picStatus" class="pic-upload-status ' + statusClass + '">' + statusText + '</div>' +
+          '<div id="' + prefix + 'picFilename" class="pic-upload-filename" style="' + displayName + '">' + escName + '</div>' +
+          '<div class="pic-upload-btn-row">' +
+            '<label class="pic-upload-label-btn" for="' + prefix + 'picFile">' +
+              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+              ' \u9009\u62E9\u56FE\u7247\u4E0A\u4F20' +
+            '</label>' +
+            '<button type="button" class="pic-upload-del-btn" id="' + prefix + 'picDelBtn" onclick="onSamplePicDelete(\'' + prefix + '\')" ' + disabledAttr + '>' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+              ' \u79FB\u9664\u56FE\u7247' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+// 文件选择 → 调用 SupabaseSubmit.uploadPicture 上传
+async function onSamplePicFileChange(prefix, inputEl) {
+  var file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  var statusEl = document.getElementById(prefix + 'picStatus');
+  var pathEl = document.getElementById(prefix + 'picture_path');
+  var nameEl = document.getElementById(prefix + 'picture_name');
+  var fnameEl = document.getElementById(prefix + 'picFilename');
+  var delBtn = document.getElementById(prefix + 'picDelBtn');
+  var previewImg = document.getElementById(prefix + 'picPreview');
+  if (!statusEl) return;
+  if (!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function') {
+    statusEl.className = 'pic-upload-status err';
+    statusEl.textContent = '\u4E0A\u4F20\u6A21\u5757\u672A\u52A0\u8F7D\uFF0C\u8BF7\u5237\u65B0\u9875\u9762\u540E\u91CD\u8BD5';
+    inputEl.value = ''; return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    statusEl.className = 'pic-upload-status err';
+    statusEl.textContent = '\u56FE\u7247\u8D85\u8FC7 5MB \u9650\u5236';
+    inputEl.value = ''; return;
+  }
+  statusEl.className = 'pic-upload-status loading';
+  statusEl.textContent = '\u6B63\u5728\u4E0A\u4F20\u4E2D... ' + file.name;
+  try {
+    var localUrl = URL.createObjectURL(file);
+    if (previewImg) { previewImg.src = localUrl; previewImg.style.display = 'block'; }
+  } catch(_e) {}
+  try {
+    var result = await SupabaseSubmit.uploadPicture(file, 'sample');
+    if (!result || !result.path) {
+      statusEl.className = 'pic-upload-status err';
+      statusEl.textContent = '\u4E0A\u4F20\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5';
+      inputEl.value = ''; return;
+    }
+    pathEl.value = result.path;
+    nameEl.value = result.fileName || file.name;
+    fnameEl.textContent = result.fileName || file.name;
+    fnameEl.style.display = '';
+    delBtn.disabled = false;
+    statusEl.className = 'pic-upload-status ok';
+    statusEl.textContent = '\u2713 \u4E0A\u4F20\u6210\u529F\uFF1A' + (result.fileName || file.name);
+    try {
+      var s = await getSignedUrlForPath(result.path);
+      if (s && previewImg) previewImg.src = s;
+    } catch(_x) {}
+  } catch (err) {
+    console.error('[sample] upload exception:', err);
+    statusEl.className = 'pic-upload-status err';
+    statusEl.textContent = '\u4E0A\u4F20\u5F02\u5E38\uFF1A' + (err && err.message ? err.message : String(err));
+  } finally {
+    inputEl.value = '';
+  }
+}
+// 删除已上传图片（从 Storage 移除 + 清空隐藏字段）
+async function onSamplePicDelete(prefix) {
+  var pathEl = document.getElementById(prefix + 'picture_path');
+  var nameEl = document.getElementById(prefix + 'picture_name');
+  var fnameEl = document.getElementById(prefix + 'picFilename');
+  var statusEl = document.getElementById(prefix + 'picStatus');
+  var delBtn = document.getElementById(prefix + 'picDelBtn');
+  var previewImg = document.getElementById(prefix + 'picPreview');
+  var oldPath = (pathEl && pathEl.value) || '';
+  if (oldPath && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
+    try { await SupabaseSubmit.deletePicture(oldPath); } catch(e) { console.warn('[sample] deletePicture warn:', e); }
+  }
+  if (pathEl) pathEl.value = '';
+  if (nameEl) nameEl.value = '';
+  if (fnameEl) { fnameEl.textContent = ''; fnameEl.style.display = 'none'; }
+  if (statusEl) { statusEl.className = 'pic-upload-status'; statusEl.textContent = '\u5C1A\u672A\u4E0A\u4F20\u56FE\u7247'; }
+  if (delBtn) delBtn.disabled = true;
+  if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
+}
+// 辅助：取路径的签名 URL（容错）
+async function getSignedUrlForPath(storagePath) {
+  if (!storagePath || !window.supabase) return null;
+  try {
+    var sb = window.supabase;
+    var BUCKET = (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.STORAGE_BUCKET) || 'documents';
+    var res = await sb.storage.from(BUCKET).createSignedUrl(storagePath, 3600);
+    if (res.error || !res.data) return null;
+    return res.data.signedUrl || null;
+  } catch(e) { return null; }
+}
+// 辅助：表单打开后回填预览图显示（用 signed URL 或本地 blob）
+async function hydratePicPreview(prefix) {
+  var pathEl = document.getElementById(prefix + 'picture_path');
+  var previewImg = document.getElementById(prefix + 'picPreview');
+  if (!pathEl || !previewImg) return;
+  var p = pathEl.value; if (!p) return;
+  try {
+    var signed = await getSignedUrlForPath(p);
+    if (signed) { previewImg.src = signed; previewImg.style.display = 'block'; return; }
+  } catch(_e) {}
+  previewImg.style.display = 'none';
+}
+
 let _editingRounds = [];
 function openSampleModal(id) {
   editingId = id || null;
@@ -1292,9 +1492,11 @@ function openSampleModal(id) {
         <button type="button" class="btn btn-sm btn-primary" style="float:right;" onclick="addRound()">➕ 添加一轮</button>
       </div>
       <div class="multi-round-list" id="roundListContainer"></div>
-    </div>`;
+    </div>
+    ${buildImageUploadBlock('m_', sample.picture_path, sample.picture_name)}`;
   const footer = `<button class="btn" onclick="App.modal.close()">✖️</button><button class="btn btn-primary" onclick="saveSample()">💾</button>`;
   App.modal.open({ title: id ? '编辑样衣记录' : '新增样衣记录', body, footer, size: 'lg', closeOnOverlay: false });
+  if (sample && sample.picture_path) { setTimeout(function(){ hydratePicPreview('m_'); }, 50); }
   document.getElementById('m_styleNo').addEventListener('change', function() {
     refreshStageOptions();
     const sel = document.getElementById('m_stageKey');
@@ -1486,6 +1688,11 @@ function saveSample() {
     data.confirmedDate = confirmedDateEl ? confirmedDateEl.value : '';
     data.techNotes = document.getElementById('m_techNotes').value.trim();
   }
+  // 款式图片字段：顶层保存（上传至 Supabase Storage 的路径与原始文件名）
+  var ppPathEl = document.getElementById('m_picture_path');
+  var ppNameEl = document.getElementById('m_picture_name');
+  data.picture_path = ppPathEl ? ppPathEl.value : '';
+  data.picture_name = ppNameEl ? ppNameEl.value : '';
   const samples = getSamples();
   if (editingId) { const idx = samples.findIndex(s => s.id === editingId); if (idx !== -1) samples[idx] = { ...samples[idx], ...data }; App.toast('样衣记录已更新', 'success'); }
   else { samples.push(data); App.toast('样衣记录已添加', 'success'); }
@@ -1525,8 +1732,101 @@ function viewSampleDetail(id) {
     </div>
     <div class="mt-8"><div class="detail-label mb-4">备注</div><div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:36px;">${App.utils.escapeHtml(s.techNotes) || '<span class=\"text-muted\">暂无备注</span>'}</div></div></div>`;
   }
+  const styleNo = s.styleNo || '';
+  const picBoxId = 'v_pic_' + String(s.id || '').replace(/[^0-9a-zA-Z_]/g, '_');
+  const picBlock = `
+    <div style="border:1px solid var(--border-light);border-radius:10px;padding:14px;margin-bottom:14px;background:linear-gradient(160deg,#f8fbff 0%,#eef5ff 100%);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-weight:700;color:#134066;font-size:13px;">🖼️ 款式图片预览</div>
+        <div style="font-size:11px;color:#6b7280;">款号：<b style="color:#17466c">${App.utils.escapeHtml(styleNo) || '-'}</b></div>
+      </div>
+      <div id="${picBoxId}" style="width:100%;min-height:180px;border-radius:8px;background:rgba(255,255,255,0.65);border:1px dashed rgba(150,200,245,0.5);display:flex;align-items:center;justify-content:center;">
+        <div style="text-align:center;color:#6ca6d8;padding:24px 12px;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.35"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <p style="margin:8px 0 2px;font-size:12px;color:#3a6b95;">正在加载图片...</p>
+          <p style="margin:0;font-size:11px;color:#6383a3;">如未上传，请在「编辑样衣」中上传款式图</p>
+        </div>
+      </div>
+    </div>`;
+  body = picBlock + body;
   const footer = `<button class="btn" onclick="App.modal.close()">✖️</button><button class="btn btn-primary" onclick="App.modal.close(); openSampleModal('${s.id}')">✏️</button>`;
-  App.modal.open({ title: '样衣详情', body, footer, size: 'lg' });
+  App.modal.open({ title: '样衣详情', body, footer, size: 'lg', closeOnOverlay: false });
+  // 异步加载并渲染图片（4级回退）：签名URL → findPictureByStyleNo(sample) → findPictureByStyleNo(uploads) → 本地 picture/
+  (async function loadDetailPic() {
+    var host = document.getElementById(picBoxId);
+    if (!host) return;
+    var picPath = s.picture_path || s['图片路径'] || '';
+    var picName = s.picture_name || s['图片文件名'] || '';
+    var origExt = null;
+    if (picName && picName.indexOf('.') >= 0) origExt = picName.split('.').pop().toLowerCase();
+    var formatsArr = ['jpg','jpeg','png','webp','gif'];
+    function renderImg(src) {
+      var img = new Image();
+      img.onload = function() {
+        host.innerHTML = '';
+        img.style.maxWidth = '100%'; img.style.maxHeight = '380px';
+        img.style.width = 'auto'; img.style.height = 'auto';
+        img.style.objectFit = 'contain'; img.style.borderRadius = '6px';
+        img.style.display = 'block';
+        host.style.padding = '4px'; host.style.background = '#fff';
+        host.appendChild(img);
+        if (!picPath && host.dataset.foundPath && typeof App !== 'undefined' && App.store) {
+          try {
+            var allS = getSamples();
+            var idx2 = allS.findIndex(function(x){ return x.id === id; });
+            if (idx2 >= 0) {
+              allS[idx2].picture_path = host.dataset.foundPath;
+              if (host.dataset.foundName) allS[idx2].picture_name = host.dataset.foundName;
+              App.store.set('samples', allS);
+            }
+          } catch(_err) {}
+        }
+      };
+      img.onerror = function() { tryLocalFallback(); };
+      img.src = src;
+    }
+    function tryLocalFallback() {
+      var idx = 0;
+      function nxt() {
+        if (idx >= formatsArr.length) {
+          host.innerHTML = '<div style=\"text-align:center;color:#6ca6d8;padding:24px 12px;\"><svg width=\"36\" height=\"36\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" style=\"opacity:.35\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/><circle cx=\"8.5\" cy=\"8.5\" r=\"1.5\"/><polyline points=\"21 15 16 10 5 21\"/></svg><p style=\"margin:8px 0 2px;font-size:12px;color:#3a6b95;\">未找到款式图片</p><p style=\"margin:0;font-size:11px;color:#6383a3;\">请在「编辑样衣」中上传，或放入 picture/' + (styleNo || '') + '.jpg</p></div>';
+          return;
+        }
+        var img = new Image();
+        img.onload = function() {
+          host.innerHTML = '';
+          img.style.maxWidth = '100%'; img.style.maxHeight = '380px';
+          img.style.width = 'auto'; img.style.height = 'auto';
+          img.style.objectFit = 'contain'; img.style.borderRadius = '6px';
+          host.style.padding = '4px'; host.style.background = '#fff';
+          host.appendChild(img);
+        };
+        img.onerror = function(){ idx++; nxt(); };
+        img.src = 'picture/' + styleNo + '.' + formatsArr[idx];
+      }
+      nxt();
+    }
+    async function findAndRender(subFolder) {
+      if (!styleNo || !window.SupabaseSubmit || typeof SupabaseSubmit.findPictureByStyleNo !== 'function') return false;
+      try {
+        var found = await SupabaseSubmit.findPictureByStyleNo(styleNo, subFolder, origExt);
+        if (!found || !found.path) return false;
+        var signed = found.signedUrl;
+        if (!signed && typeof getSignedUrlForPath === 'function') signed = await getSignedUrlForPath(found.path);
+        if (!signed) return false;
+        host.dataset.foundPath = found.path;
+        host.dataset.foundName = picName || (found.path ? found.path.split('/').pop() : '');
+        renderImg(signed);
+        return true;
+      } catch (_ee) { return false; }
+    }
+    if (picPath && typeof getSignedUrlForPath === 'function') {
+      try { var s1 = await getSignedUrlForPath(picPath); if (s1) { renderImg(s1); return; } } catch(_e1) {}
+    }
+    var ok2 = await findAndRender('sample'); if (ok2) return;
+    var ok3 = await findAndRender('uploads'); if (ok3) return;
+    tryLocalFallback();
+  })();
 }
 function deleteSample(id) { App.confirm('确定要删除这条样衣记录吗？', () => { const samples = getSamples().filter(s => s.id !== id); App.store.set('samples', samples); _selectedIds.delete(id); App.toast('样衣记录已删除', 'success'); renderStats(); renderSampleTable(); }); }
 function resetFilter() { filterState = { search: '', status: '' }; renderFilterBar(); renderSampleTable(); }
@@ -1733,6 +2033,8 @@ window.addEventListener('cloud-data-updated', function(e) {
           confirmedBy: '',
           confirmedDate: '',
           techNotes: r['备注'] || '',
+          picture_path: r['picture_path'] || r['图片路径'] || '',
+          picture_name: r['picture_name'] || r['图片文件名'] || '',
           // 其它原系统字段保持 undefined，不破坏结构：fabric/lining/fabricType/colorType/accessoryType/unitPrice
         };
         if (def.multiRound) {
@@ -2046,23 +2348,121 @@ window.addEventListener('cloud-data-updated', function(e) {
     document.getElementById('sp_imagePanel').classList.add('active');
     const wrapper = document.getElementById('sp_imageWrapper');
     const styleNo = row['款号'] || '';
+    const picPath = row['picture_path'] || row['图片路径'] || '';
+    const picName = row['picture_name'] || row['图片文件名'] || '';
+    // 取原始文件扩展名（如果有记录）
+    var origExt = null;
+    if (picName && picName.indexOf('.') >= 0) {
+      origExt = picName.split('.').pop().toLowerCase();
+    }
     const formats = ['jpg','jpeg','png','webp','gif'];
-    let fi = 0;
-    function tryLoad() {
-      if (fi >= formats.length) {
-        wrapper.innerHTML = `<div class="image-placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <p>未找到图片</p>
-          <p class="hint">请将图片放入 picture 文件夹<br>命名为「${esc(styleNo)}.jpg」</p>
-        </div>`;
-        return;
-      }
-      const img = new Image();
-      img.onload = () => { wrapper.innerHTML = ''; img.style.cssText = 'max-width:100%;max-height:480px;width:auto;height:auto;object-fit:contain;display:block;'; wrapper.appendChild(img); };
-      img.onerror = () => { fi++; tryLoad(); };
+    // 渲染占位 loading
+    wrapper.innerHTML = `<div class="image-placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <p>正在加载图片...</p>
+      <p class="hint">款号：${esc(styleNo)}</p>
+    </div>`;
+
+    // 尝试把找到的图片显示到 wrapper
+    function showSrc(src, isRemote) {
+      wrapper.innerHTML = '';
+      var img = new Image();
+      img.style.cssText = 'max-width:100%;max-height:480px;width:auto;height:auto;object-fit:contain;display:block;';
+      img.onload = function() { wrapper.appendChild(img); };
+      img.onerror = function() { fallbackLocal(); };
+      img.src = src;
+    }
+    // 显示「未找到」占位
+    function showNotFound() {
+      wrapper.innerHTML = `<div class="image-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <p>未找到图片</p>
+        <p class="hint">请将图片放入 picture 文件夹<br>命名为「${esc(styleNo)}.jpg」<br>或在「添加/编辑样衣」表单中上传图片</p>
+      </div>`;
+    }
+    // 本地 picture/ 文件夹兜底遍历
+    var fi = 0;
+    function fallbackLocal() {
+      if (fi >= formats.length) { showNotFound(); return; }
+      var img = new Image();
+      img.onload = function() { wrapper.innerHTML = ''; img.style.cssText = 'max-width:100%;max-height:480px;width:auto;height:auto;object-fit:contain;display:block;'; wrapper.appendChild(img); };
+      img.onerror = function() { fi++; fallbackLocal(); };
       img.src = PICTURE_BASE + styleNo + '.' + formats[fi];
     }
-    tryLoad();
+    // 回补匹配到的 picture_path / picture_name 到 SamplePlan 当前记录
+    function patchRecordPath(path, name) {
+      try {
+        if (!row.id) return;
+        var changed = false;
+        if (path && !row['picture_path']) { row['picture_path'] = path; changed = true; }
+        if (name && !row['picture_name']) { row['picture_name'] = name; changed = true; }
+        if (changed) saveData();
+      } catch(_e) {}
+    }
+    // ============ 4 级回退策略 ============
+    // Level 1: 记录已保存 picture_path → 直接签名 URL 显示
+    if (picPath && (typeof getSignedUrlForPath === 'function')) {
+      (async function tryLevel1(){
+        try {
+          var signed = await getSignedUrlForPath(picPath);
+          if (signed) { showSrc(signed, true); return; }
+        } catch(_e){}
+        tryLevel2();
+      })();
+      return;
+    }
+    // Level 2: 按款号 + 原始扩展名 在 Supabase Storage 查找（支持 UUID 前缀文件名 xxx-1122.jpg）
+    function tryLevel2() {
+      if (!styleNo || !window.SupabaseSubmit || typeof SupabaseSubmit.findPictureByStyleNo !== 'function') {
+        tryLevel3(); return;
+      }
+      (async function doFind(){
+        try {
+          var found = await SupabaseSubmit.findPictureByStyleNo(styleNo, 'sample', origExt);
+          if (found && (found.signedUrl || found.path)) {
+            var signed2 = found.signedUrl;
+            if (!signed2 && found.path && (typeof getSignedUrlForPath === 'function')) {
+              signed2 = await getSignedUrlForPath(found.path);
+            }
+            // 回补 picture_path / 原始文件名（从 path 末段取文件名）
+            var _name = picName || (found.path ? found.path.split('/').pop() : '');
+            if (found.path) patchRecordPath(found.path, _name);
+            if (signed2) { showSrc(signed2, true); return; }
+          }
+        } catch(err) { console.warn('[showImagePreview] level2 error:', err); }
+        tryLevel3();
+      })();
+    }
+    // Level 3: 跨 userId 扫描时使用 findPictureByStyleNo 的策略 2/3 已经在 level2 内部执行过了，这里再兜底：非 'sample' 子目录尝试 'uploads' / 根目录
+    function tryLevel3() {
+      if (!styleNo || !window.SupabaseSubmit || typeof SupabaseSubmit.findPictureByStyleNo !== 'function') {
+        fallbackLocal(); return;
+      }
+      (async function doFind3(){
+        try {
+          // 如果 level2 用 sample 没找到，试试老目录名 uploads 以及通用根（subFolder="" 会被转成默认值，但 findPictureByStyleNo 的策略3 也会直接查 subFolder/）
+          var found = await SupabaseSubmit.findPictureByStyleNo(styleNo, 'uploads', origExt);
+          if (found && (found.signedUrl || found.path)) {
+            var signed3 = found.signedUrl;
+            if (!signed3 && found.path && (typeof getSignedUrlForPath === 'function')) {
+              signed3 = await getSignedUrlForPath(found.path);
+            }
+            var _name = picName || (found.path ? found.path.split('/').pop() : '');
+            if (found.path) patchRecordPath(found.path, _name);
+            if (signed3) { showSrc(signed3, true); return; }
+          }
+        } catch(err){ console.warn('[showImagePreview] level3 error:', err); }
+        fallbackLocal(); // Level 4: 本地 picture/ 文件夹兜底
+      })();
+    }
+    // 入口：如果没走 level1，直接从 level2 开始
+    if (picPath && !(typeof getSignedUrlForPath === 'function')) {
+      // 没 getSignedUrlForPath 函数（极罕见），直接兜底本地
+      fallbackLocal();
+    } else if (!picPath) {
+      tryLevel2();
+    }
+
     const tBadge = typeBadges[row['样衣类型']] || 'badge-gray';
     const sBadge = statusBadges[getStatus(row)] || 'badge-gray';
     const mBadge = matBadges[row['面辅料准备情况']] || 'badge-gray';
@@ -2107,6 +2507,17 @@ window.addEventListener('cloud-data-updated', function(e) {
     const overlay = document.getElementById('sp_modalOverlay');
     document.getElementById('sp_sampleForm').reset();
     document.getElementById('sp_editId').value = '';
+    // 重置图片上传区块状态（reset() 不会清空自定义 hidden/显示状态）
+    (function resetSPic() {
+      var ids = ['sp_f_picture_path','sp_f_picture_name','sp_f_picStatus','sp_f_picFilename','sp_f_picDelBtn','sp_f_picPreview','sp_f_picPlaceholder'];
+      var p = document.getElementById('sp_f_picture_path'); if (p) p.value = '';
+      var n = document.getElementById('sp_f_picture_name'); if (n) n.value = '';
+      var s = document.getElementById('sp_f_picStatus'); if (s) { s.className = 'pic-upload-status'; s.textContent = '尚未上传图片'; }
+      var f = document.getElementById('sp_f_picFilename'); if (f) { f.textContent = ''; f.style.display = 'none'; }
+      var d = document.getElementById('sp_f_picDelBtn'); if (d) d.disabled = true;
+      var pi = document.getElementById('sp_f_picPreview'); if (pi) { pi.src = ''; pi.style.display = 'none'; }
+      var ph = document.getElementById('sp_f_picPlaceholder'); if (ph) ph.style.display = '';
+    })();
     if (id) {
       const row = state.data.find(r => r.id === id);
       if (!row) return;
@@ -2124,6 +2535,22 @@ window.addEventListener('cloud-data-updated', function(e) {
       document.getElementById('sp_f_endDate').value = row['落手时间'] || '';
       document.getElementById('sp_f_material').value = row['面辅料准备情况'] || '已到位';
       document.getElementById('sp_f_remarks').value = row['备注'] || '';
+      // 回填图片字段
+      var pp = row['picture_path'] || row['图片路径'] || '';
+      var pn = row['picture_name'] || row['图片文件名'] || '';
+      var pathEl = document.getElementById('sp_f_picture_path');
+      var nameEl = document.getElementById('sp_f_picture_name');
+      var statusEl = document.getElementById('sp_f_picStatus');
+      var fnameEl = document.getElementById('sp_f_picFilename');
+      var delBtn = document.getElementById('sp_f_picDelBtn');
+      var placeholder = document.getElementById('sp_f_picPlaceholder');
+      if (pathEl) pathEl.value = pp || '';
+      if (nameEl) nameEl.value = pn || '';
+      if (pp && statusEl) { statusEl.className = 'pic-upload-status ok'; statusEl.textContent = '✓ 已有上传图片（可重新上传或删除）'; }
+      if (pn && fnameEl) { fnameEl.textContent = pn; fnameEl.style.display = ''; }
+      if (delBtn) delBtn.disabled = !pp;
+      if (pp && placeholder) placeholder.style.display = 'none';
+      if (pp) { setTimeout(function(){ hydratePicPreview('sp_f_'); }, 50); }
     } else {
       document.getElementById('sp_modalTitle').textContent = '添加样衣';
       state.editingId = null;
@@ -2139,6 +2566,8 @@ window.addEventListener('cloud-data-updated', function(e) {
   SP.saveRecord = function(event) {
     event.preventDefault();
     const id = document.getElementById('sp_editId').value;
+    var ppPathEl = document.getElementById('sp_f_picture_path');
+    var ppNameEl = document.getElementById('sp_f_picture_name');
     const record = {
       样衣工: document.getElementById('sp_f_worker').value.trim(),
       款号: document.getElementById('sp_f_styleNo').value.trim(),
@@ -2150,7 +2579,9 @@ window.addEventListener('cloud-data-updated', function(e) {
       上手时间: document.getElementById('sp_f_startDate').value,
       落手时间: document.getElementById('sp_f_endDate').value,
       面辅料准备情况: document.getElementById('sp_f_material').value,
-      备注: document.getElementById('sp_f_remarks').value.trim()
+      备注: document.getElementById('sp_f_remarks').value.trim(),
+      picture_path: ppPathEl ? ppPathEl.value : '',
+      picture_name: ppNameEl ? ppNameEl.value : ''
     };
     if (!record['样衣工'] || !record['款号'] || !record['要求交期']) { showToast('请填写必填字段', 'error'); return; }
     if (id) {

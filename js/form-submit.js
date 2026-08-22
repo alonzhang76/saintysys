@@ -558,89 +558,116 @@ const SupabaseSubmit = {
     const user = await getCurrentUserOrRedirect();
     if (!user) return null;
 
-    const targetName = String(styleNo).toLowerCase();
+    const targetName = String(styleNo).trim().toLowerCase();
     const formats = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
-    // UUID 正则：匹配以 UUID 开头的文件名
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
-
-    // 匹配规则：从文件名中提取 UUID 后的原始文件名，与款号比对
-    function matchItem(item, targetName, originalExt) {
-      const name = item.name;
-      if (name.startsWith('.')) return false;
-      const lowerName = name.toLowerCase();
-
-      // 尝试去除 UUID 前缀
-      let afterUuid = name;
-      const uuidMatch = name.match(uuidRegex);
-      if (uuidMatch) {
-        afterUuid = name.substring(uuidMatch[0].length);
-      } else {
-        // 备选：用 indexOf 找到第4个 "-"（UUID 有4个 "-"）
-        let pos = -1;
-        for (let i = 0; i < 4; i++) {
-          pos = name.indexOf('-', pos + 1);
-          if (pos === -1) break;
-        }
-        if (pos >= 0) afterUuid = name.substring(pos + 1);
+    // 兼容多种 UUID 前缀形态：
+    //   a) 完整连字符 UUID：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-原始文件名
+    //   b) 压缩 UUID（无连字符）：xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-原始文件名
+    //   c) 较短随机前缀（5~16 位十六进制/字母）：xxx-原始文件名
+    const uuidFull = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
+    const uuidFlat = /^[0-9a-f]{32}-/i;
+    const randPrefix = /^[0-9a-z]{5,16}-/i;
+    function stripPrefix(name) {
+      const low = name;
+      let m = low.match(uuidFull);
+      if (m) return low.substring(m[0].length);
+      m = low.match(uuidFlat);
+      if (m) return low.substring(m[0].length);
+      // 若前导十六进制片段 + "-" 后面剩余部分本身包含扩展名，则尝试去除
+      m = low.match(randPrefix);
+      if (m) {
+        const tail = low.substring(m[0].length);
+        if (/\.[a-z0-9]{2,5}$/i.test(tail)) return tail;
       }
-
-      const lowerAfterUuid = afterUuid.toLowerCase();
-      const nameWithoutExt = lowerAfterUuid.replace(/\.[^.]+$/, '');
-
-      // 条件1：去除扩展名后，文件名等于款号 或 包含款号
-      const isNameMatch = nameWithoutExt === targetName || nameWithoutExt.includes(targetName);
-
-      // 条件2：如果指定了扩展名，优先检查
-      if (originalExt) {
-        const extMatch = lowerName.endsWith('.' + originalExt.toLowerCase());
-        if (isNameMatch && extMatch) return true;
-        // 文件名包含款号但扩展名不完全匹配 → 备选
-        if (isNameMatch) return true;
-        return false;
+      // 最后兜底：取最后一个 "-" 之后的部分（xxx-1122.jpg -> 1122.jpg）
+      const dashIdx = low.lastIndexOf('-');
+      if (dashIdx > 0 && /\.[a-z0-9]{2,5}$/i.test(low.substring(dashIdx + 1))) {
+        return low.substring(dashIdx + 1);
       }
-
-      // 条件3：兜底：文件名直接以 {款号}.{扩展名} 结尾
-      if (!isNameMatch) {
-        for (const fmt of formats) {
-          if (lowerName.endsWith('-' + targetName + '.' + fmt) ||
-              lowerName.includes(targetName + '.' + fmt)) {
-            return true;
-          }
-        }
-      }
-
-      return isNameMatch;
+      return low;
     }
 
-    // 尝试从指定目录列表中查找匹配文件
+    // 匹配规则：多种变体统一比较
+    function matchItem(item) {
+      const name = item.name;
+      if (!name || name.startsWith('.')) return false;
+      const lower = name.toLowerCase();
+
+      // 扩展名判断
+      const needExt = originalExt ? String(originalExt).toLowerCase().replace(/^\.+/, '') : null;
+      if (needExt && !lower.endsWith('.' + needExt)) {
+        // 如指定了扩展名但不匹配，只考虑"可能候选"：款号直接命中 或 文件名完整包含款号+扩展名 两种情况
+        // 这里保持严格：如指定了扩展名且不匹配，则跳过后续，除非文件名精确包含 {款号}.{扩展名}
+        if (needExt && formats.indexOf(needExt) >= 0) {
+          if (lower.indexOf(targetName + '.' + needExt) < 0) return false;
+        }
+      }
+
+      // 变体 0：原始文件名就是 款号.扩展名（含大小写/前后空格）
+      const justStem = lower.replace(/\.[^.]+$/, '');
+      if (justStem === targetName) return 100;
+
+      // 变体 1：去掉前缀后（UUID 或 随机段）的文件名去掉扩展名等于款号
+      const stripped = stripPrefix(lower);
+      const stemStripped = stripped.replace(/\.[^.]+$/, '');
+      if (stemStripped === targetName) return 95;
+
+      // 变体 2：去掉前缀后的文件名 是 款号 + 后缀词 （例如 1122_front.jpg）
+      if (stemStripped.indexOf(targetName) === 0) return 85;
+
+      // 变体 3：文件名直接含款号 + .扩展名（例如 xxx-1122.jpg、1122-abc.jpg）
+      for (const fmt of formats) {
+        if (lower.endsWith(targetName + '.' + fmt)) return 90;
+        if (lower.indexOf('-' + targetName + '.' + fmt) >= 0) return 80;
+        if (lower.indexOf('_' + targetName + '.' + fmt) >= 0) return 80;
+        if (lower.indexOf(targetName + '-' + fmt) >= 0) return 50; // 容错
+      }
+
+      // 变体 4：主干去除所有非字母数字后 包含/等于 款号
+      const targetNorm = targetName.replace(/[^0-9a-z\u4e00-\u9fa5]/g, '');
+      const jstem = justStem.replace(/[^0-9a-z\u4e00-\u9fa5]/g, '');
+      if (targetNorm && jstem === targetNorm) return 75;
+      if (targetNorm && jstem.indexOf(targetNorm) >= 0) return 60;
+
+      return false;
+    }
+
+    // 尝试从指定目录列表中查找匹配文件（选最高分匹配）
     async function searchInFolder(folderPath) {
       try {
         const { data, error } = await supabase.storage
           .from(STORAGE_BUCKET)
-          .list(folderPath, { limit: 200 });
+          .list(folderPath, { limit: 400 });
 
         if (error || !data || !Array.isArray(data) || data.length === 0) return null;
 
+        // 收集所有命中项并按分数排序，取最高的
+        const hits = [];
         for (const item of data) {
-          if (matchItem(item, targetName, originalExt)) {
-            const fullPath = folderPath + "/" + item.name;
-            // 获取签名 URL
-            const { data: urlData, error: urlError } = await supabase.storage
-              .from(STORAGE_BUCKET)
-              .createSignedUrl(fullPath, 300);
-
-            if (urlError) {
-              console.warn("[form-submit] findPictureByStyleNo signedUrl error:", urlError);
-              return { path: fullPath, signedUrl: null };
-            }
-
-            return {
-              path: fullPath,
-              signedUrl: urlData && urlData.signedUrl ? urlData.signedUrl : null
-            };
-          }
+          const score = matchItem(item);
+          if (score === false || score === 0 || score === null || score === undefined) continue;
+          hits.push({ item, score: Number(score) || 10 });
         }
-        return null; // 没找到匹配
+        if (hits.length === 0) return null;
+        hits.sort((a, b) => b.score - a.score);
+        const best = hits[0].item;
+        const fullPath = folderPath + "/" + best.name;
+
+        // 获取签名 URL
+        const { data: urlData, error: urlError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(fullPath, 3600); // 1 小时有效期
+
+        if (urlError) {
+          console.warn("[form-submit] findPictureByStyleNo signedUrl error:", urlError);
+          return { path: fullPath, signedUrl: null, score: hits[0].score };
+        }
+
+        return {
+          path: fullPath,
+          signedUrl: urlData && urlData.signedUrl ? urlData.signedUrl : null,
+          score: hits[0].score
+        };
       } catch (e) {
         return null;
       }
