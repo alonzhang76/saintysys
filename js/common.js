@@ -1,4 +1,4 @@
-/* ===== 舜天汉唐服装外贸系统 - 共享JS ===== */
+/* ===== AA服装外贸系统 - 共享JS ===== */
 
 /* ===== Supabase 会话读取（同步，从 localStorage 读取，不伪造登录态）=====
  * Supabase v2 客户端默认把会话写入 localStorage，键名形如 sb-<ref>-auth-token
@@ -145,8 +145,8 @@ const App = {
     { key: 'index', text: '首页', icon: '🏠', url: 'index.html' },
     { key: 'order', text: '订单管理', icon: '📋', url: 'order.html' },
     { group: '物料管理' },
-    { key: 'fabric', text: '面里衬管理', icon: '🧵', url: 'fabric.html' },
-    { key: 'accessory', text: '辅料管理', icon: '🔩', url: 'accessory.html' },
+    { key: 'fabric', text: '面里衬采购', icon: '🧵', url: 'fabric.html' },
+    { key: 'accessory', text: '辅料采购', icon: '🔩', url: 'accessory.html' },
     { group: '样衣与技术' },
     { key: 'wash', text: '水洗管理', icon: '🌊', url: 'wash.html' },
     { key: 'sample', text: '样衣管理', icon: '✂️', url: 'sample.html' },
@@ -190,7 +190,7 @@ const App = {
   // 注入侧边栏（根据当前用户权限过滤"不显示"的模块）
   injectSidebar(currentPage) {
     this._currentPageKey = currentPage; // 保存当前页key，供 auth-role-updated 事件重新注入
-    let menuHtml = '<div class="sidebar-logo"><span class="logo-icon">👔</span><span class="logo-text">舜天汉唐服装外贸系统</span></div>';
+    let menuHtml = '<div class="sidebar-logo"><span class="logo-icon">👔</span><span class="logo-text">AA服装外贸系统</span></div>';
     menuHtml += '<div class="sidebar-menu">';
 
     // 按分组累积可见菜单项，若整组都被隐藏则不显示分组标题
@@ -768,8 +768,8 @@ const App = {
   modulePermissions: {
     index:        '首页',
     order:        '订单管理',
-    fabric:       '面里衬管理',
-    accessory:    '辅料管理',
+    fabric:       '面里衬采购',
+    accessory:    '辅料采购',
     wash:         '水洗管理',
     sample:       '样衣管理',
     consumption:  '用料及纸板',

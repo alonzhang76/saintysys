@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>样衣管理 - 舜天汉唐服装外贸系统</title>
+<title>样衣管理 - AA服装外贸系统</title>
 <link rel="stylesheet" href="css/common.css?v=20260812">
 <script src="js/xlsx.full.min.js?v=20260821"></script>
 <style>
@@ -2746,7 +2746,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       ws['!cols'] = [{wch:6},{wch:10},{wch:16},{wch:12},{wch:10},{wch:8},{wch:8},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:30}];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '样衣管理');
-      XLSX.writeFile(wb, `舜天汉唐_样衣数据导出_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, `AA_样衣数据导出_${new Date().toISOString().split('T')[0]}.xlsx`);
       showToast(`已导出 ${data.length} 条记录`, 'success', 5000);
       return;
     }
@@ -2785,7 +2785,7 @@ window.addEventListener('cloud-data-updated', function(e) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `舜天汉唐_样衣数据导出_${new Date().toISOString().split('T')[0]}.xlsx`;
+    a.download = `AA_样衣数据导出_${new Date().toISOString().split('T')[0]}.xlsx`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast(`已导出 ${data.length} 条记录`, 'success', 5000);
@@ -2804,7 +2804,7 @@ window.addEventListener('cloud-data-updated', function(e) {
 <head>
 <meta charset="UTF-8">
 <base href="${baseUrl}">
-<title>舜天汉唐 - 样衣管理打印</title>
+<title>AA - 样衣管理打印</title>
 <style>
   @page { size: A4 landscape; margin: 10mm 8mm 15mm 8mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2828,7 +2828,7 @@ window.addEventListener('cloud-data-updated', function(e) {
 </head>
 <body>
 <div class="print-header">
-  <h1>舜天汉唐 - 样衣管理</h1>
+  <h1>AA - 样衣管理</h1>
   <div class="subtitle">打印日期：${today} | 共 ${data.length} 条记录</div>
 </div>
 <table>
@@ -2856,7 +2856,7 @@ window.addEventListener('cloud-data-updated', function(e) {
     }).join('')}
   </tbody>
 </table>
-<div class="print-footer">舜天汉唐样衣管理系统 | 打印日期：${today}</div>
+<div class="print-footer">AA样衣管理系统 | 打印日期：${today}</div>
 <script>
   const formats = ${JSON.stringify(formats)};
   const pictureBase = '${pictureBase}';
@@ -2933,12 +2933,12 @@ window.addEventListener('cloud-data-updated', function(e) {
   SP.backupData = function() {
     document.querySelectorAll('#samplePlanContainer .dropdown-menu').forEach(m => m.classList.remove('active'));
     if (state.data.length === 0 && state.sizeTables.length === 0) { showToast('暂无数据可备份', 'error'); return; }
-    const backup = { version: '2.0', exportDate: new Date().toISOString(), app: '舜天汉唐样衣管理系统', data: { samples: state.data, sizeTables: state.sizeTables } };
+    const backup = { version: '2.0', exportDate: new Date().toISOString(), app: 'AA样衣管理系统', data: { samples: state.data, sizeTables: state.sizeTables } };
     const json = JSON.stringify(backup, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `舜天汉唐_数据备份_${new Date().toISOString().split('T')[0]}.json`;
+    a.href = url; a.download = `AA_数据备份_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     showToast(`备份成功：样衣数据 ${state.data.length} 条，尺寸表 ${state.sizeTables.length} 条`, 'success', 5000);
   };

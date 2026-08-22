@@ -452,7 +452,7 @@ let editingId = null;
 let currentDocType = 'pl';
 // 硬编码公司信息
 const COMPANY_EN = 'JIANGSU SAINTY HANTANG TRADING CO., LTD.';
-const COMPANY_CN = '江苏舜天汉唐贸易有限公司';
+const COMPANY_CN = 'AA贸易有限公司';
 // 银行信息字段ID列表
 const BANK_FIELD_IDS = ['f-paymentTerms','f-bankCompany','f-bankAddr','f-bankName','f-bankAddr2','f-swift','f-acctNo'];
 
@@ -2367,7 +2367,7 @@ function generateCustomsInvoice(rec) {
 
   let html = '<table class="cus-form">';
   // Company header - LEFT-aligned with leading spaces (matching original)
-  html += `<tr><td colspan="10" class="l" style="${ns}">             ${rec.companyCn||'江苏舜天汉唐贸易有限公司'}</td></tr>`;
+  html += `<tr><td colspan="10" class="l" style="${ns}">             ${rec.companyCn||'AA贸易有限公司'}</td></tr>`;
   html += `<tr><td colspan="10" class="m" style="${ns}">  ${rec.company||''}</td></tr>`;
   html += `<tr><td colspan="10" class="s" style="${ns}">      ${rec.companyAddr||''}</td></tr>`;
   // Title - LEFT-aligned with leading spaces (not centered)
@@ -2435,7 +2435,7 @@ function generateCustomsPL(rec) {
 
   let html = '<table class="cus-pl-form">';
   // Company name - positioned at right side (cols 1+), 楷体 font, bold
-  html += `<tr><td style="${ns}">&nbsp;</td><td colspan="6" class="kt" style="${ns}">       ${rec.companyCn||'江苏舜天汉唐贸易有限公司'}</td></tr>`;
+  html += `<tr><td style="${ns}">&nbsp;</td><td colspan="6" class="kt" style="${ns}">       ${rec.companyCn||'AA贸易有限公司'}</td></tr>`;
   html += `<tr><td style="${ns}">&nbsp;</td><td colspan="6" class="en" style="${ns}"> ${rec.company||''}</td></tr>`;
   // 2 blank rows
   html += `<tr class="gap"><td colspan="7"></td></tr>`;

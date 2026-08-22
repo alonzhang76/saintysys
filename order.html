@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>订单管理 - 舜天汉唐服装外贸系统</title>
+<title>订单管理 - AA服装外贸系统</title>
 <link rel="stylesheet" href="css/common.css?v=20260812">
 <script src="js/xlsx.full.min.js?v=20260821"></script>
 <style>
@@ -31,7 +31,7 @@
       <!-- 标签页 -->
       <div class="tabs" id="orderTabs" style="margin-bottom:0;">
         <div class="tab-item active" data-tab="orders" onclick="switchOrderTab('orders')">订单列表</div>
-        <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">物料登记</div>
+        <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">耗料登记及状态</div>
         <div class="tab-item" data-tab="sizes" onclick="switchOrderTab('sizes')">尺寸表</div>
       </div>
 
@@ -71,7 +71,7 @@
         </div>
       </div>
 
-      <!-- 物料登记 -->
+      <!-- 耗料登记及状态 -->
       <div id="materialsTab" style="display:none;">
         <div class="table-wrap">
           <div class="filter-bar">
@@ -93,7 +93,7 @@
           </div>
           <div class="table-toolbar">
             <div class="table-toolbar-left">
-              <span class="card-title">物料登记</span>
+              <span class="card-title">耗料登记及状态</span>
               <span class="text-muted" id="matCountLabel" style="font-size:12px;"></span>
             </div>
             <div class="table-toolbar-right">
@@ -1236,7 +1236,7 @@ function printOrderPDF(id) {
 <body>
   <div class="doc-header">
     <div>
-      <div class="company">江苏舜天汉唐贸易有限公司</div>
+      <div class="company">AA贸易有限公司</div>
       <div class="company-en">JIANGSU SAINTY HANTANG TRADING CO., LTD.</div>
     </div>
     <div class="doc-title">
@@ -1691,10 +1691,10 @@ function parseSizeSheetRows(rows) {
   return result;
 }
 
-// ===== 物料登记标签页 =====
+// ===== 耗料登记及状态标签页 =====
 let _matEditingId = null;
 
-// 物料登记分类映射：对应面里衬类型 / 辅料 / 水洗
+// 耗料登记及状态分类映射：对应面里衬类型 / 辅料 / 水洗
 const MAT_CATEGORIES = [
   { key: '面料', target: 'fabric', fabricType: '面料', cls: 'tag-teal' },
   { key: '里料', target: 'fabric', fabricType: '里料', cls: 'tag-blue' },
@@ -1734,7 +1734,7 @@ function renderMaterialOrderFilter() {
   sel.innerHTML = opts.join('');
 }
 
-// 获取筛选后的物料登记列表
+// 获取筛选后的耗料登记及状态列表
 function getFilteredMaterials() {
   const list = getOrderMaterials();
   const search = (document.getElementById('matSearchInput')?.value || '').trim().toLowerCase();
@@ -1752,7 +1752,7 @@ function getFilteredMaterials() {
   });
 }
 
-// 渲染物料登记表格
+// 渲染耗料登记及状态表格
 function renderMaterials() {
   const list = App.utils.sortByDateDesc(getFilteredMaterials(), ['createDate', 'updateDate']);
   const el = document.getElementById('materialsTable');
@@ -1974,7 +1974,7 @@ function openMaterialModal(id) {
     <button class="btn" onclick="App.modal.close()">取消</button>
     <button class="btn btn-primary" onclick="saveMaterial()">💾 保存并同步</button>`;
 
-  App.modal.open({ title: id ? '编辑物料登记' : '新增物料登记', body, footer, size: 'lg' });
+  App.modal.open({ title: id ? '编辑耗料登记及状态' : '新增耗料登记及状态', body, footer, size: 'lg' });
 
   // 初始化当前类别下的字段可见性
   _matOnCategoryChange(defCat);
@@ -2053,7 +2053,7 @@ function _matOnOrderChange(sel) {
   }
 }
 
-// 保存物料登记并自动同步到对应模块
+// 保存耗料登记及状态并自动同步到对应模块
 function saveMaterial() {
   const category = document.getElementById('m_category').value;
   const cat = MAT_CATEGORIES._map[category];
@@ -2116,7 +2116,7 @@ function saveMaterial() {
       list[idx].syncedTargetTable = targetInfo.table;
       saveOrderMaterials(list);
     }
-    App.toast('已保存并同步到' + (cat.target === 'fabric' ? '面里衬管理' : cat.target === 'accessory' ? '辅料管理' : '水洗管理'), 'success');
+    App.toast('已保存并同步到' + (cat.target === 'fabric' ? '面里衬采购' : cat.target === 'accessory' ? '辅料采购' : '水洗管理'), 'success');
   } catch (e) {
     console.error(e);
     App.toast('保存成功，但同步失败：' + (e.message || e), 'error');
@@ -2139,7 +2139,7 @@ function syncOneMaterial(id) {
       list[idx].syncedTargetId = info.id;
       list[idx].syncedTargetTable = info.table;
       saveOrderMaterials(list);
-      App.toast('同步成功 → ' + (info.table === 'fabrics' ? '面里衬管理' : info.table === 'accessories' ? '辅料管理' : '水洗管理'), 'success');
+      App.toast('同步成功 → ' + (info.table === 'fabrics' ? '面里衬采购' : info.table === 'accessories' ? '辅料采购' : '水洗管理'), 'success');
       renderMaterials();
     }
   } catch (e) {
@@ -2170,7 +2170,7 @@ function syncMaterialsToModules() {
   renderMaterials();
 }
 
-// 核心：将一条物料登记记录同步到 fabric / accessory / wash 模块
+// 核心：将一条耗料登记及状态记录同步到 fabric / accessory / wash 模块
 // 若记录已带 syncedTargetId，则更新该条，否则新增
 // forceDuplicate=false 时若已存在 styleNo+name+category 的相同记录，则跳过，返回 { id, table }
 function syncOneMaterialToModules(m, forceDuplicate = false) {
@@ -2365,9 +2365,9 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
   throw new Error('未知目标模块');
 }
 
-// 删除物料登记
+// 删除耗料登记及状态
 function deleteMaterial(id) {
-  App.confirm('删除这条物料登记记录？（不会删除已同步到各模块的数据）', () => {
+  App.confirm('删除这条耗料登记及状态记录？（不会删除已同步到各模块的数据）', () => {
     const list = getOrderMaterials().filter(x => x.id !== id);
     saveOrderMaterials(list);
     App.toast('已删除', 'success');
