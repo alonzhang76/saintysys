@@ -434,7 +434,164 @@ const App = {
         if (!db) return -1;
         return db.localeCompare(da);
       });
+    },
+
+    // ===== NAS 通用工具 =====
+    getNasConfig() {
+      const d = {
+        serverUrl: '', webdavPath: '/webdav', rootFolder: '/saintydoc',
+        username: '', password: '', verifySsl: true, uploadMaxMb: 500, mode: 'lan'
+      };
+      try {
+        if (App.store && typeof App.store.get === 'function') {
+          const o = App.store.get('nas_config', null);
+          if (o) Object.assign(d, o || {});
+        } else {
+          const raw = localStorage.getItem('nas_config');
+          if (raw) Object.assign(d, JSON.parse(raw) || {});
+        }
+      } catch(e) {}
+      return d;
+    },
+    _normNasAbsUrlEncoded(cfg, logicPath) {
+      if (!cfg || !cfg.serverUrl) return null;
+      const base = (cfg.serverUrl || '').replace(/\/+$/, '');
+      let wd = cfg.webdavPath || '/'; if (!wd.startsWith('/')) wd = '/' + wd;
+      let root = cfg.rootFolder || '/'; if (!root.startsWith('/')) root = '/' + root;
+      root = root.replace(/\/+$/g, '');
+      let lp = logicPath || '/'; if (!lp.startsWith('/')) lp = '/' + lp;
+      if (lp === '/') lp = '';
+      const raw = (wd + root + lp).replace(/\/+/g, '/');
+      const cleanRaw = raw.length > 1 && raw.charAt(raw.length - 1) === '/' ? raw.slice(0, -1) : raw;
+      const enc = cleanRaw.split('/').map(encodeURIComponent).join('/');
+      return base + enc;
+    },
+    _basicAuthHeader(cfg) {
+      if (!cfg || !cfg.username) return {};
+      const cred = cfg.username + ':' + (cfg.password || '');
+      try { return { 'Authorization': 'Basic ' + btoa(unescape(encodeURIComponent(cred))) }; }
+      catch(e) { return {}; }
+    },
+    /**
+     * 通过 NAS WebDAV 将逻辑路径对应的文件下载为浏览器 File 对象（可直接传给 Supabase 上传）
+     * @param {string} logicPath 例如 /款式图/春夏2025.jpg
+     * @param {object} [customCfg] 可选，自定义 NAS 配置（不传则从 store 读取）
+     * @returns {Promise<{file: File, blob: Blob, absUrlEncoded: string}>}
+     */
+    async nasFetchAsFile(logicPath, customCfg) {
+      const cfg = customCfg || this.getNasConfig();
+      if (!cfg.serverUrl) throw new Error('NAS 尚未配置，请到设置页填写');
+      const absUrl = this._normNasAbsUrlEncoded(cfg, logicPath);
+      const headers = this._basicAuthHeader(cfg);
+      const resp = await fetch(absUrl, { method: 'GET', headers, credentials: 'omit' });
+      if (!resp.ok) throw new Error('读取 NAS 文件失败 HTTP ' + resp.status);
+      const blob = await resp.blob();
+      const fileName = (logicPath || '').split('/').filter(Boolean).pop() || 'nas-file';
+      let mime = blob.type || 'application/octet-stream';
+      if (!mime || mime === 'application/octet-stream') {
+        const idx = fileName.lastIndexOf('.');
+        if (idx >= 0) {
+          const ext = fileName.substring(idx + 1).toLowerCase();
+          const m = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', bmp:'image/bmp',
+                      webp:'image/webp', svg:'image/svg+xml', ico:'image/x-icon', avif:'image/avif', pdf:'application/pdf' };
+          if (m[ext]) mime = m[ext];
+        }
+      }
+      const lastMs = (function(){ try { return new Date().getTime(); } catch(e){ return Date.now(); } })();
+      const file = new File([blob], fileName, { type: mime, lastModified: lastMs });
+      file._nasLogicPath = logicPath;
+      return { file, blob, absUrlEncoded: absUrl };
+    },
+    /**
+     * 将文件（Blob/File）转成 Base64 DataURL（供 cc.html 等直接嵌入使用）
+     */
+    fileToDataUrl(fileOrBlob) {
+      return new Promise((resolve, reject) => {
+        if (!fileOrBlob) { reject(new Error('空文件')); return; }
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(fr.error || new Error('FileReader error'));
+        fr.readAsDataURL(fileOrBlob);
+      });
     }
+  },
+
+  // ===== NAS 选择器：打开 nas-picker.html，等待用户勾选回传 =====
+  /**
+   * @param {object} opts
+   * @param {boolean} [opts.multi=false] 是否多选
+   * @param {'images'|'all'} [opts.filter='images'] 文件类型过滤
+   * @param {'large'|'small'|'details'} [opts.view='large'] 默认视图
+   * @param {string} [opts.title] 弹窗标题（可选，用于无障碍）
+   * @returns {Promise<Array<{logicPath,name,size,mime,lastModified}>>} 用户勾选的文件数组
+   */
+  pickFromNas(opts) {
+    const self = this;
+    opts = opts || {};
+    const cfg = self.utils.getNasConfig();
+    if (!cfg.serverUrl) {
+      return Promise.reject(new Error('NAS 尚未配置，请先到「设置 → 云盘 NAS」填写服务器地址并保存'));
+    }
+    return new Promise((resolve, reject) => {
+      // 一次性 token
+      const token = 'NT' + Date.now() + '_' + Math.floor(Math.random() * 1e9);
+      const q = new URLSearchParams();
+      q.set('token', token);
+      q.set('origin', location.origin || '');
+      q.set('multi', opts.multi ? '1' : '0');
+      q.set('filter', (opts.filter && opts.filter === 'all') ? 'all' : 'images');
+      if (['large','small','details'].indexOf(opts.view) >= 0) q.set('view', opts.view);
+      const url = 'nas-picker.html?' + q.toString();
+      const winW = 1000, winH = 680;
+      const left = Math.max(10, Math.round((window.outerWidth || screen.width || 1280) - winW) / 2);
+      const top  = Math.max(10, Math.round((window.outerHeight || screen.height || 800) - winH) / 3);
+      const win = window.open(url, 'NasPicker_' + token,
+        'width=' + winW + ',height=' + winH + ',left=' + left + ',top=' + top +
+        ',resizable=yes,scrollbars=yes,menubar=no,toolbar=no,location=no,status=no');
+      if (!win) {
+        reject(new Error('浏览器阻止了弹出窗口，请允许本页弹出 NAS 选择器'));
+        return;
+      }
+      let done = false;
+      let timeoutTimer = setTimeout(function(){
+        if (!done) { done = true;
+          try { window.removeEventListener('message', onMsg); } catch(e) {}
+          reject(new Error('NAS 选择器超时或已关闭（未选择任何文件）'));
+        }
+      }, 10 * 60 * 1000); // 10 分钟超时
+      let closePollTimer = setInterval(function(){
+        try {
+          if (win.closed) {
+            clearInterval(closePollTimer);
+            if (!done) { done = true;
+              try { window.removeEventListener('message', onMsg); } catch(e) {}
+              clearTimeout(timeoutTimer);
+              resolve([]); // 关闭 = 取消（给空数组方便调用方判断）
+            }
+          }
+        } catch(e) { /* cross-origin 时访问 closed 可能抛错，继续轮询就行 */ }
+      }, 500);
+      function onMsg(e) {
+        try {
+          const d = e.data;
+          if (!d || d.source !== 'nas-picker' || d.token !== token) return;
+          if (!done) {
+            done = true;
+            clearTimeout(timeoutTimer);
+            clearInterval(closePollTimer);
+            try { window.removeEventListener('message', onMsg); } catch(_) {}
+            const picks = Array.isArray(d.picks) ? d.picks : [];
+            // 校验一下 picks 是否为有效文件
+            const cleaned = picks.filter(function(p){ return p && typeof p.logicPath === 'string' && p.logicPath; });
+            resolve(cleaned);
+          }
+        } catch(err) {
+          if (!done) { done = true; reject(err); }
+        }
+      }
+      window.addEventListener('message', onMsg, false);
+      try { win.focus(); } catch(_) {}
+    });
   },
 
   // ===== 表格渲染器 =====

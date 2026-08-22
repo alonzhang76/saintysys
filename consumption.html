@@ -278,6 +278,20 @@
 .consumption .image-preview .status.loading { display: block; background: rgba(59,130,246,0.1); color: #1d4ed8; }
 .consumption .image-preview .status.error   { display: block; background: rgba(220,38,38,0.1); color: #b91c1c; }
 .consumption .image-preview .status.ok      { display: block; background: rgba(16,185,129,0.1); color: #047857; }
+.consumption .nas-pick-row {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+.consumption .nas-pick-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.4);
+  background: #eef2ff; color: #3730a3;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all .12s;
+}
+.consumption .nas-pick-btn:hover { background: #e0e7ff; border-color: #6366f1; color: #1e1b4b; }
+.consumption .nas-pick-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ===== 动态表格 ===== */
 .consumption .dynamic-table-section {
@@ -974,36 +988,36 @@ var Cons = {
     }
   },
 
-  // ===== 图片上传回调 =====
-  onPicFileChange: async function(prefix, inputEl) {
-    var file = inputEl.files && inputEl.files[0];
-    if (!file) return;
+  // ===== 上传一张图片到 Supabase，并更新预览/隐藏字段/状态 =====
+  // 供 onPicFileChange（本地文件）和 nasPickForCons（NAS 文件）共用
+  _uploadPicture: async function(prefix, file) {
     var statusEl = document.getElementById(prefix + 'picStatus');
     var pathEl = document.getElementById(prefix + 'picture_path');
     var nameEl = document.getElementById(prefix + 'picture_name');
     var previewImg = document.getElementById(prefix + 'picPreview');
     var box = document.getElementById(prefix + 'box');
-    if (!statusEl || !box) { inputEl.value = ''; return; }
+    if (!statusEl || !box || !file) return false;
     if (!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function') {
       statusEl.className = 'status error';
       statusEl.textContent = '上传模块未加载，请刷新页面后重试';
-      inputEl.value = ''; return;
+      return false;
     }
+    var fmtSize = (App && App.utils && typeof App.utils.formatSize === 'function') ? App.utils.formatSize(file.size) : (file.size + ' B');
     if (file.size > 5 * 1024 * 1024) {
       statusEl.className = 'status error';
-      statusEl.textContent = '图片超过 5MB 限制';
-      inputEl.value = ''; return;
+      statusEl.textContent = '图片超过 5MB 限制（当前 ' + fmtSize + '）';
+      return false;
     }
     // 先删除旧图
     var oldPath = (pathEl && pathEl.value) || '';
     if (oldPath && !oldPath.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
-      try { await SupabaseSubmit.deletePicture(oldPath); } catch(e) {}
+      try { await SupabaseSubmit.deletePicture(oldPath); } catch(e) { console.warn('[consumption] deletePicture warn:', e); }
     }
     statusEl.className = 'status loading';
-    statusEl.textContent = '正在上传中... ' + file.name;
+    statusEl.textContent = '正在上传中... ' + (file.name || '');
     try {
       var localUrl = URL.createObjectURL(file);
-      if (previewImg) { previewImg.src = localUrl; }
+      if (previewImg) { previewImg.style.display = 'block'; previewImg.src = localUrl; }
       this._setBoxState(prefix, 'has-img');
     } catch(_e) {}
     try {
@@ -1012,10 +1026,10 @@ var Cons = {
         statusEl.className = 'status error';
         statusEl.textContent = '上传失败，请重试';
         this._setBoxState(prefix, 'empty');
-        inputEl.value = ''; return;
+        return false;
       }
-      pathEl.value = result.path;
-      nameEl.value = result.fileName || file.name;
+      if (pathEl) pathEl.value = result.path;
+      if (nameEl) nameEl.value = result.fileName || file.name;
       statusEl.className = 'status ok';
       statusEl.textContent = '✓ 上传成功：' + (result.fileName || file.name);
       try {
@@ -1025,13 +1039,22 @@ var Cons = {
       // 几秒后隐藏 status 条
       var _s = statusEl;
       setTimeout(function(){ if (_s && _s.className.indexOf('ok')>=0) { _s.className = 'status'; _s.textContent = ''; } }, 2000);
+      return true;
     } catch (err) {
       console.error('[consumption] upload exception:', err);
       statusEl.className = 'status error';
       statusEl.textContent = '上传异常：' + (err && err.message ? err.message : String(err));
-    } finally {
-      inputEl.value = '';
+      return false;
     }
+  },
+
+  // ===== 图片上传回调（本地文件） =====
+  onPicFileChange: async function(prefix, inputEl) {
+    var file = inputEl.files && inputEl.files[0];
+    if (!file) return;
+    try { await this._uploadPicture(prefix, file); }
+    catch(err) { console.error('[consumption] onPicFileChange err:', err); }
+    finally { inputEl.value = ''; }
   },
 
   onPicDelete: async function(prefix) {
@@ -1083,16 +1106,23 @@ var Cons = {
     var imgHtml = hasImg
       ? '<img id="' + prefix + 'picPreview" src="" alt="款式图">'
       : '<img id="' + prefix + 'picPreview" src="" alt="" style="display:none;">';
+    var nasBtnSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+    var prefixSafe = prefix.replace(/'/g, "\\'");
     return '<div class="image-box">' +
       '<h4>' + label + '</h4>' +
       '<div class="image-preview' + mutedCls + hasImgCls + '" id="' + prefix + 'box" onclick="document.getElementById(\'' + prefix + 'picFile\').click()">' +
         '<input type="hidden" id="' + prefix + 'picture_path" value="' + _dp + '">' +
         '<input type="hidden" id="' + prefix + 'picture_name" value="' + _dn + '">' +
-        '<input type="file" id="' + prefix + 'picFile" accept="image/*" style="display:none" onchange="Cons.onPicFileChange(\'' + prefix + '\', this)">' +
+        '<input type="file" id="' + prefix + 'picFile" accept="image/*" style="display:none" onchange="Cons.onPicFileChange(\'' + prefixSafe + '\', this)">' +
         imgHtml +
         hintHtml +
-        '<button type="button" class="del-btn" onclick="event.stopPropagation(); return Cons.onPicDelete(\'' + prefix + '\')" title="删除">×</button>' +
+        '<button type="button" class="del-btn" onclick="event.stopPropagation(); return Cons.onPicDelete(\'' + prefixSafe + '\')" title="删除">×</button>' +
         '<div class="status" id="' + prefix + 'picStatus"></div>' +
+      '</div>' +
+      '<div class="nas-pick-row">' +
+        '<button type="button" class="nas-pick-btn" id="' + prefix + 'nasBtn" onclick="event.stopPropagation(); nasPickForCons(\'' + prefixSafe + '\')">' +
+          nasBtnSvg + ' 从NAS选择' +
+        '</button>' +
       '</div>' +
     '</div>';
   },
@@ -1796,6 +1826,42 @@ function hydrateThumbImages() {
       if (src) { img.src = src; img.style.display = 'block'; }
     })();
   });
+}
+
+// ===== 从云盘 NAS 选择图片注入 consumption 表单 =====
+async function nasPickForCons(prefix) {
+  var nasBtn = document.getElementById(prefix + 'nasBtn');
+  var nasBtnInner = (nasBtn && nasBtn.innerHTML) ? nasBtn.innerHTML : null;
+  var nasBtnSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+  try {
+    if (nasBtn) { nasBtn.disabled = true; nasBtn.style.opacity = .6; }
+    var picks = await App.pickFromNas({ multi:false, filter:'images', view:'large' });
+    if (!picks || picks.length === 0) return; // 用户取消
+    var pick = picks[0];
+    if (nasBtn) nasBtn.textContent = '⬇ 正在下载「' + pick.name + '」...';
+    var got = await App.utils.nasFetchAsFile(pick.logicPath);
+    var ok = await Cons._uploadPicture(prefix, got.file);
+    if (ok) {
+      try { if (App && App.toast) App.toast('✅ 已从 NAS 注入：' + pick.name, 'success'); } catch(_) {}
+    }
+  } catch(err) {
+    console.warn('[consumption] nasPickForCons fail:', err);
+    var msg = err && err.message ? err.message : String(err);
+    try {
+      if (App && App.toast) App.toast('❌ 选择失败：' + msg, 'error');
+      else alert('从 NAS 选择失败：' + msg);
+    } catch(_) { alert('选择失败：' + msg); }
+  } finally {
+    if (nasBtn) {
+      nasBtn.disabled = false;
+      nasBtn.style.opacity = '';
+      if (nasBtnInner) {
+        nasBtn.innerHTML = nasBtnInner;
+      } else {
+        nasBtn.innerHTML = nasBtnSvg + ' 从NAS选择';
+      }
+    }
+  }
 }
 
 // ===== 对比表格 =====

@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从 NAS 选择图片 · 云盘</title>
+<script src="js/common.js?v=20260822f"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f7f8fa; color: #1f2937; font-size: 13px;
+    display:flex; flex-direction:column;
+  }
+  .picker-wrap { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; padding:10px 12px 4px; }
+
+  /* ===== 标题栏 ===== */
+  .picker-header {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-radius:10px;
+    background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.05);
+    border:1px solid #e5e7eb;
+    margin-bottom:8px;
+  }
+  .picker-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:6px; }
+  .picker-sub { color:#64748b; font-size:12px; flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .picker-picked-count {
+    font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px;
+    background:#dbeafe; color:#1d4ed8;
+  }
+  .picker-picked-count.empty { background:#e5e7eb; color:#64748b; font-weight:500; }
+  .picker-picked-size { font-size:12px; color:#475569; }
+
+  /* ===== NAS Explorer 样式（精简自 nas.html） ===== */
+  .nas { flex:1 1 auto; display:flex; flex-direction:column; min-height:0;
+    background:#fff; border-radius:10px; border:1px solid #e5e7eb; overflow:hidden;
+    box-shadow:0 1px 3px rgba(15,23,42,.04);
+  }
+  .nas .topbar {
+    display:flex; align-items:center; gap:6px; padding:8px 12px;
+    border-bottom:1px solid #eef2f7; background:#fafbfc; flex-wrap:wrap;
+  }
+  .nas .conn-title { display:inline-flex; align-items:center; gap:6px; color:#334155; font-weight:600; font-size:12px; }
+  .nas .status-dot { width:8px; height:8px; border-radius:50%; background:#9ca3af; display:inline-block; }
+  .nas .status-dot.ok { background:#22c55e; box-shadow:0 0 0 3px #dcfce7; }
+  .nas .status-dot.warn { background:#f59e0b; box-shadow:0 0 0 3px #fef3c7; }
+  .nas .status-dot.err { background:#ef4444; box-shadow:0 0 0 3px #fee2e2; }
+
+  .nas .btn {
+    padding:5px 10px; font-size:12px; border:1px solid #d1d5db; background:#fff; color:#1f2937;
+    border-radius:6px; cursor:pointer; transition: all .12s; font-weight:500;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .nas .btn:hover { background:#f3f4f6; border-color:#9ca3af; }
+  .nas .btn:active { background:#e5e7eb; }
+  .nas .btn-sm { padding:4px 8px; font-size:11px; }
+
+  .nas .view-switch {
+    display:inline-flex; align-items:center; background:#f3f4f6; border:1px solid #e5e7eb;
+    border-radius:6px; padding:2px; gap:2px;
+  }
+  .nas .view-switch button {
+    background:transparent; border:none; padding:4px 9px; cursor:pointer;
+    border-radius:4px; font-size:12px; color:#475569; transition: all .1s;
+  }
+  .nas .view-switch button:hover { background:#fff; }
+  .nas .view-switch button.active {
+    background:#fff; color:#1d4ed8; box-shadow:0 1px 3px rgba(0,0,0,.08); font-weight:600;
+  }
+
+  .nas .toolbar-filler { flex:1 1 auto; }
+  .nas .search {
+    padding:5px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:12px;
+    min-width: 220px; background:#fff; transition: all .1s;
+  }
+  .nas .search:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+
+  .nas .breadcrumb {
+    padding:6px 12px; background:#fafbfc; border-bottom:1px solid #eef2f7;
+    display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+    font-size:12px; color:#475569; min-height:30px;
+  }
+  .nas .crumb {
+    display:inline-flex; align-items:center; gap:4px; cursor:pointer;
+    padding:3px 8px; border-radius:4px; transition: all .08s; white-space:nowrap;
+  }
+  .nas .crumb:hover { background:#eef2ff; color:#1d4ed8; }
+  .nas .crumb.root { background:#eef2ff; color:#1d4ed8; font-weight:600; }
+  .nas .crumb-sep { color:#9ca3af; padding:0 2px; }
+
+  .nas .main { flex:1 1 auto; display:flex; min-height:0; }
+  .nas .tree {
+    width: 250px; flex: 0 0 250px; padding: 8px 4px 8px 0;
+    border-right: 1px solid #eef2f7; overflow-y: auto; background:#fafbfc;
+  }
+  .nas .tree-row {
+    display:flex; align-items:center; gap:2px; padding:3px 6px 3px 2px; margin:0 4px 1px 2px;
+    cursor:pointer; border-radius:4px; font-size:12px; color:#334155;
+    line-height:1.45; white-space:nowrap;
+  }
+  .nas .tree-row:hover { background:#eff6ff; }
+  .nas .tree-row.active { background:#dbeafe; color:#1d4ed8; font-weight:600; }
+  .nas .tree-row .chev {
+    width:16px; text-align:center; display:inline-block; color:#9ca3af;
+    font-size:8px; user-select:none; flex: 0 0 16px;
+  }
+  .nas .tree-row .chev.empty { visibility:hidden; }
+  .nas .tree-row .chev.open { transform: rotate(90deg); color:#2563eb; }
+  .nas .tree-row .t-ico { font-size:14px; margin-right:2px; }
+  .nas .tree-level-0 .tree-row { padding-left:6px; }
+  .nas .tree-level-1 .tree-row { padding-left:24px; }
+  .nas .tree-level-2 .tree-row { padding-left:42px; }
+  .nas .tree-level-3 .tree-row { padding-left:60px; }
+  .nas .tree-level-4 .tree-row { padding-left:78px; }
+  .nas .tree-level-5 .tree-row { padding-left:96px; }
+  .nas .tree-level-6 .tree-row { padding-left:114px; }
+  .nas .tree-children { display:none; }
+  .nas .tree-children.open { display:block; }
+  .nas .tree-row.drop-target { background:#bbf7d0; color:#14532d; }
+
+  .nas .content {
+    flex:1 1 auto; padding: 4px 8px 8px; overflow-y: auto;
+    display:flex; flex-direction:column; min-height:0; min-width:0;
+  }
+  .nas .empty {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px; color:#94a3b8; text-align:center; padding:40px 20px;
+  }
+  .nas .empty .ico { font-size:42px; }
+
+  .nas .file-table { width:100%; border-collapse:collapse; table-layout:auto; }
+  .nas .file-table th {
+    background:#f3f4f6;color:#374151;font-weight:600;font-size:11px;white-space:nowrap;
+    position: sticky; top:0; z-index: 1; text-align:left;
+    border-bottom:1px solid #e5e7eb; padding:7px 10px;
+  }
+  .nas .file-table th.sortable { cursor:pointer; user-select:none; padding-right:20px; position:relative; transition: background .1s; }
+  .nas .file-table th.sortable:hover { background:#e5e7eb; }
+  .nas .file-table th.sortable::after {
+    content:'↕'; position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    color:#9ca3af; font-size:11px; font-weight:400; opacity:.7;
+  }
+  .nas .file-table th.sortable.sort-asc::after,
+  .nas .file-table th.sortable.sort-desc::after {
+    opacity:1; color:#2563eb; font-weight:700;
+  }
+  .nas .file-table th.sortable.sort-asc::after { content:'▲'; }
+  .nas .file-table th.sortable.sort-desc::after { content:'▼'; }
+  .nas .file-table td { padding:5px 10px; border-bottom:1px solid #f3f4f6; vertical-align:middle; font-size:12px; }
+  .nas .file-table tbody tr { cursor: pointer; transition: background .08s; }
+  .nas .file-table tbody tr:hover { background:#f8fafc; }
+  .nas .file-table tbody tr.selected { background:#dbeafe; }
+  .nas .file-table tbody tr.drop-target { background:#bbf7d0; }
+  .nas .name-cell { display:flex; align-items:center; gap:8px; }
+  .nas .file-ico {
+    width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    background:#f3f4f6; font-size:18px; flex:0 0 34px;
+  }
+  .nas .file-ico.folder { background:#fef3c7; }
+  .nas .file-ico.img { background:#eef2ff; }
+  .nas .thumb {
+    width:34px; height:34px; object-fit:cover; border-radius:6px; background:#000; border:1px solid #e5e7eb;
+    flex:0 0 34px;
+  }
+  .nas .name-cell .meta { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .nas .name-cell .meta .fname { font-weight:500; color:#0f172a; line-height:1.3; word-break: break-word; }
+  .nas .name-cell .meta .fsize { font-size:11px; color:#94a3b8; }
+  .nas .op-cell { white-space:nowrap; }
+  .nas .btn-xs { padding:3px 7px; font-size:11px; border-radius:5px; }
+  .nas .btn.btn-primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+  .nas .btn.btn-primary:hover { background:#1d4ed8; border-color:#1d4ed8; }
+
+  /* 视图切换按钮 */
+  .nas .view-switch { margin-left:6px; }
+
+  /* ===== 大图标 / 小图标 ===== */
+  .nas .view-grid {
+    display:flex; flex-wrap:wrap; gap:10px; padding: 12px 8px 20px;
+  }
+  .nas .item-card {
+    position:relative; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    padding:8px 4px 6px; border-radius:8px; cursor:pointer;
+    border:1px solid transparent; transition: all .12s; text-align:center;
+    overflow:hidden;
+  }
+  .nas .item-card:hover { background:#eff6ff; border-color:#bfdbfe; }
+  .nas .item-card.selected { background:#dbeafe; border-color:#93c5fd; }
+  .nas .item-card.lg { width: 106px; min-height: 114px; }
+  .nas .item-card.lg .card-ico {
+    width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    background:#f3f4f6; font-size:34px; margin-bottom:6px; flex:0 0 60px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.05);
+  }
+  .nas .item-card.lg .card-ico.folder { background:#fef3c7; }
+  .nas .item-card.lg .card-ico.img { background:#eef2ff; }
+  .nas .item-card.lg img.card-thumb {
+    width:60px; height:60px; object-fit:cover; border-radius:10px; border:1px solid #e5e7eb;
+    background:#000; margin-bottom:6px;
+  }
+  .nas .item-card.lg .card-name {
+    font-size:11px; line-height:1.3; color:#0f172a; font-weight:500;
+    max-width:100%; word-break:break-all;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .nas .item-card.lg .card-meta {
+    font-size:10px; color:#94a3b8; margin-top:3px; white-space:nowrap;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis;
+  }
+  .nas .view-small {
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap:4px 14px; padding:12px 12px 20px;
+  }
+  .nas .item-card.sm {
+    flex-direction:row; align-items:center; gap:8px; padding:4px 6px; min-height:28px;
+    justify-content:flex-start; text-align:left;
+    border-radius:6px;
+  }
+  .nas .item-card.sm .card-ico {
+    width:22px; height:22px; border-radius:4px; flex:0 0 22px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; background:#f3f4f6;
+  }
+  .nas .item-card.sm .card-ico.folder { background:#fef3c7; }
+  .nas .item-card.sm .card-ico.img { background:#eef2ff; }
+  .nas .item-card.sm img.card-thumb {
+    width:22px; height:22px; object-fit:cover; border-radius:4px; border:1px solid #e5e7eb; flex:0 0 22px;
+  }
+  .nas .item-card.sm .card-name {
+    font-size:12px; color:#0f172a; font-weight:500;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0;
+  }
+  .nas .item-card.sm .card-meta {
+    font-size:10px; color:#94a3b8; white-space:nowrap; flex:0 0 auto;
+  }
+
+  /* ===== Picker 多选：勾选框 ===== */
+  .pick-check {
+    position:absolute; top:4px; left:4px; z-index: 3;
+    width:18px; height:18px; border-radius:4px;
+    background:#fff; border:1.5px solid #cbd5e1; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 1px 2px rgba(15,23,42,.15);
+    transition: all .12s;
+  }
+  .pick-check.checked { background:#2563eb; border-color:#2563eb; color:#fff; }
+  .pick-check.checked::before {
+    content:'✓'; font-size:13px; font-weight:700; line-height:1;
+  }
+  .nas .item-card .pick-check { top:6px; left: calc(50% - 44px); }
+  .nas .item-card.sm .pick-check {
+    position:static; width:15px; height:15px; flex:0 0 15px; margin-right:4px;
+  }
+  .nas .item-card.sm .pick-check.checked::before { font-size:11px; }
+  .nas .file-table td .pick-check {
+    position:static; display:inline-flex; margin-right:6px; vertical-align:middle;
+  }
+  .nas tr .pick-check {
+    position:static; display:inline-flex; margin-right:8px; vertical-align:middle;
+  }
+  .nas .pick-check:not(.checked):hover { border-color:#2563eb; }
+  .pick-folder-badge {
+    position:absolute; bottom:2px; right:2px; background:#2563eb; color:#fff;
+    font-size:10px; padding:1px 6px; border-radius:999px; font-weight:700;
+  }
+
+  /* ===== 底部按钮栏 ===== */
+  .picker-footer {
+    margin-top:8px; display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+    box-shadow:0 1px 3px rgba(15,23,42,.05);
+  }
+  .picker-footer .hint {
+    font-size:11px; color:#64748b;
+  }
+  .picker-footer .actions { display:flex; gap:8px; }
+  .btn-big {
+    padding:7px 16px; font-size:13px; font-weight:600; border-radius:7px; cursor:pointer;
+    border:1px solid #d1d5db; background:#fff; color:#1f2937; transition: all .12s;
+  }
+  .btn-big:hover { background:#f3f4f6; }
+  .btn-big.primary {
+    background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+    color:#fff; border-color:#1d4ed8;
+    box-shadow: 0 2px 4px rgba(37,99,235,.2);
+  }
+  .btn-big.primary:hover { background: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%); }
+  .btn-big.primary:disabled { background:#cbd5e1; border-color:#cbd5e1; cursor:not-allowed; opacity:.8; box-shadow:none; }
+
+  /* 响应式 */
+  @media (max-width: 900px) {
+    .nas .tree { width: 180px; flex-basis: 180px; }
+    .nas .search { min-width: 150px; }
+  }
+  @media (max-width: 640px) {
+    .nas .main { flex-direction: column; }
+    .nas .tree { width:100%; flex-basis:auto; max-height:160px; border-right:none; border-bottom:1px solid #eef2f7; }
+  }
+</style>
+</head>
+<body>
+
+<div class="picker-wrap">
+  <div class="picker-header">
+    <div class="picker-title">🗂️ 从 NAS 云盘选择图片</div>
+    <div class="picker-sub" id="pickerSub">浏览文件夹 → 勾选 → 确定注入</div>
+    <div class="picker-picked-count empty" id="pickedCount">未选择</div>
+    <div class="picker-picked-size" id="pickedSize"></div>
+  </div>
+
+  <div class="nas" id="nasBox">
+    <!-- 顶部工具栏 -->
+    <div class="topbar">
+      <span class="conn-title"><span id="connStatus"><span class="status-dot"></span>正在读取配置...</span></span>
+      <button class="btn btn-sm" onclick="NAS.refresh()" title="重新加载当前目录">🔄刷新</button>
+      <div class="view-switch" id="viewSwitch" title="切换查看方式">
+        <button data-view="large" onclick="NAS.setViewMode('large')" title="大图标">🔲大图</button>
+        <button data-view="small" onclick="NAS.setViewMode('small')" title="小图标">▫️小图</button>
+        <button data-view="details" onclick="NAS.setViewMode('details')" title="详细信息">☰详情</button>
+      </div>
+      <div class="toolbar-filler"></div>
+      <input type="text" class="search" id="searchInput" placeholder="搜索当前目录文件名..." oninput="NAS.renderList()">
+    </div>
+
+    <!-- 面包屑 -->
+    <div class="breadcrumb" id="breadCrumb"></div>
+
+    <div class="main">
+      <!-- 左侧树形 -->
+      <div class="tree" id="treeHost"></div>
+      <!-- 右侧内容 -->
+      <div class="content" id="fileListArea">
+        <div class="empty"><div class="ico">⏳</div><div>正在连接 NAS...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="picker-footer">
+    <div class="hint">
+      💡 提示：文件夹仅支持浏览，不直接注入。勾选的文件将以「本地文件等价」形式返回给原页面。
+    </div>
+    <div class="actions">
+      <button class="btn-big" onclick="NAS.cancelPicker()">取消</button>
+      <button class="btn-big primary" id="confirmBtn" onclick="NAS.confirmPicker()" disabled>确定（注入所选）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===== 工具：日期/大小/图片/XML =====
+  function fmtSize(b) {
+    if (!b || b < 0) return '0 B';
+    var u = ['B','KB','MB','GB','TB']; var i = 0; var n = b;
+    while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+    return (i === 0 ? n : n.toFixed(n >= 100 ? 0 : 1)) + ' ' + u[i];
+  }
+  function fmtDate(s) {
+    try {
+      if (!s) return '';
+      var d = new Date(s); if (isNaN(d.getTime())) return '';
+      var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), da = String(d.getDate()).padStart(2,'0');
+      var h = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
+      return `${y}-${m}-${da} ${h}:${mi}`;
+    } catch(e) { return ''; }
+  }
+  var IMG_EXT = ['png','jpg','jpeg','gif','bmp','webp','svg','ico','avif'];
+  function isImgFile(name) {
+    if (!name) return false;
+    var idx = name.lastIndexOf('.'); if (idx < 0 || idx === name.length - 1) return false;
+    return IMG_EXT.indexOf(name.substring(idx + 1).toLowerCase()) >= 0;
+  }
+  function getText(el) { return el && el.textContent != null ? el.textContent : ''; }
+  function findChild(el, name, ns) {
+    if (!el || !el.children) return null;
+    for (var i = 0; i < el.children.length; i++) {
+      var c = el.children[i];
+      var ln = c.localName || c.nodeName.split(':').pop().toLowerCase();
+      if (ns && c.namespaceURI && c.namespaceURI.indexOf('DAV:') >= 0 && ns === 'D') { /* ok */ }
+      if (ln === name) return c;
+    }
+    return null;
+  }
+  function parseXml(txt) {
+    try { return (new DOMParser()).parseFromString(txt, 'text/xml'); }
+    catch(e) { return null; }
+  }
+
+  var NAS = {
+    // 状态
+    currentPath: '/',
+    rawList: [],
+    cfg: null,
+    treeCache: {},
+    sortBy: 'name',
+    sortAsc: true,
+    viewMode: 'large',  // 默认大图标更适合挑图
+    // 选择器专用
+    picked: new Map(),   // logicPath -> {name, size, lastModified, isFolder}
+    allowMulti: false,
+    filterMode: 'images', // images | all
+    token: '',
+    origin: null,
+
+    // ===== 配置读写 =====
+    _defCfg: function() {
+      return {
+        serverUrl: '', webdavPath: '/webdav', rootFolder: '/saintydoc',
+        username: '', password: '', mode: 'lan', uploadMaxMb: 500, verifySsl: true
+      };
+    },
+    _loadCfg: function() {
+      try {
+        var d = this._defCfg();
+        var o = (App && App.store && typeof App.store.get === 'function') ? App.store.get('nas_config', null) : null;
+        if (!o) return d;
+        return Object.assign(d, o || {});
+      } catch(e) { return this._defCfg(); }
+    },
+    _headers: function(extra) {
+      var h = Object.assign({}, extra || {});
+      if (this.cfg && this.cfg.username) {
+        var cred = this.cfg.username + ':' + (this.cfg.password || '');
+        try { h['Authorization'] = 'Basic ' + btoa(unescape(encodeURIComponent(cred))); } catch(_) {}
+      }
+      h['Depth'] = h['Depth'] || '1';
+      return h;
+    },
+    _davBase: function() {
+      var c = this.cfg; if (!c || !c.serverUrl) return null;
+      var base = c.serverUrl.replace(/\/+$/, '');
+      var wd = c.webdavPath.startsWith('/') ? c.webdavPath : '/' + c.webdavPath;
+      return base + wd;
+    },
+    _absUrl: function(logicPath) {
+      var rawBase = this._davBase(); if (!rawBase) return null;
+      var base = rawBase.replace(/\/+$/, '');
+      var c = this.cfg;
+      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
+      root = root.replace(/\/+$/g, ''); if (!root.startsWith('/')) root = '/' + root;
+      var lp = logicPath; if (!lp || lp === '') lp = '/';
+      if (lp.charAt(0) !== '/') lp = '/' + lp; if (lp === '/') lp = '';
+      var pathPart = (root + lp).replace(/\/+/g, '/');
+      if (pathPart.length > 1 && pathPart.charAt(pathPart.length - 1) === '/') pathPart = pathPart.slice(0, -1);
+      return base + pathPart;
+    },
+    _absUrlEncoded: function(logicPath) {
+      var base = this._davBase(); if (!base) return null;
+      var c = this.cfg;
+      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
+      root = root.replace(/\/+$/g, ''); if (!root.startsWith('/')) root = '/' + root;
+      var lp = logicPath; if (!lp || lp === '') lp = '/';
+      if (lp.charAt(0) !== '/') lp = '/' + lp; if (lp === '/') lp = '';
+      var raw = (root + lp).replace(/\/+/g, '/');
+      if (raw.length > 1 && raw.charAt(raw.length - 1) === '/') raw = raw.slice(0, -1);
+      var enc = raw.split('/').map(encodeURIComponent).join('/');
+      return base.replace(/\/+$/, '') + enc;
+    },
+    // 仅 WebDAV 路径（不含 server），用于响应 self 判定
+    _absDavPath: function(logicPath) {
+      var c = this.cfg;
+      var wd = c.webdavPath.startsWith('/') ? c.webdavPath : '/' + c.webdavPath;
+      var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
+      var lp = logicPath; if (!lp || lp === '') lp = '/';
+      if (lp.charAt(0) !== '/') lp = '/' + lp; if (lp === '/') lp = '';
+      var p = (wd + root + lp).replace(/\/+/g, '/');
+      return p;
+    },
+
+    // ===== 连接状态 UI =====
+    setStatus: function(level, text) {
+      var el = document.getElementById('connStatus'); if (!el) return;
+      var dot = el.querySelector('.status-dot'); if (dot) {
+        dot.className = 'status-dot ' + (level === 'ok' ? 'ok' : level === 'err' ? 'err' : 'warn');
+      }
+      var host = document.getElementById('nasBox');
+      if (host) host.setAttribute('data-state', level || 'warn');
+      el.innerHTML = '<span class="status-dot ' + (level === 'ok' ? 'ok' : level === 'err' ? 'err' : 'warn') + '"></span>' + text;
+    },
+
+    // ===== 排序 / 视图 =====
+    setViewMode: function(mode) {
+      if (['details','small','large'].indexOf(mode) < 0) mode = 'large';
+      this.viewMode = mode;
+      var sw = document.getElementById('viewSwitch');
+      if (sw) {
+        var btns = sw.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.toggle('active', btns[i].getAttribute('data-view') === mode);
+        }
+      }
+      this.renderList();
+    },
+    toggleSort: function(field) {
+      if (['name','date','type','size'].indexOf(field) < 0) return;
+      if (this.sortBy === field) this.sortAsc = !this.sortAsc;
+      else { this.sortBy = field; this.sortAsc = (field === 'date' ? false : true); }
+      this.renderList();
+    },
+    _typeOf: function(item) {
+      if (item.isFolder) return '文件夹';
+      var n = item.name || ''; var idx = n.lastIndexOf('.');
+      if (idx < 0 || idx === n.length - 1) return '文件';
+      var ext = n.substring(idx + 1).toLowerCase();
+      var map = { png:'PNG', jpg:'JPEG', jpeg:'JPEG', gif:'GIF', bmp:'BMP', webp:'WebP', svg:'SVG', ico:'ICO', avif:'AVIF',
+                  pdf:'PDF', doc:'Word', docx:'Word', xls:'Excel', xlsx:'Excel', zip:'ZIP', rar:'RAR', mp3:'音频', mp4:'视频' };
+      return map[ext] ? (map[ext] + ' 文件') : (ext.toUpperCase() + ' 文件');
+    },
+    _tsOfDate: function(s) { try { return s ? (new Date(s).getTime() || 0) : 0; } catch(e){ return 0; } },
+    _sortList: function(list) {
+      var self = this; var f = self.sortBy; var asc = self.sortAsc ? 1 : -1;
+      return list.slice().sort(function(a,b){
+        if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+        var va, vb;
+        switch(f) {
+          case 'date': va=self._tsOfDate(a.lastModified); vb=self._tsOfDate(b.lastModified); if (va!==vb) return (va-vb)*asc; break;
+          case 'size': va=a.isFolder?0:(a.size||0); vb=b.isFolder?0:(b.size||0); if (va!==vb) return (va-vb)*asc; break;
+          case 'type': va=self._typeOf(a); vb=self._typeOf(b); if (va!==vb) return va.localeCompare(vb,'zh')*asc; break;
+          case 'name': default: return a.name.localeCompare(b.name, 'zh') * asc;
+        }
+        return a.name.localeCompare(b.name, 'zh');
+      });
+    },
+
+    // ===== 过滤（只显示文件夹 + 允许类型的文件） =====
+    _visibleFilter: function(item) {
+      if (item.isFolder) return true;
+      if (this.filterMode === 'images') return isImgFile(item.name);
+      return true;
+    },
+
+    // ===== 多选逻辑 =====
+    _logicPathOfItem: function(item) {
+      return this.currentPath === '/' ? '/' + item.name : this.currentPath + '/' + item.name;
+    },
+    _isPicked: function(item) {
+      return this.picked.has(this._logicPathOfItem(item));
+    },
+    togglePick: function(item) {
+      if (item.isFolder) return false; // 不允许选文件夹
+      var lp = this._logicPathOfItem(item);
+      if (this.picked.has(lp)) this.picked.delete(lp);
+      else {
+        if (!this.allowMulti && this.picked.size >= 1) this.picked.clear();
+        this.picked.set(lp, {
+          logicPath: lp, name: item.name, size: item.size || 0,
+          lastModified: item.lastModified || '',
+          mime: this._mimeOf(item.name)
+        });
+      }
+      this._updatePickedUI();
+      return true;
+    },
+    _mimeOf: function(name) {
+      if (!name) return 'application/octet-stream';
+      var idx = name.lastIndexOf('.'); if (idx < 0) return 'application/octet-stream';
+      var ext = name.substring(idx + 1).toLowerCase();
+      var m = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', bmp:'image/bmp',
+                webp:'image/webp', svg:'image/svg+xml', ico:'image/x-icon', avif:'image/avif', pdf:'application/pdf' };
+      return m[ext] || 'application/octet-stream';
+    },
+    _updatePickedUI: function() {
+      var countEl = document.getElementById('pickedCount');
+      var sizeEl = document.getElementById('pickedSize');
+      var confirmEl = document.getElementById('confirmBtn');
+      var n = this.picked.size;
+      if (!n) {
+        countEl.className = 'picker-picked-count empty';
+        countEl.textContent = '未选择';
+        sizeEl.textContent = '';
+        if (confirmEl) confirmEl.disabled = true;
+      } else {
+        countEl.className = 'picker-picked-count';
+        countEl.textContent = '已选 ' + n + ' 项';
+        var total = 0; this.picked.forEach(function(v){ total += (v.size || 0); });
+        sizeEl.textContent = '共 ' + fmtSize(total);
+        if (confirmEl) confirmEl.disabled = false;
+      }
+    },
+    // 快速：点击 item（文件夹进入目录；文件即勾选）
+    _onItemClick: function(itemName, event) {
+      var item = this.findItemByName(itemName); if (!item) return;
+      if (item.isFolder) {
+        this.cd(this._logicPathOfItem(item));
+      } else {
+        // 如果点击是 pick-check，不需要重复 toggle（pick-check 自己有 onclick）
+        if (event && event.target && event.target.classList && event.target.classList.contains('pick-check')) return;
+        this.togglePick(item);
+        this.renderList();
+      }
+    },
+
+    // ===== 取消 / 确定（回传 opener） =====
+    cancelPicker: function() {
+      try { window.close(); } catch(e) {}
+      setTimeout(function(){ window.location.href = 'about:blank'; }, 300);
+    },
+    confirmPicker: function() {
+      var self = this;
+      if (self.picked.size === 0) { App && App.toast && App.toast('请先勾选文件', 'info'); return; }
+      var arr = [];
+      self.picked.forEach(function(v){ arr.push({ logicPath:v.logicPath, name:v.name, size:v.size, lastModified:v.lastModified, mime:v.mime }); });
+      var payload = {
+        source: 'nas-picker',
+        token: self.token,
+        picks: arr,
+        filterMode: self.filterMode,
+        config: {
+          serverUrl: self.cfg.serverUrl, webdavPath: self.cfg.webdavPath, rootFolder: self.cfg.rootFolder,
+          username: self.cfg.username, password: self.cfg.password, verifySsl: !!self.cfg.verifySsl
+        }
+      };
+      try {
+        var target = window.opener && window.opener !== window ? window.opener : window.parent;
+        var targetOrigin = self.origin && self.origin !== '' ? self.origin : '*';
+        if (target && typeof target.postMessage === 'function') {
+          target.postMessage(payload, targetOrigin);
+        }
+      } catch(e) { console.warn('[picker] postMessage fail:', e); }
+      // 100ms 后关闭，确保消息发出
+      setTimeout(function(){ try { window.close(); } catch(_) {} }, 150);
+    },
+
+    // ===== 目录导航 =====
+    cd: function(path) {
+      if (!path) path = '/';
+      if (path.charAt(0) !== '/') path = '/' + path;
+      this.currentPath = path;
+      this.selected = null;
+      this.refresh();
+    },
+    goCrumb: function(path) { this.cd(path); },
+    goUp: function() {
+      if (this.currentPath === '/') return;
+      var parts = this.currentPath.split('/').filter(Boolean);
+      parts.pop();
+      this.cd('/' + parts.join('/'));
+    },
+    refresh: async function() {
+      var self = this;
+      self.renderBreadcrumb();
+      var host = document.getElementById('fileListArea');
+      if (host) host.innerHTML = '<div class="empty"><div class="ico">⏳</div><div>加载中...</div></div>';
+      var list = await self.listFolder(self.currentPath);
+      if (!list) { // 失败信息已在 listFolder 中 toast
+        if (host) host.innerHTML = `
+          <div class="empty"><div class="ico">⚠️</div>
+          <div style="font-weight:600;">当前目录加载失败</div>
+          <div style="color:#64748b;font-size:12px;margin-top:6px;">请检查 NAS 连接配置（设置 → 云盘 NAS），或点击右上角刷新重试</div>
+          </div>`;
+        return;
+      }
+      self.rawList = list;
+      self.renderTree();
+      self.renderList();
+    },
+
+    renderBreadcrumb: function() {
+      var self = this; var host = document.getElementById('breadCrumb'); if (!host) return;
+      var rootLabel = '📁 ' + (self.cfg.rootFolder ? (self.cfg.rootFolder.replace(/^\/+/,'') || '根') : '根');
+      var parts = self.currentPath.split('/').filter(Boolean);
+      var html = '<span class="crumb root" onclick="NAS.goCrumb(\'/\')">' + App.utils.escapeHtml(rootLabel) + '</span>';
+      var acc = '';
+      for (var i = 0; i < parts.length; i++) {
+        acc += '/' + parts[i];
+        html += '<span class="crumb-sep">›</span>';
+        html += '<span class="crumb" onclick="NAS.goCrumb(\'' + acc.replace(/'/g,"\\'") + '\')">' + App.utils.escapeHtml(parts[i]) + '</span>';
+      }
+      host.innerHTML = html;
+    },
+
+    // ===== 目录列表读取（WebDAV PROPFIND） =====
+    listFolder: async function(logicPath) {
+      var self = this;
+      var url = self._absUrlEncoded(logicPath || '/');
+      try {
+        var resp = await fetch(url, {
+          method: 'PROPFIND', headers: self._headers({ 'Depth': '1' }), credentials: 'omit'
+        });
+        if (resp.status === 401) {
+          self.setStatus('err', '❌ 账号密码错误：请检查设置');
+          App.toast('NAS 认证失败（401），请检查账号密码', 'error');
+          return null;
+        }
+        if (resp.status === 404) {
+          self.setStatus('err', '❌ 根目录不存在(404)：请先在设置中「初始化根目录」');
+          App.toast('系统根目录不存在，请先点击「初始化根」', 'error');
+          return null;
+        }
+        if (!resp.ok) {
+          self.setStatus('err', '❌ 读取失败(HTTP ' + resp.status + ')');
+          App.toast('读取目录失败 HTTP ' + resp.status, 'error');
+          return null;
+        }
+        var txt = await resp.text();
+        var list = self._parseResponse(txt, logicPath || '/');
+        self.setStatus('ok',
+          '✅ NAS 已连接 · ' + (self.cfg.serverUrl || '') + ' · 共 ' + list.length + ' 项'
+        );
+        return list;
+      } catch (e) {
+        self.setStatus('err', '❌ 连接失败：' + (e && e.message ? e.message : String(e)));
+        App.toast('NAS 连接异常：' + (e && e.message ? e.message : String(e)), 'error');
+        return null;
+      }
+    },
+    _parseResponse: function(txt, logicPath) {
+      var self = this;
+      var doc = parseXml(txt); if (!doc) return [];
+      var responses = doc.getElementsByTagNameNS ? (doc.getElementsByTagNameNS('*','response') || doc.getElementsByTagName('response')) : doc.getElementsByTagName('response');
+      if (!responses || responses.length === 0) return [];
+      var results = [];
+      var davAbsPathOfCurrent = self._absDavPath(logicPath);
+      if (davAbsPathOfCurrent.charAt(davAbsPathOfCurrent.length - 1) !== '/') davAbsPathOfCurrent += '/';
+      for (var i = 0; i < responses.length; i++) {
+        var r = responses[i];
+        var hrefEl = findChild(r, 'href');
+        var href = hrefEl ? getText(hrefEl).trim() : '';
+        var hrefForCmp = decodeURIComponent(href);
+        if (hrefForCmp.charAt(hrefForCmp.length - 1) === '/') hrefForCmp = hrefForCmp.slice(0, -1);
+        hrefForCmp = hrefForCmp + '/';
+        if (hrefForCmp === davAbsPathOfCurrent) continue; // 自身
+        var propstat = findChild(r, 'propstat') || findChild(r, 'D:propstat') || null;
+        var prop = propstat ? findChild(propstat, 'prop') || findChild(propstat, 'D:prop') : null;
+        if (!prop) {
+          // 尝试 propstat 下的 D:propstat 兼容
+          var child = r.firstElementChild || r.firstChild;
+          while (child) {
+            if (child.nodeType === 1 && (child.localName || child.nodeName.split(':').pop().toLowerCase()) === 'propstat') {
+              propstat = child; prop = findChild(propstat, 'prop'); break;
+            }
+            child = child.nextSibling;
+          }
+        }
+        var resType = null, size = 0, lastMod = '';
+        if (prop) {
+          var rt = findChild(prop, 'resourcetype');
+          if (rt) {
+            var coll = findChild(rt, 'collection');
+            if (coll) resType = 'collection';
+          }
+          var sz = findChild(prop, 'getcontentlength');
+          if (sz) { try { size = parseInt(getText(sz),10)||0; } catch(e){} }
+          var lm = findChild(prop, 'getlastmodified');
+          if (lm) { try { lastMod = new Date(getText(lm)).toISOString(); } catch(e){ lastMod = getText(lm); } }
+          if (!lastMod) {
+            var cd = findChild(prop, 'creationdate');
+            if (cd) { try { lastMod = new Date(getText(cd)).toISOString(); } catch(e){ lastMod = getText(cd); } }
+          }
+        }
+        var isFolder = resType === 'collection';
+        var parts = href.split('/').filter(function(s){ return s.length > 0; });
+        if (parts.length === 0) continue;
+        var name = decodeURIComponent(parts[parts.length - 1]);
+        if (!name || name === '.') continue;
+        if (name.charAt(name.length - 1) === '/') name = name.slice(0, -1);
+        results.push({ name: name, isFolder: isFolder, size: isFolder ? 0 : size, lastModified: lastMod });
+      }
+      return results;
+    },
+
+    // ===== 工具：查找 item =====
+    findItemByName: function(name) {
+      return (this.rawList || []).find(function(x){ return x.name === name; }) || null;
+    },
+
+    // ===== 树渲染 =====
+    renderTree: function() {
+      var self = this; var host = document.getElementById('treeHost'); if (!host) return;
+      var rootLabel = self.cfg.rootFolder ? (self.cfg.rootFolder.replace(/^\/+/,'') || '根') : '根';
+      host.innerHTML = self._renderTreeNode('/', rootLabel, 0, true);
+    },
+    _renderTreeNode: function(logicPath, displayName, level, isRoot) {
+      var self = this;
+      var node = self.treeCache[logicPath] || { open:false, children:[], loaded:false };
+      // 懒加载：首次需要时自动加载（确保首次 renderTree 后当前目录可展开）
+      if (isRoot && !node.loaded) self._triggerTreeLoad('/', null);
+      var hasChildFolders = (node.children && node.children.length > 0) || !node.loaded;
+      var chevClass = 'chev' + ((!hasChildFolders && node.loaded) ? ' empty' : (node.open ? ' open' : ''));
+      var chevronText = hasChildFolders ? '▶' : '·';
+      var rowClass = 'tree-row' + (logicPath === self.currentPath ? ' active' : '');
+      var escapedPath = logicPath.replace(/'/g, "\\'");
+      var row =
+        '<div class="tree-level-' + level + '">' +
+          '<div class="tree-row ' + rowClass + '" title="系统根：' + (self.cfg.rootFolder||'/') + '"' +
+            ' onclick="NAS._onTreeClick(event, \'' + escapedPath + '\')">' +
+            '<span class="' + chevClass + '" data-toggle-path="' + logicPath + '">' + chevronText + '</span>' +
+            '<span class="t-ico">📁</span>' +
+            '<span class="t-label">' + App.utils.escapeHtml(displayName) + '</span>' +
+          '</div>';
+      if (node.open) {
+        var kidsHtml = '';
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+          var k = kids[i]; if (!k.isFolder) continue;
+          var childPath = logicPath === '/' ? '/' + k.name : logicPath + '/' + k.name;
+          kidsHtml += self._renderTreeNode(childPath, k.name, level + 1, false);
+        }
+        row += '<div class="tree-children tree-level-' + (level+1) + ' open">' + kidsHtml + '</div>';
+      } else if (!node.loaded || (node.children && node.children.length)) {
+        row += '<div class="tree-children tree-level-' + (level+1) + '"></div>';
+      }
+      row += '</div>';
+      return row;
+    },
+    _onTreeClick: function(e, logicPath) {
+      var self = this;
+      if (e && e.target && e.target.classList.contains('chev')) {
+        e.stopPropagation();
+        var chev = e.target;
+        if (chev.classList.contains('empty')) return;
+        self._triggerTreeLoad(logicPath, function(success){
+          if (!success) return;
+          var nd = self.treeCache[logicPath];
+          if (nd) nd.open = !nd.open;
+          self.renderTree();
+        });
+        return;
+      }
+      self.cd(logicPath);
+    },
+    _triggerTreeLoad: async function(logicPath, cb) {
+      var self = this;
+      var nd = self.treeCache[logicPath];
+      if (nd && nd.loaded) { cb && cb(true); return; }
+      if (!nd) nd = { open:false, children:[], loaded:false, loading:true };
+      else nd.loading = true;
+      self.treeCache[logicPath] = nd;
+      var list = await self.listFolder(logicPath);
+      if (!list) { nd.loading = false; cb && cb(false); return; }
+      nd.children = list.slice().sort(function(a,b){
+        if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+        return a.name.localeCompare(b.name, 'zh');
+      });
+      nd.loaded = true; nd.loading = false;
+      // 确保父级路径打开（用于 renderBreadcrumb 对应的祖先）
+      cb && cb(true);
+    },
+    _invalidateTreeCache: function(path) {
+      delete this.treeCache[path || '/'];
+      // 父级也要失效
+      if (path && path !== '/') {
+        var parts = path.split('/').filter(Boolean); parts.pop();
+        var parent = '/' + parts.join('/');
+        delete this.treeCache[parent];
+      }
+    },
+
+    // ===== 列表渲染（三种视图 + 过滤 + 多选） =====
+    renderList: function() {
+      var self = this;
+      var host = document.getElementById('fileListArea'); if (!host) return;
+      var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      var list = (self.rawList || []).filter(self._visibleFilter.bind(self));
+      if (q) list = list.filter(function(x){ return x.name.toLowerCase().indexOf(q) >= 0; });
+      list = self._sortList(list);
+
+      if (list.length === 0) {
+        var emptyText = (self.filterMode === 'images')
+          ? '该文件夹暂无图片文件（可在设置中将过滤改为全部，或选择其它文件夹）'
+          : '当前目录为空';
+        host.innerHTML =
+          '<div class="empty"><div class="ico">📭</div>' +
+          '<div style="font-size:14px;font-weight:600;">' + (self.filterMode==='images' ? '当前目录没有匹配的图片' : '当前目录为空') + '</div>' +
+          '<div style="font-size:12px;color:#64748b;margin-top:6px;">' + emptyText + '</div>' +
+          '</div>';
+        return;
+      }
+
+      function itemMeta(item) {
+        var n = item.name || '';
+        var idx = n.lastIndexOf('.'); var ext = (idx >= 0) ? n.substring(idx + 1).toLowerCase() : '';
+        var isImg = IMG_EXT.indexOf(ext) >= 0;
+        var sub = self._logicPathOfItem(item);
+        return { ext:ext, isImg:isImg, subPath:sub };
+      }
+
+      function checkHtml(item) {
+        if (item.isFolder) return '';
+        var picked = self._isPicked(item);
+        return '<span class="pick-check ' + (picked ? 'checked' : '') + '"' +
+          ' onclick="event.stopPropagation();event.preventDefault();' +
+          'NAS.togglePick(NAS.findItemByName(\'' + item.name.replace(/'/g, "\\'") + '\')); NAS.renderList();' +
+          '" title="' + (picked ? '取消勾选' : '勾选此文件') + '"></span>';
+      }
+
+      var mode = self.viewMode;
+      if (mode === 'details') {
+        var sortCls = function(f){
+          var c = 'sortable';
+          if (self.sortBy === f) c += self.sortAsc ? ' sort-asc' : ' sort-desc';
+          return c;
+        };
+        var rows = list.map(function(item){
+          var m = itemMeta(item);
+          var icon = item.isFolder
+            ? '<div class="file-ico folder">📁</div>'
+            : (m.isImg ? '<div class="file-ico img">🖼️</div>' : '<div class="file-ico">📄</div>');
+          var thumb = '';
+          if (m.isImg && !item.isFolder) {
+            thumb = '<img class="thumb" alt="" loading="lazy" src="about:blank" data-sub="' + m.subPath + '">';
+          }
+          var clickAction = 'NAS._onItemClick(\'' + item.name.replace(/'/g,"\\'") + '\', event)';
+          return '<tr data-name="' + item.name + '">' +
+            '<td style="min-width:260px;">' +
+              '<div class="name-cell" onclick="' + clickAction + '">' +
+                checkHtml(item) +
+                (thumb || icon) +
+                '<div class="meta">' +
+                  '<span class="fname">' + App.utils.escapeHtml(item.name) + '</span>' +
+                  '<span class="fsize">' + (item.isFolder ? '文件夹' : fmtSize(item.size)) + '</span>' +
+                '</div>' +
+              '</div>' +
+            '</td>' +
+            '<td style="width:150px;color:#64748b;">' + fmtDate(item.lastModified) + '</td>' +
+            '<td style="width:130px;color:#64748b;">' + self._typeOf(item) + '</td>' +
+            '<td style="width:100px;color:#64748b;">' + (item.isFolder ? '—' : fmtSize(item.size)) + '</td>' +
+          '</tr>';
+        }).join('');
+        host.innerHTML =
+          '<table class="file-table"><thead><tr>' +
+            '<th style="min-width:260px;" class="' + sortCls('name') + '" onclick="NAS.toggleSort(\'name\')">名称</th>' +
+            '<th style="width:150px;" class="' + sortCls('date') + '" onclick="NAS.toggleSort(\'date\')">修改日期</th>' +
+            '<th style="width:130px;" class="' + sortCls('type') + '" onclick="NAS.toggleSort(\'type\')">类型</th>' +
+            '<th style="width:100px;" class="' + sortCls('size') + '" onclick="NAS.toggleSort(\'size\')">大小</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>';
+      } else if (mode === 'large') {
+        var cards = list.map(function(item){
+          var m = itemMeta(item);
+          var clickAction = 'NAS._onItemClick(\'' + item.name.replace(/'/g,"\\'") + '\', event)';
+          var isPicked = self._isPicked(item);
+          var iconHtml;
+          if (m.isImg && !item.isFolder) {
+            iconHtml = '<img class="card-thumb" alt="" loading="lazy" src="about:blank" data-sub="' + m.subPath + '">';
+          } else {
+            var icoCls = item.isFolder ? 'folder' : (m.isImg ? 'img' : '');
+            var emo = item.isFolder ? '📁' : (m.isImg ? '🖼️' : '📄');
+            iconHtml = '<div class="card-ico ' + icoCls + '">' + emo + '</div>';
+          }
+          var meta = item.isFolder ? '文件夹' : (fmtSize(item.size) + ' · ' + self._typeOf(item));
+          return '<div class="item-card lg" data-name="' + item.name + '" onclick="' + clickAction + '">' +
+            checkHtml(item) +
+            iconHtml +
+            '<div class="card-name">' + App.utils.escapeHtml(item.name) + '</div>' +
+            '<div class="card-meta">' + App.utils.escapeHtml(meta) + '</div>' +
+          '</div>';
+        }).join('');
+        host.innerHTML = '<div class="view-grid">' + cards + '</div>';
+      } else {
+        var cards = list.map(function(item){
+          var m = itemMeta(item);
+          var clickAction = 'NAS._onItemClick(\'' + item.name.replace(/'/g,"\\'") + '\', event)';
+          var iconHtml;
+          if (m.isImg && !item.isFolder) {
+            iconHtml = '<img class="card-thumb" alt="" loading="lazy" src="about:blank" data-sub="' + m.subPath + '">';
+          } else {
+            var icoCls = item.isFolder ? 'folder' : (m.isImg ? 'img' : '');
+            var emo = item.isFolder ? '📁' : (m.isImg ? '🖼️' : '📄');
+            iconHtml = '<div class="card-ico ' + icoCls + '">' + emo + '</div>';
+          }
+          var meta = item.isFolder ? '' : fmtSize(item.size);
+          return '<div class="item-card sm" data-name="' + item.name + '" onclick="' + clickAction + '">' +
+            checkHtml(item) +
+            iconHtml +
+            '<div class="card-name">' + App.utils.escapeHtml(item.name) + '</div>' +
+            '<div class="card-meta">' + meta + '</div>' +
+          '</div>';
+        }).join('');
+        host.innerHTML = '<div class="view-small">' + cards + '</div>';
+      }
+      self._lazyThumbs();
+    },
+
+    _lazyThumbs: function() {
+      var self = this;
+      var imgs = document.querySelectorAll('#fileListArea img[data-sub]');
+      if (!imgs || !imgs.length) return;
+      imgs.forEach(function(img){
+        if (img.dataset._loaded) return;
+        var sub = img.getAttribute('data-sub'); if (!sub) return;
+        img.dataset._loaded = '1';
+        var url = self._absUrlEncoded(sub);
+        fetch(url, { method:'GET', headers: self._headers({}), credentials:'omit' })
+          .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+          .then(function(blob){ try { img.src = URL.createObjectURL(blob); } catch(_){} })
+          .catch(function(err){ img.removeAttribute('src'); img.style.display = 'none'; });
+      });
+    },
+
+    // ===== 初始化：读取 URL 参数 + 连接 NAS =====
+    init: function() {
+      var self = this;
+      self.cfg = self._loadCfg();
+      // 同步视图按钮
+      var sw = document.getElementById('viewSwitch');
+      if (sw) {
+        var btns = sw.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.toggle('active', btns[i].getAttribute('data-view') === self.viewMode);
+        }
+      }
+      // 读取 URL 参数
+      var usp = null;
+      try { usp = new URLSearchParams(window.location.search); } catch(e) { usp = null; }
+      if (usp) {
+        self.allowMulti = usp.get('multi') === '1' || usp.get('multi') === 'true';
+        var fm = (usp.get('filter') || '').toLowerCase();
+        if (fm === 'all') self.filterMode = 'all'; else self.filterMode = 'images';
+        self.token = usp.get('token') || '';
+        self.origin = usp.get('origin') || (document.referrer ? (function(){
+          try { var a = document.createElement('a'); a.href = document.referrer; return a.origin || ''; } catch(e){ return ''; }
+        })() : '');
+        var mode = (usp.get('view') || '').toLowerCase();
+        if (['details','small','large'].indexOf(mode) >= 0) {
+          self.viewMode = mode;
+          if (sw) {
+            var bts = sw.querySelectorAll('button');
+            for (var j = 0; j < bts.length; j++) {
+              bts[j].classList.toggle('active', bts[j].getAttribute('data-view') === mode);
+            }
+          }
+        }
+        var initPath = usp.get('path') || '';
+        if (initPath && initPath.startsWith('/')) self.currentPath = initPath;
+      }
+      // UI 副标题
+      var sub = document.getElementById('pickerSub');
+      if (sub) {
+        sub.textContent = self.filterMode === 'images'
+          ? (self.allowMulti ? '浏览文件夹 → 多选勾选图片 → 确定注入' : '浏览文件夹 → 单击勾选 1 张图片 → 确定注入')
+          : (self.allowMulti ? '浏览文件夹 → 多选勾选任意文件 → 确定注入' : '浏览文件夹 → 单击勾选 1 个文件 → 确定注入');
+      }
+      var cnt = document.getElementById('pickedCount');
+      if (cnt) {
+        cnt.textContent = self.allowMulti ? '可多选' : '限选 1 项';
+        cnt.className = 'picker-picked-count empty';
+      }
+      if (!self.cfg.serverUrl) {
+        self.setStatus('err', '❌ 尚未配置 NAS：请先在「设置 → 云盘 NAS」中配置并保存');
+        if (host) host.innerHTML =
+          '<div class="empty"><div class="ico">⚙️</div>' +
+          '<div style="font-weight:600;">请先在主系统设置中配置 NAS</div>' +
+          '<div style="color:#64748b;font-size:12px;margin-top:6px;">保存配置后，再回来选择图片</div>' +
+          '</div>';
+        App.toast('未检测到 NAS 配置，请先到「设置 → 云盘 NAS」完成填写并保存', 'error');
+        return;
+      }
+      self.setStatus('warn', '正在连接 NAS...');
+      self.refresh();
+      // ESC 取消
+      window.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') {
+          var tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '';
+          if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+          NAS.cancelPicker();
+        } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          NAS.confirmPicker();
+        }
+      });
+    }
+  };
+
+  window.NAS = NAS;
+  if (window.App && typeof App.ready === 'function') {
+    App.ready(NAS.init.bind(NAS));
+  } else {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function(){ NAS.init(); });
+    } else {
+      setTimeout(function(){ NAS.init(); }, 50);
+    }
+  }
+})();
+</script>
+</body>
+</html>
