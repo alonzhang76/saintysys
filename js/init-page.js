@@ -730,6 +730,7 @@
     var ALL_KEYS = [
       'styles', 'orders', 'fabrics', 'accessories', 'samples',
       'feedbacks', 'productions', 'invoices', 'payments', 'collections',
+      'consumptions', 'consumption_categories',
       'contacts', 'customers', 'suppliers', 'favoriteContacts',
       'washes', 'shippings', 'users', 'permissions',
       'maintFabrics', 'maintAccessories',

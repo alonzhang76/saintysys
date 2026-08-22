@@ -666,6 +666,7 @@
               </div>
               <div style="flex:1"></div>
               <button class="btn btn-primary" onclick="Cons.openEditor()" title="新增款号" id="btnAddStyle">➕</button>
+              <button class="btn" onclick="Cons.clearStyles()" title="清空本地列表，仅保留云端数据" style="margin-left:6px;">清空</button>
             </div>
             <div class="table-toolbar" style="border-bottom:none;">
               <div class="table-toolbar-left">
@@ -780,6 +781,53 @@ var Cons = {
   },
   setConsumptions: function(arr) {
     App.store.set('consumptions', arr);
+  },
+  // ===== 清空本地列表，仅保留云端(Supabase)数据 =====
+  clearStyles: function() {
+    if (!confirm('确认清空款式列表并从云端重新加载？\n\n此操作会清除本地未同步的数据，仅保留已存储到 Supabase 的数据。')) return;
+    var doRender = function(){ try { renderAll(); } catch(e){} };
+    var finishLocal = function(msg, type){
+      App.toast(msg, type);
+      doRender();
+    };
+    if (window.SupabaseStore && typeof window.SupabaseStore.get === 'function') {
+      App.toast('正在从云端重新加载…', 'info');
+      // 先清空内存缓存中的 consumptions，强制走云端查询
+      try {
+        if (window.SupabaseStore._getCache) {
+          var c = window.SupabaseStore._getCache();
+          if (c) delete c['consumptions'];
+        }
+      } catch(e){}
+      window.SupabaseStore.get('consumptions', []).then(function(cloudData){
+        var arr = Array.isArray(cloudData) ? cloudData : [];
+        // 用云端数据覆盖本地原始 localStorage（原始方法，不二次触发云端写入）
+        try { window._origLocalStorage.setItem('consumptions', JSON.stringify(arr)); } catch(e){}
+        // 同步更新内存缓存
+        try {
+          if (window.SupabaseStore._getCache) {
+            var c2 = window.SupabaseStore._getCache();
+            if (c2) c2['consumptions'] = JSON.parse(JSON.stringify(arr));
+          }
+        } catch(e){}
+        App.toast('已从云端重新加载（共 ' + arr.length + ' 款）', 'success');
+        doRender();
+      }).catch(function(e){
+        App.toast('云端加载失败，已保留本地数据：' + (e && e.message || e), 'error');
+        doRender();
+      });
+    } else {
+      // 无云同步：仅清空本地
+      if (!confirm('云同步未就绪，是否仅清空本地列表？')) return;
+      try { window._origLocalStorage.removeItem('consumptions'); } catch(e){}
+      try {
+        if (window.SupabaseStore && window.SupabaseStore._getCache) {
+          var c3 = window.SupabaseStore._getCache();
+          if (c3) delete c3['consumptions'];
+        }
+      } catch(e){}
+      finishLocal('已清空本地列表', 'warning');
+    }
   },
   getCategories: function() {
     try {
