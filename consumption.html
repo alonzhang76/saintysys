@@ -1708,7 +1708,12 @@ var Cons = {
   printStyleById: function(id) {
     var s = this.getConsumptions().find(function(x){ return x.id === id; });
     if (!s) return;
-    this.showPrintPreview(s);
+    // 直接打印，跳过预览
+    window._consPrintStyle = s;
+    if (App.modal && typeof App.modal.close === 'function') {
+      try { App.modal.close(); } catch(e) {}
+    }
+    this.doPrint(id);
   },
   showPrintPreview: function(style) {
     var self = this;
