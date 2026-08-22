@@ -82,6 +82,13 @@
 .consumption .style-no { color: var(--primary, #004D6D); font-size: 14px; font-weight: 700; }
 .consumption .style-info { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ink-secondary, #4b5563); }
 .consumption .style-info span b { color: var(--muted, #6b7280); font-weight: 500; }
+.consumption .style-remark {
+  font-size: 12px; color: var(--ink-secondary, #4b5563);
+  padding: 4px 6px; margin-top: 4px;
+  background: #f9fafb; border-radius: 4px;
+  border-left: 3px solid var(--primary, #004D6D);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .consumption .style-card-actions {
   margin-top: auto; display: flex; gap: 6px;
   border-top: 1px solid var(--border-light, #f3f4f6); padding-top: 8px;
@@ -583,10 +590,11 @@
   display: flex; align-items: center; gap: 8px; font-size: 18px; line-height: 1.4;
 }
 .print-label { font-weight: bold; color: #333; min-width: 70px; }
-.print-val { color: #333; }
+.print-val { color: #333; text-align: left; }
 .print-tag {
   display: inline-block; padding: 4px 14px; border-radius: 6px;
   font-weight: bold; color: #fff; font-size: 18px; line-height: 1.4;
+  text-align: left;
 }
 .print-tag.tag-red { background: var(--error, #d44848); }
 .print-tag.tag-green { background: var(--success, #2d9d5f); }
@@ -601,31 +609,31 @@
 .print-style-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .print-section { margin-bottom: 6px; }
 .print-section h4 {
-  font-size: 12px; color: #333; margin-bottom: 3px;
-  border-left: 3px solid var(--primary, #004D6D); padding-left: 6px;
+  font-size: 16px; color: #333; margin-bottom: 4px;
+  border-left: 3px solid var(--primary, #004D6D); padding-left: 8px;
 }
 .print-table {
-  width: 100%; border-collapse: collapse; font-size: 9px; line-height: 1.3; table-layout: auto;
+  width: 100%; border-collapse: collapse; font-size: 18px; line-height: 1.6; table-layout: auto;
 }
 .print-table th {
-  background: #f0f0f0; padding: 3px 4px; border: 1px solid #888;
-  text-align: left; font-weight: 600; font-size: 9px; white-space: nowrap;
+  background: #f0f0f0; padding: 6px 8px; border: 1px solid #888;
+  text-align: left; font-weight: 600; font-size: 18px; white-space: nowrap;
 }
 .print-table td {
-  padding: 2px 4px; border: 1px solid #888; vertical-align: top;
-  font-size: 9px; white-space: nowrap;
+  padding: 4px 8px; border: 1px solid #888; vertical-align: top;
+  font-size: 18px; white-space: nowrap;
 }
-.print-spec-table { font-size: 10px; }
-.print-spec-table td { padding: 4px 6px; white-space: nowrap; }
+.print-spec-table { font-size: 20px; }
+.print-spec-table td { padding: 8px 12px; white-space: nowrap; }
 .print-craft {
-  padding: 4px 6px; border: 1px solid #888; font-size: 9px;
-  min-height: 28px; max-height: 40px; white-space: pre-wrap;
-  line-height: 1.4; overflow: hidden;
+  padding: 8px 12px; border: 1px solid #888; font-size: 18px;
+  min-height: 40px; max-height: 60px; white-space: pre-wrap;
+  line-height: 1.6; overflow: hidden;
 }
 .print-footer {
   position: absolute; bottom: 8mm; left: 12mm; right: 12mm;
   border-top: 0.5px solid #999; padding-top: 3px;
-  display: flex; justify-content: space-between; font-size: 9px; color: #666;
+  display: flex; justify-content: space-between; font-size: 12px; color: #666;
 }
 
 /* ===== 空状态 ===== */
@@ -1271,6 +1279,12 @@ var Cons = {
           '<textarea id="c_f_craft" class="form-textarea" placeholder="如司马克、对条、对格等" rows="2">' + App.utils.escapeHtml(item.craft || '') + '</textarea>' +
         '</div>' +
 
+        // ===== 备注 =====
+        '<div class="form-group" style="margin-bottom:16px;">' +
+          '<label>备注</label>' +
+          '<textarea id="c_f_remark" class="form-textarea" placeholder="其他备注信息" rows="2">' + App.utils.escapeHtml(item.remark || '') + '</textarea>' +
+        '</div>' +
+
         // ===== 主要规格尺寸 =====
         '<div class="dynamic-table-section">' +
           '<h3>' +
@@ -1519,6 +1533,7 @@ var Cons = {
       fullImg_name: fullImg_name,
       fabrics: JSON.parse(JSON.stringify(self.fabricData || [])),
       craft: (document.getElementById('c_f_craft').value || '').trim(),
+      remark: (document.getElementById('c_f_remark').value || '').trim(),
       specs: JSON.parse(JSON.stringify(self.specData || []))
     };
 
@@ -1740,7 +1755,7 @@ var Cons = {
     // 开新窗口打印
     var today = new Date();
     var dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
-    var userName = (window.App && App.currentUser && App.currentUser.name) ? App.currentUser.name : '管理员';
+    var userName = (window.App && App.getCurrentUser && App.getCurrentUser()) ? (App.getCurrentUser().username || '管理员') : '管理员';
 
     (async function() {
       var styleSrc = style.styleImg_path ? (await self.getSignedUrl(style.styleImg_path) || style.styleImg_path) : '';
@@ -1766,7 +1781,7 @@ var Cons = {
 
     var today = new Date();
     var dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
-    var userName = (window.App && App.currentUser && App.currentUser.name) ? App.currentUser.name : '管理员';
+    var userName = (window.App && App.getCurrentUser && App.getCurrentUser()) ? (App.getCurrentUser().username || '管理员') : '管理员';
 
     // 生成对比表格 HTML（带样式的完整打印版本）
     var html = buildCompareTableHTML(list, true);
@@ -1792,7 +1807,7 @@ h1 { font-size: 18px; font-weight: 700; color: var(--primary, #004D6D); margin-b
 .footer-bar { position: fixed; bottom: 6mm; left: 10mm; right: 10mm; display:flex; justify-content: space-between; font-size: 9px; color:#666; border-top:0.5px solid #999; padding-top:3px; }
 </style></head><body>
 <h1>耗料对比表</h1>
-<div class="header-bar"><span>打印日期：${dateStr}</span><span>制作人：${userName}</span><span>对比款数：${list.length}</span></div>
+<div class="header-bar"><span>打印日期：${dateStr}</span><span>打印人：${userName}</span><span>对比款数：${list.length}</span></div>
 ${html}
 <div class="footer-bar"><span>AA服装外贸系统 - 用料及纸板模块</span><span>第 1 页</span></div>
 <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); }<\/script>
@@ -1870,6 +1885,7 @@ function renderList() {
         '<span><b>Season：</b>' + App.utils.escapeHtml(s.season || '-') + '</span>' +
         '<span><b>参考加工费：</b>' + App.utils.escapeHtml(s.price || '-') + ' 元</span>' +
       '</div>' +
+      (s.remark ? '<div class="style-remark" title="' + App.utils.escapeHtml(s.remark) + '">' + App.utils.escapeHtml(s.remark) + '</div>' : '') +
       '<div class="style-card-actions" onclick="event.stopPropagation()">' +
         '<button class="btn btn-sm btn-primary" onclick="Cons.openEditor(\'' + s.id + '\')">编辑</button>' +
         '<button class="btn btn-sm" onclick="Cons.printStyleById(\'' + s.id + '\')">打印</button>' +
@@ -1994,7 +2010,7 @@ function buildCompareTableHTML(list, forPrint) {
 
   // 基本信息
   var hasBasic = false, basicHtml = '';
-  [['date','日期'],['designer','设计师'],['season','Season'],['styleNo','款号'],['name','品名'],['price','参考加工费'],['craft','特殊工艺']].forEach(function(kv){
+  [['date','日期'],['designer','设计师'],['season','Season'],['styleNo','款号'],['name','品名'],['price','参考加工费'],['craft','特殊工艺'],['remark','备注']].forEach(function(kv){
     var k = kv[0], label = kv[1];
     var values = list.map(function(s){ var v = s[k]; return (v === undefined || v === null || v === '') ? '-' : String(v); });
     if (allEmpty(values)) return;
@@ -2096,7 +2112,7 @@ function buildCompareTableHTML(list, forPrint) {
 function generatePrintPageHTML(style, forPreview) {
   var today = new Date();
   var dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
-  var userName = (window.App && App.currentUser && App.currentUser.name) ? App.currentUser.name : '管理员';
+  var userName = (window.App && App.getCurrentUser && App.getCurrentUser()) ? (App.getCurrentUser().username || '管理员') : '管理员';
   var hasFull = !!(style.fullImg_path);
   var totalPages = hasFull ? 2 : 1;
   // 预览时使用占位，实际打印时将注入 resolved URL
@@ -2127,11 +2143,11 @@ function generatePrintPageHTML(style, forPreview) {
   if (style.fabrics && style.fabrics.length > 0) {
     html += '<div class="print-section"><h4>面料 / 辅料明细</h4>';
     html += '<table class="print-table"><thead><tr>' +
-      '<th style="width:36px;">类别</th><th>规格名称</th><th style="width:60px;">成份</th>' +
-      '<th style="width:50px;">洗前<br>克重</th><th style="width:50px;">洗后<br>克重</th>' +
-      '<th style="width:38px;">门幅</th><th style="width:36px;">规格</th>' +
-      '<th style="width:38px;">耗料</th><th style="width:70px;">使用部位</th>' +
-      '<th style="width:60px;">缩率</th><th style="width:60px;">备注</th>' +
+      '<th style="width:72px;">类别</th><th>规格名称</th><th style="width:120px;">成份</th>' +
+      '<th style="width:100px;">洗前<br>克重</th><th style="width:100px;">洗后<br>克重</th>' +
+      '<th style="width:76px;">有效门幅</th><th style="width:72px;">规格</th>' +
+      '<th style="width:76px;">耗料</th><th style="width:140px;">使用部位</th>' +
+      '<th style="width:120px;">缩率</th><th style="width:120px;">备注</th>' +
     '</tr></thead><tbody>';
     var curCat = '';
     style.fabrics.forEach(function(f){
@@ -2157,11 +2173,16 @@ function generatePrintPageHTML(style, forPreview) {
   // 工艺
   html += '<div class="print-section"><h4>特殊工艺说明</h4><div class="print-craft">' + App.utils.escapeHtml(style.craft || '-') + '</div></div>';
 
+  // 备注
+  if (style.remark && style.remark.trim()) {
+    html += '<div class="print-section"><h4>备注</h4><div class="print-craft">' + App.utils.escapeHtml(style.remark || '-') + '</div></div>';
+  }
+
   // 规格
   if (style.specs && style.specs.length > 0) {
     html += '<div class="print-section"><h4>主要规格尺寸</h4>' +
       '<table class="print-table print-spec-table"><thead><tr>' +
-      '<th style="width:30%;">部位</th><th style="width:30%;">尺寸（cm）</th><th>常规档差</th>' +
+      '<th style="width:25%;">部位</th><th style="width:35%;">尺寸（cm）</th><th>常规档差</th>' +
       '</tr></thead><tbody>';
     style.specs.forEach(function(s){
       html += '<tr>' +
@@ -2176,7 +2197,7 @@ function generatePrintPageHTML(style, forPreview) {
   // 页脚
   html += '<div class="print-footer">' +
     '<span>打印日期：' + dateStr + '</span>' +
-    '<span>制作人：' + userName + '</span>' +
+    '<span>打印人：' + userName + '</span>' +
     '<span>第 1 页 / 共 ' + totalPages + ' 页</span>' +
   '</div>';
   html += '</div>';
@@ -2185,9 +2206,9 @@ function generatePrintPageHTML(style, forPreview) {
   if (hasFull) {
     html += '<div class="print-full-img-page">';
     if (fullImgForPreview) html += '<img src="' + App.utils.escapeHtml(fullImgForPreview) + '" alt="大图">';
-    html += '<div class="print-footer" style="position:absolute;bottom:8mm;left:12mm;right:12mm;border-top:0.5px solid #999;padding-top:3px;display:flex;justify-content:space-between;font-size:9px;color:#666;">' +
+    html += '<div class="print-footer" style="position:absolute;bottom:8mm;left:12mm;right:12mm;border-top:0.5px solid #999;padding-top:3px;display:flex;justify-content:space-between;font-size:12px;color:#666;">' +
       '<span>打印日期：' + dateStr + '</span>' +
-      '<span>制作人：' + userName + '</span>' +
+      '<span>打印人：' + userName + '</span>' +
       '<span>第 2 页 / 共 ' + totalPages + ' 页</span>' +
     '</div></div>';
   }
@@ -2227,8 +2248,8 @@ function buildPrintWindowHTML(style, dateStr, userName) {
   .print-info-left { display: flex; flex-direction: column; gap: 6px; }
   .print-info-line { display:flex; align-items:center; gap:8px; font-size:18px; line-height:1.4; }
   .print-label { font-weight:bold; color:#333; min-width:70px; }
-  .print-val { color:#333; }
-  .print-tag { display:inline-block; padding:4px 14px; border-radius:6px; font-weight:bold; color:#fff; font-size:18px; line-height:1.4; }
+  .print-val { color:#333; text-align:left; }
+  .print-tag { display:inline-block; padding:4px 14px; border-radius:6px; font-weight:bold; color:#fff; font-size:18px; line-height:1.4; text-align:left; }
   .print-tag.tag-red { background: var(--error, #d44848); }
   .print-tag.tag-green { background: var(--success, #2d9d5f); }
   .print-tag.tag-yellow { background: var(--warning, #d9883a); color:#fff; }
@@ -2242,27 +2263,27 @@ function buildPrintWindowHTML(style, dateStr, userName) {
   .print-style-img img { max-width:100%; max-height:100%; object-fit: contain; }
   .print-section { margin-bottom: 6px; }
   .print-section h4 {
-    font-size: 12px; color:#333; margin-bottom:3px;
-    border-left:3px solid var(--primary, #004D6D); padding-left:6px;
+    font-size: 16px; color:#333; margin-bottom:4px;
+    border-left:3px solid var(--primary, #004D6D); padding-left:8px;
   }
-  .print-table { width:100%; border-collapse:collapse; font-size:9px; line-height:1.3; table-layout:auto; }
+  .print-table { width:100%; border-collapse:collapse; font-size:18px; line-height:1.6; table-layout:auto; }
   .print-table th {
-    background:#f0f0f0; padding:3px 4px; border:1px solid #888; text-align:left;
-    font-weight:600; font-size:9px; white-space:nowrap;
+    background:#f0f0f0; padding:6px 8px; border:1px solid #888; text-align:left;
+    font-weight:600; font-size:18px; white-space:nowrap;
   }
   .print-table td {
-    padding:2px 4px; border:1px solid #888; vertical-align:top; font-size:9px; white-space:nowrap;
+    padding:4px 8px; border:1px solid #888; vertical-align:top; font-size:18px; white-space:nowrap;
   }
-  .print-spec-table { font-size: 10px; }
-  .print-spec-table td { padding: 4px 6px; white-space: nowrap; }
+  .print-spec-table { font-size: 20px; }
+  .print-spec-table td { padding: 8px 12px; white-space: nowrap; }
   .print-craft {
-    padding:4px 6px; border:1px solid #888; font-size:9px;
-    min-height:28px; max-height:40px; white-space:pre-wrap; line-height:1.4; overflow:hidden;
+    padding:8px 12px; border:1px solid #888; font-size:18px;
+    min-height:40px; max-height:60px; white-space:pre-wrap; line-height:1.6; overflow:hidden;
   }
   .print-footer {
     position:absolute; bottom:8mm; left:12mm; right:12mm;
     border-top:0.5px solid #999; padding-top:3px;
-    display:flex; justify-content:space-between; font-size:9px; color:#666;
+    display:flex; justify-content:space-between; font-size:12px; color:#666;
   }
   .print-full-img-page {
     width: 210mm; height: 297mm; padding: 10mm;
