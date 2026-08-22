@@ -1088,10 +1088,10 @@ function renderStats() {
     </div>
   `).join('');
 }
-function getMainStatus(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].status || '未确认'; return s.status || '未确认'; }
-function getMainDate(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].sampleDate || ''; return s.sampleDate || ''; }
-function getMainFactory(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].factory || ''; return s.factory || ''; }
-function getRoundsCount(s) { const def = STAGE_DEFS[s.stageKey]; if (def.multiRound && s.rounds) return s.rounds.length; return 1; }
+function getMainStatus(s) { const def = STAGE_DEFS[s.stageKey]; if (def && def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].status || '未确认'; return s.status || '未确认'; }
+function getMainDate(s) { const def = STAGE_DEFS[s.stageKey]; if (def && def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].sampleDate || ''; return s.sampleDate || ''; }
+function getMainFactory(s) { const def = STAGE_DEFS[s.stageKey]; if (def && def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].factory || ''; return s.factory || ''; }
+function getRoundsCount(s) { const def = STAGE_DEFS[s.stageKey]; if (def && def.multiRound && s.rounds) return s.rounds.length; return 1; }
 function isStageConfirmed(styleNo, stageKey) { const samples = getSamples(); return samples.some(s => s.styleNo === styleNo && Number(s.stageKey) === Number(stageKey) && getMainStatus(s) === '已确认'); }
 function checkPrerequisites(styleNo, stageKey) { const prereqs = STAGE_PREREQUISITES[Number(stageKey)] || []; const missing = prereqs.filter(r => !isStageConfirmed(styleNo, r)); return { ok: missing.length === 0, missing: missing.map(r => STAGE_DEFS[r].name) }; }
 function refreshStageOptions() {
@@ -1184,16 +1184,17 @@ function renderSampleTable() {
     tbody = `<tbody><tr><td colspan="12" style="text-align:center;padding:20px;color:#999;">暂无样衣记录</td></tr></tbody>`;
   } else {
     tbody = '<tbody>' + samples.map(s => {
-      const def = STAGE_DEFS[Number(s.stageKey)];
+      const def = STAGE_DEFS[Number(s.stageKey)] || { multiRound: false, english: '' };
+      const isMulti = def.multiRound && s.rounds && s.rounds.length > 0;
       const cbChecked = _selectedIds.has(s.id) ? 'checked' : '';
       const mainStatus = getMainStatus(s);
       const mainDate = getMainDate(s);
-      const mainReceivedDate = def.multiRound && s.rounds && s.rounds.length > 0 ? (s.rounds[s.rounds.length - 1].receivedSampleDate || '') : (s.receivedSampleDate || '');
+      const mainReceivedDate = isMulti ? (s.rounds[s.rounds.length - 1].receivedSampleDate || '') : (s.receivedSampleDate || '');
       const mainFactory = getMainFactory(s);
       const roundCount = getRoundsCount(s);
-      const mainSize = def.multiRound && s.rounds && s.rounds.length > 0 ? (s.rounds[s.rounds.length - 1].size || '-') : (s.size || '-');
-      const mainConfirmedBy = def.multiRound && s.rounds && s.rounds.length > 0 ? (s.rounds[s.rounds.length - 1].confirmedBy || '-') : (s.confirmedBy || '-');
-      const mainConfirmedDate = def.multiRound && s.rounds && s.rounds.length > 0 ? (s.rounds[s.rounds.length - 1].confirmedDate || '-') : (s.confirmedDate || '-');
+      const mainSize = isMulti ? (s.rounds[s.rounds.length - 1].size || '-') : (s.size || '-');
+      const mainConfirmedBy = isMulti ? (s.rounds[s.rounds.length - 1].confirmedBy || '-') : (s.confirmedBy || '-');
+      const mainConfirmedDate = isMulti ? (s.rounds[s.rounds.length - 1].confirmedDate || '-') : (s.confirmedDate || '-');
       return `
       <tr>
         <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${s.id}', this.checked)"></td>
@@ -1368,7 +1369,7 @@ function openSampleModal(id) {
   const factoryOptions = factories.map(f => `<option value="${App.utils.escapeHtml(f.name)}">`).join('');
   const defStageKey = sample.stageKey !== undefined ? Number(sample.stageKey) : 0;
   _editingRounds = [];
-  const def = STAGE_DEFS[defStageKey];
+  const def = STAGE_DEFS[defStageKey] || { multiRound: false, english: '' };
   if (def.multiRound) {
     if (sample.rounds && sample.rounds.length > 0) _editingRounds = sample.rounds.map(r => ({ ...r }));
     else _editingRounds = [{ round: 1, sampleDate: today, factory: '样衣室', size: '', status: '未确认', confirmedBy: '', confirmedDate: '', techNotes: '' }];
@@ -1653,7 +1654,7 @@ function saveSample() {
   const styleNo = document.getElementById('m_styleNo').value;
   if (!styleNo) { App.toast('请选择款号', 'warning'); return; }
   const stageKey = Number(document.getElementById('m_stageKey').value);
-  const def = STAGE_DEFS[stageKey];
+  const def = STAGE_DEFS[stageKey] || { multiRound: false, english: '' };
   if (!editingId) { const check = checkPrerequisites(styleNo, stageKey); if (!check.ok) { App.toast(`请先完成「${check.missing.join('、')}」的确认，再安排「${def.name}」`, 'warning'); return; } }
   let data = { id: editingId || App.utils.genId('SM'), styleNo, stageKey };
   const getRadioVal = (name) => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; };
@@ -1705,7 +1706,7 @@ function saveSample() {
 function viewSampleDetail(id) {
   const s = getSamples().find(x => x.id === id);
   if (!s) { App.toast('记录不存在', 'error'); return; }
-  const def = STAGE_DEFS[Number(s.stageKey)];
+  const def = STAGE_DEFS[Number(s.stageKey)] || { multiRound: false, english: '' };
   const styles = getStyles();
   const style = styles.find(x => x.styleNo === s.styleNo);
   const styleName = style ? style.styleName : '-';
@@ -2079,6 +2080,16 @@ window.addEventListener('cloud-data-updated', function(e) {
         }
         mapped.push(base);
       });
+
+      // 关键修复：如果没有有效的映射数据，但原系统有 samplePlanId 记录，
+      // 说明 SamplePlan 数据可能尚未从云端加载完成，或样衣类型字段无法匹配，
+      // 此时保留原记录不做删除，避免"卡片显示有记录但表格为空"的不一致问题
+      const hasMarkeredRecords = allSamples.some(s => s[MARKER]);
+      if (mapped.length === 0 && hasMarkeredRecords) {
+        console.log('[syncSamplePlanToTabs] 无有效映射数据，保留原有记录不做同步 (srcData.length=' + srcData.length + ')');
+        return;
+      }
+
       const combined = preserved.concat(mapped);
       App.store.set('samples', combined);
 

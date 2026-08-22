@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -875,9 +875,15 @@ var PageDataSyncGuard = {
     if (self.pending) setTimeout(doRefresh, 200);
     // 关键修复1：2秒后强制刷新一次（覆盖独立轮询/SupabaseStore 异步时序问题）
     setTimeout(function() {
-      // 即使没有 pending，也主动检查云端是否有数据
       try {
         var raw = localStorage.getItem(STORAGE_KEY);
+        var needsReload = false;
+        // 情况1：records为空但本地缓存有数据 → 必须重新加载
+        if ((!records || records.length === 0) && raw && raw !== 'null' && raw !== '[]') {
+          console.log('[express] 2秒检查: records为空但本地有数据，强制重新加载');
+          needsReload = true;
+        }
+        // 情况2：本地仍无数据 → 尝试强制云端刷新
         if (!raw || raw === 'null' || raw === '[]') {
           console.log('[express] 2秒检查: 本地无数据，尝试强制刷新');
           // 尝试直接从 SupabaseStore 缓存读取
@@ -885,13 +891,10 @@ var PageDataSyncGuard = {
             var cached = window.SupabaseStore.getSync(STORAGE_KEY, null);
             if (cached && Array.isArray(cached) && cached.length > 0) {
               console.log('[express] SupabaseStore缓存有数据，强制加载');
-              if (typeof window.loadData === 'function') window.loadData();
-              if (typeof window.renderAll === 'function') window.renderAll();
-              return;
+              needsReload = true;
             }
           }
-          // 触发一次强制云端刷新
-          if (window.SupabaseStore && window.SupabaseStore.forceRefreshFromCloud) {
+          if (!needsReload && window.SupabaseStore && window.SupabaseStore.forceRefreshFromCloud) {
             window.SupabaseStore.forceRefreshFromCloud().then(function(changed) {
               console.log('[express] 强制刷新完成:', changed && changed.length, '个key变更');
               if (typeof window.loadData === 'function') window.loadData();
@@ -901,6 +904,10 @@ var PageDataSyncGuard = {
             });
           }
         }
+        if (needsReload) {
+          if (typeof window.loadData === 'function') window.loadData();
+          if (typeof window.renderAll === 'function') window.renderAll();
+        }
       } catch(e) {
         console.warn('[express] 2秒检查异常:', e);
       }
@@ -909,6 +916,12 @@ var PageDataSyncGuard = {
     setTimeout(function() {
       try {
         var raw2 = localStorage.getItem(STORAGE_KEY);
+        var needsReload2 = false;
+        // 同样检查records是否为空
+        if ((!records || records.length === 0) && raw2 && raw2 !== 'null' && raw2 !== '[]') {
+          console.log('[express] 4秒检查: records仍为空但本地有数据，再次加载');
+          needsReload2 = true;
+        }
         if (!raw2 || raw2 === 'null' || raw2 === '[]') {
           console.log('[express] 4秒二次检查: 仍无数据，再次强制刷新');
           if (window.SupabaseStore && window.SupabaseStore.forceRefreshFromCloud) {
@@ -918,22 +931,74 @@ var PageDataSyncGuard = {
             });
           }
         }
+        if (needsReload2) {
+          if (typeof window.loadData === 'function') window.loadData();
+          if (typeof window.renderAll === 'function') window.renderAll();
+        }
       } catch(e) {}
     }, 4000);
+    // 关键修复3：8秒终极兜底检查（防止极端情况数据仍未加载）
+    setTimeout(function() {
+      try {
+        if (!records || records.length === 0) {
+          console.log('[express] 8秒兜底检查: records仍为空，执行最终加载');
+          // 直接强制从SupabaseStore缓存读取并刷新
+          if (window.SupabaseStore && window.SupabaseStore.getSync) {
+            var finalCached = window.SupabaseStore.getSync(STORAGE_KEY, null);
+            if (finalCached && Array.isArray(finalCached) && finalCached.length > 0) {
+              console.log('[express] 8秒兜底: 从SupabaseStore加载', finalCached.length, '条数据');
+              records = finalCached;
+              if (typeof window.renderAll === 'function') window.renderAll();
+              return;
+            }
+          }
+          // 最后兜底：从localStorage直接读
+          var finalRaw = localStorage.getItem(STORAGE_KEY);
+          if (finalRaw && finalRaw !== 'null' && finalRaw !== '[]') {
+            var parsed = JSON.parse(finalRaw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log('[express] 8秒兜底: 从localStorage加载', parsed.length, '条数据');
+              records = parsed;
+              if (typeof window.renderAll === 'function') window.renderAll();
+              return;
+            }
+          }
+          // 最终强制云端刷新
+          if (window.SupabaseStore && window.SupabaseStore.forceRefreshFromCloud) {
+            window.SupabaseStore.forceRefreshFromCloud().then(function() {
+              if (typeof window.loadData === 'function') window.loadData();
+              if (typeof window.renderAll === 'function') window.renderAll();
+            });
+          }
+        }
+      } catch(e) {
+        console.warn('[express] 8秒兜底异常:', e);
+      }
+    }, 8000);
   }
 };
 window.addEventListener('cloud-data-updated', function(e){
   var keys = (e.detail&&e.detail.keys)||[];
   var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
-  if (need) {
+  // 关键修复：即使express_delivery_data_v2不在变更列表中，
+  // 如果records仍为空，说明初始化时未加载到数据，需要重新加载
+  var recordsEmpty = (!records || records.length === 0);
+  if (need || recordsEmpty) {
+    if (need) {
+      console.log('[express] cloud-data-updated: 相关keys变更', keys.join(','));
+    } else {
+      console.log('[express] cloud-data-updated: records为空，趁机重新加载数据');
+    }
     // 关键修复3：即使 inited 为 false，也不丢弃事件（改为延迟处理而非直接 return）
     if (!PageDataSyncGuard.inited) {
       PageDataSyncGuard.pending=true;
+      console.log('[express] cloud-data-updated: afterInit未完成，标记pending');
       // 额外：在 afterInit 之前也直接尝试加载（因为数据可能已写入缓存/localStorage）
       try {
         if (typeof window.loadData === 'function') {
           var raw = localStorage.getItem(STORAGE_KEY);
           if (raw && raw !== 'null' && raw !== '[]') {
+            console.log('[express] cloud-data-updated: 提前加载数据');
             window.loadData();
             window.renderAll();
           }
@@ -948,18 +1013,18 @@ window.addEventListener('cloud-data-updated', function(e){
   }
 });
 
+// ===== Data =====
+var STORAGE_KEY = 'express_delivery_data_v2';
+var records = [];
+var editId = null;
+var deleteId = null;
+
 // ===== 系统初始化 =====
 App.init('express');
 App.checkLogin();
 App.initSampleData();
 App.enforcePagePermission('express');
   setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
-
-// ===== Data =====
-const STORAGE_KEY = 'express_delivery_data_v2';
-let records = [];
-let editId = null;
-let deleteId = null;
 
 // ===== 款号/物品 多对辅助函数 =====
 // 兼容旧数据：旧记录只有 styleNo/item 单字段，新记录用 items[] 数组
