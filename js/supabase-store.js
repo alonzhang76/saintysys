@@ -598,6 +598,8 @@ async function set(key, value) {
 
   // 更新内存缓存
   _cache[key] = JSON.parse(JSON.stringify(value));
+  // 关键修复：设置近期写入记录，防止 init-page.js 轮询将云端旧数据覆盖本地新数据
+  _recentWrites[key] = Date.now();
 
   // 异步写入 Supabase
   try {
@@ -631,6 +633,8 @@ async function remove(key) {
 
   delete _cache[key];
   delete _cacheTimestamps[key];
+  // 关键修复：设置近期写入记录，防止 init-page.js 轮询将旧数据回灌
+  _recentWrites[key] = Date.now();
 
   try {
     const { error } = await safeQuery(

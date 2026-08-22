@@ -992,7 +992,7 @@ input[type="number"] { -moz-appearance: textfield; }
 <script src="js/auth-guard.js?v=20260822c"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822f"></script>
-<script src="js/supabase-store.js?v=20260822i"></script>
+<script src="js/supabase-store.js?v=20260822j"></script>
 <script src="js/localstorage-patch.js?v=20260822h"></script>
 <script src="js/supabase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
@@ -1828,7 +1828,25 @@ function viewSampleDetail(id) {
     tryLocalFallback();
   })();
 }
-function deleteSample(id) { App.confirm('确定要删除这条样衣记录吗？', () => { const samples = getSamples().filter(s => s.id !== id); App.store.set('samples', samples); _selectedIds.delete(id); App.toast('样衣记录已删除', 'success'); renderStats(); renderSampleTable(); }); }
+function deleteSample(id) {
+  App.confirm('确定要删除这条样衣记录吗？', () => {
+    const allSamples = getSamples();
+    const target = allSamples.find(s => s.id === id);
+    const samples = allSamples.filter(s => s.id !== id);
+    App.store.set('samples', samples);
+    _selectedIds.delete(id);
+
+    // 关键修复：若此记录来自「样衣计划」同步（带 samplePlanId 标记），
+    // 必须同步删除 SamplePlan 源记录，否则下次 syncSamplePlanToTabs 会把它复活
+    if (target && target['samplePlanId'] && typeof SamplePlan !== 'undefined' && SamplePlan._deleteSourceRecord) {
+      try { SamplePlan._deleteSourceRecord(target['samplePlanId']); } catch(e) {}
+    }
+
+    App.toast('样衣记录已删除', 'success');
+    renderStats();
+    renderSampleTable();
+  });
+}
 function resetFilter() { filterState = { search: '', status: '' }; renderFilterBar(); renderSampleTable(); }
 
 // ===== 页面初始化（等待 Supabase 就绪后执行） =====
@@ -2079,6 +2097,18 @@ window.addEventListener('cloud-data-updated', function(e) {
   let _spSyncTimer = null;
   let _spSyncPending = false;
   async function flushToSupabase() {
+    // 关键修复：写入前立即刷新 _recentWrites 保护窗口（10秒）
+    // 防止 init-page.js 在异步写入完成前把云端旧数据回灌到本地
+    try {
+      const sb = window.SupabaseStore;
+      if (sb && sb._recentWrites) {
+        const now = Date.now();
+        if (state.data) sb._recentWrites[STORAGE_KEY] = now;
+        if (state.sizeTables) sb._recentWrites[SIZE_TABLE_KEY] = now;
+        // samples 表也同步保护（syncSamplePlanToTabs 可能刚写入）
+        sb._recentWrites['samples'] = now;
+      }
+    } catch(e) {}
     if (state.data) {
       try {
         if (window.SupabaseStore && typeof window.SupabaseStore.set === 'function') {
@@ -2596,9 +2626,26 @@ window.addEventListener('cloud-data-updated', function(e) {
     if (!confirm(`确认删除款号「${row['款号']}」的${row['样衣类型']}记录？`)) return;
     state.data = state.data.filter(r => r.id !== id);
     saveData();
+    // 删除操作：立即写入云端，取消 scheduleSync 300ms 延迟，避免轮询期间覆盖
+    if (_spSyncTimer) { clearTimeout(_spSyncTimer); _spSyncTimer = null; }
+    flushToSupabase();
     if (state.selectedId === id) SP.closeImagePanel();
     SP.applyFilters();
     showToast('删除成功', 'success');
+  };
+
+  // 供 deleteSample 调用：当原Tab删除来自样衣计划的同步记录时，同步删除源记录（防止复活）
+  SP._deleteSourceRecord = function(sourceId) {
+    if (!sourceId) return false;
+    const before = state.data.length;
+    state.data = state.data.filter(r => String(r.id || '') !== String(sourceId));
+    if (state.data.length === before) return false; // 没变化
+    saveData();
+    // 立即写入云端，跳过 scheduleSync 的防抖延迟
+    if (_spSyncTimer) { clearTimeout(_spSyncTimer); _spSyncTimer = null; }
+    flushToSupabase();
+    SP.applyFilters();
+    return true;
   };
   SP.suggestRound = function(styleNo) {
     if (!styleNo) return;
