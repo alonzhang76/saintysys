@@ -14,12 +14,21 @@
   }
   .nas .topbar {
     flex: 0 0 auto;
-    background: #d44848; border-bottom: 1px solid #a93226;
+    background: #fff; border-bottom: 1px solid #e5e7eb;
     padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   }
-  .nas .topbar .btn-sm { background:#fff; color:#b91c1c; border-color:#fff; }
-  .nas .topbar .btn-sm.btn-primary { background:#fff; color:#b91c1c; border:1px solid #fff; }
-  .nas .topbar .btn-sm:hover { background:#fef2f2; }
+  .nas .topbar-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .nas .topbar .nas-btn { padding: 5px 10px; font-size: 12px; height: 28px; line-height: 1; }
+  .nas .topbar .view-switch button { padding: 5px 10px; font-size: 12px; height: 28px; line-height: 1; }
+  .nas .topbar .search { min-width: 200px; }
+
+  /* ===== NAS 页面：左侧菜单红底白字 ===== */
+  .sidebar { background: #d44848 !important; }
+  .sidebar-logo { color: #fff !important; border-bottom-color: rgba(255,255,255,.25) !important; }
+  .sidebar-menu-item { color: #fff !important; }
+  .sidebar-menu-item:hover { color: #fff !important; background: rgba(255,255,255,.15) !important; }
+  .sidebar-menu-item.active { color: #fff !important; background: rgba(255,255,255,.25) !important; border-left-color: #fff !important; }
+  .sidebar-menu-group-title { color: rgba(255,255,255,.75) !important; }
   .nas .status-dot { display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#9ca3af;vertical-align:middle; }
   .nas .status-dot.ok { background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.15); }
   .nas .status-dot.err { background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15); }
@@ -364,16 +373,15 @@
       <!-- 顶部工具栏 -->
       <div class="topbar">
         <span class="conn-title"><span id="connStatus"><span class="status-dot"></span>正在读取配置...</span></span>
-        <span id="adminBtns" style="display:none;">
-          <button class="btn btn-sm" onclick="NAS.initRoot()" title="在 NAS 上创建系统根目录">✨初始化根</button>
+        <span id="writeBtns" class="topbar-actions" style="display:none;">
+          <button class="btn btn-sm nas-btn" onclick="NAS.mkDir()" title="在当前目录新建文件夹">📂新建文件夹</button>
+          <button class="btn btn-sm nas-btn btn-primary" onclick="NAS.pickUpload()" title="上传整个文件夹（保留原始目录结构）">📁上传文件夹</button>
+          <button class="btn btn-sm nas-btn btn-primary" onclick="NAS.pickUploadFiles()" title="上传一个或多个文件（支持所有格式）">📄上传文件</button>
+          <button class="btn btn-sm nas-btn" onclick="NAS.renameSelected()" title="重命名选中的文件或文件夹（也可按 F2 或双击名称）">✏️重命名</button>
+          <button class="btn btn-sm nas-btn" onclick="NAS.refresh()" title="重新加载当前目录">🔄刷新</button>
         </span>
-        <span id="writeBtns" style="display:none;">
-          <button class="btn btn-sm" onclick="NAS.mkDir()" title="在当前目录新建文件夹">📂新建文件夹</button>
-          <button class="btn btn-sm btn-primary" onclick="NAS.pickUpload()" title="从本地选择文件上传到当前目录">⬆️上传文件</button>
-          <button class="btn btn-sm" onclick="NAS.renameSelected()" title="重命名选中的文件或文件夹（也可按 F2 或双击名称）">✏️重命名</button>
-          <input type="file" id="filePicker" multiple style="display:none;" onchange="NAS.onFilePick(event)">
-        </span>
-        <button class="btn btn-sm" onclick="NAS.refresh()" title="重新加载当前目录">🔄刷新</button>
+        <input type="file" id="filePicker" multiple style="display:none;" onchange="NAS.onFilePick(event)">
+        <input type="file" id="folderPicker" webkitdirectory directory multiple style="display:none;" onchange="NAS.onFilePick(event)">
         <div class="view-switch" id="viewSwitch" title="切换查看方式">
           <button data-view="large" onclick="NAS.setViewMode('large')" title="大图标">🔲大图标</button>
           <button data-view="small" onclick="NAS.setViewMode('small')" title="小图标">▫️小图标</button>
@@ -506,8 +514,10 @@
       }
       self.canWrite = (modPerm === 'write' || self.isAdmin);
       document.getElementById('userName').textContent = (u && u.username) || '管理员';
-      document.getElementById('writeBtns').style.display = self.canWrite ? 'inline-flex' : 'none';
-      document.getElementById('adminBtns').style.display = self.isAdmin ? 'inline-flex' : 'none';
+      var wb = document.getElementById('writeBtns');
+      if (wb) wb.style.display = self.canWrite ? 'inline-flex' : 'none';
+      var ab = document.getElementById('adminBtns');
+      if (ab) ab.style.display = self.isAdmin ? 'inline-flex' : 'none';
 
       self.cfg = self._loadCfg();
       self._restoreSort();
@@ -1100,8 +1110,12 @@
 
     // ===== 上传：多选 + 拖放文件夹（保留相对结构） =====
     pickUpload: function() {
+      var el = document.getElementById('folderPicker');
+      if (el) { el.value = ''; el.click(); }
+    },
+    pickUploadFiles: function() {
       var el = document.getElementById('filePicker');
-      if (el) el.setAttribute('webkitdirectory', ''), el.setAttribute('directory', ''), el.click();
+      if (el) { el.value = ''; el.click(); }
     },
     onFilePick: function(ev) {
       if (!ev || !ev.target || !ev.target.files || ev.target.files.length === 0) return;
