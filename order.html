@@ -186,6 +186,28 @@ App.initSampleData();
 App.enforcePagePermission('order');
   setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
 
+// ===== 诊断：检测 Supabase Storage 可用性 =====
+setTimeout(function() {
+  var bucket = window.STORAGE_BUCKET || 'app-photos';
+  console.log('[order] Supabase 诊断:');
+  console.log('  SUPABASE_URL:', window.SUPABASE_URL);
+  console.log('  STORAGE_BUCKET:', bucket);
+  console.log('  SUPABASE_ANON_KEY:', window.SUPABASE_ANON_KEY ? '(已设置)' : '(未设置)');
+  console.log('  window.supabase:', !!window.supabase);
+  console.log('  window.SupabaseSubmit:', !!window.SupabaseSubmit);
+  if (window.supabase && window.supabase.storage) {
+    window.supabase.storage.from(bucket).list('order', { limit: 1 }).then(function(res) {
+      if (res.error) {
+        console.error('[order] Storage list 失败:', res.error.message);
+      } else {
+        console.log('[order] Storage 连接正常');
+      }
+    }).catch(function(err) {
+      console.error('[order] Storage 连接异常:', err && err.message);
+    });
+  }
+}, 1500);
+
 // ===== 工具函数 =====
 
 // 根据联系人ID获取客户公司名
@@ -287,6 +309,22 @@ function renderTable() {
   App.renderTable('orderTable', {
     columns: [
       { key: 'id', title: `<input type="checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this.checked)">`, width: '40px', render: (v) => `<input type="checkbox" ${_selectedOrderIds.has(v) ? 'checked' : ''} onchange="toggleSelect('${v}', this.checked)">` },
+      { key: 'styleImg_path', title: '图片', width: '70px', render: (v, row) => {
+        var imgs = [];
+        if (row.styleImg_path) imgs.push(row.styleImg_path);
+        if (row.fullImg_path) imgs.push(row.fullImg_path);
+        if (imgs.length === 0) return '<span style="color:var(--text-muted);font-size:11px;">无</span>';
+        var idx = parseInt(row._thumbIdx || '0', 10);
+        var currentImg = imgs[idx] || imgs[0];
+        var dots = imgs.length > 1 ? imgs.map(function(_, i){ return '<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:' + (i===idx?'var(--primary)':'var(--border)') + ';margin:0 1px;"></span>'; }).join('') : '';
+        var navBtns = imgs.length > 1 ? '<button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',-1)" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">‹</button><button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',1)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">›</button>' : '';
+        // Use placeholder that will be hydrated later
+        var imgSrc = currentImg && currentImg.startsWith('data:image') ? currentImg : '';
+        var dataAttr = currentImg ? 'data-order-img="' + row.id + '"' : '';
+        return '<div style="position:relative;display:flex;flex-direction:column;align-items:center;">' +
+          '<img ' + dataAttr + ' src="' + (imgSrc || '') + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="OrderImg.openRowFullscreen(\'' + row.id + '\')">' +
+          dots + navBtns + '</div>';
+      } },
       { key: 'orderNo', title: 'PO', width: '130px' },
       { key: 'styleNo', title: 'Style No.', width: '110px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
       { key: 'customerId', title: 'Customer', width: '110px', render: (v) => App.utils.escapeHtml(getCustomerName(v)) },
@@ -318,6 +356,8 @@ function renderTable() {
       <button class="btn btn-sm btn-danger" title="删除" onclick="deleteOrder('${row.id}')">🗑️</button>
     `
   });
+  // 水合图片缩略图
+  if (window.OrderImg && OrderImg.hydrateTableImages) OrderImg.hydrateTableImages();
 }
 
 // ===== 尺码矩阵状态 =====
@@ -626,6 +666,32 @@ function openForm(id) {
       </div>
     </div>
 
+    <div class="form-section-title">🖼️ 款式图片</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1;min-width:200px;">
+        <label class="form-label">款式图</label>
+        <div id="orderStyleImgBox" style="border:2px dashed var(--border);border-radius:8px;padding:10px;text-align:center;cursor:pointer;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-secondary);position:relative;" onclick="document.getElementById('orderStyleImgFile').click()">
+          <img id="orderStyleImgPreview" src="" alt="" style="display:none;max-width:100%;max-height:160px;border-radius:4px;">
+          <div id="orderStyleImgPlaceholder" style="color:var(--text-muted);font-size:12px;">📷 点击上传款式图</div>
+          <input type="file" id="orderStyleImgFile" accept="image/*" style="display:none;" onchange="OrderImg.onFileChange('style', this)">
+          <input type="hidden" id="orderStyleImgPath" value="${isEdit ? App.utils.escapeHtml(order.styleImg_path || '') : ''}">
+          <input type="hidden" id="orderStyleImgName" value="${isEdit ? App.utils.escapeHtml(order.styleImg_name || '') : ''}">
+          <div id="orderStyleImgStatus" class="status" style="font-size:11px;margin-top:4px;"></div>
+        </div>
+      </div>
+      <div class="form-group" style="flex:1;min-width:200px;">
+        <label class="form-label">大图</label>
+        <div id="orderFullImgBox" style="border:2px dashed var(--border);border-radius:8px;padding:10px;text-align:center;cursor:pointer;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-secondary);position:relative;" onclick="document.getElementById('orderFullImgFile').click()">
+          <img id="orderFullImgPreview" src="" alt="" style="display:none;max-width:100%;max-height:160px;border-radius:4px;">
+          <div id="orderFullImgPlaceholder" style="color:var(--text-muted);font-size:12px;">📷 点击上传大图</div>
+          <input type="file" id="orderFullImgFile" accept="image/*" style="display:none;" onchange="OrderImg.onFileChange('full', this)">
+          <input type="hidden" id="orderFullImgPath" value="${isEdit ? App.utils.escapeHtml(order.fullImg_path || '') : ''}">
+          <input type="hidden" id="orderFullImgName" value="${isEdit ? App.utils.escapeHtml(order.fullImg_name || '') : ''}">
+          <div id="orderFullImgStatus" class="status" style="font-size:11px;margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="form-section-title">📏 尺码数量分配（从尺码表选择尺码组，按包装行输入各尺码数量）</div>
     <div class="form-group">
       <div id="sizeMatrixContainer"></div>
@@ -708,7 +774,328 @@ function openForm(id) {
 
   // 加载客户对应的人员下拉
   loadCustomerPersonnel(defaultCustomerId, order);
+
+  // 初始化图片预览
+  OrderImg.hydratePreview('style', order && order.styleImg_path);
+  OrderImg.hydratePreview('full', order && order.fullImg_path);
 }
+
+// ===== 订单图片上传模块 =====
+const OrderImg = {
+  _fileToDataUrl: function(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() { resolve(reader.result); };
+      reader.onerror = function() { reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
+  },
+
+  getSignedUrl: async function(path) {
+    if (!path) return null;
+    if (path.startsWith('data:image')) return path;
+    if (window.supabase) {
+      try {
+        var sb = window.supabase;
+        var BUCKET = window.STORAGE_BUCKET || 'app-photos';
+        var res = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+        if (res && !res.error && res.data) return res.data.signedUrl || null;
+      } catch(_e) {}
+    }
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+      try {
+        var BUCKET2 = window.STORAGE_BUCKET || 'app-photos';
+        var url = window.SUPABASE_URL + '/storage/v1/object/sign/' + encodeURIComponent(BUCKET2) + '/' + encodeURIComponent(path);
+        var resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: '{}'
+        });
+        if (resp.ok) {
+          var data = await resp.json();
+          if (data && data.signedUrl) return data.signedUrl;
+        }
+      } catch(_e2) {}
+    }
+    return null;
+  },
+
+  _directUrl: function(p) {
+    if (!p) return '';
+    if (p.startsWith('data:image')) return p;
+    var bucket = window.STORAGE_BUCKET || 'app-photos';
+    return (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
+  },
+
+  onFileChange: async function(type, input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var prefix = type === 'style' ? 'orderStyleImg' : 'orderFullImg';
+    var statusEl = document.getElementById(prefix + 'Status');
+    var pathEl = document.getElementById(prefix + 'Path');
+    var nameEl = document.getElementById(prefix + 'Name');
+    var previewImg = document.getElementById(prefix + 'Preview');
+    var placeholder = document.getElementById(prefix + 'Placeholder');
+    if (!statusEl) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      statusEl.className = 'status error';
+      statusEl.textContent = '图片超过 10MB 限制';
+      return;
+    }
+
+    // 删除旧图
+    var oldPath = pathEl ? pathEl.value : '';
+    if (oldPath && !oldPath.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
+      try { await SupabaseSubmit.deletePicture(oldPath); } catch(_e) {}
+    }
+
+    statusEl.className = 'status loading';
+    statusEl.textContent = '正在上传中...';
+
+    // base64 兜底
+    var base64DataUrl = null;
+    try { base64DataUrl = await this._fileToDataUrl(file); } catch(_e) {}
+
+    // 本地预览
+    var localUrl = URL.createObjectURL(file);
+    if (previewImg) { previewImg.src = localUrl; previewImg.style.display = 'block'; }
+    if (placeholder) placeholder.style.display = 'none';
+
+    // 尝试 Supabase 上传
+    var supabaseOk = false;
+    var supabaseError = null;
+    if (!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function') {
+      supabaseError = '上传模块未加载';
+    } else {
+      try {
+        var result = await SupabaseSubmit.uploadPicture(file, 'order');
+        if (result && result.path) {
+          if (pathEl) pathEl.value = result.path;
+          if (nameEl) nameEl.value = result.fileName || file.name;
+          statusEl.className = 'status ok';
+          statusEl.textContent = '✓ 上传成功：' + (result.fileName || file.name);
+          try {
+            var s = await this.getSignedUrl(result.path);
+            if (s && previewImg) previewImg.src = s;
+          } catch(_x) {}
+          supabaseOk = true;
+        } else {
+          supabaseError = '上传返回空结果';
+        }
+      } catch(err) {
+        supabaseError = (err && err.message) || String(err);
+      }
+    }
+
+    // Supabase 失败 → base64 兜底
+    if (!supabaseOk && base64DataUrl) {
+      console.warn('[OrderImg] Supabase 上传失败(' + supabaseError + ')，使用 base64 兜底');
+      if (pathEl) pathEl.value = base64DataUrl;
+      if (nameEl) nameEl.value = file.name || '';
+      if (previewImg) previewImg.src = base64DataUrl;
+      statusEl.className = 'status error';
+      statusEl.textContent = '⚠️ 云端上传失败(' + (supabaseError || '未知原因') + ')，图片仅本地保存';
+      try { if (App && App.toast) App.toast('⚠️ 云端上传失败：' + (supabaseError || '未知原因') + '，图片仅保存在本地', 'error'); } catch(_) {}
+      supabaseOk = true;
+    }
+    if (!supabaseOk) {
+      statusEl.className = 'status error';
+      statusEl.textContent = '上传失败：' + (supabaseError || '请重试');
+      try { if (App && App.toast) App.toast('上传失败：' + (supabaseError || '请重试'), 'error'); } catch(_) {}
+      return;
+    }
+    var _s = statusEl;
+    setTimeout(function(){ if (_s && _s.className.indexOf('ok')>=0) { _s.className = 'status'; _s.textContent = ''; } }, 3000);
+  },
+
+  hydratePreview: async function(type, path) {
+    var prefix = type === 'style' ? 'orderStyleImg' : 'orderFullImg';
+    var previewImg = document.getElementById(prefix + 'Preview');
+    var placeholder = document.getElementById(prefix + 'Placeholder');
+    if (!previewImg || !path) return;
+    if (path.startsWith('data:image')) {
+      previewImg.src = path;
+      previewImg.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+      return;
+    }
+    try {
+      var signed = await this.getSignedUrl(path);
+      if (signed) {
+        previewImg.src = signed;
+        previewImg.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+        return;
+      }
+    } catch(_e) {}
+    var directUrl = this._directUrl(path);
+    if (directUrl) {
+      previewImg.src = directUrl;
+      previewImg.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+    }
+  },
+
+  // 全屏查看
+  fullscreenImgs: [],
+  fullscreenIdx: 0,
+  openFullscreen: function(imgs, idx) {
+    this.fullscreenImgs = imgs || [];
+    this.fullscreenIdx = idx || 0;
+    var overlay = document.getElementById('orderFullscreenOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'orderFullscreenOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:99999;display:flex;align-items:center;justify-content:center;';
+      overlay.innerHTML = `
+        <button onclick="OrderImg.closeFullscreen()" style="position:absolute;top:20px;right:20px;background:transparent;border:none;color:#fff;font-size:30px;cursor:pointer;">✖️</button>
+        <button onclick="OrderImg.navFullscreen(-1)" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:40px;cursor:pointer;padding:10px 15px;border-radius:5px;">‹</button>
+        <img id="orderFullscreenImg" src="" style="max-width:90%;max-height:90%;object-fit:contain;border-radius:8px;">
+        <button onclick="OrderImg.navFullscreen(1)" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:40px;cursor:pointer;padding:10px 15px;border-radius:5px;">›</button>
+        <div id="orderFullscreenCap" style="position:absolute;bottom:20px;color:#fff;font-size:14px;"></div>
+      `;
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+    this.updateFullscreenImg();
+  },
+  closeFullscreen: function() {
+    var overlay = document.getElementById('orderFullscreenOverlay');
+    if (overlay) overlay.style.display = 'none';
+  },
+  navFullscreen: function(dir) {
+    if (this.fullscreenImgs.length < 2) return;
+    this.fullscreenIdx = (this.fullscreenIdx + dir + this.fullscreenImgs.length) % this.fullscreenImgs.length;
+    this.updateFullscreenImg();
+  },
+  updateFullscreenImg: async function() {
+    var imgEl = document.getElementById('orderFullscreenImg');
+    var cap = document.getElementById('orderFullscreenCap');
+    if (!imgEl) return;
+    var src = this.fullscreenImgs[this.fullscreenIdx] || '';
+    imgEl.src = '';
+    if (src && src.startsWith('data:image')) {
+      imgEl.src = src;
+      cap.textContent = (this.fullscreenIdx + 1) + ' / ' + this.fullscreenImgs.length;
+      return;
+    }
+    try {
+      var url = await this.getSignedUrl(src);
+      if (url) { imgEl.src = url; }
+      else { imgEl.src = this._directUrl(src) || src || ''; }
+    } catch(e) {
+      imgEl.src = this._directUrl(src) || src || '';
+    }
+    cap.textContent = (this.fullscreenIdx + 1) + ' / ' + this.fullscreenImgs.length;
+  },
+
+  // 表格行缩略图导航
+  navTableRow: async function(event, orderId, dir) {
+    if (event) event.stopPropagation();
+    var orders = App.store.get('orders', []);
+    var order = orders.find(function(o){ return o.id === orderId; });
+    if (!order) return;
+    var imgs = [];
+    if (order.styleImg_path) imgs.push(order.styleImg_path);
+    if (order.fullImg_path) imgs.push(order.fullImg_path);
+    if (imgs.length < 2) return;
+    var idx = parseInt(order._thumbIdx || '0', 10);
+    idx = (idx + dir + imgs.length) % imgs.length;
+    order._thumbIdx = idx;
+    // 更新 DOM
+    var imgEl = document.querySelector('img[data-order-img="' + orderId + '"]');
+    if (imgEl) {
+      var p = imgs[idx];
+      if (p.startsWith('data:image')) {
+        imgEl.src = p;
+      } else {
+        var src = await this.getSignedUrl(p);
+        imgEl.src = src || this._directUrl(p);
+      }
+    }
+    // 更新圆点
+    var row = imgEl ? imgEl.closest('tr') : null;
+    if (row) {
+      var dots = row.querySelectorAll('span[style*="border-radius:50%"]');
+      dots.forEach(function(d, i){
+        d.style.background = (i === idx) ? 'var(--primary)' : 'var(--border)';
+      });
+    }
+  },
+
+  openRowFullscreen: function(orderId) {
+    var orders = App.store.get('orders', []);
+    var order = orders.find(function(o){ return o.id === orderId; });
+    if (!order) return;
+    var imgs = [];
+    if (order.styleImg_path) imgs.push(order.styleImg_path);
+    if (order.fullImg_path) imgs.push(order.fullImg_path);
+    if (imgs.length === 0) return;
+    var idx = parseInt(order._thumbIdx || '0', 10);
+    this.openFullscreen(imgs, idx);
+  },
+
+  // 表格渲染后水合缩略图
+  hydrateTableImages: function() {
+    var imgs = document.querySelectorAll('img[data-order-img]');
+    var self = this;
+    imgs.forEach(function(img) {
+      var orderId = img.getAttribute('data-order-img');
+      var orders = App.store.get('orders', []);
+      var order = orders.find(function(o){ return o.id === orderId; });
+      if (!order) return;
+      var idx = parseInt(order._thumbIdx || '0', 10);
+      var p = (idx === 1 && order.fullImg_path) ? order.fullImg_path : (order.styleImg_path || order.fullImg_path);
+      if (!p || p.startsWith('data:image')) {
+        if (p) img.src = p;
+        return;
+      }
+      (async function() {
+        var src = await self.getSignedUrl(p);
+        img.src = src || self._directUrl(p);
+      })();
+    });
+  },
+
+  // 详情页图片水合
+  hydrateDetailImages: function(orderId) {
+    var orders = App.store.get('orders', []);
+    var order = orders.find(function(o){ return o.id === orderId; });
+    if (!order) return;
+    var self = this;
+    // 款式图
+    var styleImg = document.querySelector('img[data-order-detail-img="0"]');
+    if (styleImg && order.styleImg_path) {
+      var p = order.styleImg_path;
+      if (p.startsWith('data:image')) {
+        styleImg.src = p;
+      } else {
+        (async function(){
+          var src = await self.getSignedUrl(p);
+          styleImg.src = src || self._directUrl(p);
+        })();
+      }
+    }
+    // 大图
+    var fullImg = document.querySelector('img[data-order-detail-img="1"]');
+    if (fullImg && order.fullImg_path) {
+      var p2 = order.fullImg_path;
+      if (p2.startsWith('data:image')) {
+        fullImg.src = p2;
+      } else {
+        (async function(){
+          var src2 = await self.getSignedUrl(p2);
+          fullImg.src = src2 || self._directUrl(p2);
+        })();
+      }
+    }
+  }
+};
 
 // 根据客户加载对应人员（Planner/Designer/P.Manager）
 function loadCustomerPersonnel(customerId, existingOrder) {
@@ -776,6 +1163,10 @@ function saveForm(id) {
   const designer = document.getElementById('f_designer').value;
   const pManager = document.getElementById('f_pManager').value;
   const remark = document.getElementById('f_remark').value.trim();
+  const styleImg_path = document.getElementById('orderStyleImgPath')?.value || '';
+  const styleImg_name = document.getElementById('orderStyleImgName')?.value || '';
+  const fullImg_path = document.getElementById('orderFullImgPath')?.value || '';
+  const fullImg_name = document.getElementById('orderFullImgName')?.value || '';
 
   // 表单验证
   if (!orderNo) { App.toast('请输入PO (订单号)', 'error'); return; }
@@ -795,7 +1186,7 @@ function saveForm(id) {
     packageId, assType, colorCode, colorName,
     noOfCartons, quantity, unitPrice, totalAmount,
     shipMethod, etd, planner, designer, pManager,
-    remark,
+    remark, styleImg_path, styleImg_name, fullImg_path, fullImg_name,
     sizeMatrix: JSON.parse(JSON.stringify(_sizeMatrix)),
   };
 
@@ -818,6 +1209,16 @@ function saveForm(id) {
 function deleteOrder(id) {
   App.confirm('确定要删除此订单吗？删除后不可恢复。', () => {
     let orders = App.store.get('orders', []);
+    const order = orders.find(o => o.id === id);
+    // 删除 Supabase 图片
+    if (order) {
+      if (order.styleImg_path && !order.styleImg_path.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
+        try { SupabaseSubmit.deletePicture(order.styleImg_path); } catch(_e) {}
+      }
+      if (order.fullImg_path && !order.fullImg_path.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
+        try { SupabaseSubmit.deletePicture(order.fullImg_path); } catch(_e) {}
+      }
+    }
     orders = orders.filter(o => o.id !== id);
     App.store.set('orders', orders);
     App.toast('订单已删除', 'success');
@@ -955,6 +1356,28 @@ function viewDetail(id) {
       </div>
     </div>
 
+    <!-- 图片 -->
+    <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
+      <div class="card-header"><span class="card-title">🖼️ 款式图片</span></div>
+      <div style="display:flex;gap:12px;padding:8px 12px;flex-wrap:wrap;">
+        ${(function(){
+          var imgs = [];
+          if (order.styleImg_path) imgs.push({ path: order.styleImg_path, label: '款式图' });
+          if (order.fullImg_path) imgs.push({ path: order.fullImg_path, label: '大图' });
+          if (imgs.length === 0) return '<span style="color:var(--text-muted);font-size:12px;padding:8px;">暂无图片</span>';
+          return imgs.map(function(img, idx) {
+            var p = img.path;
+            var dataAttr = 'data-order-detail-img="' + idx + '"';
+            var src = p && p.startsWith('data:image') ? p : '';
+            return '<div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;" onclick="OrderImg.openRowFullscreen(\'' + order.id + '\')">' +
+              '<img ' + dataAttr + ' src="' + src + '" style="width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">' +
+              '<span style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + img.label + '</span>' +
+            '</div>';
+          }).join('');
+        })()}
+      </div>
+    </div>
+
     <!-- 样衣记录 -->
     <div class="card" style="box-shadow:none;border:1px solid var(--border-light);margin-bottom:6px;">
       <div class="card-header"><span class="card-title">样衣记录 (${samples.length})</span></div>
@@ -983,6 +1406,11 @@ function viewDetail(id) {
     footer: `<button class="btn" onclick="App.modal.close()">✖️</button>`,
     size: 'lg'
   });
+
+  // 水合详情图片
+  if (window.OrderImg && OrderImg.hydrateDetailImages) {
+    setTimeout(function(){ OrderImg.hydrateDetailImages(id); }, 100);
+  }
 
   // 渲染样衣记录表格
   App.renderTable('detail_samples', {
