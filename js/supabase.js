@@ -20,8 +20,8 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 // ===== Storage Bucket 名称（私有 Bucket，不使用公开 URL）=====
 export const STORAGE_BUCKET = "app-photos";
 
-// 单文件最大 5MB
-export const MAX_FILE_SIZE = 5 * 1024 * 1024;
+// 单文件最大 10MB
+export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // 允许的图片 MIME 类型
 export const ALLOWED_IMAGE_MIME = [

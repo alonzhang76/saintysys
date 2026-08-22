@@ -768,6 +768,30 @@ App.initSampleData();
 App.enforcePagePermission('consumption');
 setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
 
+// ===== 诊断：检测 Supabase Storage 可用性 =====
+setTimeout(function() {
+  var bucket = window.STORAGE_BUCKET || 'app-photos';
+  console.log('[consumption] Supabase 诊断:');
+  console.log('  SUPABASE_URL:', window.SUPABASE_URL);
+  console.log('  STORAGE_BUCKET:', bucket);
+  console.log('  SUPABASE_ANON_KEY:', window.SUPABASE_ANON_KEY ? '(已设置)' : '(未设置)');
+  console.log('  window.supabase:', !!window.supabase);
+  console.log('  window.SupabaseSubmit:', !!window.SupabaseSubmit);
+  console.log('  SupabaseSubmit.uploadPicture:', !!(window.SupabaseSubmit && typeof SupabaseSubmit.uploadPicture === 'function'));
+  if (window.supabase && window.supabase.storage) {
+    window.supabase.storage.from(bucket).list('consumption', { limit: 1 }).then(function(res) {
+      if (res.error) {
+        console.error('[consumption] Storage list 失败:', res.error.message);
+        console.error('  → 可能原因：1) Bucket "' + bucket + '" 不存在 2) RLS 策略未授权 3) 网络问题');
+      } else {
+        console.log('[consumption] Storage 连接正常，当前 consumption/ 下有 ' + ((res.data && res.data.length) || 0) + ' 个文件');
+      }
+    }).catch(function(err) {
+      console.error('[consumption] Storage 连接异常:', err && err.message);
+    });
+  }
+}, 1500);
+
 // ======================================================
 // ===== 用料及纸板 - 主模块
 // ======================================================
@@ -1101,58 +1125,96 @@ var Cons = {
     var previewImg = document.getElementById(prefix + 'picPreview');
     var box = document.getElementById(prefix + 'box');
     if (!statusEl || !box || !file) return false;
-    if (!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function') {
-      statusEl.className = 'status error';
-      statusEl.textContent = '上传模块未加载，请刷新页面后重试';
-      return false;
-    }
     var fmtSize = (App && App.utils && typeof App.utils.formatSize === 'function') ? App.utils.formatSize(file.size) : (file.size + ' B');
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       statusEl.className = 'status error';
-      statusEl.textContent = '图片超过 5MB 限制（当前 ' + fmtSize + '）';
+      statusEl.textContent = '图片超过 10MB 限制（当前 ' + fmtSize + '）';
       return false;
     }
-    // 先删除旧图
+    // 先删除旧图（跳过 base64 data URL）
     var oldPath = (pathEl && pathEl.value) || '';
     if (oldPath && !oldPath.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
       try { await SupabaseSubmit.deletePicture(oldPath); } catch(e) { console.warn('[consumption] deletePicture warn:', e); }
     }
     statusEl.className = 'status loading';
     statusEl.textContent = '正在上传中... ' + (file.name || '');
+    // 先做 base64 兜底（读取文件为 data URL）
+    var base64DataUrl = null;
+    try {
+      base64DataUrl = await this._fileToDataUrl(file);
+    } catch(_e) {
+      console.warn('[consumption] base64 fallback failed:', _e);
+    }
+    // 显示本地预览
     try {
       var localUrl = URL.createObjectURL(file);
       if (previewImg) { previewImg.style.display = 'block'; previewImg.src = localUrl; }
       this._setBoxState(prefix, 'has-img');
     } catch(_e) {}
-    try {
-      var result = await SupabaseSubmit.uploadPicture(file, 'consumption');
-      if (!result || !result.path) {
-        statusEl.className = 'status error';
-        statusEl.textContent = '上传失败，请重试';
-        this._setBoxState(prefix, 'empty');
-        return false;
-      }
-      if (pathEl) pathEl.value = result.path;
-      if (nameEl) nameEl.value = result.fileName || file.name;
-      statusEl.className = 'status ok';
-      statusEl.textContent = '✓ 上传成功：' + (result.fileName || file.name);
+    // 尝试 Supabase 上传
+    var supabaseOk = false;
+    var supabaseError = null;
+    if (!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function') {
+      console.error('[consumption] SupabaseSubmit.uploadPicture 不可用！window.SupabaseSubmit =', !!window.SupabaseSubmit);
+      supabaseError = '上传模块未加载';
+    } else {
       try {
-        var s = await this.getSignedUrl(result.path);
-        if (s && previewImg) previewImg.src = s;
-        // signed URL 失败时保留 blob URL（localUrl）作为预览，不报错
-      } catch(_x) {
-        // signed URL 获取失败，保持 blob URL 继续预览
+        console.log('[consumption] 尝试上传到 Supabase: bucket=' + (window.STORAGE_BUCKET || 'app-photos') + ', file=' + file.name + ', size=' + file.size);
+        var result = await SupabaseSubmit.uploadPicture(file, 'consumption');
+        if (result && result.path) {
+          if (pathEl) pathEl.value = result.path;
+          if (nameEl) nameEl.value = result.fileName || file.name;
+          statusEl.className = 'status ok';
+          statusEl.textContent = '✓ 上传成功：' + (result.fileName || file.name);
+          // 尝试用 signed URL 替换 blob 预览
+          try {
+            var s = await this.getSignedUrl(result.path);
+            if (s && previewImg) previewImg.src = s;
+          } catch(_x) {}
+          supabaseOk = true;
+          console.log('[consumption] Supabase 上传成功: path=' + result.path);
+        } else {
+          supabaseError = '上传返回空结果';
+          console.error('[consumption] Supabase upload returned null/empty');
+        }
+      } catch (err) {
+        supabaseError = (err && err.message) || String(err);
+        console.error('[consumption] Supabase upload exception:', err);
       }
-      // 几秒后隐藏 status 条
-      var _s = statusEl;
-      setTimeout(function(){ if (_s && _s.className.indexOf('ok')>=0) { _s.className = 'status'; _s.textContent = ''; } }, 2000);
-      return true;
-    } catch (err) {
-      console.error('[consumption] upload exception:', err);
+    }
+    // Supabase 上传失败 → 使用 base64 兜底
+    if (!supabaseOk && base64DataUrl) {
+      console.warn('[consumption] Supabase 上传失败(' + supabaseError + ')，使用 base64 兜底');
+      if (pathEl) pathEl.value = base64DataUrl;
+      if (nameEl) nameEl.value = file.name || '';
+      if (previewImg) previewImg.src = base64DataUrl;
       statusEl.className = 'status error';
-      statusEl.textContent = '上传异常：' + (err && err.message ? err.message : String(err));
+      statusEl.textContent = '⚠️ 云端上传失败(' + (supabaseError || '未知原因') + ')，图片仅本地保存';
+      // 给用户一个警告 toast
+      try { if (App && App.toast) App.toast('⚠️ 云端上传失败：' + (supabaseError || '未知原因') + '，图片仅保存在本地', 'error'); } catch(_) {}
+      supabaseOk = true;
+    }
+    if (!supabaseOk) {
+      statusEl.className = 'status error';
+      statusEl.textContent = '上传失败：' + (supabaseError || '请重试');
+      this._setBoxState(prefix, 'empty');
+      try { if (App && App.toast) App.toast('上传失败：' + (supabaseError || '请重试'), 'error'); } catch(_) {}
       return false;
     }
+    // 几秒后隐藏 status 条
+    var _s = statusEl;
+    setTimeout(function(){ if (_s && _s.className.indexOf('ok')>=0) { _s.className = 'status'; _s.textContent = ''; } }, 3000);
+    return true;
+  },
+
+  // ===== File → base64 data URL =====
+  _fileToDataUrl: function(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() { resolve(reader.result); };
+      reader.onerror = function() { reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
   },
 
   // ===== 图片上传回调（本地文件） =====
@@ -1184,17 +1246,23 @@ var Cons = {
     var previewImg = document.getElementById(prefix + 'picPreview');
     if (!pathEl || !previewImg) return;
     var p = pathEl.value; if (!p) return;
+    // base64 data URL → 直接显示
+    if (p.startsWith('data:image')) {
+      previewImg.src = p;
+      previewImg.style.display = 'block';
+      this._setBoxState(prefix, 'has-img');
+      return;
+    }
     try {
       var signed = await this.getSignedUrl(p);
       if (signed) { previewImg.src = signed; previewImg.style.display = 'block'; this._setBoxState(prefix, 'has-img'); return; }
     } catch(_e) {}
-    // 兜底：用直接下载 URL（带鉴权 header 通过 <img onerror 提示）
+    // 兜底：用直接下载 URL
     var bucket = window.STORAGE_BUCKET || 'app-photos';
     var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
     previewImg.src = directUrl;
     previewImg.style.display = 'block';
     this._setBoxState(prefix, 'has-img');
-    // 若 direct URL 也加载失败，给用户提示
     var self = this;
     previewImg.onerror = function() {
       previewImg.onerror = null;
@@ -1606,7 +1674,7 @@ var Cons = {
     var idx = data.findIndex(function(s){ return s.id === id; });
     if (idx < 0) return;
     var item = data[idx];
-    // 删除图片
+    // 删除图片（跳过 base64 data URL，因为它们不存在于 Supabase）
     if (item.styleImg_path && !item.styleImg_path.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
       try { SupabaseSubmit.deletePicture(item.styleImg_path); } catch(e) {}
     }
@@ -1636,11 +1704,16 @@ var Cons = {
     if (!imgEl) return;
     var src = self.fullscreenImgs[self.fullscreenIdx] || '';
     imgEl.src = '';
+    // base64 data URL → 直接显示
+    if (src && src.startsWith('data:image')) {
+      imgEl.src = src;
+      cap.textContent = (self.fullscreenIdx + 1) + ' / ' + self.fullscreenImgs.length;
+      return;
+    }
     try {
       var url = await self.getSignedUrl(src);
       if (url) { imgEl.src = url; }
       else {
-        // 兜底：直接下载 URL
         var bucket = window.STORAGE_BUCKET || 'app-photos';
         var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(src);
         imgEl.src = directUrl || src || '';
@@ -1786,9 +1859,12 @@ var Cons = {
     var bucket = window.STORAGE_BUCKET || 'app-photos';
     // 替换 styleImg
     if (style.styleImg_path) {
-      var sUrl = await self.getSignedUrl(style.styleImg_path);
-      if (!sUrl) {
-        sUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.styleImg_path);
+      var sUrl;
+      if (style.styleImg_path.startsWith('data:image')) {
+        sUrl = style.styleImg_path;
+      } else {
+        sUrl = await self.getSignedUrl(style.styleImg_path);
+        if (!sUrl) sUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.styleImg_path);
       }
       if (sUrl) {
         var els = document.querySelectorAll('#c_printScroll .print-style-img img');
@@ -1796,9 +1872,12 @@ var Cons = {
       }
     }
     if (style.fullImg_path) {
-      var fUrl = await self.getSignedUrl(style.fullImg_path);
-      if (!fUrl) {
-        fUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.fullImg_path);
+      var fUrl;
+      if (style.fullImg_path.startsWith('data:image')) {
+        fUrl = style.fullImg_path;
+      } else {
+        fUrl = await self.getSignedUrl(style.fullImg_path);
+        if (!fUrl) fUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.fullImg_path);
       }
       if (fUrl) {
         var els2 = document.querySelectorAll('#c_printScroll .print-full-img-page img');
@@ -1814,6 +1893,7 @@ var Cons = {
 
     function directUrl(p) {
       if (!p) return '';
+      if (p.startsWith('data:image')) return p;
       return (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
     }
 
@@ -1826,10 +1906,18 @@ var Cons = {
       var styleSrc = '';
       var fullSrc = '';
       if (style.styleImg_path) {
-        styleSrc = (await self.getSignedUrl(style.styleImg_path)) || directUrl(style.styleImg_path);
+        if (style.styleImg_path.startsWith('data:image')) {
+          styleSrc = style.styleImg_path;
+        } else {
+          styleSrc = (await self.getSignedUrl(style.styleImg_path)) || directUrl(style.styleImg_path);
+        }
       }
       if (style.fullImg_path) {
-        fullSrc = (await self.getSignedUrl(style.fullImg_path)) || directUrl(style.fullImg_path);
+        if (style.fullImg_path.startsWith('data:image')) {
+          fullSrc = style.fullImg_path;
+        } else {
+          fullSrc = (await self.getSignedUrl(style.fullImg_path)) || directUrl(style.fullImg_path);
+        }
       }
       var printStyleForWindow = JSON.parse(JSON.stringify(style));
       if (styleSrc) printStyleForWindow.styleImg_resolved = styleSrc;
@@ -1986,12 +2074,16 @@ Cons.navThumb = function(el, styleId, dir) {
   var dots = thumb.querySelectorAll('.thumb-dot');
   dots.forEach(function(d, i){ d.classList.toggle('active', i === idx); });
   if (!imgEl) return;
+  var p = imgs[idx];
+  // base64 data URL → 直接显示
+  if (p && p.startsWith('data:image')) {
+    imgEl.src = p; return;
+  }
   (async function(){
-    var src = await Cons.getSignedUrl(imgs[idx]);
+    var src = await Cons.getSignedUrl(p);
     if (src) { imgEl.src = src; return; }
-    // 兜底
     var bucket = window.STORAGE_BUCKET || 'app-photos';
-    var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(imgs[idx]);
+    var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
     imgEl.src = directUrl;
   })();
 };
@@ -2001,6 +2093,10 @@ function hydrateThumbImages() {
   imgs.forEach(function(img){
     var p = img.getAttribute('data-cons-path');
     if (!p) return;
+    // base64 data URL → 直接显示
+    if (p.startsWith('data:image')) {
+      img.src = p; img.style.display = 'block'; return;
+    }
     (async function(){
       var src = await Cons.getSignedUrl(p);
       if (src) { img.src = src; img.style.display = 'block'; return; }

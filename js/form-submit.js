@@ -490,7 +490,7 @@ const SupabaseSubmit = {
       return null;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast("图片超过 5MB 限制", "error");
+      toast("图片超过 " + Math.round(MAX_FILE_SIZE / 1024 / 1024) + "MB 限制", "error");
       return null;
     }
 
@@ -505,6 +505,8 @@ const SupabaseSubmit = {
       "-" +
       safeFileName(file.name);
 
+    console.log("[form-submit] uploadPicture: bucket=" + STORAGE_BUCKET + ", path=" + path + ", userId=" + user.id);
+
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, file, {
@@ -514,10 +516,17 @@ const SupabaseSubmit = {
 
     if (error) {
       console.error("[form-submit] uploadPicture error:", error);
-      toast("上传失败：" + (error.message || "请检查网络"), "error");
+      var errMsg = error.message || "请检查网络";
+      if (errMsg.indexOf("violates") >= 0 || errMsg.indexOf("policy") >= 0 || errMsg.indexOf("RLS") >= 0) {
+        errMsg = "RLS策略拒绝写入，请检查Bucket " + STORAGE_BUCKET + "的INSERT策略";
+      } else if (errMsg.indexOf("not found") >= 0 || errMsg.indexOf("bucket") >= 0) {
+        errMsg = "Bucket " + STORAGE_BUCKET + " 不存在，请在Supabase Dashboard创建";
+      }
+      toast("上传失败：" + errMsg, "error");
       return null;
     }
 
+    console.log("[form-submit] uploadPicture 成功:", data);
     toast("上传成功", "success");
     return { path: path, fileName: file.name };
   },
