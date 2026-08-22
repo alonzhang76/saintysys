@@ -49,6 +49,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 window.supabase = supabase;
 window.SUPABASE_URL = SUPABASE_URL;
 window.STORAGE_BUCKET = STORAGE_BUCKET;
+window.SUPABASE_ANON_KEY = SUPABASE_PUBLISHABLE_KEY;
 
 // 配置占位符检查（修正：当且仅当仍为占位符时才警告）
 if (

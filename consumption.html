@@ -1021,18 +1021,39 @@ var Cons = {
   },
 
   // ===== 获取 signed URL =====
-  getSignedUrl: function(path) {
-    if (!path) return Promise.resolve(null);
-    if (path.startsWith('data:image')) return Promise.resolve(path);
-    if (!window.supabase) return Promise.resolve(null);
-    try {
-      var sb = window.supabase;
-      var BUCKET = (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.STORAGE_BUCKET) || 'documents';
-      return sb.storage.from(BUCKET).createSignedUrl(path, 3600).then(function(res){
-        if (res.error || !res.data) return null;
-        return res.data.signedUrl || null;
-      }).catch(function(){ return null; });
-    } catch(e) { return Promise.resolve(null); }
+  getSignedUrl: async function(path) {
+    if (!path) return null;
+    if (path.startsWith('data:image')) return path;
+    // 1) 优先用 JS client（最稳定）
+    if (window.supabase) {
+      try {
+        var sb = window.supabase;
+        var BUCKET = window.STORAGE_BUCKET || 'app-photos';
+        var res = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+        if (res && !res.error && res.data) return res.data.signedUrl || null;
+      } catch(_e) {}
+    }
+    // 2) REST API 兜底（无需 JS client 就绪）
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+      try {
+        var BUCKET2 = window.STORAGE_BUCKET || 'app-photos';
+        var url = window.SUPABASE_URL + '/storage/v1/object/sign/' + encodeURIComponent(BUCKET2) + '/' + encodeURIComponent(path);
+        var resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: '{}'
+        });
+        if (resp.ok) {
+          var data = await resp.json();
+          if (data && data.signedUrl) return data.signedUrl;
+        }
+      } catch(_e2) {}
+    }
+    return null;
   },
 
   // ===== 根据 prefix 还原 kind（style=款式图 / full=大图） =====
@@ -1118,7 +1139,10 @@ var Cons = {
       try {
         var s = await this.getSignedUrl(result.path);
         if (s && previewImg) previewImg.src = s;
-      } catch(_x) {}
+        // signed URL 失败时保留 blob URL（localUrl）作为预览，不报错
+      } catch(_x) {
+        // signed URL 获取失败，保持 blob URL 继续预览
+      }
       // 几秒后隐藏 status 条
       var _s = statusEl;
       setTimeout(function(){ if (_s && _s.className.indexOf('ok')>=0) { _s.className = 'status'; _s.textContent = ''; } }, 2000);
@@ -1164,7 +1188,20 @@ var Cons = {
       var signed = await this.getSignedUrl(p);
       if (signed) { previewImg.src = signed; previewImg.style.display = 'block'; this._setBoxState(prefix, 'has-img'); return; }
     } catch(_e) {}
-    previewImg.src = p; previewImg.style.display = 'block'; this._setBoxState(prefix, 'has-img');
+    // 兜底：用直接下载 URL（带鉴权 header 通过 <img onerror 提示）
+    var bucket = window.STORAGE_BUCKET || 'app-photos';
+    var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
+    previewImg.src = directUrl;
+    previewImg.style.display = 'block';
+    this._setBoxState(prefix, 'has-img');
+    // 若 direct URL 也加载失败，给用户提示
+    var self = this;
+    previewImg.onerror = function() {
+      previewImg.onerror = null;
+      self._setBoxState(prefix, 'empty');
+      var statusEl = document.getElementById(prefix + 'picStatus');
+      if (statusEl) { statusEl.className = 'status error'; statusEl.textContent = '图片加载失败，请重新上传'; }
+    };
   },
 
   // ===== 生成图片上传区块 HTML（对齐 cc.html 的 image-box / image-preview 结构） =====
@@ -1602,8 +1639,17 @@ var Cons = {
     try {
       var url = await self.getSignedUrl(src);
       if (url) { imgEl.src = url; }
-      else { imgEl.src = src || ''; }
-    } catch(e) { imgEl.src = src || ''; }
+      else {
+        // 兜底：直接下载 URL
+        var bucket = window.STORAGE_BUCKET || 'app-photos';
+        var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(src);
+        imgEl.src = directUrl || src || '';
+      }
+    } catch(e) {
+      var bucket2 = window.STORAGE_BUCKET || 'app-photos';
+      var directUrl2 = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket2) + '/' + encodeURIComponent(src);
+      imgEl.src = directUrl2 || src || '';
+    }
     cap.textContent = (self.fullscreenIdx + 1) + ' / ' + self.fullscreenImgs.length;
   },
   navFullscreen: function(dir) {
@@ -1737,9 +1783,13 @@ var Cons = {
   },
   hydratePrintPreviewImages: async function(style) {
     var self = this;
+    var bucket = window.STORAGE_BUCKET || 'app-photos';
     // 替换 styleImg
     if (style.styleImg_path) {
       var sUrl = await self.getSignedUrl(style.styleImg_path);
+      if (!sUrl) {
+        sUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.styleImg_path);
+      }
       if (sUrl) {
         var els = document.querySelectorAll('#c_printScroll .print-style-img img');
         els.forEach(function(img){ img.src = sUrl; });
@@ -1747,6 +1797,9 @@ var Cons = {
     }
     if (style.fullImg_path) {
       var fUrl = await self.getSignedUrl(style.fullImg_path);
+      if (!fUrl) {
+        fUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.fullImg_path);
+      }
       if (fUrl) {
         var els2 = document.querySelectorAll('#c_printScroll .print-full-img-page img');
         els2.forEach(function(img){ img.src = fUrl; });
@@ -1757,14 +1810,27 @@ var Cons = {
     var style = window._consPrintStyle;
     if (!style) return;
     var self = this;
+    var bucket = window.STORAGE_BUCKET || 'app-photos';
+
+    function directUrl(p) {
+      if (!p) return '';
+      return (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
+    }
+
     // 开新窗口打印
     var today = new Date();
     var dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
     var userName = (window.App && App.getCurrentUser && App.getCurrentUser()) ? (App.getCurrentUser().username || '管理员') : '管理员';
 
     (async function() {
-      var styleSrc = style.styleImg_path ? (await self.getSignedUrl(style.styleImg_path) || style.styleImg_path) : '';
-      var fullSrc = style.fullImg_path ? (await self.getSignedUrl(style.fullImg_path) || style.fullImg_path) : '';
+      var styleSrc = '';
+      var fullSrc = '';
+      if (style.styleImg_path) {
+        styleSrc = (await self.getSignedUrl(style.styleImg_path)) || directUrl(style.styleImg_path);
+      }
+      if (style.fullImg_path) {
+        fullSrc = (await self.getSignedUrl(style.fullImg_path)) || directUrl(style.fullImg_path);
+      }
       var printStyleForWindow = JSON.parse(JSON.stringify(style));
       if (styleSrc) printStyleForWindow.styleImg_resolved = styleSrc;
       if (fullSrc)  printStyleForWindow.fullImg_resolved = fullSrc;
@@ -1922,7 +1988,11 @@ Cons.navThumb = function(el, styleId, dir) {
   if (!imgEl) return;
   (async function(){
     var src = await Cons.getSignedUrl(imgs[idx]);
-    if (src) { imgEl.src = src; }
+    if (src) { imgEl.src = src; return; }
+    // 兜底
+    var bucket = window.STORAGE_BUCKET || 'app-photos';
+    var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(imgs[idx]);
+    imgEl.src = directUrl;
   })();
 };
 
@@ -1933,7 +2003,11 @@ function hydrateThumbImages() {
     if (!p) return;
     (async function(){
       var src = await Cons.getSignedUrl(p);
-      if (src) { img.src = src; img.style.display = 'block'; }
+      if (src) { img.src = src; img.style.display = 'block'; return; }
+      // 兜底：直接下载 URL
+      var bucket = window.STORAGE_BUCKET || 'app-photos';
+      var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
+      img.src = directUrl; img.style.display = 'block';
     })();
   });
 }

@@ -1399,14 +1399,37 @@ async function onSamplePicDelete(prefix) {
 }
 // 辅助：取路径的签名 URL（容错）
 async function getSignedUrlForPath(storagePath) {
-  if (!storagePath || !window.supabase) return null;
-  try {
-    var sb = window.supabase;
-    var BUCKET = (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.STORAGE_BUCKET) || 'documents';
-    var res = await sb.storage.from(BUCKET).createSignedUrl(storagePath, 3600);
-    if (res.error || !res.data) return null;
-    return res.data.signedUrl || null;
-  } catch(e) { return null; }
+  if (!storagePath) return null;
+  // 1) JS client
+  if (window.supabase) {
+    try {
+      var sb = window.supabase;
+      var BUCKET = window.STORAGE_BUCKET || 'app-photos';
+      var res = await sb.storage.from(BUCKET).createSignedUrl(storagePath, 3600);
+      if (res && !res.error && res.data) return res.data.signedUrl || null;
+    } catch(_e) {}
+  }
+  // 2) REST API 兜底
+  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    try {
+      var BUCKET2 = window.STORAGE_BUCKET || 'app-photos';
+      var url = window.SUPABASE_URL + '/storage/v1/object/sign/' + encodeURIComponent(BUCKET2) + '/' + encodeURIComponent(storagePath);
+      var resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      });
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data && data.signedUrl) return data.signedUrl;
+      }
+    } catch(_e2) {}
+  }
+  return null;
 }
 // 辅助：表单打开后回填预览图显示（用 signed URL 或本地 blob）
 async function hydratePicPreview(prefix) {
