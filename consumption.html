@@ -1125,15 +1125,15 @@ var Cons = {
     }).join('');
 
     var body =
-      '<div class="editor-panel">' +
+      '<div class="consumption"><div class="editor-panel">' +
         // ===== 基本信息（form-row：6 列） =====
         '<div class="form-row">' +
-          '<div class="form-group"><label>日期</label><input type="date" id="c_f_date" value="' + (item.date || today) + '"></div>' +
-          '<div class="form-group"><label>设计师</label><input type="text" id="c_f_designer" value="' + App.utils.escapeHtml(item.designer || '') + '" placeholder="CAD"></div>' +
-          '<div class="form-group"><label>Season</label><input type="text" id="c_f_season" value="' + App.utils.escapeHtml(item.season || '') + '" placeholder="如：2024春夏"></div>' +
-          '<div class="form-group"><label>款号 <span class="required">*</span></label><input type="text" id="c_f_styleNo" value="' + App.utils.escapeHtml(item.styleNo || '') + '" placeholder="如：GW27-003"></div>' +
-          '<div class="form-group"><label>品名</label><input type="text" id="c_f_name" value="' + App.utils.escapeHtml(item.name || '') + '" placeholder="如：童裤"></div>' +
-          '<div class="form-group"><label>参考加工费</label><input type="text" id="c_f_price" value="' + App.utils.escapeHtml(item.price || '') + '" placeholder="如：18"></div>' +
+          '<div class="form-group"><label>日期</label><input type="date" id="c_f_date" class="form-input" value="' + (item.date || today) + '"></div>' +
+          '<div class="form-group"><label>设计师</label><input type="text" id="c_f_designer" class="form-input" value="' + App.utils.escapeHtml(item.designer || '') + '" placeholder="CAD"></div>' +
+          '<div class="form-group"><label>Season</label><input type="text" id="c_f_season" class="form-input" value="' + App.utils.escapeHtml(item.season || '') + '" placeholder="如：2024春夏"></div>' +
+          '<div class="form-group"><label>款号 <span class="required">*</span></label><input type="text" id="c_f_styleNo" class="form-input" value="' + App.utils.escapeHtml(item.styleNo || '') + '" placeholder="如：GW27-003"></div>' +
+          '<div class="form-group"><label>品名</label><input type="text" id="c_f_name" class="form-input" value="' + App.utils.escapeHtml(item.name || '') + '" placeholder="如：童裤"></div>' +
+          '<div class="form-group"><label>参考加工费</label><input type="text" id="c_f_price" class="form-input" value="' + App.utils.escapeHtml(item.price || '') + '" placeholder="如：18"></div>' +
         '</div>' +
 
         // ===== 图片上传（两列大虚线框） =====
@@ -1146,8 +1146,9 @@ var Cons = {
         '<div class="dynamic-table-section">' +
           '<h3>' +
             '<span>面料 / 辅料明细</span>' +
-            '<span style="display:flex;gap:6px;flex-wrap:wrap;">' + catShortcutBtns + '</span>' +
-            '<button class="btn btn-sm" type="button" onclick="Cons.openCategoryManager()" title="管理类别">⚙ 类别管理</button>' +
+            '<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' + catShortcutBtns +
+              '<button class="btn btn-sm" type="button" onclick="Cons.openCategoryManager()" title="管理类别">⚙ 类别管理</button>' +
+            '</span>' +
           '</h3>' +
           '<div style="overflow-x:auto;">' +
             '<table class="dynamic-table" id="c_fabricTable"><thead><tr>' +
@@ -1162,7 +1163,7 @@ var Cons = {
         // ===== 特殊工艺说明（单独 form-group 一行） =====
         '<div class="form-group" style="margin-bottom:16px;">' +
           '<label>特殊工艺说明</label>' +
-          '<textarea id="c_f_craft" placeholder="如司马克、对条、对格等" rows="2">' + App.utils.escapeHtml(item.craft || '') + '</textarea>' +
+          '<textarea id="c_f_craft" class="form-textarea" placeholder="如司马克、对条、对格等" rows="2">' + App.utils.escapeHtml(item.craft || '') + '</textarea>' +
         '</div>' +
 
         // ===== 主要规格尺寸 =====
@@ -1185,7 +1186,7 @@ var Cons = {
           '<button class="btn btn-primary" type="button" onclick="Cons.printPreviewFromEditor()">🖨️ 打印</button>' +
           '<button class="btn btn-primary" type="button" onclick="Cons.saveStyle()">保存</button>' +
         '</div>' +
-      '</div>';
+      '</div></div>';
 
     App.modal.open({
       title: isEdit ? '编辑款号' : '新增款号',
@@ -1210,22 +1211,26 @@ var Cons = {
     var cats = self.getCategories();
     var body = document.getElementById('c_fabricBody');
     if (!body) return;
+    if (self.fabricData.length === 0) {
+      body.innerHTML = '<tr><td colspan="12" style="padding:24px 8px;text-align:center;color:var(--muted);font-size:12px;">暂无数据，点击上方按钮添加</td></tr>';
+      return;
+    }
     body.innerHTML = self.fabricData.map(function(f, idx){
       var catOpts = cats.map(function(c){
         return '<option value="' + App.utils.escapeHtml(c) + '"' + (f.category === c ? ' selected' : '') + '>' + App.utils.escapeHtml(c) + '</option>';
       }).join('');
       return '<tr>' +
-        '<td><select onchange="Cons.fabricData[' + idx + '].category=this.value">' + catOpts + '</select></td>' +
-        '<td><textarea rows="1" oninput="Cons.fabricData[' + idx + '].spec=this.value">' + App.utils.escapeHtml(f.spec || '') + '</textarea></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.composition || '') + '" oninput="Cons.fabricData[' + idx + '].composition=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.beforeWeight || '') + '" oninput="Cons.fabricData[' + idx + '].beforeWeight=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.afterWeight || '') + '" oninput="Cons.fabricData[' + idx + '].afterWeight=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.width || '') + '" oninput="Cons.fabricData[' + idx + '].width=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.spec2 || '') + '" oninput="Cons.fabricData[' + idx + '].spec2=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.consumption || '') + '" oninput="Cons.fabricData[' + idx + '].consumption=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.part || '') + '" oninput="Cons.fabricData[' + idx + '].part=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.shrink || '') + '" oninput="Cons.fabricData[' + idx + '].shrink=this.value"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(f.remark || '') + '" oninput="Cons.fabricData[' + idx + '].remark=this.value"></td>' +
+        '<td><select class="form-select" onchange="Cons.fabricData[' + idx + '].category=this.value">' + catOpts + '</select></td>' +
+        '<td><textarea class="form-textarea" rows="1" oninput="Cons.fabricData[' + idx + '].spec=this.value">' + App.utils.escapeHtml(f.spec || '') + '</textarea></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.composition || '') + '" oninput="Cons.fabricData[' + idx + '].composition=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.beforeWeight || '') + '" oninput="Cons.fabricData[' + idx + '].beforeWeight=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.afterWeight || '') + '" oninput="Cons.fabricData[' + idx + '].afterWeight=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.width || '') + '" oninput="Cons.fabricData[' + idx + '].width=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.spec2 || '') + '" oninput="Cons.fabricData[' + idx + '].spec2=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.consumption || '') + '" oninput="Cons.fabricData[' + idx + '].consumption=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.part || '') + '" oninput="Cons.fabricData[' + idx + '].part=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.shrink || '') + '" oninput="Cons.fabricData[' + idx + '].shrink=this.value"></td>' +
+        '<td><input class="form-input" type="text" value="' + App.utils.escapeHtml(f.remark || '') + '" oninput="Cons.fabricData[' + idx + '].remark=this.value"></td>' +
         '<td class="row-actions">' +
           '<button class="btn btn-sm" title="上移" onclick="Cons.moveFabric(' + idx + ',-1)">↑</button>' +
           '<button class="btn btn-sm" title="下移" onclick="Cons.moveFabric(' + idx + ',1)">↓</button>' +
@@ -1257,9 +1262,9 @@ var Cons = {
     if (!body) return;
     body.innerHTML = self.specData.map(function(s, idx){
       return '<tr>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(s.part || '') + '" oninput="Cons.specData[' + idx + '].part=this.value" placeholder="如：裤长"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(s.size || '') + '" oninput="Cons.specData[' + idx + '].size=this.value" placeholder="50"></td>' +
-        '<td><input type="text" value="' + App.utils.escapeHtml(s.remark || '') + '" oninput="Cons.specData[' + idx + '].remark=this.value" placeholder="如：±1cm"></td>' +
+        '<td><input type="text" class="form-input" value="' + App.utils.escapeHtml(s.part || '') + '" oninput="Cons.specData[' + idx + '].part=this.value" placeholder="如：裤长"></td>' +
+        '<td><input type="text" class="form-input" value="' + App.utils.escapeHtml(s.size || '') + '" oninput="Cons.specData[' + idx + '].size=this.value" placeholder="50"></td>' +
+        '<td><input type="text" class="form-input" value="' + App.utils.escapeHtml(s.remark || '') + '" oninput="Cons.specData[' + idx + '].remark=this.value" placeholder="如：±1cm"></td>' +
         '<td class="row-actions">' +
           '<button class="btn btn-sm" title="上移" onclick="Cons.moveSpec(' + idx + ',-1)">↑</button>' +
           '<button class="btn btn-sm" title="下移" onclick="Cons.moveSpec(' + idx + ',1)">↓</button>' +

@@ -156,6 +156,8 @@ const App = {
     { key: 'shipping', text: '出运管理', icon: '🚢', url: 'shipping.html' },
     { key: 'express', text: '寄件管理', icon: '📦', url: 'express.html' },
     { key: 'finance', text: '财务管理', icon: '💰', url: 'finance.html' },
+    { group: '数据存储' },
+    { key: 'nasDrive', text: '云盘 NAS', icon: '☁️', url: 'nas.html' },
     { group: '基础数据' },
     { key: 'contacts', text: '通讯录', icon: '📞', url: 'contacts.html' },
     { key: 'maintenance', text: '维护资料', icon: '📚', url: 'maintenance.html' },
@@ -518,7 +520,7 @@ const App = {
 
   // ===== 备份数据 =====
   backupData() {
-    const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'consumptions', 'consumption_categories', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'express_delivery_data_v2', 'pl_records_v1'];
+    const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'consumptions', 'consumption_categories', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'express_delivery_data_v2', 'pl_records_v1', 'nas_config', 'nas_folder_perms'];
     const backup = { backupTime: new Date().toISOString() };
     keys.forEach(key => {
       const data = localStorage.getItem(key);
@@ -618,6 +620,7 @@ const App = {
     shipping:     '出运管理',
     express:      '寄件管理',
     finance:      '财务管理',
+    nasDrive:     '云盘 NAS',
     contacts:     '通讯录',
     maintenance:  '维护资料',
     settings:     '设置',
@@ -853,6 +856,7 @@ App.initSampleData = function() {
       shipping:     { merchandiser: 'write', purchaser: 'read', designer: 'none', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
       express:      { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
       finance:      { merchandiser: 'read', purchaser: 'read', designer: 'none', qc: 'none', finance: 'write', documentary: 'read', manager: 'write', user: 'write' },
+      nasDrive:     { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
       contacts:     { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
       maintenance:  { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
       settings:     { merchandiser: 'none', purchaser: 'none', designer: 'none', qc: 'none', finance: 'none', documentary: 'none', manager: 'read', user: 'write' },
@@ -864,6 +868,7 @@ App.initSampleData = function() {
   const perms = App.store.get('permissions', {});
   const newModulePerms = {
     express: { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'read' },
+    nasDrive: { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
   };
   let permChanged = false;
   Object.keys(newModulePerms).forEach(key => {

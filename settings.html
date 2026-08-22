@@ -42,11 +42,13 @@
         <div class="settings-tab active" onclick="switchTab('users')">👥 用户</div>
         <div class="settings-tab" onclick="switchTab('roles')">🛡️ 用户组</div>
         <div class="settings-tab" onclick="switchTab('advanced')">⚙️ 高级设置</div>
+        <div class="settings-tab" onclick="switchTab('nas')">☁️ 云盘 NAS</div>
       </div>
 
       <div id="tab-users"></div>
       <div id="tab-roles" style="display:none;"></div>
       <div id="tab-advanced" style="display:none;"></div>
+      <div id="tab-nas" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -70,7 +72,7 @@ var _SettingsPendingRefresh = false;
 window.addEventListener('cloud-data-updated', function(e) {
   var keys = e.detail.keys || [];
   var needRefresh = keys.some(function(k) {
-    return k === 'users' || k === 'permissions';
+    return k === 'users' || k === 'permissions' || k === 'nas_config' || k === 'nas_folder_perms';
   });
   if (needRefresh) {
     if (!_SettingsInited) {
@@ -83,6 +85,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       if (typeof window.renderUsers === 'function') renderUsers();
       if (typeof window.renderRoles === 'function') renderRoles();
       if (typeof window.renderAdvanced === 'function') renderAdvanced();
+      if (typeof window.renderNas === 'function') renderNas();
     } catch(e) {}
   }
 });
@@ -102,6 +105,7 @@ window.addEventListener('auth-role-updated', function(e) {
     if (renderUsers) renderUsers();
     if (renderRoles) renderRoles();
     if (renderAdvanced) renderAdvanced();
+    if (renderNas) renderNas();
   }
 });
 
@@ -124,13 +128,16 @@ let currentTab = 'users';
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.settings-tab').forEach(el => el.classList.remove('active'));
-  event.target.classList.add('active');
+  if (event && event.target) event.target.classList.add('active');
+  else { var t = document.querySelector('.settings-tab[onclick*="switchTab(\''+tab+'\'')]; if (t) t.classList.add('active'); }
   document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
   document.getElementById('tab-roles').style.display = tab === 'roles' ? 'block' : 'none';
   document.getElementById('tab-advanced').style.display = tab === 'advanced' ? 'block' : 'none';
+  document.getElementById('tab-nas').style.display = tab === 'nas' ? 'block' : 'none';
   if (tab === 'users') renderUsers();
   if (tab === 'roles') renderRoles();
   if (tab === 'advanced') renderAdvanced();
+  if (tab === 'nas') renderNas();
 }
 
 // ===== 用户管理 =====
@@ -554,8 +561,149 @@ function renderAdvanced() {
   document.getElementById('tab-advanced').innerHTML = html;
 }
 
+// ===== 云盘 NAS 配置 =====
+function _defaultNasConfig() {
+  return {
+    serverUrl: '',            // 如 http://192.168.1.50:9008 或 https://xxx.ugreen.link:9009
+    webdavPath: '/webdav',    // 绿联 NAS WebDAV 默认路径通常是 /webdav，可按需改成 /dav 等
+    rootFolder: '/服装外贸系统',   // 在 WebDAV 里的基础目录（可自定义）
+    username: '',
+    password: '',             // 明文保存在 localStorage，注意：浏览器端存储密码不是绝对安全，建议创建 NAS 端专用低权限账号
+    mode: 'lan',              // lan / ugreen_ddns / portmap（仅提示用户，方便备注）
+    uploadMaxMb: 500,
+    verifySsl: true,          // 自签证书时可设为 false（用户注意风险）
+  };
+}
+function getNasConfig() {
+  try {
+    var raw = App.store.get('nas_config', null);
+    if (!raw) return _defaultNasConfig();
+    return Object.assign(_defaultNasConfig(), raw);
+  } catch (e) { return _defaultNasConfig(); }
+}
+function saveNasConfig() {
+  if (!isAdminUser()) { App.toast('仅管理员可修改 NAS 配置', 'error'); return; }
+  var cfg = _defaultNasConfig();
+  cfg.serverUrl  = (document.getElementById('nas_serverUrl').value  || '').trim().replace(/\/+$/, '');
+  cfg.webdavPath = document.getElementById('nas_webdavPath').value.trim() || '/webdav';
+  cfg.rootFolder = document.getElementById('nas_rootFolder').value.trim() || '/';
+  cfg.username   = document.getElementById('nas_username').value.trim();
+  cfg.password   = document.getElementById('nas_password').value;
+  cfg.mode       = document.getElementById('nas_mode').value;
+  cfg.uploadMaxMb = parseInt(document.getElementById('nas_max').value || '500', 10) || 500;
+  cfg.verifySsl  = document.getElementById('nas_verifySsl').checked;
+  if (!cfg.serverUrl) { App.toast('请填写 WebDAV 服务器地址', 'error'); return; }
+  if (cfg.rootFolder.charAt(0) !== '/') cfg.rootFolder = '/' + cfg.rootFolder;
+  // 双写
+  App.store.set('nas_config', cfg);
+  try { localStorage.setItem('nas_config', JSON.stringify(cfg)); } catch(e) {}
+  if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+    try { window.SupabaseStore.setSync('nas_config', cfg); } catch(e) {}
+  }
+  App.toast('✅ NAS 配置已保存并同步到云端', 'success');
+}
+async function testNasConn() {
+  var btn = document.getElementById('nas_testBtn');
+  if (!btn) return;
+  btn.disabled = true; btn.textContent = '测试中...';
+  try {
+    // 先把表单最新的值拼到临时 config
+    var cfg = _defaultNasConfig();
+    cfg.serverUrl  = (document.getElementById('nas_serverUrl').value  || '').trim().replace(/\/+$/, '');
+    cfg.webdavPath = document.getElementById('nas_webdavPath').value.trim() || '/webdav';
+    cfg.rootFolder = document.getElementById('nas_rootFolder').value.trim() || '/';
+    cfg.username   = document.getElementById('nas_username').value.trim();
+    cfg.password   = document.getElementById('nas_password').value;
+    if (!cfg.serverUrl) throw new Error('请填写服务器地址');
+    // 发起 PROPFIND 来验证（Depth:0 读取根目录属性）
+    var base = cfg.serverUrl + (cfg.webdavPath.startsWith('/') ? cfg.webdavPath : '/' + cfg.webdavPath);
+    var target = base + (cfg.rootFolder === '/' ? '/' : (cfg.rootFolder.startsWith('/') ? cfg.rootFolder : '/' + cfg.rootFolder));
+    var headers = { 'Depth': '0' };
+    if (cfg.username) headers['Authorization'] = 'Basic ' + btoa(cfg.username + ':' + cfg.password);
+    var resp = await fetch(target, {
+      method: 'PROPFIND',
+      headers: headers,
+      credentials: 'omit',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (resp.ok) App.toast('✅ 连接成功：WebDAV HTTP ' + resp.status, 'success');
+    else if (resp.status === 401) App.toast('❌ 认证失败：账号或密码不正确', 'error');
+    else if (resp.status === 404) App.toast('⚠️ 路径不存在(404)，请确认 WebDAV路径 和 根目录', 'warning');
+    else App.toast('❌ 连接失败 HTTP ' + resp.status, 'error');
+  } catch (err) {
+    console.warn('[NAS] test error:', err);
+    App.toast('❌ 连接异常：' + (err && err.message ? err.message : String(err)), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🔌 连接测试';
+  }
+}
+function renderNas() {
+  if (!isAdminUser()) {
+    document.getElementById('tab-nas').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40vh;color:#6b7280;">
+        <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+        <div style="font-size:16px;font-weight:600;">仅管理员可配置云盘 NAS 连接参数</div>
+        <div style="font-size:13px;margin-top:6px;">如需修改请联系管理员</div>
+      </div>`;
+    return;
+  }
+  var cfg = getNasConfig();
+  var modes = [
+    { v: 'lan',        t: '局域网（内网直连）' },
+    { v: 'ugreen_ddns',t: '绿联云远程访问（ugreen.link DDNS）' },
+    { v: 'portmap',    t: '路由器端口映射 / 公网 IP' },
+  ];
+  var modeOpts = modes.map(function(m){
+    return '<option value="' + m.v + '"' + (cfg.mode === m.v ? ' selected' : '') + '>' + m.t + '</option>';
+  }).join('');
+  var html = `
+    <div class="card">
+      <div class="card-title-row"><span class="card-title">☁️ 绿联 DXP4800 Pro（UGOS Pro）- WebDAV 连接配置</span></div>
+      <div style="padding:4px 4px 12px;font-size:12px;color:#6b7280;line-height:1.7;">
+        <div>📌 启用步骤：① NAS 后台 控制面板 → 文件服务 → <b>WebDAV</b> → 启用 HTTP(建议 9008) / HTTPS(建议 9009)；② 创建 NAS 专用账号（仅本系统使用）并为共享目录分配 WebDAV 权限；③ 外网访问：开启「绿联云 App → 远程访问 → ugreen.link」或自行端口映射；④ 绿联 NAS WebDAV 默认路径通常为 <code>/webdav</code>，可按实修改。</div>
+        <div style="margin-top:6px;">🔐 <b>密码安全提示</b>：浏览器端保存无法做到 100% 加密防提取，强烈建议创建 NAS 侧<strong>仅 WebDAV 权限</strong>的低权限账号，而非使用管理员账号。</div>
+      </div>
+      <table class="form-table" style="width:100%;">
+        <tr><td style="width:140px;padding:8px;">服务器地址 <span style="color:#d4380d;">*</span></td>
+            <td style="padding:8px;"><input type="text" id="nas_serverUrl" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.serverUrl)}" placeholder="例：https://yourname.ugreen.link:9009 或 http://192.168.1.50:9008"></td></tr>
+        <tr><td style="padding:8px;">WebDAV 路径</td>
+            <td style="padding:8px;"><input type="text" id="nas_webdavPath" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.webdavPath)}" placeholder="绿联默认：/webdav；其它品牌可能是 /dav"></td></tr>
+        <tr><td style="padding:8px;">系统根目录</td>
+            <td style="padding:8px;"><input type="text" id="nas_rootFolder" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.rootFolder)}" placeholder="例：/服装外贸系统 （所有用户共享该目录作为根）"></td></tr>
+        <tr><td style="padding:8px;">访问模式</td>
+            <td style="padding:8px;"><select id="nas_mode" class="input" style="width:100%;">${modeOpts}</select></td></tr>
+        <tr><td style="padding:8px;">NAS 账号</td>
+            <td style="padding:8px;"><input type="text" id="nas_username" class="input" style="width:100%;" autocomplete="off" value="${App.utils.escapeHtml(cfg.username)}" placeholder="NAS 端创建的 WebDAV 专用账号"></td></tr>
+        <tr><td style="padding:8px;">NAS 密码</td>
+            <td style="padding:8px;"><input type="password" id="nas_password" class="input" style="width:100%;" autocomplete="new-password" value="${App.utils.escapeHtml(cfg.password)}"></td></tr>
+        <tr><td style="padding:8px;">单文件最大上传(MB)</td>
+            <td style="padding:8px;"><input type="number" id="nas_max" class="input" style="width:200px;" value="${cfg.uploadMaxMb}" min="1"> &nbsp;<span style="color:#9ca3af;font-size:12px;">绿联 NAS 默认 2G，建议 500MB 以下更稳定</span></td></tr>
+        <tr><td style="padding:8px;">HTTPS 证书校验</td>
+            <td style="padding:8px;"><label style="display:inline-flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="nas_verifySsl"${cfg.verifySsl ? ' checked' : ''}> 严格校验（自签证书请取消勾选，注意中间人风险）
+            </label></td></tr>
+        <tr><td style="padding:8px;"></td>
+            <td style="padding:8px;">
+              <button class="btn btn-sm" id="nas_testBtn" onclick="testNasConn()">🔌 连接测试</button> &nbsp;
+              <button class="btn btn-sm btn-primary" onclick="saveNasConfig()">💾 保存配置</button>
+              <span style="margin-left:12px;font-size:12px;color:#6b7280;">保存后立即双写 localStorage + Supabase</span>
+            </td></tr>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title-row"><span class="card-title">📂 文件夹级权限（与用户组联动）</span></div>
+      <div style="padding:4px 4px 12px;font-size:12px;color:#6b7280;line-height:1.7;">
+        进入「云盘 NAS」页面 → 管理员可在每个文件夹上点击 🔧 权限，为各角色（业务员/采购/设计/QC/财务/跟单/经理/普通用户）分配「读取 / 读写 / 禁止」。<br>
+        该权限独立于模块级权限（模块级只是控制能否进入云盘页面；文件夹级控制每个目录可见性和上传下载）。
+      </div>
+    </div>
+  `;
+  document.getElementById('tab-nas').innerHTML = html;
+}
+
 function exportData() {
-  const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'consumptions', 'consumption_categories', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'users', 'permissions'];
+  const keys = ['styles', 'orders', 'fabrics', 'accessories', 'samples', 'feedbacks', 'consumptions', 'consumption_categories', 'productions', 'invoices', 'payments', 'collections', 'contacts', 'customers', 'suppliers', 'favoriteContacts', 'washes', 'shippings', 'users', 'permissions', 'nas_config', 'nas_folder_perms'];
   const backup = { exportTime: new Date().toISOString(), version: localStorage.getItem('dataVersion') };
   keys.forEach(key => {
     const data = localStorage.getItem(key);
@@ -661,7 +809,7 @@ _SettingsInited = true;
 if (_SettingsPendingRefresh) {
   console.log('[settings.html] 🔄 _init完成后FORCE RELOAD (pending事件)');
   setTimeout(function() {
-    try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
+    try { renderUsers(); renderRoles(); renderAdvanced(); renderNas(); } catch(e) {}
     _SettingsPendingRefresh = false;
   }, 200);
 }
@@ -670,7 +818,7 @@ setTimeout(function() {
   var roles = App.store.get('permissions', []);
   if ((!users || users.length === 0) && (!roles || roles.length === 0)) {
     console.log('[settings.html] 🔄 users/permissions仍为空，2秒二次reload');
-    try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
+    try { renderUsers(); renderRoles(); renderAdvanced(); renderNas(); } catch(e) {}
   }
 }, 2000);
 
@@ -687,12 +835,12 @@ setTimeout(function() {
     var isAdminEmail = window.ADMIN_EMAILS && window.ADMIN_EMAILS.indexOf(newUser.email) >= 0;
     canAccessSettings = !!(newUser && (App.roles[newUser.role]?.isAdmin || isAdminEmail || (App.getPermission('settings') !== 'none' && App.getPermission('settings') !== 'hidden')));
     if (canAccessSettings) {
-      try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
+      try { renderUsers(); renderRoles(); renderAdvanced(); renderNas(); } catch(e) {}
     }
   } else if (!wasAdmin && isAdminUser()) {
     // 权限状态变化：从只读变为可编辑
     console.log('[settings.html] 🔄 权限状态变化：从只读变为可编辑，重新渲染');
-    try { renderUsers(); renderRoles(); renderAdvanced(); } catch(e) {}
+    try { renderUsers(); renderRoles(); renderAdvanced(); renderNas(); } catch(e) {}
   }
 }, 3000);
 });

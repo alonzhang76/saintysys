@@ -400,20 +400,17 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
   box-shadow: var(--shadow-lg);
   animation: modalIn 0.2s ease;
 }
-.modal.modal-lg { max-width: 840px; }
+.modal.modal-lg { max-width: 1280px; width: 95vw; }
 .modal.modal-sm { max-width: 380px; }
 @keyframes modalIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 .modal-header {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid var(--border-light);
 }
 .modal-title { font-size: 13px; font-weight: 600; color: var(--ink); }
 .modal-close { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--muted); padding: 4px; }
 .modal-close:hover { color: var(--ink); }
-.modal-body { padding: 16px; max-height: 60vh; overflow-y: auto; }
+.modal-body { padding: 16px 20px; max-height: 88vh; overflow-y: auto; }
 .modal-footer {
   padding: 10px 16px;
   border-top: 1px solid var(--border-light);
