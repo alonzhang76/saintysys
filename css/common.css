@@ -121,6 +121,23 @@ a:hover { text-decoration: underline; }
 }
 .sidebar.collapsed .sidebar-menu-group-title { text-align: center; padding: 10px 0 3px; font-size: 0; }
 
+/* 云盘 NAS 菜单项醒目高亮：红底白字（所有页面生效） */
+.sidebar-menu-item[href="nas.html"] {
+  background: #d44848 !important;
+  color: #fff !important;
+  border-left-color: #fff !important;
+  font-weight: 600;
+}
+.sidebar-menu-item[href="nas.html"]:hover {
+  background: #b91c1c !important;
+  color: #fff !important;
+}
+.sidebar-menu-item[href="nas.html"].active {
+  background: #b91c1c !important;
+  color: #fff !important;
+  border-left-color: #fff !important;
+}
+
 /* Main area */
 .main-area {
   flex: 1;
