@@ -2108,13 +2108,13 @@ function generatePrintPageHTML(style, forPreview) {
   html += '<div class="print-page">';
   html += '<div class="print-header">' +
     '<div class="print-info-left">' +
-      '<div class="print-info-line"><span class="print-label">设计师：</span><span class="print-val">' + App.utils.escapeHtml(style.designer || '-') + '</span></div>' +
+      '<div class="print-info-line"><span class="print-label">CAD：</span><span class="print-val">' + App.utils.escapeHtml(style.designer || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">Season：</span><span class="print-tag tag-yellow">' + App.utils.escapeHtml(style.season || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">款号：</span><span class="print-tag tag-red">' + App.utils.escapeHtml(style.styleNo || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">品名：</span><span class="print-tag tag-red">' + App.utils.escapeHtml(style.name || '-') + '</span></div>' +
       '<div class="print-info-line"><span class="print-label">参考加工费：</span><span class="print-tag tag-green">' + App.utils.escapeHtml(style.price || '-') + ' 元</span></div>' +
     '</div>' +
-    '<div class="print-title-right">服装用料及纸板单<div class="print-date">日期：' + App.utils.escapeHtml(style.date || '-') + '</div></div>' +
+    '<div class="print-title-right">Counter用料表<div class="print-date">收到样衣/资料日期：' + App.utils.escapeHtml(style.date || '-') + '</div></div>' +
   '</div>';
 
   // 款式图小图
