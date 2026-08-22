@@ -314,19 +314,27 @@
     _davBase: function() {
       var c = this.cfg;
       if (!c || !c.serverUrl) return null;
+      var base = c.serverUrl.replace(/\/+$/, '');
       var wd = c.webdavPath.startsWith('/') ? c.webdavPath : '/' + c.webdavPath;
-      return c.serverUrl + wd;
+      return base + wd;
     },
     _absUrl: function(logicPath) {
       // logicPath 是相对于系统根目录的逻辑路径。例：/根目录/123 款
-      var c = this.cfg; var base = this._davBase();
-      if (!base) return null;
+      var c = this.cfg; var rawBase = this._davBase();
+      if (!rawBase) return null;
+      // 去掉 base 末尾斜杠，再和以 / 开头的规范化路径拼接，避免 http:// 被误伤
+      var base = rawBase.replace(/\/+$/, '');
       var root = c.rootFolder.startsWith('/') ? c.rootFolder : '/' + c.rootFolder;
-      if (!logicPath || logicPath === '/') return base + root;
+      if (!logicPath || logicPath === '/') {
+        var p0 = root.replace(/\/+/g, '/');
+        if (p0.length > 1 && p0.charAt(p0.length - 1) === '/') p0 = p0.slice(0, -1);
+        return base + (p0.charAt(0) === '/' ? p0 : '/' + p0);
+      }
       if (logicPath.charAt(0) !== '/') logicPath = '/' + logicPath;
       var p = root === '/' ? logicPath : (root + logicPath);
-      // 规范化，避免双斜
-      return base + p.replace(/\/+/g, '/');
+      p = p.replace(/\/+/g, '/');
+      if (p.length > 1 && p.charAt(p.length - 1) === '/') p = p.slice(0, -1);
+      return base + (p.charAt(0) === '/' ? p : '/' + p);
     },
     _headers: function(extra) {
       var h = extra ? Object.assign({}, extra) : {};

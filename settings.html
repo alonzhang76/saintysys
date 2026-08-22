@@ -616,8 +616,13 @@ async function testNasConn() {
     cfg.password   = document.getElementById('nas_password').value;
     if (!cfg.serverUrl) throw new Error('请填写服务器地址');
     // 发起 PROPFIND 来验证（Depth:0 读取根目录属性）
-    var base = cfg.serverUrl + (cfg.webdavPath.startsWith('/') ? cfg.webdavPath : '/' + cfg.webdavPath);
-    var target = base + (cfg.rootFolder === '/' ? '/' : (cfg.rootFolder.startsWith('/') ? cfg.rootFolder : '/' + cfg.rootFolder));
+    var base = cfg.serverUrl.replace(/\/+$/, '');
+    var wd = cfg.webdavPath.startsWith('/') ? cfg.webdavPath : '/' + cfg.webdavPath;
+    var root = cfg.rootFolder.startsWith('/') ? cfg.rootFolder : '/' + cfg.rootFolder;
+    // 只规范化路径部分，避免误伤 http:// 的双斜杠
+    var pathPart = (wd + root).replace(/\/+/g, '/');
+    if (pathPart.charAt(0) !== '/') pathPart = '/' + pathPart;
+    var target = base + pathPart;
     var headers = { 'Depth': '0' };
     if (cfg.username) headers['Authorization'] = 'Basic ' + btoa(cfg.username + ':' + cfg.password);
     var resp = await fetch(target, {
