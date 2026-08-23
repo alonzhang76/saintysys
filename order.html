@@ -31,7 +31,7 @@
       <!-- 标签页 -->
       <div class="tabs" id="orderTabs" style="margin-bottom:0;">
         <div class="tab-item active" data-tab="orders" onclick="switchOrderTab('orders')">订单列表</div>
-        <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">耗料登记及状态</div>
+        <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">耗料登记</div>
         <div class="tab-item" data-tab="sizes" onclick="switchOrderTab('sizes')">尺寸表</div>
       </div>
 
@@ -94,7 +94,7 @@
           </div>
           <div class="table-toolbar">
             <div class="table-toolbar-left">
-              <span class="card-title">耗料登记及状态</span>
+              <span class="card-title">耗料登记</span>
               <span class="text-muted" id="matCountLabel" style="font-size:12px;"></span>
             </div>
             <div class="table-toolbar-right">
@@ -3048,7 +3048,7 @@ function openMaterialModal(id) {
     <button class="btn" onclick="App.modal.close()">取消</button>
     <button class="btn btn-primary" onclick="saveMaterial()">💾 保存并同步</button>`;
 
-  App.modal.open({ title: id ? '编辑耗料登记及状态' : '新增耗料登记及状态', body, footer, size: 'lg' });
+  App.modal.open({ title: id ? '编辑耗料登记' : '新增耗料登记', body, footer, size: 'lg' });
 
   // 初始化当前类别下的字段可见性
   _matOnCategoryChange(defCat);
@@ -3441,7 +3441,7 @@ function syncOneMaterialToModules(m, forceDuplicate = false) {
 
 // 删除耗料登记及状态
 function deleteMaterial(id) {
-  App.confirm('删除这条耗料登记及状态记录？（不会删除已同步到各模块的数据）', () => {
+  App.confirm('删除这条耗料登记记录？（不会删除已同步到各模块的数据）', () => {
     const list = getOrderMaterials().filter(x => x.id !== id);
     saveOrderMaterials(list);
     App.toast('已删除', 'success');
