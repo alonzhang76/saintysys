@@ -673,11 +673,40 @@
     });
   }
 
+  // 判断当前登录用户是否管理员（用于 ADMIN_ONLY_WRITE_KEYS 的写入守卫）
+  // 注意：此处只做最保守的判断：role = 'admin' 直接放行；其它角色一律视为非管理员。
+  // 这样不会影响普通业务键的上传，只用于保护全局共享的 NAS 配置类键不被误覆盖。
+  function _currentUserIsAdmin() {
+    try {
+      var ls = window._origLocalStorage || window.localStorage;
+      var roleKey = ls ? (ls.getItem('userRole') || '') : '';
+      if (!roleKey) roleKey = (window.localStorage.getItem && window.localStorage.getItem('userRole')) || '';
+      if (roleKey === 'admin') return true;
+      // 兜底：isLoggedIn 用户信息里如果有 isAdmin=true
+      var info = null;
+      try { info = ls.getItem('currentUserInfo'); } catch(_) {}
+      if (info) { try { var p = JSON.parse(info); if (p && p.isAdmin) return true; } catch(_) {} }
+    } catch(_) {}
+    return false;
+  }
+
   // 监听写入事件（来自 localStorage-patch）
   window.addEventListener('cloud-write-request', function(e) {
     var key = e.detail.key;
     var value = e.detail.value;
     var ts = e.detail.ts || Date.now();
+
+    // ==== 全局共享键（NAS 配置/权限）仅管理员可写 ====
+    // 非管理员上传这些键会静默丢弃，避免覆盖管理员发布的全局设置。
+    var ADMIN_KEYS = (typeof window.ADMIN_ONLY_WRITE_KEYS !== 'undefined')
+      ? window.ADMIN_ONLY_WRITE_KEYS
+      : ['nas_config', 'nas_folder_perms'];
+    if (ADMIN_KEYS.indexOf(key) >= 0) {
+      if (!_currentUserIsAdmin()) {
+        console.warn('[init-page] 🛡️ 非管理员尝试上传全局共享键 ' + key + ' → 已跳过（请由管理员统一修改）。');
+        return;
+      }
+    }
 
     // ==== 第一层去重：严格内容 hash 比对 ====
     // 如果新内容和最近一次成功上传的内容 hash 一样 → 直接跳过（根本不需要入队）
@@ -738,6 +767,8 @@
       'pl_records_v1', 'pl_draft_v1',
       'sht_sample_data_v2', 'sht_size_tables_v2',
       'sizeSheets', 'styleImages',
+      // NAS 云盘：全局共享配置和文件夹权限（按用户筛选，非管理员上传会被守卫跳过）
+      'nas_config', 'nas_folder_perms',
     ];
     var origLS = window._origLocalStorage || window.localStorage;
     var needBackup = 0;

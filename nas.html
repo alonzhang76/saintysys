@@ -372,6 +372,7 @@
           <button class="btn btn-sm nas-btn" onclick="NAS.renameSelected()" title="重命名选中的文件或文件夹（也可按 F2 或双击名称）">✏️重命名</button>
           <button class="btn btn-sm nas-btn" onclick="NAS.refresh()" title="重新加载当前目录">🔄刷新</button>
         </span>
+        <button class="btn btn-sm" onclick="NAS.openSettings()" title="诊断连接失败、重新设置 WebDAV 地址/账号密码" style="margin-left:6px;background:#fef2f2;border-color:#fecaca;color:#b91c1c;">🩺 诊断连接</button>
         <input type="file" id="filePicker" multiple style="display:none;" onchange="NAS.onFilePick(event)">
         <input type="file" id="folderPicker" webkitdirectory directory multiple style="display:none;" onchange="NAS.onFilePick(event)">
         <div class="view-switch" id="viewSwitch" title="切换查看方式">
@@ -486,7 +487,7 @@
     // 正在重命名的名称（避免重复）
     _renamingOldName: null,
 
-    init: function() {
+    init: async function() {
       var self = this;
       var modPerm = App.getPermission('nasDrive');
       if (modPerm === 'hidden' || modPerm === 'none') {
@@ -512,13 +513,28 @@
       if (ab) ab.style.display = self.isAdmin ? 'inline-flex' : 'none';
 
       self.cfg = self._loadCfg();
+      // ---- 如果本机/当前用户还没有 NAS 配置，立即从云端拉管理员发布的全局配置 & 权限规则 ----
+      // 这一步保证：管理员在自己的电脑上配置一次 → 任何其他电脑的其他用户（业务员/财务 等）登录后首次打开云盘就直接能用，无需管理员去每台电脑登录。
+      if (!self.cfg.serverUrl) {
+        self.setStatus('warn', '本机无 NAS 配置，正在从云端加载管理员发布的连接参数…');
+        try {
+          var pull = await self._fetchSharedNasKeysFromCloud(7000);
+          if (pull && (pull.pulledNasConfig || pull.pulledFolderPerms)) {
+            self.cfg = self._loadCfg(); // 重新读取：此时 origLS 已被 pull 写入，已能读到管理员发布的值
+          }
+        } catch(_cloudErr) { /* 网络异常忽略，沿用空配置走下面的提示 */ }
+      }
+
       self._restoreSort();
       self._restoreViewMode();
       if (!self.cfg.serverUrl) {
         self.setStatus('warn', '未配置：请先在 设置 → ☁️云盘NAS 中填写 WebDAV 连接参数');
         self.renderBreadcrumb();
         self.renderTree();
-        self.showEmpty('🗂️ 尚未连接 NAS', '请联系管理员在「设置 → ☁️ 云盘 NAS」中配置好 WebDAV 服务器地址/账号后再使用。');
+        var tipExtra = self.isAdmin
+          ? '请使用右上角「🩺 诊断连接」，填入 NAS 地址并保存。保存后，会自动同步到云端，其他用户登录任意电脑都可以直接使用。'
+          : '管理员尚未发布 WebDAV 连接参数，或该参数正在同步中。请稍后刷新重试，或联系管理员在「🩺 诊断连接」里配置好后再使用。';
+        self.showEmpty('🗂️ 尚未连接 NAS', tipExtra);
         return;
       }
       self.setStatus('warn', '正在连接 NAS...');
@@ -543,9 +559,55 @@
       };
       try {
         var raw = App.store.get('nas_config', null);
-        if (!raw) return def;
-        return Object.assign(def, raw);
-      } catch (e) { return def; }
+        if (raw && raw.serverUrl) return Object.assign(def, raw);
+      } catch (e) {}
+      return def;
+    },
+
+    /**
+     * 从 Supabase app_data_store 表直接拉取管理员发布的 NAS 全局共享配置 & 权限规则
+     * （绕过用户级 RLS 的私有缓存；使用与 init-page independentPoll 相同的 apikey URL 模式）
+     * 成功后写入 native localStorage，下次 App.store.get 就能读到。
+     * @returns Promise<{ pulledNasConfig:boolean, pulledFolderPerms:boolean }>
+     */
+    _fetchSharedNasKeysFromCloud: function(timeoutMs) {
+      var me = this;
+      timeoutMs = timeoutMs || 6000;
+      var REST_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
+      var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+      return new Promise(function(resolve){
+        var ctrl = new AbortController();
+        var t = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
+        fetch(REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(ANON_KEY), {
+          cache: 'no-store',
+          signal: ctrl.signal,
+          credentials: 'omit',
+        }).then(function(resp){
+          clearTimeout(t);
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.json();
+        }).then(function(rows){
+          if (!Array.isArray(rows)) return resolve({ pulledNasConfig: false, pulledFolderPerms: false, error: 'unexpected' });
+          var origLS = window._origLocalStorage || window.localStorage;
+          var out = { pulledNasConfig: false, pulledFolderPerms: false, loadedKeys: [] };
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            if (!r || !r.store_key) continue;
+            if (r.store_key !== 'nas_config' && r.store_key !== 'nas_folder_perms') continue;
+            if (r.payload === null || r.payload === undefined) continue;
+            var serialized;
+            try { serialized = JSON.stringify(r.payload); } catch(_) { continue; }
+            try { origLS.setItem(r.store_key, serialized); } catch(_) {}
+            if (r.store_key === 'nas_config') out.pulledNasConfig = true;
+            if (r.store_key === 'nas_folder_perms') out.pulledFolderPerms = true;
+            out.loadedKeys.push(r.store_key);
+          }
+          resolve(out);
+        }).catch(function(err){
+          clearTimeout(t);
+          resolve({ pulledNasConfig: false, pulledFolderPerms: false, error: (err && err.message) || String(err || 'unknown') });
+        });
+      });
     },
 
     setStatus: function(kind, text) {
@@ -633,16 +695,97 @@
       var self = this;
       var encUrl = self._absUrlEncoded(logicPath);
       if (!encUrl) return [];
-      var resp = await fetch(encUrl, {
-        method: 'PROPFIND',
-        headers: self._headers({ 'Depth': '1' }),
-        credentials: 'omit',
-      });
-      if (resp.status === 404) throw new Error('路径不存在(404)：请确认 WebDAV 路径 或 初始化根目录');
-      if (resp.status === 401) throw new Error('认证失败(401)：请检查 NAS 账号/密码，或 WebDAV 是否已启用');
+
+      // 0) 混合内容预检：https 页面 fetch http 目标会直接抛 Failed to fetch，被误判为 CORS
+      var pageProto = (window.location.protocol || '').toLowerCase();
+      var urlProtoMatch = encUrl.match(/^([a-zA-Z]+):\/\//);
+      var targetProto = urlProtoMatch ? urlProtoMatch[1].toLowerCase() : '';
+      if (pageProto === 'https:' && targetProto === 'http') {
+        throw new Error('混合内容被拦截(Mixed Content)：当前页面是 HTTPS，但 WebDAV 地址是 HTTP。请改用 HTTPS 的 WebDAV 地址，或把 NAS 配置为 HTTPS 访问；或整站使用 HTTP 打开。（URL=' + encUrl + '）');
+      }
+
+      // 1) 浏览器在线？
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error('浏览器离线(offline)：请检查 WiFi/网线 是否已连接。');
+      }
+
+      // 2) 带超时的 fetch（目标 NAS 机器关机/断网 → IP 不通 → fetch 会挂 2 分钟才抛，加 8 秒超时）
+      var timeoutMs = 8000;
+      var controller = new AbortController();
+      var timerId = setTimeout(function(){ controller.abort(); }, timeoutMs);
+      var resp;
+      try {
+        resp = await fetch(encUrl, {
+          method: 'PROPFIND',
+          headers: self._headers({ 'Depth': '1' }),
+          credentials: 'omit',
+          signal: controller.signal,
+        });
+        clearTimeout(timerId);
+      } catch (fetchErr) {
+        clearTimeout(timerId);
+        var name = (fetchErr && fetchErr.name) ? fetchErr.name : '';
+        var msg = (fetchErr && fetchErr.message) ? fetchErr.message : String(fetchErr || '');
+
+        // 超时 → NAS 找不到（路由器给了新 IP / NAS 断电 / 端口没开）
+        if (name === 'AbortError' || /timeout|timed?\s*out/i.test(msg)) {
+          var ipInfo = '';
+          try {
+            var u = new URL(encUrl);
+            ipInfo = '（目标主机 ' + u.hostname + ':' + (u.port || (u.protocol === 'https:' ? 443 : 80)) + '）';
+          } catch(_) {}
+          throw new Error('NAS 连接超时(8秒无响应)' + ipInfo +
+            '。常见原因：①NAS 电脑关机或睡眠；②路由器给 NAS 重新分配了 IP；③防火墙阻止了 WebDAV 端口；④局域网 IP 段变了。请点击右上角「🩺 诊断连接」自动修复。');
+        }
+
+        // 非超时情况下，只有 "Failed to fetch" 这种无法精确判定的，再跑一次 OPTIONS 探针判断是不是 CORS
+        var isLikelyCors = await self._probeCors(encUrl);
+        if (isLikelyCors) {
+          throw new Error('CORS 未配置：NAS WebDAV 响应缺少 Access-Control-Allow-Origin 头。请在 NAS Web 服务（Nginx/Apache/群晖/DSM）中给 WebDAV 路径加上：' +
+            'add_header "Access-Control-Allow-Origin" "' + window.location.origin + '" always; add_header "Access-Control-Allow-Methods" "GET,HEAD,POST,PUT,DELETE,PROPFIND,PROPPATCH,MKCOL,COPY,MOVE,OPTIONS" always; add_header "Access-Control-Allow-Headers" "Depth,Authorization,Content-Type,If-Match,If-None-Match,Destination,Overwrite" always; add_header "Access-Control-Allow-Credentials" "true" always; 并对 OPTIONS 预检直接返回 204。原始错误：' + msg);
+        }
+        // 其它（DNS 解析失败、ERR_CONNECTION_REFUSED 等）
+        var hostText = '';
+        try { var uu = new URL(encUrl); hostText = '（主机 ' + uu.host + ' 拒绝连接或 DNS 解析失败）'; } catch(_) {}
+        throw new Error('WebDAV 无法连接' + hostText + '。请检查：①服务器地址是否正确；②NAS 是否已开机；③WebDAV 服务是否启动；④端口/防火墙是否放行。原始错误：' + msg);
+      }
+
+      if (resp.status === 404) throw new Error('路径不存在(404)：请确认 WebDAV 路径 或 初始化根目录（在 设置→云盘NAS 核对根目录）。当前目录：' + (logicPath || '/'));
+      if (resp.status === 401) throw new Error('认证失败(401)：NAS 账号密码不对，或 WebDAV 未授权该账号访问。请点击「🩺 诊断连接」重新输入账号密码。');
+      if (resp.status === 403) throw new Error('权限不足(403)：WebDAV 账号禁止访问该路径。请检查 NAS 共享权限或切换账号。');
+      if (resp.status >= 500) throw new Error('服务器内部错误(HTTP ' + resp.status + ')：NAS WebDAV 服务异常，尝试重启 NAS 的 Web 服务或 WebDAV 插件。');
       if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
       var xmlTxt = await resp.text();
       return self._parseMultistatus(xmlTxt, logicPath);
+    },
+
+    /**
+     * 轻量 CORS 探针：用 OPTIONS 预检请求看浏览器是否能收到响应
+     * - 返回 true  → 确实是 CORS 拦截（OPTIONS preflight 无响应头）
+     * - 返回 false → 可能是 DNS/主机未到/协议错误
+     */
+    _probeCors: async function(targetUrl) {
+      try {
+        var origin = window.location.origin || '';
+        var ctrl = new AbortController();
+        var to = setTimeout(function(){ ctrl.abort(); }, 6000);
+        var resp = await fetch(targetUrl, {
+          method: 'OPTIONS',
+          headers: {
+            'Access-Control-Request-Method': 'PROPFIND',
+            'Access-Control-Request-Headers': 'authorization,depth',
+          },
+          signal: ctrl.signal,
+          credentials: 'omit',
+        });
+        clearTimeout(to);
+        var acao = resp.headers.get('Access-Control-Allow-Origin');
+        if (!acao) return true; // 没返回 ACAO → 就是 CORS 配置缺失
+        if (acao !== '*' && acao !== origin) return true; // origin 未匹配 → CORS 配置错
+        return false;
+      } catch(e) {
+        return false; // OPTIONS 自己都发不通，不是 CORS 的问题（主机/网络/协议层）
+      }
     },
 
     _parseMultistatus: function(xmlTxt, logicPath) {
@@ -1454,6 +1597,333 @@
       host.appendChild(el);
       return id;
     },
+
+    // ===== WebDAV 诊断 & 设置对话框 =====
+    _diag: function(text, isError) {
+      var box = document.getElementById('nas_s_diag');
+      if (!box) return;
+      box.style.display = 'block';
+      var line = '[' + new Date().toLocaleTimeString() + '] ' + text;
+      var color = isError ? '#dc2626' : '#0f172a';
+      box.innerHTML += '<div style="color:' + color + ';">' + line + '</div>';
+      box.scrollTop = box.scrollHeight;
+    },
+    _diagClear: function() {
+      var box = document.getElementById('nas_s_diag');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = '';
+    },
+    _readSettingsForm: function() {
+      return {
+        serverUrl: (document.getElementById('nas_s_serverUrl').value || '').trim().replace(/\/+$/, ''),
+        webdavPath: document.getElementById('nas_s_webdavPath').value || '/webdav',
+        rootFolder: document.getElementById('nas_s_rootFolder').value || '/saintydoc',
+        username: document.getElementById('nas_s_username').value || '',
+        password: document.getElementById('nas_s_password').value || '',
+      };
+    },
+    _fillSettingsForm: function(cfg) {
+      document.getElementById('nas_s_serverUrl').value = (cfg && cfg.serverUrl) || '';
+      document.getElementById('nas_s_webdavPath').value = (cfg && cfg.webdavPath) || '/webdav';
+      document.getElementById('nas_s_rootFolder').value = (cfg && cfg.rootFolder) || '/saintydoc';
+      document.getElementById('nas_s_username').value = (cfg && cfg.username) || '';
+      document.getElementById('nas_s_password').value = (cfg && cfg.password) || '';
+    },
+    openSettings: function() {
+      this._diagClear();
+      this._fillSettingsForm(this.cfg);
+      document.getElementById('nasSettingsDialogHost').style.display = 'flex';
+      this._diag('当前配置：serverUrl=' + (this.cfg && this.cfg.serverUrl ? this.cfg.serverUrl : '(空)') +
+        '，user=' + (this.cfg && this.cfg.username ? this.cfg.username : '(空)'));
+      var me = this;
+      // 非管理员：禁用保存、扫描、自动修复按钮（只保留只读诊断 + 测试连接，避免误操作）
+      var saveBtn = document.querySelector('#nasSettingsDialogHost button[onclick="NAS.saveSettings()"]');
+      var scanBtn = document.querySelector('#nasSettingsDialogHost button[onclick="NAS.scanLocalNas()"]');
+      var autoBtn = document.querySelector('#nasSettingsDialogHost button[onclick="NAS.autoRepair()"]');
+      var urlInput = document.getElementById('nas_s_serverUrl');
+      var pathInput = document.getElementById('nas_s_webdavPath');
+      var rootInput = document.getElementById('nas_s_rootFolder');
+      var userInput = document.getElementById('nas_s_username');
+      var pwdInput = document.getElementById('nas_s_password');
+      var readOnly = !me.isAdmin;
+      [saveBtn, scanBtn, autoBtn].forEach(function(b){
+        if (!b) return;
+        if (readOnly) { b.setAttribute('disabled', 'disabled'); b.style.opacity = '.55'; b.style.cursor = 'not-allowed'; b.title = '仅管理员可修改全局 NAS 配置'; }
+        else { b.removeAttribute('disabled'); b.style.opacity = ''; b.style.cursor = ''; b.title = ''; }
+      });
+      [urlInput, pathInput, rootInput, userInput, pwdInput].forEach(function(i){
+        if (!i) return;
+        if (readOnly) i.setAttribute('readonly', 'readonly'); else i.removeAttribute('readonly');
+      });
+      setTimeout(function(){
+        var c = me.cfg || {};
+        if (readOnly) {
+          me._diag('ℹ️  当前账号不是管理员：仅可查看当前发布的 WebDAV 配置，不能修改。如需调整，请联系管理员。');
+          me._diag('如果你"只是想试试能不能连上"，可以点 🧪 测试连接（不会改变全局配置）。');
+        } else if (c.serverUrl) {
+          me._diag('已自动填入上次的连接配置，直接点「🧪 测试连接」看能否连上。');
+        } else {
+          me._diag('本台电脑尚未配置 WebDAV。建议：');
+          me._diag('1) 点击「🔍 扫描本地 NAS」快速自动探测常见 IP/端口；');
+          me._diag('2) 或手动填入服务器地址、账号密码后点「🧪 测试连接」；');
+          me._diag('3) 如昨日能用今日不行，先点「⚡ 自动修复」一键尝试所有可能性。');
+        }
+      }, 50);
+    },
+    closeSettings: function() {
+      document.getElementById('nasSettingsDialogHost').style.display = 'none';
+    },
+    /** 用给定 cfg 快速构造一次 PROPFIND 请求到 /webdav + rootFolder，返回 {ok, err} */
+    _probeCfg: async function(cfg) {
+      if (!cfg || !cfg.serverUrl) return { ok: false, err: '缺少 serverUrl' };
+      var base = cfg.serverUrl.replace(/\/+$/, '');
+      var wd = (cfg.webdavPath || '/webdav').replace(/\/+$/, '');
+      if (!wd.startsWith('/')) wd = '/' + wd;
+      var root = (cfg.rootFolder || '/saintydoc').replace(/\/+$/, '');
+      if (!root.startsWith('/')) root = '/' + root;
+      var target = base + encodeURIComponent(wd + root).replace(/%2F/g, '/');
+      var headers = {};
+      if (cfg.username) try { headers['Authorization'] = 'Basic ' + btoa(cfg.username + ':' + (cfg.password || '')); } catch(_) {}
+      headers['Depth'] = '1';
+      var ctrl = new AbortController();
+      var t = setTimeout(function(){ ctrl.abort(); }, 5000);
+      try {
+        var resp = await fetch(target, { method: 'PROPFIND', headers: headers, credentials: 'omit', signal: ctrl.signal });
+        clearTimeout(t);
+        if (resp.status === 404) return { ok: false, err: 'HTTP 404：WebDAV 路径+根目录不存在 (试过：' + wd + root + ')，可尝试修改 rootFolder 或 服务器地址后重试。' };
+        if (resp.status === 401) return { ok: false, err: 'HTTP 401：账号或密码错误。' };
+        if (resp.status === 403) return { ok: false, err: 'HTTP 403：该账号无权限访问此路径。' };
+        if (resp.status >= 200 && resp.status < 300) return { ok: true, status: resp.status };
+        return { ok: false, err: 'HTTP ' + resp.status + ' ' + resp.statusText };
+      } catch(e) {
+        clearTimeout(t);
+        var msg = (e && e.message) ? e.message : String(e || '');
+        if ((e && e.name) === 'AbortError' || /timeout/i.test(msg)) return { ok: false, err: '超时：主机 ' + base + ' 未响应 (5s)' };
+        return { ok: false, err: '连接失败: ' + msg };
+      }
+    },
+    async testConnection() {
+      this._diagClear();
+      var cfg = this._readSettingsForm();
+      this._diag('🧪 测试连接：' + cfg.serverUrl + (cfg.username ? (' 账号=' + cfg.username) : ' （匿名）'));
+      var r = await this._probeCfg(cfg);
+      if (r.ok) this._diag('✅ 连接成功（HTTP ' + (r.status || '207') + '）。可以点「💾 保存」把这个配置写入。');
+      else this._diag('❌ 连接失败：' + r.err, true);
+    },
+    async saveSettings() {
+      // 防御性检查：非管理员绝对不能写入全局共享 nas_config
+      if (!this.isAdmin) {
+        if (App && App.toast) App.toast('🛑 非管理员不能修改全局 WebDAV 配置。请联系管理员操作。', 'error', 3000);
+        this._diag('🛑 当前账号不是管理员，禁止修改全局配置。', true);
+        return;
+      }
+      var cfg = this._readSettingsForm();
+      if (!cfg.serverUrl) { if (App && App.toast) App.toast('请先填写 NAS 服务器地址', 'warning'); return; }
+      // 保存前先做一次快速测试
+      this._diagClear();
+      this._diag('💾 正在保存前测试连接…');
+      var r = await this._probeCfg(cfg);
+      var me = this;
+      if (!r.ok) {
+        this._diag('⚠️  测试未通过：' + r.err + '。仍然准备二次确认…', true);
+        if (App && typeof App.confirm === 'function') {
+          try {
+            App.confirm('测试连接失败，仍然要保存吗？（' + r.err + '）', function(){ me._doSaveSettings(cfg); }, function(){ me._diag('已取消保存。'); });
+            return;
+          } catch(e) { /* 忽略 App.confirm 兼容性问题，直接保存 */ }
+        } else {
+          // 没有 confirm，直接保存
+        }
+      } else {
+        this._diag('✅ 测试通过：HTTP ' + (r.status || '207'));
+      }
+      this._doSaveSettings(cfg);
+    },
+    _doSaveSettings: function(cfg) {
+      // 保存到 nas_config（App.store → 已加入 SUPERSET_KEYS → 自动同步云端）
+      // 再加 cloud-write-request 保证独立 REST 通道兜底上传；非管理员会被 init-page 的写入守卫丢弃
+      try { App.store.set('nas_config', cfg); } catch(_) {}
+      try {
+        window.dispatchEvent(new CustomEvent('cloud-write-request', {
+          detail: { key: 'nas_config', value: cfg, ts: Date.now() }
+        }));
+      } catch(_) {}
+      this.cfg = cfg;
+      if (App && App.toast) App.toast('✅ 配置已保存并同步到云端，所有电脑/用户登录后都可直接使用', 'success', 2500);
+      this.closeSettings();
+      this.setStatus('warn', '正在使用新配置重新连接 NAS…');
+      try { this.refresh(); } catch(_) {}
+    },
+
+    /**
+     * 生成常见的候选 IP/主机名 + 端口 + WebDAV 路径组合，用于扫描。
+     * 针对"昨天能用今天不能"这种典型场景（路由器给 NAS 分配了同网段另一个 IP）
+     */
+    _guessNasCandidates: function() {
+      var list = [];
+      var push = function(serverUrl) { if (serverUrl) list.push(serverUrl); };
+      // 1) 自己原始配置
+      var c = this.cfg || {};
+      if (c.serverUrl) push(c.serverUrl);
+      // 2) hostname 解析（同机 DSM 服务常见名）
+      var host = window.location.hostname;
+      push('http://' + host + ':5005');       // 自搭常见 WebDAV 端口
+      push('http://' + host + ':5006');
+      push('http://' + host + ':8080');       // 通用 HTTP 端口
+      push('http://' + host + ':80');
+      push('https://' + host + ':5006');
+      push('https://' + host + ':443');
+      // 群晖/TrueNAS/DSM 默认
+      push('http://' + host + ':5000');       // DSM 默认 HTTP
+      push('https://' + host + ':5001');      // DSM 默认 HTTPS
+      push('http://nas.local:5005');
+      push('http://dxp4800plus-ring.local:5005');
+      push('http://nas.local:8080');
+      push('http://127.0.0.1:5005');
+      push('http://localhost:5005');
+      push('http://127.0.0.1:8080');
+      // 3) 若当前页面在局域网，拿其 IP 三段去扫尾号 1-254（挑几个最常见的 NAS 尾号：1,2,10,100,108,200,201,250）
+      var own = '';
+      if (host && /^\d+\.\d+\.\d+\.\d+$/.test(host)) own = host;
+      else if (window.RUNTIME_NAS_LAN_PREFIX) own = window.RUNTIME_NAS_LAN_PREFIX;
+      if (own) {
+        var m = own.match(/^(\d+\.\d+\.\d+)\.\d+$/);
+        if (m) {
+          var pre = m[1];
+          [1,2,3,4,5,10,20,50,60,80,100,108,110,150,200,201,220,230,240,250,251].forEach(function(tail){
+            push('http://' + pre + '.' + tail + ':5005');
+            push('http://' + pre + '.' + tail + ':5000');
+            push('https://' + pre + '.' + tail + ':5001');
+            push('http://' + pre + '.' + tail + ':8080');
+          });
+        }
+      } else {
+        // 没抓到当前主机 IP，兜底扫最常用的两个内网段几个尾号
+        ['192.168.1','192.168.31','192.168.0','10.0.0'].forEach(function(pre){
+          [1,2,10,20,100,108,200,250].forEach(function(tail){
+            push('http://' + pre + '.' + tail + ':5005');
+            push('http://' + pre + '.' + tail + ':8080');
+          });
+        });
+      }
+      // 去重
+      var seen = {}; var out = [];
+      for (var i = 0; i < list.length; i++) if (!seen[list[i]]) { seen[list[i]] = 1; out.push(list[i]); }
+      return out;
+    },
+
+    async scanLocalNas() {
+      this._diagClear();
+      var me = this;
+      var servers = me._guessNasCandidates();
+      me._diag('🔍 扫描本地 NAS：' + servers.length + ' 个候选地址（每台 3 秒超时，逐个并发 6 个）');
+      var currentCandidates = [];
+      servers.forEach(function(s){
+        currentCandidates.push({
+          serverUrl: s, webdavPath: (me.cfg && me.cfg.webdavPath) || '/webdav',
+          rootFolder: (me.cfg && me.cfg.rootFolder) || '/saintydoc',
+          username: (me.cfg && me.cfg.username) || '',
+          password: (me.cfg && me.cfg.password) || '',
+        });
+      });
+      var hit = await me._probeCandidates(currentCandidates, 6, 3000);
+      if (hit) {
+        me._diag('✅ 找到可用服务器：' + hit.serverUrl + '。已自动填入，请保存。');
+        document.getElementById('nas_s_serverUrl').value = hit.serverUrl;
+      } else {
+        me._diag('❌ 常见组合均未命中，请手动填写服务器地址/账号密码后点「🧪 测试连接」。', true);
+      }
+    },
+
+    /**
+     * 暴力自动修复：综合扫描 serverUrl 候选 × 3 套常见账号 × 3 套 rootFolder
+     */
+    async autoRepair() {
+      this._diagClear();
+      var me = this;
+      var servers = me._guessNasCandidates();
+      // 账号组合：旧配置 / admin空 / admin+admin / 空
+      var creds = [];
+      if (me.cfg && (me.cfg.username || me.cfg.password)) creds.push({ username: me.cfg.username || '', password: me.cfg.password || '' });
+      creds.push({ username: 'admin', password: 'admin' });
+      creds.push({ username: 'admin', password: '' });
+      creds.push({ username: '', password: '' });
+      // rootFolder 组合：旧配置 / saintydoc / '' / webdav 下直连
+      var roots = [];
+      if (me.cfg && me.cfg.rootFolder) roots.push(me.cfg.rootFolder);
+      roots.push('/saintydoc');
+      roots.push('/');
+      var wd = (me.cfg && me.cfg.webdavPath) || '/webdav';
+      var cands = [];
+      servers.forEach(function(s){
+        creds.forEach(function(cr){
+          roots.forEach(function(rt){
+            cands.push({ serverUrl: s, webdavPath: wd, rootFolder: rt, username: cr.username, password: cr.password });
+          });
+        });
+      });
+      me._diag('⚡ 自动修复模式：共 ' + cands.length + ' 种组合（服务器×账号×根路径），并发 8 台…');
+      var hit = await me._probeCandidates(cands, 8, 2500);
+      if (hit) {
+        me._diag('✅ 命中可用配置：' + hit.serverUrl + ' | root=' + hit.rootFolder + ' | user=' + (hit.username || '(匿名)'));
+        document.getElementById('nas_s_serverUrl').value = hit.serverUrl;
+        document.getElementById('nas_s_webdavPath').value = hit.webdavPath;
+        document.getElementById('nas_s_rootFolder').value = hit.rootFolder;
+        document.getElementById('nas_s_username').value = hit.username || '';
+        document.getElementById('nas_s_password').value = hit.password || '';
+        me._diag('请点击「💾 保存并重连」确认。');
+      } else {
+        me._diag('❌ 均未命中。请核对 NAS 是否开机、是否在同一局域网、WebDAV 服务是否正常、账号密码是否正确。', true);
+      }
+    },
+
+    /**
+     * 并发探测一批候选配置，限制并发数，每个探测有独立超时。返回第一个成功的配置，或 null。
+     */
+    _probeCandidates: async function(cands, concurrency, perTimeoutMs) {
+      if (!Array.isArray(cands) || cands.length === 0) return null;
+      var me = this;
+      concurrency = concurrency || 6;
+      perTimeoutMs = perTimeoutMs || 3500;
+      var idx = 0;
+      var winner = null;
+      var done = false;
+      var completed = 0;
+      var total = cands.length;
+      var worker = async function() {
+        while (!done && idx < total) {
+          var i = idx++;
+          var cfg = cands[i];
+          var resp0;
+          try {
+            // 复用 _probeCfg，但使用 perTimeoutMs 超时（_probeCfg 内部是 5s，这里包一层 Abort 以覆盖）
+            var ctrl = new AbortController();
+            var timerId = setTimeout(function(){ ctrl.abort(); }, perTimeoutMs);
+            var result = null;
+            try {
+              result = await Promise.race([
+                me._probeCfg(cfg),
+                new Promise(function(_,rej){ ctrl.signal.addEventListener('abort', function(){ rej(new Error('AbortError')); }); })
+              ]);
+            } finally { clearTimeout(timerId); }
+            resp0 = result;
+            if (result && result.ok) { winner = cfg; done = true; return; }
+          } catch(_e) {
+            // 忽略单个探测错误
+          } finally {
+            completed++;
+            if (completed % 20 === 0) {
+              me._diag('…进度 ' + completed + '/' + total + (winner ? ' 已找到！' : ''));
+            }
+          }
+        }
+      };
+      var workers = [];
+      for (var w = 0; w < concurrency; w++) workers.push(worker());
+      await Promise.all(workers);
+      return winner;
+    },
     _getUploadToastBar: function(id) {
       var el = document.getElementById(id); return el ? el.querySelector('.t-bar > span') : null;
     },
@@ -1931,6 +2401,13 @@
       if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
         try { window.SupabaseStore.setSync('nas_folder_perms', obj); } catch(e) {}
       }
+      // 关键：通过独立 REST 通道把权限规则上传到 app_data_store 全局共享表，让所有电脑/用户都能读到
+      // （注意：非管理员尝试上传会被 init-page.js 的写入守卫静默丢弃，不会覆盖管理员发布的）
+      try {
+        window.dispatchEvent(new CustomEvent('cloud-write-request', {
+          detail: { key: 'nas_folder_perms', value: obj && typeof obj === 'object' ? obj : {}, ts: Date.now() }
+        }));
+      } catch(e) {}
     },
     _ensureRootFolderPerm: function() {
       var store = this._getFolderPermsStore();
@@ -2035,6 +2512,51 @@
   });
 
   window.NAS = NAS;
+
+  // 注入 WebDAV 诊断/重连设置对话框（单例，第一次 openSettings 时注入，避免大段常驻 HTML）
+  (function ensureSettingsDialogInjected(){
+    var host = document.getElementById('nasSettingsDialogHost');
+    if (host) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'nasSettingsDialogHost';
+    wrap.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center;padding:16px;';
+    wrap.innerHTML = '<div style="width:min(560px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.2);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-size:16px;font-weight:700;color:#0f172a;">🩺 WebDAV 连接诊断与设置</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-top:2px;">前一天能用今天连不上？多半是 NAS IP 变了或协议/端口问题，按「自动修复」一键扫描常见地址。</div></div>' +
+        '<button class="btn btn-sm" onclick="NAS.closeSettings()" style="margin-left:12px;">✕</button>' +
+      '</div>' +
+      '<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;">' +
+        '<div>' +
+          '<label style="font-size:12px;font-weight:600;color:#334155;display:block;margin-bottom:4px;">NAS 服务器地址</label>' +
+          '<div style="display:flex;gap:6px;">' +
+            '<input id="nas_s_serverUrl" class="form-input" placeholder="例：http://192.168.31.100:5005 或 https://nas.example.com" style="flex:1;">' +
+            '<button class="btn btn-sm" onclick="NAS.scanLocalNas()" title="自动扫描局域网常见 IP/主机名 + 默认端口">🔍 扫描本地 NAS</button>' +
+          '</div>' +
+          '<div style="font-size:11px;color:#94a3b8;margin-top:4px;">不带尾部 /webdav，下面单独填 WebDAV 子路径</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+          '<div><label style="font-size:12px;font-weight:600;color:#334155;display:block;margin-bottom:4px;">WebDAV 子路径</label>' +
+            '<input id="nas_s_webdavPath" class="form-input" value="/webdav"></div>' +
+          '<div><label style="font-size:12px;font-weight:600;color:#334155;display:block;margin-bottom:4px;">系统根目录（业务文件夹）</label>' +
+            '<input id="nas_s_rootFolder" class="form-input" value="/saintydoc"></div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+          '<div><label style="font-size:12px;font-weight:600;color:#334155;display:block;margin-bottom:4px;">NAS 用户名</label>' +
+            '<input id="nas_s_username" class="form-input" placeholder="admin 或你的 NAS 账号" autocomplete="off"></div>' +
+          '<div><label style="font-size:12px;font-weight:600;color:#334155;display:block;margin-bottom:4px;">NAS 密码</label>' +
+            '<input id="nas_s_password" type="password" class="form-input" placeholder="填写后会加密保存在 Supabase" autocomplete="new-password"></div>' +
+        '</div>' +
+        '<div id="nas_s_diag" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#475569;white-space:pre-wrap;line-height:1.6;display:none;"></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="btn btn-sm" onclick="NAS.testConnection()" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;">🧪 测试连接</button>' +
+          '<button class="btn btn-sm btn-primary" onclick="NAS.saveSettings()">💾 保存并重连</button>' +
+          '<button class="btn btn-sm" onclick="NAS.autoRepair()" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;">⚡ 自动修复（尝试多个常见 IP/端口 + 账号）</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#94a3b8;margin-top:4px;">说明：保存后会写入 nas_config 并同步到 Supabase，之后所有登录同账号的电脑都会用这个设置。</div>' +
+      '</div></div>';
+    document.body.appendChild(wrap);
+  })();
 
   // ready
   document.addEventListener('DOMContentLoaded', function(){

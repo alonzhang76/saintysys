@@ -19,7 +19,12 @@ const SUPERSET_KEYS = [
   'pl_records_v1', 'pl_draft_v1',
   'sht_sample_data_v2', 'sht_size_tables_v2',
   'sizeSheets', 'styleImages',
+  // NAS 云盘：全局共享配置与文件夹权限规则
+  'nas_config', 'nas_folder_perms',
 ];
+
+// 全局共享、仅管理员可上传到云端的键（防止普通用户覆盖管理员发布的 NAS 配置/权限）
+const ADMIN_ONLY_WRITE_KEYS = ['nas_config', 'nas_folder_perms'];
 
 // 安全相关键（不走 Supabase）
 const SAFE_KEYS = ['isLoggedIn', 'username', 'userRole', 'currentUserId', 'refDPR', 'dataVersion'];
