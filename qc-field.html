@@ -24,11 +24,10 @@
 .qc-header-btn.outline{background:#fff;color:#495057;border:1px solid var(--qc-border);}
 .qc-header-btn.outline:hover{background:#f8f9fa;}
 /* Tabs */
-.qc-tabs{display:flex;background:#fff;border-bottom:2px solid var(--qc-border);padding:0 12px;border-radius:var(--qc-radius) var(--qc-radius) 0 0;}
+.qc-tabs{display:flex;background:#fff;border-bottom:2px solid var(--qc-border);padding:0 12px;border-radius:0;position:sticky;top:0;z-index:40;box-shadow:0 1px 6px rgba(0,0,0,.06);}
 .qc-tab-btn{padding:10px 24px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--qc-text-light);border-bottom:3px solid transparent;transition:.2s;font-weight:500;}
 .qc-tab-btn:hover{color:var(--qc-primary);}
 .qc-tab-btn.active{color:var(--qc-primary);border-bottom-color:var(--qc-primary);font-weight:600;}
-.qc-tabs{position:sticky;top:var(--header-h,42px);z-index:40;background:#fff;border-bottom:2px solid var(--qc-border);padding:0 12px;border-radius:0;box-shadow:0 1px 6px rgba(0,0,0,.06);}
 /* Tab content */
 .qc-tab-content{display:none;padding:16px 4px;}
 .qc-tab-content.active{display:block;}
@@ -73,6 +72,11 @@ select.qc-form-control{cursor:pointer;}
 /* Image upload */
 .qc-status{color:#6c757d;padding:2px 4px;min-height:14px;}
 .qc-issue-img-block{border:1px solid var(--qc-border);border-radius:6px;padding:8px;background:#fafbfc;margin-top:6px;}
+.qc-issue-img-gallery{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;margin-bottom:6px;}
+.qc-issue-img-thumb{position:relative;flex-shrink:0;}
+.qc-issue-img-thumb img{width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:pointer;display:block;background:#fff;}
+.qc-issue-img-thumb .remove-btn{position:absolute;top:-6px;right:-6px;background:var(--qc-danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:2;}
+.qc-issue-img-empty{padding:6px;font-size:11px;color:var(--qc-text-light);text-align:center;background:var(--qc-gray-light);border-radius:4px;border:1px dashed var(--qc-border);}
 .qc-issue-img-row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;}
 .qc-issue-img-preview{position:relative;flex-shrink:0;}
 .qc-issue-img-preview img{width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:pointer;display:block;background:#fff;}
@@ -86,7 +90,6 @@ select.qc-form-control{cursor:pointer;}
 .qc-issue-img-actions .date-row label{font-size:11px;color:#6c757d;white-space:nowrap;}
 .qc-issue-img-actions .date-row input{flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--qc-border);border-radius:3px;}
 .qc-issue-img-status{font-size:11px;color:#6c757d;padding:2px 0;}
-.qc-issue-img-empty{padding:6px;font-size:11px;color:var(--qc-text-light);text-align:center;background:var(--qc-gray-light);border-radius:4px;border:1px dashed var(--qc-border);}
 /* Issue table inline image */
 .qc-issue-table-img{position:relative;width:46px;height:46px;border:1px dashed var(--qc-border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;color:#adb5bd;font-size:18px;overflow:hidden;}
 .qc-issue-table-img:hover{border-color:var(--qc-primary);color:var(--qc-primary);}
@@ -223,8 +226,6 @@ body.readonly-mode .qc-size-table input,
 body.readonly-mode .qc-checkbox-group input,
 body.readonly-mode .remove-img,
 body.readonly-mode .remove-btn,
-body.readonly-mode #nasUploadBtn,
-body.readonly-mode #styleImageInput,
 body.readonly-mode #tab-register input[type=file],
 body.readonly-mode .qc-issue-table-img{pointer-events:none;opacity:.55;}
 body.readonly-mode .qc-btn-primary::before,
@@ -308,19 +309,13 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
               </div>
             </div>
             <div style="margin-top:12px;">
-              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">款式图 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（同款号跨模块共享）</span></label>
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">款式图 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（同款号跨模块共享，自动从订单管理调取）</span></label>
               <div class="qc-image-container" id="imageContainer">
                 <div class="preview-box" id="imagePreviewBox" style="display:none;">
-                  <img id="styleImagePreview" class="qc-image-preview" alt="">
-                  <button class="remove-img" onclick="clearCurrentImage()">&times;</button>
+                  <img id="styleImagePreview" class="qc-image-preview" alt="款式图">
                 </div>
-                <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
-                  <button class="qc-btn qc-btn-outline qc-btn-sm" onclick="document.getElementById('styleImageInput').click()">💻 本地电脑上传</button>
-                  <button class="qc-btn qc-btn-outline qc-btn-sm" id="nasUploadBtn" onclick="uploadStyleImageFromNas()">☁ 从云盘 NAS 选择</button>
-                  <div class="qc-status" id="imageStatus" style="font-size:11px;"></div>
-                </div>
+                <div class="qc-status" id="imageStatus" style="font-size:11px;">输入款号后自动加载</div>
               </div>
-              <input type="file" id="styleImageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
             </div>
             <div style="margin-top:12px;">
               <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">订单各尺寸数量 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（自动从订单中调取，只读）</span></label>
@@ -721,14 +716,23 @@ function onStyleNoChange(){
     if(oEl && oEl.value !== uniqueOrderNos[0]){
       oEl.value = uniqueOrderNos[0];
     }
-    // 同步填充交期（同订单 ETD）
+    // 同步填充交期（= 订单 ETD/交货日期）
     var matchedOrder = matched.find(function(o){ return (o.orderNo||'').trim() === uniqueOrderNos[0]; });
     var ddEl = document.getElementById('deliveryDate');
-    if(ddEl && matchedOrder && matchedOrder.etd){
-      ddEl.value = matchedOrder.etd;
+    if(ddEl && matchedOrder){
+      var etd = matchedOrder.etd || matchedOrder.deliveryDate || matchedOrder.shipDate || '';
+      if(etd) ddEl.value = etd;
+    }
+  } else if(matched.length > 0){
+    // 多订单：取第一个匹配订单的 ETD 作为默认交期
+    var oEl2 = document.getElementById('orderNo');
+    if(oEl2 && !oEl2.value) oEl2.value = (matched[0].orderNo || '').trim();
+    var ddEl3 = document.getElementById('deliveryDate');
+    if(ddEl3 && matched[0]){
+      var etd2 = matched[0].etd || matched[0].deliveryDate || matched[0].shipDate || '';
+      if(etd2) ddEl3.value = etd2;
     }
   } else {
-    // 多订单或无订单：清空交期，等用户在订单号选择后再填
     var ddEl2 = document.getElementById('deliveryDate');
     if(ddEl2) ddEl2.value = '';
   }
@@ -737,14 +741,15 @@ function onStyleNoChange(){
 }
 
 function onOrderNoChange(){
-  // 订单号变化 → 同步填充交期（= 订单 ETD）
+  // 订单号变化 → 同步填充交期（= 订单 ETD/交货日期）
   try {
     var sn = val('styleNo'), on = val('orderNo');
     if(on){
       var order = findOrderByNo(on, sn);
       var ddEl = document.getElementById('deliveryDate');
-      if(ddEl && order && order.etd){
-        ddEl.value = order.etd;
+      if(ddEl && order){
+        var etd = order.etd || order.deliveryDate || order.shipDate || '';
+        if(etd) ddEl.value = etd;
       }
     }
   } catch(_e){}
@@ -844,61 +849,98 @@ function formatSizeSnapshot(snapshot){
 // ==================== 问题图片：上传/预览/清除（全部走 Supabase 存储） ====================
 // 三个固定问题图片块：wFirstIssue / wBulkIssue / gMatIssue
 // 每个块的状态：{ path, name, base64, date }
-var _issueImages = {
-  wFirstIssue: { path: '', name: '', base64: null, date: '' },
-  wBulkIssue:  { path: '', name: '', base64: null, date: '' },
-  gMatIssue:   { path: '', name: '', base64: null, date: '' }
-};
-var _issueRowImages = []; // 生产中问题表格每行的图片状态，按行索引对应
+// 多图支持：_issueImages[prefix] 为数组 [{path,name,base64,date}, ...]
+var _issueImages = { wFirstIssue: [], wBulkIssue: [], gMatIssue: [] };
+var _issueRowImages = []; // 每行的图片数组，按行索引对应
 
-// 初始化/渲染一个固定问题图片块
+// 兼容旧格式（单图对象）→ 数组
+function normalizeImages(img){
+  if(!img) return [];
+  if(Array.isArray(img)) return img.filter(function(i){ return i && (i.path || i.name || i.base64); });
+  if(typeof img === 'object' && (img.path || img.name)) return [img];
+  return [];
+}
+
+// 渲染一个固定问题图片块（多图画廊）
 function renderIssueImageBlock(prefix){
   var container = document.getElementById(prefix + 'Block');
   if(!container) return;
-  var st = _issueImages[prefix] || { path:'', name:'', base64:null, date:'' };
-  var hasImg = !!(st.path || st.base64);
-  // 不把 base64 嵌入 HTML 属性，避免 HTML 体积过大；点击事件通过 JS 绑定
-  container.innerHTML =
-    '<div class="qc-issue-img-row">' +
-      '<div class="qc-issue-img-preview" id="' + prefix + 'PreviewBox" style="' + (hasImg ? '' : 'display:none;') + '">' +
-        '<img id="' + prefix + 'PreviewImg">' +
-        '<button class="remove-btn" onclick="clearIssueImage(\'' + prefix + '\')">&times;</button>' +
-      '</div>' +
-      '<div class="qc-issue-img-actions">' +
-        '<div class="btn-row">' +
-          '<button class="qc-btn qc-btn-outline qc-btn-sm" onclick="document.getElementById(\'' + prefix + 'FileInput\').click()">💻 本地上传</button>' +
-          '<button class="qc-btn qc-btn-outline qc-btn-sm" id="' + prefix + 'NasBtn" onclick="nasPickIssueImage(\'' + prefix + '\')">☁ NAS</button>' +
-          '<label class="date-inline-label">📅 拍照日期</label>' +
-          '<input type="date" class="date-inline-input" id="' + prefix + 'ImgDate" value="' + escAttr(st.date) + '" onchange="setIssueImageDate(\'' + prefix + '\', this.value)">' +
-        '</div>' +
-        '<div class="qc-issue-img-status" id="' + prefix + 'ImgStatus"></div>' +
-      '</div>' +
-    '</div>' +
-    '<input type="file" id="' + prefix + 'FileInput" accept="image/*" style="display:none;" onchange="onIssueFileChange(event, \'' + prefix + '\')">';
-  // 渲染后通过 JS 绑定图片源与点击事件
-  var box = document.getElementById(prefix + 'PreviewBox');
-  var img = document.getElementById(prefix + 'PreviewImg');
-  if(hasImg && img && box){
-    if(st.base64){
-      img.src = st.base64;
-      img.onclick = function(){ openImageFullscreen(st.base64); };
-      box.style.display = 'block';
-    } else if(st.path){
-      showIssueImagePreviewByPath(prefix, st.path, st.name);
+  var imgs = _issueImages[prefix] || [];
+  var dateVal = imgs.length ? (imgs[0].date || '') : '';
+  var galleryHtml = imgs.map(function(im, i){
+    var src = im.base64 || '';
+    var html = '<div class="qc-issue-img-thumb" id="' + prefix + 'Thumb' + i + '">';
+    if(src){
+      html += '<img src="' + escAttr(src) + '">';
+    } else {
+      html += '<img id="' + prefix + 'ThumbImg' + i + '" alt="' + escAttr(im.name||'') + '">';
     }
+    html += '<button class="remove-btn" onclick="removeIssueImageAt(\'' + prefix + '\',' + i + ')">&times;</button>';
+    html += '</div>';
+    return html;
+  }).join('');
+  container.innerHTML =
+    '<div class="qc-issue-img-gallery" id="' + prefix + 'Gallery">' + galleryHtml + '</div>' +
+    '<div class="qc-issue-img-actions">' +
+      '<div class="btn-row">' +
+        '<button class="qc-btn qc-btn-outline qc-btn-sm" onclick="document.getElementById(\'' + prefix + 'FileInput\').click()">💻 本地上传</button>' +
+        '<button class="qc-btn qc-btn-outline qc-btn-sm" id="' + prefix + 'NasBtn" onclick="nasPickIssueImage(\'' + prefix + '\')">☁ NAS</button>' +
+        '<label class="date-inline-label">📅 拍照日期</label>' +
+        '<input type="date" class="date-inline-input" id="' + prefix + 'ImgDate" value="' + escAttr(dateVal) + '" onchange="setIssueImageDate(\'' + prefix + '\', this.value)">' +
+      '</div>' +
+      '<div class="qc-issue-img-status" id="' + prefix + 'ImgStatus"></div>' +
+    '</div>' +
+    '<input type="file" id="' + prefix + 'FileInput" accept="image/*" multiple style="display:none;" onchange="onIssueFileChange(event, \'' + prefix + '\')">';
+  // 异步加载 Supabase 路径图片
+  imgs.forEach(function(im, i){
+    if(!im.base64 && im.path){
+      loadIssueThumbImage(prefix, i, im.path, im.name);
+    }
+  });
+}
+
+// 异步加载单张缩略图（不破坏已有 base64 预览）
+function loadIssueThumbImage(prefix, idx, path, name){
+  var img = document.getElementById(prefix + 'ThumbImg' + idx);
+  if(!img) return;
+  if(typeof path === 'string' && path.indexOf('data:image') === 0){
+    img.src = path;
+    img.onclick = function(){ openImageFullscreen(path); };
+    return;
+  }
+  img.onclick = function(){ openImageFullscreenByPath(path); };
+  var tryResolve = function(submit){
+    if(submit && typeof submit.getSignedUrl === 'function'){
+      submit.getSignedUrl(path).then(function(url){ if(url) img.src = url; }).catch(function(){});
+      return true;
+    }
+    if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+      App.utils.getSignedUrl(path).then(function(url){ if(url) img.src = url; }).catch(function(){});
+      return true;
+    }
+    return false;
+  };
+  if(!tryResolve(window.SupabaseSubmit)){
+    waitForSupabaseSubmit(8000).then(function(submit){ tryResolve(submit); });
   }
 }
 
 function setIssueImageDate(prefix, date){
-  if(!_issueImages[prefix]) _issueImages[prefix] = { path:'', name:'', base64:null, date:'' };
-  _issueImages[prefix].date = date;
+  if(!Array.isArray(_issueImages[prefix])) _issueImages[prefix] = [];
+  _issueImages[prefix].forEach(function(im){ im.date = date; });
 }
 
-// 本地文件选择 → 上传
+// 本地文件选择 → 上传（支持多选）
 function onIssueFileChange(e, prefix){
-  var file = e.target.files && e.target.files[0];
-  if(!file) return;
-  uploadIssueImageFile(prefix, file);
+  var files = e.target.files;
+  if(!files || files.length === 0) return;
+  // 串行上传每个文件
+  var arr = Array.prototype.slice.call(files);
+  (async function(){
+    for(var i = 0; i < arr.length; i++){
+      await uploadIssueImageFile(prefix, arr[i]);
+    }
+  })();
   e.target.value = '';
 }
 
@@ -911,53 +953,45 @@ async function uploadIssueImageFile(prefix, file){
     try { if(App && App.toast) App.toast('图片超过 10MB 限制', 'error'); } catch(_) {}
     return;
   }
+  if(!Array.isArray(_issueImages[prefix])) _issueImages[prefix] = [];
+  // 取当前日期（如果已有图片带日期则沿用）
+  var curDate = _issueImages[prefix].length ? (_issueImages[prefix][0].date || '') : '';
   if(statusEl) statusEl.textContent = '⏳ 上传中：' + (file.name || '');
-  // 先做本地预览（base64）
+  // base64 即时预览
   var base64DataUrl = null;
-  try {
-    base64DataUrl = await fileToDataUrl(file);
-    var box = document.getElementById(prefix + 'PreviewBox');
-    var img = document.getElementById(prefix + 'PreviewImg');
-    if(box && img){
-      img.removeAttribute('data-img-path');
-      img.src = base64DataUrl;
-      img.onclick = function(){ openImageFullscreen(base64DataUrl); };
-      box.style.display = 'block';
-    }
-  } catch(_e) {}
-  // 强制 Supabase 上传（模块未就绪时等待加载完成，最多等 8s）
+  try { base64DataUrl = await fileToDataUrl(file); } catch(_e) {}
+  // 先以 base64 加入画廊（即时可见）
+  var tmpIdx = _issueImages[prefix].push({ path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: curDate }) - 1;
+  renderIssueImageBlock(prefix);
+  // 等待 SupabaseSubmit 加载
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
     if(statusEl) statusEl.textContent = '⏳ 等待云端上传模块加载...';
     var submitReady = await waitForSupabaseSubmit(8000);
     if(!submitReady){
-      _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
       if(statusEl) statusEl.textContent = '⚠ 云端上传模块未就绪，仅本地保存（其他电脑看不到）';
       try { if(App && App.toast) App.toast('云端上传模块未就绪，图片仅本地保存', 'warning'); } catch(_) {}
       return;
     }
   }
   try {
-    // 注意：问题图片不传 styleNo，避免污染 StyleImgCache（否则问题图会被当作款式图共享给其它模块）
-    // 路径策略：{userId}/qcFieldIssue/{uuid}-{name}，其它电脑仍可通过 signed URL 读取
+    // 不传 styleNo，避免污染 StyleImgCache
     var result = await SupabaseSubmit.uploadPicture(file, 'qcFieldIssue', null);
     if(result && result.path){
-      _issueImages[prefix] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: _issueImages[prefix]?.date || '' };
-      if(statusEl) statusEl.textContent = '✓ 上传成功：' + _issueImages[prefix].name;
-      showIssueImagePreviewByPath(prefix, result.path, _issueImages[prefix].name);
+      _issueImages[prefix][tmpIdx] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: curDate };
+      renderIssueImageBlock(prefix);
+      if(statusEl) statusEl.textContent = '✓ 上传成功：' + _issueImages[prefix][tmpIdx].name;
       try { if(App && App.toast) App.toast('✅ 上传成功', 'success'); } catch(_) {}
     } else {
-      _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
       if(statusEl) statusEl.textContent = '⚠ 云端上传失败，仅本地保存（其他电脑看不到）';
       try { if(App && App.toast) App.toast('云端上传失败，图片仅本地保存', 'warning'); } catch(_) {}
     }
   } catch(err){
-    _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
     if(statusEl) statusEl.textContent = '⚠ 上传失败：' + ((err && err.message) || err);
     try { if(App && App.toast) App.toast('上传失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
   }
 }
 
-// NAS 选择问题图片
+// NAS 选择问题图片（支持多选）
 async function nasPickIssueImage(prefix){
   var btn = document.getElementById(prefix + 'NasBtn');
   if(typeof App === 'undefined' || !App || typeof App.pickFromNas !== 'function'){
@@ -966,13 +1000,14 @@ async function nasPickIssueImage(prefix){
   }
   try {
     if(btn){ btn.disabled = true; btn.style.opacity = 0.6; btn.textContent = '⏳ 选择中...'; }
-    var picks = await App.pickFromNas({ multi:false, filter:'images', view:'large' });
+    var picks = await App.pickFromNas({ multi:true, filter:'images', view:'large' });
     if(!picks || picks.length === 0) return;
-    var pick = picks[0];
-    if(btn) btn.textContent = '⬇ 下载中...';
-    var got = await App.utils.nasFetchAsFile(pick.logicPath);
-    await uploadIssueImageFile(prefix, got.file);
-    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入：' + pick.name, 'success'); } catch(_) {}
+    for(var i = 0; i < picks.length; i++){
+      if(btn) btn.textContent = '⬇ 下载 ' + (i+1) + '/' + picks.length + '...';
+      var got = await App.utils.nasFetchAsFile(picks[i].logicPath);
+      await uploadIssueImageFile(prefix, got.file);
+    }
+    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入 ' + picks.length + ' 张', 'success'); } catch(_) {}
   } catch(err){
     try { if(App && App.toast) App.toast('NAS 选择失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
   } finally {
@@ -980,129 +1015,72 @@ async function nasPickIssueImage(prefix){
   }
 }
 
-// 通过路径显示问题图片预览
-function showIssueImagePreviewByPath(prefix, path, name){
-  var box = document.getElementById(prefix + 'PreviewBox');
-  var img = document.getElementById(prefix + 'PreviewImg');
-  var statusEl = document.getElementById(prefix + 'ImgStatus');
-  if(!box || !img) return;
-  if(!path){ box.style.display = 'none'; return; }
-  // base64 直接 src
-  if(typeof path === 'string' && path.indexOf('data:image') === 0){
-    img.removeAttribute('data-img-path');
-    img.src = path;
-    img.onclick = function(){ openImageFullscreen(path); };
-    box.style.display = 'block';
-    return;
-  }
-  // Supabase path → signed URL
-  img.setAttribute('data-img-path', path);
-  img.src = '';
-  img.onclick = function(){ openImageFullscreenByPath(path); };
-  box.style.display = 'block';
-  if(statusEl && name) statusEl.textContent = '⏳ 加载图片...';
-  var tryResolveIssue = function(submit){
-    if(submit && typeof submit.getSignedUrl === 'function'){
-      submit.getSignedUrl(path).then(function(url){
-        if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
-        else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
-      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
-      return true;
-    }
-    if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-      App.utils.getSignedUrl(path).then(function(url){
-        if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
-        else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
-      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
-      return true;
-    }
-    return false;
-  };
-  if(!tryResolveIssue(window.SupabaseSubmit)){
-    if(statusEl && name) statusEl.textContent = '⏳ 等待图片模块加载...';
-    waitForSupabaseSubmit(8000).then(function(submit){
-      if(!tryResolveIssue(submit)){
-        if(statusEl) statusEl.textContent = '⚠ 图片加载模块未就绪';
-      }
-    });
-  }
+// 删除固定问题图片中的第 idx 张
+function removeIssueImageAt(prefix, idx){
+  if(!Array.isArray(_issueImages[prefix])) return;
+  _issueImages[prefix].splice(idx, 1);
+  renderIssueImageBlock(prefix);
 }
 
-// 清除一个固定问题图片
+// 清除一个固定问题块的所有图片
 function clearIssueImage(prefix){
-  var keepDate = _issueImages[prefix] ? _issueImages[prefix].date : '';
-  _issueImages[prefix] = { path: '', name: '', base64: null, date: keepDate };
-  var box = document.getElementById(prefix + 'PreviewBox');
-  var img = document.getElementById(prefix + 'PreviewImg');
-  var statusEl = document.getElementById(prefix + 'ImgStatus');
-  if(box) box.style.display = 'none';
-  if(img){ img.removeAttribute('data-img-path'); img.src = ''; }
-  if(statusEl) statusEl.textContent = '';
-  var input = document.getElementById(prefix + 'FileInput');
-  if(input) input.value = '';
+  _issueImages[prefix] = [];
+  renderIssueImageBlock(prefix);
 }
 
-// 初始化固定问题图片块（依据记录数据回填）
+// 初始化固定问题图片块（依据记录数据回填，兼容旧单图格式）
 function initIssueImageBlocks(r){
   var w = r && r.washing || {};
   var g = r && r.garment || {};
-  _issueImages.wFirstIssue = {
-    path: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.path) || '',
-    name: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.name) || '',
-    base64: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.path && w.firstBatch.image.path.indexOf('data:image')===0) ? w.firstBatch.image.path : null,
-    date: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.date) || ''
-  };
-  _issueImages.wBulkIssue = {
-    path: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.path) || '',
-    name: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.name) || '',
-    base64: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.path && w.bulkWashing.image.path.indexOf('data:image')===0) ? w.bulkWashing.image.path : null,
-    date: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.date) || ''
-  };
-  _issueImages.gMatIssue = {
-    path: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.path) || '',
-    name: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.name) || '',
-    base64: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.path && g.materialsCheck.image.path.indexOf('data:image')===0) ? g.materialsCheck.image.path : null,
-    date: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.date) || ''
-  };
+  function norm(prefix, src){
+    var imgs = normalizeImages(src);
+    _issueImages[prefix] = imgs.map(function(im){
+      return {
+        path: im.path || '',
+        name: im.name || '',
+        base64: (im.path && im.path.indexOf('data:image') === 0) ? im.path : null,
+        date: im.date || ''
+      };
+    });
+  }
+  norm('wFirstIssue', w.firstBatch && w.firstBatch.image);
+  norm('wBulkIssue',  w.bulkWashing && w.bulkWashing.image);
+  norm('gMatIssue',   g.materialsCheck && g.materialsCheck.image);
   ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){
     renderIssueImageBlock(prefix);
-    var st = _issueImages[prefix];
-    if(st.path && !st.base64){
-      showIssueImagePreviewByPath(prefix, st.path, st.name);
-    }
     var dateEl = document.getElementById(prefix + 'ImgDate');
-    if(dateEl) dateEl.value = st.date || '';
+    if(dateEl && _issueImages[prefix].length) dateEl.value = _issueImages[prefix][0].date || '';
   });
 }
 
 // 重置所有问题图片块
 function resetIssueImageBlocks(){
-  _issueImages = {
-    wFirstIssue: { path: '', name: '', base64: null, date: '' },
-    wBulkIssue:  { path: '', name: '', base64: null, date: '' },
-    gMatIssue:   { path: '', name: '', base64: null, date: '' }
-  };
+  _issueImages = { wFirstIssue: [], wBulkIssue: [], gMatIssue: [] };
   _issueRowImages = [];
   ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){ renderIssueImageBlock(prefix); });
 }
 
-// 收集固定问题图片数据（保存时用）
+// 收集固定问题图片数据（保存时用，返回数组）
 function collectIssueImages(){
   var out = {};
   ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){
-    var st = _issueImages[prefix] || {};
-    out[prefix] = {
-      path: st.path || st.base64 || '',
-      name: st.name || '',
-      date: st.date || ''
-    };
+    out[prefix] = (_issueImages[prefix] || []).map(function(im){
+      return { path: im.path || im.base64 || '', name: im.name || '', date: im.date || '' };
+    });
   });
   return out;
 }
 
-// ==================== 生产中问题表格行的图片 ====================
+// ==================== 生产中问题表格行的图片（多图） ====================
 function setIssueRowImage(idx, imageData){
-  _issueRowImages[idx] = imageData || { path:'', name:'', base64:null, date:'' };
+  // 兼容单图/数组
+  if(Array.isArray(imageData)){
+    _issueRowImages[idx] = imageData.map(function(im){ return { path: im.path||'', name: im.name||'', base64: (im.path && im.path.indexOf('data:image')===0)?im.path:null, date: im.date||'' }; });
+  } else if(imageData && typeof imageData === 'object' && (imageData.path || imageData.name)){
+    _issueRowImages[idx] = [{ path: imageData.path||'', name: imageData.name||'', base64: (imageData.path && imageData.path.indexOf('data:image')===0)?imageData.path:null, date: imageData.date||'' }];
+  } else {
+    _issueRowImages[idx] = [];
+  }
   refreshIssueRowImageCell(idx);
 }
 function refreshIssueRowImageCell(idx){
@@ -1110,47 +1088,95 @@ function refreshIssueRowImageCell(idx){
   if(!tbody || !tbody.children[idx]) return;
   var cell = tbody.children[idx].querySelector('.qc-issue-table-img');
   if(!cell) return;
-  var st = _issueRowImages[idx] || { path:'', base64:null };
-  if(st.path || st.base64){
-    var src = st.base64 || '';
-    if(!src && st.path){
-      // 走 signed URL
-      if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
-        SupabaseSubmit.getSignedUrl(st.path).then(function(url){
-          var im = cell.querySelector('img');
-          if(im && url) im.src = url;
-        }).catch(function(){});
-      } else if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-        App.utils.getSignedUrl(st.path).then(function(url){
-          var im = cell.querySelector('img');
-          if(im && url) im.src = url;
-        }).catch(function(){});
-      }
-    } else {
-      // base64 直接显示
-      var im = cell.querySelector('img');
-      if(im) im.src = src;
-    }
-    cell.innerHTML = (src ? '<img src="'+escAttr(src)+'">' : '<img alt="">') + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
-    if(src){
-      var im2 = cell.querySelector('img');
-      if(im2) im2.onclick = function(e){ e.stopPropagation(); openImageFullscreen(src); };
-    } else {
-      var im3 = cell.querySelector('img');
-      if(im3){
-        im3.onclick = function(e){ e.stopPropagation(); if(st.path) openImageFullscreenByPath(st.path); };
-        if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
-          SupabaseSubmit.getSignedUrl(st.path).then(function(url){ if(im3 && url) im3.src = url; }).catch(function(){});
-        }
-      }
-    }
-  } else {
+  var imgs = Array.isArray(_issueRowImages[idx]) ? _issueRowImages[idx] : [];
+  // 去掉 base64 占位但已上传成功的条目里仍有效的
+  imgs = imgs.filter(function(im){ return im && (im.path || im.base64); });
+  if(imgs.length === 0){
     cell.innerHTML = '📷';
+    cell.onclick = function(){ openIssueRowImagePicker(idx); };
+    return;
+  }
+  // 显示第一张缩略图 + 数量角标
+  var first = imgs[0];
+  var src = first.base64 || '';
+  var badge = imgs.length > 1 ? '<span style="position:absolute;bottom:-2px;right:-2px;background:var(--qc-primary);color:#fff;border-radius:8px;font-size:9px;padding:0 4px;line-height:14px;z-index:2;">'+imgs.length+'</span>' : '';
+  if(src){
+    cell.innerHTML = '<img src="'+escAttr(src)+'">' + badge + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
+    var im = cell.querySelector('img');
+    if(im) im.onclick = function(e){ e.stopPropagation(); openRowImageGallery(idx); };
+  } else {
+    cell.innerHTML = '<img alt="" style="opacity:0.3;">' + badge + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
+    var im2 = cell.querySelector('img');
+    if(im2){
+      im2.onclick = function(e){ e.stopPropagation(); openRowImageGallery(idx); };
+      // 异步加载 signed URL
+      var tryResolve = function(submit){
+        if(submit && typeof submit.getSignedUrl === 'function'){
+          submit.getSignedUrl(first.path).then(function(url){ if(url) im2.src = url; im2.style.opacity='1'; }).catch(function(){});
+          return true;
+        }
+        if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+          App.utils.getSignedUrl(first.path).then(function(url){ if(url){ im2.src=url; im2.style.opacity='1'; } }).catch(function(){});
+          return true;
+        }
+        return false;
+      };
+      if(!tryResolve(window.SupabaseSubmit)){
+        waitForSupabaseSubmit(8000).then(function(submit){ tryResolve(submit); });
+      }
+    }
   }
 }
+// 打开行图片画廊（全屏，可查看所有图片）
+function openRowImageGallery(idx){
+  var imgs = Array.isArray(_issueRowImages[idx]) ? _issueRowImages[idx] : [];
+  if(imgs.length === 0) return;
+  // 收集所有 src（base64 直接用，path 走 signed URL）
+  var urls = imgs.map(function(im){ return im.base64 || im.path || ''; });
+  var pending = imgs.filter(function(im){ return !im.base64 && im.path; });
+  // 先渲染已有的 base64，再异步补 signed URL
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕ 关闭';
+  closeBtn.style.cssText = 'position:absolute;top:12px;right:20px;background:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:14px;';
+  closeBtn.onclick = function(){ document.body.removeChild(ov); };
+  ov.appendChild(closeBtn);
+  var gallery = document.createElement('div');
+  gallery.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;justify-content:center;overflow-y:auto;max-height:90vh;max-width:95vw;';
+  ov.appendChild(gallery);
+  imgs.forEach(function(im, i){
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;';
+    var imgEl = document.createElement('img');
+    imgEl.style.cssText = 'max-width:300px;max-height:300px;object-fit:contain;border-radius:6px;border:1px solid #444;cursor:zoom-in;background:#fff;';
+    if(im.base64){ imgEl.src = im.base64; }
+    else if(im.path){
+      // 异步获取 signed URL
+      var tryResolve = function(submit){
+        if(submit && typeof submit.getSignedUrl === 'function'){
+          submit.getSignedUrl(im.path).then(function(url){ if(url) imgEl.src = url; }).catch(function(){});
+          return true;
+        }
+        return false;
+      };
+      if(!tryResolve(window.SupabaseSubmit)){ waitForSupabaseSubmit(8000).then(function(s){ tryResolve(s); }); }
+    }
+    imgEl.onclick = function(e){ e.stopPropagation(); openImageFullscreen(imgEl.src); };
+    wrap.appendChild(imgEl);
+    if(im.name){ var lbl = document.createElement('div'); lbl.textContent = im.name; lbl.style.cssText='font-size:10px;color:#ccc;text-align:center;margin-top:2px;'; wrap.appendChild(lbl); }
+    gallery.appendChild(wrap);
+  });
+  ov.onclick = function(e){ if(e.target === ov) document.body.removeChild(ov); };
+  document.body.appendChild(ov);
+}
 function clearIssueRowImage(idx){
-  var keepDate = (_issueRowImages[idx] && _issueRowImages[idx].date) || '';
-  _issueRowImages[idx] = { path:'', name:'', base64:null, date: keepDate };
+  _issueRowImages[idx] = [];
+  refreshIssueRowImageCell(idx);
+}
+function removeIssueRowImageAt(idx, i){
+  if(!Array.isArray(_issueRowImages[idx])) return;
+  _issueRowImages[idx].splice(i, 1);
   refreshIssueRowImageCell(idx);
 }
 async function uploadIssueRowImage(idx, file){
@@ -1160,12 +1186,14 @@ async function uploadIssueRowImage(idx, file){
     try { if(App && App.toast) App.toast('图片超过 10MB 限制', 'error'); } catch(_) {}
     return;
   }
+  if(!Array.isArray(_issueRowImages[idx])) _issueRowImages[idx] = [];
+  var curDate = _issueRowImages[idx].length ? (_issueRowImages[idx][0].date || '') : '';
   var base64DataUrl = null;
   try { base64DataUrl = await fileToDataUrl(file); } catch(_e) {}
-  // 先用 base64 占位预览
-  _issueRowImages[idx] = { path: '', name: file.name || '', base64: base64DataUrl, date: (_issueRowImages[idx] && _issueRowImages[idx].date) || '' };
+  // 先以 base64 加入（即时可见）
+  var tmpIdx = _issueRowImages[idx].push({ path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: curDate }) - 1;
   refreshIssueRowImageCell(idx);
-  // 强制 Supabase 上传（模块未就绪时等待加载完成，最多等 8s）
+  // 等待 SupabaseSubmit
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
     if(statusEl) statusEl.textContent = '⏳ 等待云端上传模块加载...';
     var submitReady = await waitForSupabaseSubmit(8000);
@@ -1175,11 +1203,9 @@ async function uploadIssueRowImage(idx, file){
     }
   }
   try {
-    // 注意：问题图片不传 styleNo，避免污染 StyleImgCache
     var result = await SupabaseSubmit.uploadPicture(file, 'qcFieldIssue', null);
     if(result && result.path){
-      var keepDate = (_issueRowImages[idx] && _issueRowImages[idx].date) || '';
-      _issueRowImages[idx] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: keepDate };
+      _issueRowImages[idx][tmpIdx] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: curDate };
       refreshIssueRowImageCell(idx);
       try { if(App && App.toast) App.toast('✅ 问题图片上传成功', 'success'); } catch(_) {}
     } else {
@@ -1190,9 +1216,14 @@ async function uploadIssueRowImage(idx, file){
   }
 }
 function onIssueRowFileChange(e, idx){
-  var file = e.target.files && e.target.files[0];
-  if(!file) return;
-  uploadIssueRowImage(idx, file);
+  var files = e.target.files;
+  if(!files || files.length === 0) return;
+  var arr = Array.prototype.slice.call(files);
+  (async function(){
+    for(var i = 0; i < arr.length; i++){
+      await uploadIssueRowImage(idx, arr[i]);
+    }
+  })();
   e.target.value = '';
 }
 async function nasPickIssueRowImage(idx){
@@ -1201,12 +1232,13 @@ async function nasPickIssueRowImage(idx){
     return;
   }
   try {
-    var picks = await App.pickFromNas({ multi:false, filter:'images', view:'large' });
+    var picks = await App.pickFromNas({ multi:true, filter:'images', view:'large' });
     if(!picks || picks.length === 0) return;
-    var pick = picks[0];
-    var got = await App.utils.nasFetchAsFile(pick.logicPath);
-    await uploadIssueRowImage(idx, got.file);
-    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入：' + pick.name, 'success'); } catch(_) {}
+    for(var i = 0; i < picks.length; i++){
+      var got = await App.utils.nasFetchAsFile(picks[i].logicPath);
+      await uploadIssueRowImage(idx, got.file);
+    }
+    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入 ' + picks.length + ' 张', 'success'); } catch(_) {}
   } catch(err){
     try { if(App && App.toast) App.toast('NAS 选择失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
   }
@@ -1264,24 +1296,13 @@ function addIssueRow(date='',issue='',rect='',status='open',resolveDate='', imag
     '<td><input type="date" value="'+escAttr(resolveDate)+'"></td>' +
     '<td>' +
       '<div class="qc-issue-table-img" onclick="openIssueRowImagePicker('+idx+')">📷</div>' +
-      '<input type="file" id="issueRowFileInput_'+idx+'" accept="image/*" style="display:none;" onchange="onIssueRowFileChange(event, '+idx+')">' +
+      '<input type="file" id="issueRowFileInput_'+idx+'" accept="image/*" multiple style="display:none;" onchange="onIssueRowFileChange(event, '+idx+')">' +
       '<div class="qc-issue-img-status" id="issueRowImgStatus_'+idx+'" style="font-size:10px;"></div>' +
     '</td>' +
     '<td><button class="qc-btn-icon danger" onclick="removeIssueRow('+idx+')">&times;</button></td>';
   tbody.appendChild(tr);
-  // 初始化该行图片状态
-  if(image && typeof image === 'object'){
-    var p = image.path || '';
-    _issueRowImages[idx] = {
-      path: p,
-      name: image.name || '',
-      base64: (p && p.indexOf('data:image')===0) ? p : null,
-      date: image.date || ''
-    };
-  } else {
-    _issueRowImages[idx] = { path:'', name:'', base64:null, date:'' };
-  }
-  refreshIssueRowImageCell(idx);
+  // 初始化该行图片状态（兼容单图/数组）
+  setIssueRowImage(idx, image);
 }
 function removeIssueRow(idx){
   var tbody = document.getElementById('issueTableBody');
@@ -1298,7 +1319,7 @@ function rebuildIssueRowImages(){
   if(!tbody) return;
   var newArr = [];
   for(var i = 0; i < tbody.children.length; i++){
-    newArr.push(_issueRowImages[i] || { path:'', name:'', base64:null, date:'' });
+    newArr.push(Array.isArray(_issueRowImages[i]) ? _issueRowImages[i] : []);
   }
   _issueRowImages = newArr;
 }
@@ -1329,7 +1350,7 @@ function onIssueStatusChange(sel){
   // no-op, value read at save time
 }
 
-// 收集问题表格行（含图片）
+// 收集问题表格行（含图片数组）
 function collectIssueRows(){
   var rows = [];
   var tbody = document.getElementById('issueTableBody');
@@ -1343,19 +1364,17 @@ function collectIssueRows(){
     var rect = inputs[2] ? inputs[2].value : '';
     var resolveDate = inputs[3] ? inputs[3].value : '';
     if(!date && !issue && !rect) continue;
-    var img = _issueRowImages[i] || { path:'', name:'', base64:null, date:'' };
+    var imgs = Array.isArray(_issueRowImages[i]) ? _issueRowImages[i] : [];
+    var imageArr = imgs.filter(function(im){ return im && (im.path || im.base64); }).map(function(im){
+      return { path: im.path || im.base64 || '', name: im.name || '', date: im.date || date || '' };
+    });
     rows.push({
       date: date,
       issue: issue,
       rectification: rect,
       status: sel ? sel.value : 'open',
       resolvedDate: resolveDate,
-      image: {
-        path: img.path || img.base64 || '',
-        name: img.name || '',
-        // 行图片无独立日期输入框：默认用行的"发现日期"，配合文字更直观
-        date: img.date || date || ''
-      }
+      image: imageArr  // 数组格式（多图）
     });
   }
   return rows;
@@ -1365,17 +1384,55 @@ function collectIssueRows(){
 var _currentStyleImage = { path: '', name: '', base64: null }; // 当前表单内图片信息
 
 // 从 StyleImgCache 拉取该款号的图片（跨模块共享）
+// 从订单管理共享缓存拉取款式图（参考 order.html 的方式：getStyleImagesForStyleNo）
 function refreshStyleImageFromCache(styleNo){
   if(!styleNo){ clearCurrentImage(); return; }
-  if(!window.StyleImgCache){ return; }
-  var entry = StyleImgCache.resolve(styleNo);
-  if(entry && (entry.styleImg_path || entry.fullImg_path)){
-    var path = entry.styleImg_path || entry.fullImg_path;
-    var name = entry.styleImg_name || entry.fullImg_name || '';
-    _currentStyleImage = { path: path, name: name, base64: null };
-    showImagePreviewByPath(path, name);
-  } else {
-    clearCurrentImage();
+  var box = document.getElementById('imagePreviewBox');
+  var img = document.getElementById('styleImagePreview');
+  var statusEl = document.getElementById('imageStatus');
+  if(!img) return;
+  // 优先用本地 StyleImgCache 秒显
+  if(window.StyleImgCache){
+    var entry = StyleImgCache.resolve(styleNo);
+    if(entry && (entry.styleImg_path || entry.fullImg_path)){
+      var path = entry.styleImg_path || entry.fullImg_path;
+      _currentStyleImage = { path: path, name: entry.styleImg_name || entry.fullImg_name || '', base64: null };
+      showImagePreviewByPath(path, _currentStyleImage.name);
+    } else {
+      if(statusEl) statusEl.textContent = '⏳ 正在从云端查找款式图...';
+    }
+  }
+  // 异步走 getStyleImagesForStyleNo 全量查找（含 Supabase Storage LIST）
+  if(window.getStyleImagesForStyleNo){
+    getStyleImagesForStyleNo(styleNo).then(function(r){
+      if(!r){
+        if(statusEl) statusEl.textContent = '该款号暂无款式图';
+        return;
+      }
+      var p = r.styleImg_path || r.fullImg_path || '';
+      if(!p){
+        if(statusEl) statusEl.textContent = '该款号暂无款式图';
+        return;
+      }
+      _currentStyleImage = { path: p, name: r.styleImg_name || r.fullImg_name || '', base64: null };
+      // 优先用已签好的 signed URL
+      if(r.styleImg_signed || r.fullImg_signed){
+        var signedUrl = r.styleImg_signed || r.fullImg_signed;
+        if(img){ img.src = signedUrl; img.onclick = function(){ openImageFullscreen(signedUrl); }; }
+        if(box) box.style.display = 'block';
+        if(statusEl) statusEl.textContent = '✓ 已加载款式图';
+      } else if(window.resolveImageUrl){
+        resolveImageUrl(p, { hintStyleNo: styleNo }).then(function(url){
+          if(url){
+            if(img){ img.src = url; img.onclick = function(){ openImageFullscreen(url); }; }
+            if(box) box.style.display = 'block';
+            if(statusEl) statusEl.textContent = '✓ 已加载款式图';
+          } else {
+            if(statusEl) statusEl.textContent = '⚠ 款式图加载失败';
+          }
+        }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 款式图加载失败'; });
+      }
+    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 款式图加载失败'; });
   }
 }
 
@@ -1393,22 +1450,21 @@ function showImagePreviewByPath(path, name){
     if(statusEl) statusEl.textContent = '✓ 已加载图片' + (name ? '：'+name : '');
     return;
   }
-  // Supabase path → signed URL
-  img.src = '';
+  // Supabase path → signed URL（不清空已有 src，等拿到 URL 再替换）
   box.style.display = 'block';
   if(statusEl) statusEl.textContent = '⏳ 加载图片中...';
   // 优先用已就绪的 SupabaseSubmit；若未就绪则等待异步模块加载完成
   var tryResolve = function(submit){
     if(submit && typeof submit.getSignedUrl === 'function'){
       submit.getSignedUrl(path).then(function(url){
-        if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
+        if(url){ img.src = url; img.onclick = function(){ openImageFullscreen(url); }; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
         else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
       }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
       return true;
     }
     if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
       App.utils.getSignedUrl(path).then(function(url){
-        if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
+        if(url){ img.src = url; img.onclick = function(){ openImageFullscreen(url); }; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
         else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
       }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
       return true;
@@ -1433,9 +1489,7 @@ function clearCurrentImage(){
   var statusEl = document.getElementById('imageStatus');
   if(box) box.style.display = 'none';
   if(img) img.src = '';
-  if(statusEl) statusEl.textContent = '';
-  var input = document.getElementById('styleImageInput');
-  if(input) input.value = '';
+  if(statusEl) statusEl.textContent = '该款号暂无款式图';
 }
 
 // 本地电脑上传
@@ -2107,7 +2161,7 @@ function showDetailModal(r){
     html += detailItem('头缸时间', w.firstBatch?.date||'-');
     html += detailItem('头缸数量', w.firstBatch?.quantity||'-');
     html += detailItem('头缸问题', w.firstBatch?.issues||'-');
-    if(w.firstBatch?.image && w.firstBatch.image.path){
+    if(normalizeImages(w.firstBatch?.image).length){
       html += detailIssueImage(w.firstBatch.image, '头缸问题图片');
     }
     html += detailItem('大货水洗方法', (w.bulkMethod?.confirmed?'✅ ':'')+ (w.bulkMethod?.method||'-'));
@@ -2115,7 +2169,7 @@ function showDetailModal(r){
     html += detailItem('大货水洗结束', w.bulkWashing?.endDate||'-');
     html += detailItem('大货总缸数', w.bulkWashing?.totalBatches||'-');
     html += detailItem('大货水洗问题', w.bulkWashing?.issues||'-');
-    if(w.bulkWashing?.image && w.bulkWashing.image.path){
+    if(normalizeImages(w.bulkWashing?.image).length){
       html += detailIssueImage(w.bulkWashing.image, '大货水洗问题图片');
     }
     html += detailItem('问题整改', w.bulkWashing?.rectification||'-');
@@ -2132,7 +2186,7 @@ function showDetailModal(r){
     html += detailItem('PP产前样备注', g.ppSample?.notes||'-');
     html += detailItem('面里辅料核对', (matStatusMap[g.materialsCheck?.status]||'-')+(g.materialsCheck?.date?' ('+g.materialsCheck.date+')':''));
     html += detailItem('辅料核对备注', g.materialsCheck?.notes||'-');
-    if(g.materialsCheck?.image && g.materialsCheck.image.path){
+    if(normalizeImages(g.materialsCheck?.image).length){
       html += detailIssueImage(g.materialsCheck.image, '辅料核对图片');
     }
     html += detailItem('开裁时间', g.cuttingDate||'-');
@@ -2173,32 +2227,42 @@ function showDetailModal(r){
 function detailItem(label, value){
   return '<div class="qc-detail-item"><span class="label">'+label+'</span><span class="value">'+esc(String(value||'-'))+'</span></div>';
 }
-// 详情弹窗：渲染一个固定问题图片块
-function detailIssueImage(img, label){
-  if(!img || !img.path) return '';
-  var p = img.path;
-  var dateStr = img.date ? ' (' + img.date + ')' : '';
-  // base64 直接显示
-  if(typeof p === 'string' && p.indexOf('data:image') === 0){
-    return '<div class="qc-detail-item" style="grid-column:1/-1;">'+
-      '<span class="label">'+esc(label)+dateStr+'</span>'+
-      '<img src="'+escAttr(p)+'" style="max-width:160px;max-height:200px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="openImageFullscreen(\''+escAttr(p)+'\')">'+
-      '</div>';
-  }
-  // Supabase path → 异步 signed URL（在 resolveModalImages 中处理）
-  return '<div class="qc-detail-item" style="grid-column:1/-1;">'+
-    '<span class="label">'+esc(label)+dateStr+(img.name?' - '+esc(img.name):'')+'</span>'+
-    '<img data-img-path="'+escAttr(p)+'" src="" style="max-width:160px;max-height:200px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;background:#f8f9fa;" alt="加载中...">'+
-    '</div>';
+// 详情弹窗：渲染一个固定问题图片块（支持多图数组）
+function detailIssueImage(imgData, label){
+  // 兼容旧单图格式（对象）和新多图格式（数组）
+  var imgs = normalizeImages(imgData);
+  if(imgs.length === 0) return '';
+  var dateStr = imgs[0].date ? ' (' + imgs[0].date + ')' : '';
+  var html = '<div class="qc-detail-item" style="grid-column:1/-1;">'+
+    '<span class="label">'+esc(label)+dateStr+'（'+imgs.length+'张）</span>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  imgs.forEach(function(im, i){
+    var p = im.path;
+    if(!p) return;
+    if(typeof p === 'string' && p.indexOf('data:image') === 0){
+      html += '<img src="'+escAttr(p)+'" style="max-width:160px;max-height:200px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="openImageFullscreen(\''+escAttr(p)+'\')">';
+    } else {
+      html += '<img data-img-path="'+escAttr(p)+'" src="" style="max-width:160px;max-height:200px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;background:#f8f9fa;" alt="加载中..." title="'+escAttr(im.name||'')+'">';
+    }
+  });
+  html += '</div></div>';
+  return html;
 }
-// 详情弹窗：生产问题表格中的图片单元格
-function detailIssueImageCell(img){
-  if(!img || !img.path) return '-';
-  var p = img.path;
-  if(typeof p === 'string' && p.indexOf('data:image') === 0){
-    return '<img src="'+escAttr(p)+'" style="width:46px;height:46px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="openImageFullscreen(\''+escAttr(p)+'\')" title="'+(img.date||'')+'">';
-  }
-  return '<img data-img-path="'+escAttr(p)+'" src="" style="width:46px;height:46px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);background:#f8f9fa;cursor:zoom-in;" alt="..." title="'+escAttr(img.date||'')+'">';
+// 详情弹窗：生产问题表格中的图片单元格（支持多图数组）
+function detailIssueImageCell(imgData){
+  var imgs = normalizeImages(imgData);
+  if(imgs.length === 0) return '-';
+  var html = '';
+  imgs.forEach(function(im, i){
+    var p = im.path;
+    if(!p) return;
+    if(typeof p === 'string' && p.indexOf('data:image') === 0){
+      html += '<img src="'+escAttr(p)+'" style="width:46px;height:46px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:zoom-in;margin-right:2px;" onclick="openImageFullscreen(\''+escAttr(p)+'\')" title="'+escAttr(im.date||'')+'">';
+    } else {
+      html += '<img data-img-path="'+escAttr(p)+'" src="" style="width:46px;height:46px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);background:#f8f9fa;cursor:zoom-in;margin-right:2px;" alt="..." title="'+escAttr(im.date||'')+'">';
+    }
+  });
+  return html || '-';
 }
 // 详情弹窗渲染后：解析所有 [data-img-path] 为 signed URL
 function resolveModalImages(){
@@ -2208,16 +2272,25 @@ function resolveModalImages(){
     if(!path) return;
     // 点击全屏
     img.onclick = function(){ openImageFullscreenByPath(path); };
-    if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
-      SupabaseSubmit.getSignedUrl(path).then(function(url){
-        if(url) img.src = url;
-        else img.alt = '加载失败';
-      }).catch(function(){ img.alt = '加载失败'; });
-    } else if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-      App.utils.getSignedUrl(path).then(function(url){
-        if(url) img.src = url;
-        else img.alt = '加载失败';
-      }).catch(function(){ img.alt = '加载失败'; });
+    var tryResolve = function(submit){
+      if(submit && typeof submit.getSignedUrl === 'function'){
+        submit.getSignedUrl(path).then(function(url){
+          if(url) img.src = url;
+          else img.alt = '加载失败';
+        }).catch(function(){ img.alt = '加载失败'; });
+        return true;
+      }
+      if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+        App.utils.getSignedUrl(path).then(function(url){
+          if(url) img.src = url;
+          else img.alt = '加载失败';
+        }).catch(function(){ img.alt = '加载失败'; });
+        return true;
+      }
+      return false;
+    };
+    if(!tryResolve(window.SupabaseSubmit)){
+      waitForSupabaseSubmit(8000).then(function(submit){ tryResolve(submit); });
     }
   });
 }
