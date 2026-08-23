@@ -643,9 +643,11 @@ function populateContactDatalists(){
     var factories = contacts.filter(function(c){ return c && c.type === '服装厂'; })
       .map(function(c){ return (c.name || '').trim(); })
       .filter(function(s){ return s; });
-    // QC姓名：取"同事"分类下的"联系人姓名"（contactPerson），而非公司名称
+    // QC姓名：取"同事"类型下的【联系人姓名】（contactPerson 字段！）
+    // 绝不 fallback 到 c.name，因为 c.name 是同事所属公司名（不是人名）
+    // 没有填 contactPerson 的同事记录，不会出现在 QC姓名下拉里
     var colleagues = contacts.filter(function(c){ return c && c.type === '同事'; })
-      .map(function(c){ return (c.contactPerson || c.name || '').trim(); })
+      .map(function(c){ return (c.contactPerson || '').trim(); })
       .filter(function(s){ return s; });
     var fdl = document.getElementById('factoryList');
     if(fdl) fdl.innerHTML = unique(factories).map(function(s){ return '<option value="'+escAttr(s)+'">'; }).join('');
