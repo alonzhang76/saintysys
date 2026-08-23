@@ -658,7 +658,7 @@ function openForm(id) {
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <div class="form-group" style="flex:1;min-width:140px;">
         <label class="form-label">Style No. (款号)</label>
-        <input type="text" id="f_styleNo" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.styleNo || '') : ''}" placeholder="款号">
+        <input type="text" id="f_styleNo" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.styleNo || '') : ''}" placeholder="款号" oninput="OrderImg.onStyleNoChange()">
       </div>
       <div class="form-group" style="flex:2;min-width:200px;">
         <label class="form-label">Style Description (款式描述)</label>
@@ -778,6 +778,9 @@ function openForm(id) {
   // 初始化图片预览
   OrderImg.hydratePreview('style', order && order.styleImg_path);
   OrderImg.hydratePreview('full', order && order.fullImg_path);
+
+  // 自动从缓存回查图片（按款号共享）
+  setTimeout(function(){ OrderImg.autoPopulateImagesFromCache(order && order.styleNo); }, 150);
 }
 
 // ===== 订单图片上传模块 =====
@@ -939,6 +942,63 @@ const OrderImg = {
       previewImg.style.display = 'block';
       if (placeholder) placeholder.style.display = 'none';
     }
+  },
+
+  // 按款号自动从缓存回查图片
+  autoPopulateImagesFromCache: function(forceStyleNo) {
+    var styleNo = (forceStyleNo || '').trim();
+    if (!styleNo) {
+      var styleNoEl = document.getElementById('f_styleNo');
+      if (styleNoEl) styleNo = styleNoEl.value.trim();
+    }
+    if (!styleNo || !window.StyleImgCache) return;
+
+    var stylePath = document.getElementById('orderStyleImgPath');
+    var fullPath = document.getElementById('orderFullImgPath');
+    var hasCurrentStyle = stylePath && stylePath.value;
+    var hasCurrentFull = fullPath && fullPath.value;
+    if (hasCurrentStyle && hasCurrentFull) return;
+
+    var cached = StyleImgCache.resolve(styleNo);
+    if (!cached) return;
+
+    var populated = false;
+    if (!hasCurrentStyle && cached.styleImg_path) {
+      stylePath.value = cached.styleImg_path;
+      var nameEl = document.getElementById('orderStyleImgName');
+      if (nameEl) nameEl.value = cached.styleImg_name || '';
+      var previewImg = document.getElementById('orderStyleImgPreview');
+      if (previewImg) {
+        previewImg.src = cached.styleImg_path;
+        previewImg.style.display = 'block';
+      }
+      var placeholder = document.getElementById('orderStyleImgPlaceholder');
+      if (placeholder) placeholder.style.display = 'none';
+      populated = true;
+    }
+    if (!hasCurrentFull && cached.fullImg_path) {
+      fullPath.value = cached.fullImg_path;
+      var nameEl2 = document.getElementById('orderFullImgName');
+      if (nameEl2) nameEl2.value = cached.fullImg_name || '';
+      var previewImg2 = document.getElementById('orderFullImgPreview');
+      if (previewImg2) {
+        previewImg2.src = cached.fullImg_path;
+        previewImg2.style.display = 'block';
+      }
+      var placeholder2 = document.getElementById('orderFullImgPlaceholder');
+      if (placeholder2) placeholder2.style.display = 'none';
+      populated = true;
+    }
+    if (populated) {
+      console.log('[OrderImg] 从缓存回查图片，款号=' + styleNo);
+      try { if (App && App.toast) App.toast('已自动加载款号 ' + styleNo + ' 的共享图片', 'info'); } catch(_) {}
+    }
+  },
+
+  onStyleNoChange: function() {
+    var self = this;
+    clearTimeout(self._styleNoTimer);
+    self._styleNoTimer = setTimeout(function(){ self.autoPopulateImagesFromCache(); }, 300);
   },
 
   // 全屏查看
@@ -1200,6 +1260,15 @@ function saveForm(id) {
   }
 
   App.store.set('orders', orders);
+  // 更新款式图片共享缓存
+  if (window.StyleImgCache) {
+    StyleImgCache.updateIfChanged(styleNo, {
+      styleImg_path: styleImg_path,
+      styleImg_name: styleImg_name,
+      fullImg_path: fullImg_path,
+      fullImg_name: fullImg_name
+    });
+  }
   App.modal.close();
   renderStats();
   renderTable();
@@ -1210,13 +1279,28 @@ function deleteOrder(id) {
   App.confirm('确定要删除此订单吗？删除后不可恢复。', () => {
     let orders = App.store.get('orders', []);
     const order = orders.find(o => o.id === id);
-    // 删除 Supabase 图片
+    // 删除 Supabase 图片（跳过 base64 和被其他款号共享引用的图片）
     if (order) {
-      if (order.styleImg_path && !order.styleImg_path.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
-        try { SupabaseSubmit.deletePicture(order.styleImg_path); } catch(_e) {}
+      if (order.styleImg_path && !order.styleImg_path.startsWith('data:image')) {
+        var isSharedS = window.StyleImgCache && StyleImgCache.isShared(order.styleImg_path, order.styleNo);
+        if (!isSharedS && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
+          try { SupabaseSubmit.deletePicture(order.styleImg_path); } catch(_e) {}
+        }
       }
-      if (order.fullImg_path && !order.fullImg_path.startsWith('data:image') && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
-        try { SupabaseSubmit.deletePicture(order.fullImg_path); } catch(_e) {}
+      if (order.fullImg_path && !order.fullImg_path.startsWith('data:image')) {
+        var isSharedF = window.StyleImgCache && StyleImgCache.isShared(order.fullImg_path, order.styleNo);
+        if (!isSharedF && window.SupabaseSubmit && typeof SupabaseSubmit.deletePicture === 'function') {
+          try { SupabaseSubmit.deletePicture(order.fullImg_path); } catch(_e) {}
+        }
+      }
+      // 从缓存中移除（仅当没有其他模块引用时）
+      if (window.StyleImgCache && order.styleNo) {
+        var stillReferenced = false;
+        try {
+          var cons = App.store.get('consumptions', []);
+          stillReferenced = cons.some(function(c){ return c.styleNo === order.styleNo && (c.styleImg_path || c.fullImg_path); });
+        } catch(_e) {}
+        if (!stillReferenced) StyleImgCache.remove(order.styleNo);
       }
     }
     orders = orders.filter(o => o.id !== id);

@@ -18,7 +18,7 @@ const SUPERSET_KEYS = [
   'express_delivery_data_v2',
   'pl_records_v1', 'pl_draft_v1',
   'sht_sample_data_v2', 'sht_size_tables_v2',
-  'sizeSheets',
+  'sizeSheets', 'styleImages',
 ];
 
 // 安全相关键（不走 Supabase）

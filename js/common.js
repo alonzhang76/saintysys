@@ -1033,3 +1033,133 @@ App.initSampleData = function() {
   });
   if (permChanged) App.store.set('permissions', perms);
 };
+
+// ===== 款式图片共享缓存 =====
+// 以款号(styleNo)为键，跨模块共享图片。任何模块上传的图片，其他模块均可复用。
+const StyleImgCache = {
+  KEY: 'styleImages',
+
+  _load() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || '{}'); }
+    catch(_) { return {}; }
+  },
+  _save(obj) {
+    localStorage.setItem(this.KEY, JSON.stringify(obj));
+    // 触发云端同步
+    try {
+      window.dispatchEvent(new CustomEvent('cloud-write-request', {
+        detail: { key: this.KEY, value: obj, ts: Date.now() }
+      }));
+    } catch(_) {}
+  },
+
+  // 获取指定款号的图片
+  get(styleNo) {
+    if (!styleNo) return null;
+    var all = this._load();
+    return all[String(styleNo)] || null;
+  },
+
+  // 检查指定款号是否有图片
+  has(styleNo) {
+    if (!styleNo) return false;
+    var entry = this.get(styleNo);
+    return !!(entry && (entry.styleImg_path || entry.fullImg_path));
+  },
+
+  // 设置指定款号的图片
+  // images: { styleImg_path, styleImg_name, fullImg_path, fullImg_name }
+  set(styleNo, images) {
+    if (!styleNo) return;
+    // base64 data URL 不缓存（避免 localStorage 膨胀）
+    var sanitized = {};
+    if (images.styleImg_path && !images.styleImg_path.startsWith('data:image')) {
+      sanitized.styleImg_path = images.styleImg_path;
+      sanitized.styleImg_name = images.styleImg_name || '';
+    }
+    if (images.fullImg_path && !images.fullImg_path.startsWith('data:image')) {
+      sanitized.fullImg_path = images.fullImg_path;
+      sanitized.fullImg_name = images.fullImg_name || '';
+    }
+    // 如果没有可缓存内容，跳过
+    if (!sanitized.styleImg_path && !sanitized.fullImg_path) return;
+    var all = this._load();
+    var existing = all[String(styleNo)] || {};
+    // 合并：新值覆盖，旧值保留
+    all[String(styleNo)] = Object.assign({}, existing, sanitized, { updatedAt: Date.now() });
+    this._save(all);
+  },
+
+  // 仅当传入的新图片路径与缓存不同时才更新（避免无效写入）
+  updateIfChanged(styleNo, images) {
+    if (!styleNo) return;
+    var existing = this.get(styleNo) || {};
+    var changed = false;
+    if (images.styleImg_path && images.styleImg_path !== existing.styleImg_path) changed = true;
+    if (images.fullImg_path && images.fullImg_path !== existing.fullImg_path) changed = true;
+    if (changed) this.set(styleNo, images);
+  },
+
+  // 删除指定款号的图片缓存
+  remove(styleNo) {
+    if (!styleNo) return;
+    var all = this._load();
+    delete all[String(styleNo)];
+    this._save(all);
+  },
+
+  // 检查某个 Supabase 路径是否被其他款号共享引用
+  isShared(path, excludeStyleNo) {
+    if (!path) return false;
+    var all = this._load();
+    var keys = Object.keys(all);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (k === String(excludeStyleNo)) continue;
+      var entry = all[k];
+      if (!entry) continue;
+      if (entry.styleImg_path === path || entry.fullImg_path === path) return true;
+    }
+    return false;
+  },
+
+  // 获取指定款号的图片（先查缓存，再回查各业务表）
+  resolve(styleNo) {
+    if (!styleNo) return null;
+    // 1) 先查本地缓存
+    var cached = this.get(styleNo);
+    if (cached && (cached.styleImg_path || cached.fullImg_path)) return cached;
+    // 2) 回查各业务表
+    var result = null;
+    try {
+      // 查 orders
+      var orders = App.store.get('orders', []);
+      var o = orders.find(function(x){ return x.styleNo === styleNo; });
+      if (o && (o.styleImg_path || o.fullImg_path)) {
+        result = { styleImg_path: o.styleImg_path || '', styleImg_name: o.styleImg_name || '', fullImg_path: o.fullImg_path || '', fullImg_name: o.fullImg_name || '' };
+      }
+      // 查 consumptions
+      if (!result) {
+        var cons = App.store.get('consumptions', []);
+        var c = cons.find(function(x){ return x.styleNo === styleNo || x.itemNo === styleNo; });
+        if (c && (c.styleImg_path || c.fullImg_path)) {
+          result = { styleImg_path: c.styleImg_path || '', styleImg_name: c.styleImg_name || '', fullImg_path: c.fullImg_path || '', fullImg_name: c.fullImg_name || '' };
+        }
+      }
+      // 查 samples
+      if (!result) {
+        var samples = App.store.get('samples', []);
+        var s = samples.find(function(x){ return x.styleNo === styleNo; });
+        if (s && (s.styleImg_path || s.fullImg_path)) {
+          result = { styleImg_path: s.styleImg_path || '', styleImg_name: s.styleImg_name || '', fullImg_path: s.fullImg_path || '', fullImg_name: s.fullImg_name || '' };
+        }
+      }
+    } catch(_e) {}
+    // 3) 找到后回填缓存
+    if (result) this.set(styleNo, result);
+    return result;
+  }
+};
+
+// 暴露到全局
+window.StyleImgCache = StyleImgCache;
