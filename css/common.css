@@ -172,6 +172,16 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius);
 }
 .header-toggle:hover { background: var(--border-light); color: var(--primary); }
+/* 移动端：扩大点击热区到 44x44（iOS 推荐最小点击尺寸），防止点不中 */
+@media (max-width: 768px) {
+  .header-toggle {
+    padding: 10px 12px;
+    font-size: 20px;
+    min-width: 44px;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
 .header-title {
   font-size: 14px;
   font-weight: 600;

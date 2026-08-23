@@ -289,15 +289,108 @@ const App = {
     }
   },
 
-  // 侧边栏折叠
+  // 侧边栏折叠 / 移动端展开
   bindSidebarToggle() {
-    const toggle = document.querySelector('.header-toggle');
-    if (toggle) {
-      toggle.addEventListener('click', () => {
-        var s = document.querySelector('.sidebar'); if (s) s.classList.toggle('collapsed');
-        var m = document.querySelector('.main-area'); if (m) m.classList.toggle('expanded');
-      });
+    // ===== 事件委托绑定到 document,保证即便 header 被动态重绘也能生效 =====
+    // 同时区分移动端(mobile-show)与桌面端(collapsed/expanded)两套样式。
+    var MOBILE_BP = 768;
+    function isMobile() {
+      try { return window.matchMedia('(max-width: ' + MOBILE_BP + 'px)').matches; }
+      catch(e) { return window.innerWidth <= MOBILE_BP; }
     }
+    function getSidebar() { return document.querySelector('.sidebar'); }
+    function getMain() { return document.querySelector('.main-area'); }
+    function getMask() { return document.getElementById('sidebar-mobile-mask'); }
+
+    function ensureMask() {
+      if (getMask()) return;
+      try {
+        var mask = document.createElement('div');
+        mask.id = 'sidebar-mobile-mask';
+        mask.setAttribute('aria-hidden', 'true');
+        // 样式内联，避免依赖 common.css 版本号同步
+        mask.style.cssText = [
+          'position:fixed; inset:0; z-index:99;',
+          'background:rgba(0,0,0,0.45);',
+          'display:none; opacity:0;',
+          'transition:opacity 0.2s ease;',
+          '-webkit-tap-highlight-color:transparent;'
+        ].join('');
+        document.body.appendChild(mask);
+        // 点击遮罩收起
+        mask.addEventListener('click', closeMobile, { passive: true });
+      } catch(e) {}
+    }
+
+    function showMask() {
+      var m = getMask(); if (!m) return;
+      m.style.display = 'block';
+      // 下一帧加 opacity 触发 CSS transition
+      requestAnimationFrame(function(){ m.style.opacity = '1'; });
+    }
+    function hideMask() {
+      var m = getMask(); if (!m) return;
+      m.style.opacity = '0';
+      setTimeout(function(){ if (m) m.style.display = 'none'; }, 220);
+    }
+
+    function openMobile() {
+      ensureMask();
+      var s = getSidebar(); if (s) s.classList.add('mobile-show');
+      if (isMobile()) showMask();
+      // 防止 body 可滚
+      try { document.body.style.overflow = 'hidden'; } catch(_) {}
+    }
+    function closeMobile() {
+      var s = getSidebar(); if (s) s.classList.remove('mobile-show');
+      hideMask();
+      try { document.body.style.overflow = ''; } catch(_) {}
+    }
+    function toggleMobile() {
+      var s = getSidebar();
+      if (s && s.classList.contains('mobile-show')) closeMobile(); else openMobile();
+    }
+    function toggleDesktop() {
+      var s = getSidebar(); if (s) s.classList.toggle('collapsed');
+      var m = getMain(); if (m) m.classList.toggle('expanded');
+    }
+
+    // 点击 header-toggle（左上方 ☰ 按钮）
+    document.addEventListener('click', function(e) {
+      var tgt = e.target;
+      while (tgt && tgt !== document) {
+        if (tgt.classList && tgt.classList.contains('header-toggle')) break;
+        tgt = tgt.parentNode;
+      }
+      if (!tgt || !tgt.classList || !tgt.classList.contains('header-toggle')) return;
+      e.preventDefault();
+      if (isMobile()) toggleMobile(); else toggleDesktop();
+    });
+
+    // 点击侧边栏里的菜单项(移动端)：跳转后自动收起
+    document.addEventListener('click', function(e) {
+      if (!isMobile()) return;
+      var s = getSidebar(); if (!s) return;
+      if (!s.classList.contains('mobile-show')) return;
+      var a = e.target;
+      while (a && a !== s) {
+        if (a.tagName === 'A') {
+          closeMobile();
+          return;
+        }
+        a = a.parentNode;
+      }
+    }, true);
+
+    // 视口变化由移动端切到桌面端：清掉 mobile-show + 遮罩
+    window.addEventListener('resize', function() {
+      if (!isMobile()) {
+        var s = getSidebar();
+        if (s) s.classList.remove('mobile-show');
+        hideMask();
+        try { document.body.style.overflow = ''; } catch(_) {}
+      }
+    });
   },
 
   // 加载用户信息（Supabase 适配）
