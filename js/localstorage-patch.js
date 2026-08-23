@@ -19,6 +19,8 @@ const SUPERSET_KEYS = [
   'pl_records_v1', 'pl_draft_v1',
   'sht_sample_data_v2', 'sht_size_tables_v2',
   'sizeSheets', 'styleImages',
+  // 外勤QC：跨电脑共享的 QC 检验记录
+  'qc_field_mgmt_v2',
   // NAS 云盘：全局共享配置与文件夹权限规则
   'nas_config', 'nas_folder_perms',
 ];

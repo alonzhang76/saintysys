@@ -851,6 +851,7 @@
       'pl_records_v1', 'pl_draft_v1',
       'sht_sample_data_v2', 'sht_size_tables_v2',
       'sizeSheets', 'styleImages',
+      'qc_field_mgmt_v2',
       // NAS 云盘：全局共享配置和文件夹权限（按用户筛选，非管理员上传会被守卫跳过）
       'nas_config', 'nas_folder_perms',
     ];

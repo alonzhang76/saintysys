@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外勤QC - AA服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+:root{
+  --qc-bg:#f0f2f5;--qc-card:#fff;--qc-primary:#2b6cb0;--qc-primary-light:#ebf4ff;
+  --qc-success:#2f9e44;--qc-success-light:#ebfbee;
+  --qc-warning:#f59f00;--qc-warning-light:#fff9db;
+  --qc-danger:#e03131;--qc-danger-light:#fff5f5;
+  --qc-gray:#adb5bd;--qc-gray-light:#f1f3f5;
+  --qc-text:#333;--qc-text-light:#868e96;--qc-border:#e0e0e0;
+  --qc-radius:6px;--qc-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+/* Header */
+.qc-header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.15);border-radius:var(--qc-radius);margin-bottom:12px;}
+.qc-header h1{font-size:18px;font-weight:600;margin:0;}
+.qc-header-actions{display:flex;gap:8px;align-items:center;}
+.qc-header-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;transition:.2s;}
+.qc-header-btn:hover{background:rgba(255,255,255,.3);}
+.qc-header-btn.outline{background:#fff;color:#495057;border:1px solid var(--qc-border);}
+.qc-header-btn.outline:hover{background:#f8f9fa;}
+/* Tabs */
+.qc-tabs{display:flex;background:#fff;border-bottom:2px solid var(--qc-border);padding:0 12px;border-radius:var(--qc-radius) var(--qc-radius) 0 0;}
+.qc-tab-btn{padding:10px 24px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--qc-text-light);border-bottom:3px solid transparent;transition:.2s;font-weight:500;}
+.qc-tab-btn:hover{color:var(--qc-primary);}
+.qc-tab-btn.active{color:var(--qc-primary);border-bottom-color:var(--qc-primary);font-weight:600;}
+.qc-tabs{position:sticky;top:0;z-index:10;}
+/* Tab content */
+.qc-tab-content{display:none;padding:16px 4px;}
+.qc-tab-content.active{display:block;}
+/* Cards */
+.qc-card{background:var(--qc-card);border-radius:var(--qc-radius);box-shadow:var(--qc-shadow);margin-bottom:16px;overflow:hidden;}
+.qc-card-header{background:#f8f9fa;padding:10px 16px;border-bottom:1px solid var(--qc-border);font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;color:#495057;}
+.qc-card-header .icon{font-size:15px;}
+.qc-card-body{padding:16px;}
+/* Form */
+.qc-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.qc-form-group{display:flex;flex-direction:column;gap:4px;}
+.qc-form-group.full{grid-column:1/-1;}
+.qc-form-group label{font-size:12px;color:#495057;font-weight:500;}
+.qc-form-group label .req{color:var(--qc-danger);}
+.qc-form-control{padding:5px 8px;border:1px solid var(--qc-border);border-radius:4px;font-size:13px;background:#fffde7;transition:.2s;width:100%;}
+.qc-form-control:focus{outline:none;border-color:var(--qc-primary);box-shadow:0 0 0 2px rgba(43,108,176,.1);}
+textarea.qc-form-control{resize:vertical;min-height:48px;font-family:inherit;}
+select.qc-form-control{cursor:pointer;}
+.qc-checkbox-group{display:flex;align-items:center;gap:6px;padding:5px 0;}
+.qc-checkbox-group input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+/* Size table */
+.qc-size-table,.qc-sub-table{width:100%;border-collapse:collapse;font-size:12px;}
+.qc-size-table th,.qc-sub-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border:1px solid var(--qc-border);font-weight:600;white-space:nowrap;}
+.qc-size-table td,.qc-sub-table td{padding:4px 8px;border:1px solid var(--qc-border);text-align:left;}
+.qc-size-table input,.qc-sub-table input,.qc-sub-table textarea,.qc-sub-table select{border:1px solid var(--qc-border);border-radius:3px;padding:3px 6px;font-size:12px;width:100%;background:#fffde7;}
+.qc-size-table input:focus,.qc-sub-table input:focus,.qc-sub-table textarea:focus,.qc-sub-table select:focus{outline:none;border-color:var(--qc-primary);}
+/* Buttons */
+.qc-btn{padding:5px 14px;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;transition:.2s;display:inline-flex;align-items:center;gap:4px;}
+.qc-btn-primary{background:var(--qc-primary);color:#fff;}
+.qc-btn-primary:hover{background:#1e4d7b;}
+.qc-btn-success{background:var(--qc-success);color:#fff;}
+.qc-btn-success:hover{background:#237b35;}
+.qc-btn-danger{background:var(--qc-danger);color:#fff;}
+.qc-btn-danger:hover{background:#b92525;}
+.qc-btn-outline{background:#fff;border:1px solid var(--qc-border);color:#495057;}
+.qc-btn-outline:hover{background:#f8f9fa;border-color:var(--qc-primary);color:var(--qc-primary);}
+.qc-btn-sm{padding:3px 8px;font-size:12px;}
+.qc-btn-icon{padding:3px 7px;font-size:14px;border:none;border-radius:3px;cursor:pointer;background:transparent;transition:.2s;}
+.qc-btn-icon:hover{background:#e9ecef;}
+.qc-btn-icon.danger:hover{background:var(--qc-danger-light);color:var(--qc-danger);}
+.qc-form-actions{display:flex;gap:8px;justify-content:flex-end;padding:12px 0 0;}
+/* Image upload */
+.qc-image-upload{border:2px dashed var(--qc-border);border-radius:6px;padding:16px;text-align:center;cursor:pointer;transition:.2s;}
+.qc-image-upload:hover{border-color:var(--qc-primary);background:var(--qc-primary-light);}
+.qc-image-preview{max-width:120px;max-height:160px;border-radius:4px;border:1px solid var(--qc-border);}
+.qc-image-container{display:flex;gap:12px;align-items:flex-start;}
+.qc-image-container .preview-box{position:relative;}
+.qc-image-container .remove-img{position:absolute;top:-6px;right:-6px;background:var(--qc-danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+/* Section toggle */
+.qc-section-toggle{display:flex;align-items:center;gap:10px;}
+.qc-toggle-switch{position:relative;width:44px;height:22px;background:#ccc;border-radius:11px;cursor:pointer;transition:.2s;}
+.qc-toggle-switch.on{background:var(--qc-success);}
+.qc-toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;}
+.qc-toggle-switch.on::after{left:24px;}
+.qc-toggle-label{font-size:13px;font-weight:500;}
+/* Query page */
+.qc-search-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.qc-search-bar .qc-form-control{width:auto;min-width:160px;}
+.qc-filter-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.qc-filter-chip{padding:4px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:1px solid var(--qc-border);background:#fff;transition:.2s;}
+.qc-filter-chip.active{background:var(--qc-primary);color:#fff;border-color:var(--qc-primary);}
+.qc-filter-chip:hover:not(.active){border-color:var(--qc-primary);color:var(--qc-primary);}
+/* Data table */
+.qc-data-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:var(--qc-radius);overflow:hidden;box-shadow:var(--qc-shadow);}
+.qc-data-table th{background:#f8f9fa;padding:8px 10px;text-align:left;border-bottom:2px solid var(--qc-border);font-weight:600;white-space:nowrap;color:#495057;}
+.qc-data-table td{padding:6px 10px;border-bottom:1px solid #f1f3f5;text-align:left;vertical-align:middle;}
+.qc-data-table tr:hover{background:#f8f9fa;}
+.qc-status-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap;}
+.qc-status-done{background:var(--qc-success-light);color:var(--qc-success);}
+.qc-status-progress{background:var(--qc-primary-light);color:var(--qc-primary);}
+.qc-status-issue{background:var(--qc-danger-light);color:var(--qc-danger);}
+.qc-status-pending{background:var(--qc-gray-light);color:#6c757d;}
+.qc-status-overdue{background:var(--qc-danger);color:#fff;}
+.qc-progress-cell{min-width:120px;}
+.qc-progress-bar-mini{height:6px;background:var(--qc-gray-light);border-radius:3px;overflow:hidden;margin-top:2px;}
+.qc-progress-bar-fill{height:100%;background:var(--qc-primary);border-radius:3px;transition:.3s;}
+/* Dashboard */
+.qc-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px;}
+.qc-stat-card{background:#fff;border-radius:var(--qc-radius);padding:14px 16px;box-shadow:var(--qc-shadow);display:flex;align-items:center;gap:12px;}
+.qc-stat-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.qc-stat-icon.blue{background:var(--qc-primary-light);color:var(--qc-primary);}
+.qc-stat-icon.green{background:var(--qc-success-light);color:var(--qc-success);}
+.qc-stat-icon.orange{background:var(--qc-warning-light);color:var(--qc-warning);}
+.qc-stat-icon.red{background:var(--qc-danger-light);color:var(--qc-danger);}
+.qc-stat-icon.gray{background:var(--qc-gray-light);color:#6c757d;}
+.qc-stat-info{flex:1;}
+.qc-stat-value{font-size:22px;font-weight:700;line-height:1.2;}
+.qc-stat-label{font-size:11px;color:var(--qc-text-light);}
+/* Gantt chart */
+.qc-gantt-container{background:#fff;border-radius:var(--qc-radius);box-shadow:var(--qc-shadow);overflow-x:auto;}
+.qc-gantt-row{display:flex;align-items:stretch;border-bottom:1px solid #f1f3f5;min-height:48px;transition:.15s;}
+.qc-gantt-row:hover{background:#f8f9fa;}
+.qc-gantt-info{min-width:200px;width:200px;padding:8px 12px;border-right:2px solid var(--qc-border);display:flex;flex-direction:column;justify-content:center;gap:2px;flex-shrink:0;}
+.qc-gantt-info .factory{font-weight:600;font-size:12px;color:#333;}
+.qc-gantt-info .meta{font-size:11px;color:var(--qc-text-light);}
+.qc-gantt-stages{display:flex;flex:1;align-items:stretch;}
+.qc-gantt-stage{flex:1;min-width:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;border-right:1px solid #f1f3f5;position:relative;cursor:pointer;transition:.15s;font-size:10px;text-align:center;color:#fff;min-height:48px;}
+.qc-gantt-stage:hover{filter:brightness(1.1);z-index:1;}
+.qc-gantt-stage.done{background:var(--qc-success);}
+.qc-gantt-stage.progress{background:var(--qc-primary);}
+.qc-gantt-stage.issue{background:var(--qc-danger);}
+.qc-gantt-stage.pending{background:#e9ecef;color:#adb5bd;}
+.qc-gantt-stage.na{background:#f8f9fa;color:#dee2e6;}
+.qc-gantt-stage.check-col{background:var(--qc-warning);color:#fff;}
+.qc-gantt-stage.check-col.empty{background:#fff3e0;color:#adb5bd;}
+.qc-gantt-header .qc-gantt-stage.check-col{background:#fff3e0;color:#866a00;}
+.qc-gantt-stage .stage-name{font-weight:500;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.qc-gantt-stage .stage-date{font-size:9px;opacity:.85;margin-top:1px;}
+.qc-gantt-stage .issue-flag{position:absolute;top:2px;right:2px;background:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--qc-danger);font-weight:700;}
+.qc-gantt-header{display:flex;border-bottom:2px solid var(--qc-border);background:#f8f9fa;position:sticky;top:0;z-index:2;}
+.qc-gantt-header .qc-gantt-info{font-weight:600;font-size:12px;color:#495057;display:flex;align-items:center;}
+.qc-gantt-header .qc-gantt-stages{display:flex;}
+.qc-gantt-header .qc-gantt-stage{background:#f8f9fa;color:#495057;font-weight:600;min-height:36px;cursor:default;}
+.qc-gantt-header .qc-gantt-stage:hover{filter:none;}
+.qc-gantt-delivery{min-width:90px;width:90px;padding:8px 6px;border-left:2px solid var(--qc-border);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;flex-shrink:0;font-size:11px;}
+.qc-gantt-delivery .date{font-weight:600;}
+.qc-gantt-delivery .countdown{font-size:10px;margin-top:1px;}
+.qc-gantt-delivery .countdown.overdue{color:var(--qc-danger);font-weight:600;}
+.qc-gantt-delivery .countdown.soon{color:var(--qc-warning);font-weight:600;}
+.qc-gantt-delivery .countdown.ok{color:var(--qc-success);}
+.qc-empty-state{text-align:center;padding:40px 20px;color:var(--qc-text-light);}
+.qc-empty-state .icon{font-size:48px;margin-bottom:8px;}
+.qc-empty-state p{font-size:14px;}
+/* Modal */
+.qc-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:1000;justify-content:center;align-items:flex-start;padding:30px 20px;overflow-y:auto;}
+.qc-modal-overlay.show{display:flex;}
+.qc-modal{background:#fff;border-radius:8px;width:90%;max-width:900px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;}
+.qc-modal-header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.qc-modal-header h2{font-size:16px;font-weight:600;margin:0;}
+.qc-modal-close{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0;}
+.qc-modal-body{padding:20px;max-height:70vh;overflow-y:auto;}
+.qc-detail-section{margin-bottom:20px;}
+.qc-detail-section h3{font-size:14px;color:var(--qc-primary);border-bottom:2px solid var(--qc-border);padding-bottom:4px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.qc-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.qc-detail-item{display:flex;flex-direction:column;gap:2px;}
+.qc-detail-item .label{font-size:11px;color:var(--qc-text-light);}
+.qc-detail-item .value{font-size:13px;font-weight:500;}
+.qc-detail-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.qc-detail-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border:1px solid var(--qc-border);font-weight:600;}
+.qc-detail-table td{padding:5px 8px;border:1px solid var(--qc-border);text-align:left;}
+/* Flow diagram */
+.qc-flow-diagram{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:12px;background:#f8f9fa;border-radius:6px;margin-bottom:16px;}
+.qc-flow-node{padding:6px 12px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;}
+.qc-flow-node.done{background:var(--qc-success);color:#fff;}
+.qc-flow-node.progress{background:var(--qc-primary);color:#fff;}
+.qc-flow-node.issue{background:var(--qc-danger);color:#fff;}
+.qc-flow-node.pending{background:#e9ecef;color:#adb5bd;}
+.qc-flow-node.na{background:#f8f9fa;color:#dee2e6;text-decoration:line-through;}
+.qc-flow-arrow{color:#adb5bd;font-size:14px;}
+/* Legend */
+.qc-legend{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:8px 0;font-size:12px;color:#495057;}
+.qc-legend-item{display:flex;align-items:center;gap:6px;}
+.qc-legend-color{width:14px;height:14px;border-radius:3px;}
+/* Edit banner */
+.qc-edit-banner{display:none;background:var(--qc-warning-light);border:1px solid var(--qc-warning);border-radius:var(--qc-radius);padding:8px 16px;margin-bottom:12px;align-items:center;justify-content:space-between;}
+.qc-edit-banner.show{display:flex;}
+/* Readonly mode */
+body.readonly-mode .qc-btn-primary,
+body.readonly-mode .qc-btn-success,
+body.readonly-mode .qc-btn-danger,
+body.readonly-mode .qc-btn-icon.danger,
+body.readonly-mode .qc-image-upload,
+body.readonly-mode .qc-toggle-switch,
+body.readonly-mode .qc-form-control,
+body.readonly-mode .qc-size-table input,
+body.readonly-mode .qc-sub-table input,
+body.readonly-mode .qc-sub-table textarea,
+body.readonly-mode .qc-sub-table select,
+body.readonly-mode .qc-size-table input,
+body.readonly-mode .qc-checkbox-group input{pointer-events:none;opacity:.55;}
+body.readonly-mode .qc-btn-primary::before,
+body.readonly-mode .qc-btn-success::before,
+body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
+/* Responsive */
+@media(max-width:768px){
+  .qc-form-grid{grid-template-columns:1fr;}
+  .qc-gantt-info{min-width:140px;width:140px;}
+  .qc-gantt-stage{min-width:60px;}
+  .qc-stats-grid{grid-template-columns:repeat(2,1fr);}
+  .qc-header h1{font-size:15px;}
+  .qc-tab-btn{padding:8px 14px;font-size:12px;}
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">外勤QC</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <div class="qc-header">
+        <h1>外勤QC管理</h1>
+        <div class="qc-header-actions">
+          <span class="qc-header-btn" style="cursor:default;" id="recordCount">0 条记录</span>
+          <button class="qc-header-btn outline" onclick="exportData()" title="导出 JSON">📤</button>
+          <button class="qc-header-btn outline" onclick="document.getElementById('importFile').click()" title="导入 JSON">📥</button>
+          <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+        </div>
+      </div>
+
+      <div class="qc-tabs">
+        <button class="qc-tab-btn active" data-tab="register" onclick="switchTab('register')">外勤登记</button>
+        <button class="qc-tab-btn" data-tab="query" onclick="switchTab('query')">数据查询</button>
+        <button class="qc-tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')">进度看板</button>
+      </div>
+
+      <!-- Tab 1: 外勤登记 -->
+      <div class="qc-tab-content active" id="tab-register">
+        <div class="qc-edit-banner" id="editBanner">
+          <span style="font-size:13px;color:#866a00;font-weight:500;">✏ 正在编辑记录：<span id="editBannerText"></span></span>
+          <button class="qc-btn qc-btn-outline qc-btn-sm" onclick="resetForm()">取消编辑</button>
+        </div>
+        <div class="qc-card">
+          <div class="qc-card-header"><span class="icon">📋</span>基础信息</div>
+          <div class="qc-card-body">
+            <div class="qc-form-grid">
+              <div class="qc-form-group"><label>服装厂名称 <span class="req">*</span></label><input type="text" class="qc-form-control" id="factory" placeholder="输入服装厂名称"></div>
+              <div class="qc-form-group"><label>QC姓名 <span class="req">*</span></label><input type="text" class="qc-form-control" id="qcName" placeholder="输入QC姓名"></div>
+              <div class="qc-form-group"><label>订单号 <span class="req">*</span></label><input type="text" class="qc-form-control" id="orderNo" placeholder="输入订单号"></div>
+              <div class="qc-form-group"><label>款号 <span class="req">*</span></label><input type="text" class="qc-form-control" id="styleNo" placeholder="输入款号"></div>
+              <div class="qc-form-group"><label>交期 <span class="req">*</span></label><input type="date" class="qc-form-control" id="deliveryDate"></div>
+              <div class="qc-form-group">
+                <label>是否需要水洗工序</label>
+                <div class="qc-section-toggle">
+                  <div class="qc-toggle-switch" id="washToggle" onclick="toggleWash()"></div>
+                  <span class="qc-toggle-label" id="washLabel">否</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">款式图</label>
+              <div class="qc-image-container" id="imageContainer">
+                <div class="qc-image-upload" id="imageUpload" onclick="document.getElementById('styleImageInput').click()">
+                  <div style="font-size:24px;color:#adb5bd;">📷</div>
+                  <div style="font-size:12px;color:#868e96;margin-top:4px;">点击上传款式图</div>
+                </div>
+              </div>
+              <input type="file" id="styleImageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">订单各尺寸数量</label>
+              <table class="qc-size-table" id="sizeTable">
+                <thead><tr><th style="width:40px;">#</th><th>尺码</th><th>数量</th><th style="width:40px;"></th></tr></thead>
+                <tbody id="sizeTableBody"></tbody>
+              </table>
+              <button class="qc-btn qc-btn-outline qc-btn-sm" style="margin-top:6px;" onclick="addSizeRow()">+ 添加尺码</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 水洗版块 -->
+        <div class="qc-card" id="washSection" style="display:none;">
+          <div class="qc-card-header"><span class="icon">🌊</span>水洗版块</div>
+          <div class="qc-card-body">
+            <div class="qc-form-grid">
+              <div class="qc-form-group">
+                <label>水洗标样确认收到</label>
+                <div class="qc-checkbox-group"><input type="checkbox" id="w_sample_confirmed"><label for="w_sample_confirmed" style="font-weight:normal;">已确认收到</label></div>
+                <input type="date" class="qc-form-control" id="w_sample_date" style="margin-top:4px;">
+              </div>
+              <div class="qc-form-group"><label>头缸时间</label><input type="date" class="qc-form-control" id="w_first_date"></div>
+              <div class="qc-form-group"><label>头缸数量</label><input type="text" class="qc-form-control" id="w_first_qty" placeholder="数量/缸数"></div>
+              <div class="qc-form-group full"><label>头缸问题</label><textarea class="qc-form-control" id="w_first_issues" placeholder="描述头缸试洗中发现的问题"></textarea></div>
+              <div class="qc-form-group full">
+                <label>大货水洗方法确定</label>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <div class="qc-checkbox-group" style="margin:0;"><input type="checkbox" id="w_method_confirmed"><label for="w_method_confirmed" style="font-weight:normal;">方法已确定</label></div>
+                  <input type="date" class="qc-form-control" id="w_method_date" style="width:150px;flex-shrink:0;">
+                  <input type="text" class="qc-form-control" id="w_method_text" placeholder="大货水洗方法，如：酵素洗+软油" style="flex:1;min-width:180px;">
+                </div>
+              </div>
+              <div class="qc-form-group"><label>大货水洗时间</label><input type="date" class="qc-form-control" id="w_bulk_date"></div>
+              <div class="qc-form-group"><label>大货水洗结束时间</label><input type="date" class="qc-form-control" id="w_bulk_end"></div>
+              <div class="qc-form-group"><label>大货总缸数</label><input type="number" class="qc-form-control" id="w_bulk_total" min="0" placeholder="0"></div>
+              <div class="qc-form-group full"><label>大货水洗问题</label><textarea class="qc-form-control" id="w_bulk_issues" placeholder="大货水洗过程中的问题"></textarea></div>
+              <div class="qc-form-group full"><label>问题整改情况</label><textarea class="qc-form-control" id="w_bulk_rect" placeholder="整改措施及结果"></textarea></div>
+              <div class="qc-form-group">
+                <label>大货问题解决</label>
+                <div class="qc-checkbox-group"><input type="checkbox" id="w_resolved"><label for="w_resolved" style="font-weight:normal;">问题已解决</label></div>
+                <input type="date" class="qc-form-control" id="w_resolve_date" style="margin-top:4px;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 服装版块 -->
+        <div class="qc-card">
+          <div class="qc-card-header"><span class="icon">👕</span>服装版块</div>
+          <div class="qc-card-body">
+            <div class="qc-form-grid">
+              <div class="qc-form-group"><label>封样样衣日期</label><input type="date" class="qc-form-control" id="g_seal_date"></div>
+              <div class="qc-form-group">
+                <label>封样确认</label>
+                <div class="qc-checkbox-group"><input type="checkbox" id="g_seal_confirmed"><label for="g_seal_confirmed" style="font-weight:normal;">封样已确认</label></div>
+              </div>
+              <div class="qc-form-group full"><label>封样意见</label><textarea class="qc-form-control" id="g_seal_opinion" placeholder="封样意见/修改建议"></textarea></div>
+              <div class="qc-form-group"><label>PP产前样日期</label><input type="date" class="qc-form-control" id="g_pp_date"></div>
+              <div class="qc-form-group">
+                <label>PP产前样确认</label>
+                <div class="qc-checkbox-group"><input type="checkbox" id="g_pp_confirmed"><label for="g_pp_confirmed" style="font-weight:normal;">PP样已确认</label></div>
+              </div>
+              <div class="qc-form-group full"><label>PP产前样备注</label><textarea class="qc-form-control" id="g_pp_notes" placeholder="PP产前样备注"></textarea></div>
+              <div class="qc-form-group"><label>面里辅料核对日期</label><input type="date" class="qc-form-control" id="g_mat_date"></div>
+              <div class="qc-form-group">
+                <label>核对结果</label>
+                <select class="qc-form-control" id="g_mat_status">
+                  <option value="">请选择</option>
+                  <option value="consistent">核对一致</option>
+                  <option value="inconsistent">有差异</option>
+                  <option value="pending">待核对</option>
+                </select>
+              </div>
+              <div class="qc-form-group full"><label>面里辅料核对备注</label><textarea class="qc-form-control" id="g_mat_notes" placeholder="面料、里料、辅料核对情况"></textarea></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
+              <div class="qc-form-group"><label>开裁时间</label><input type="date" class="qc-form-control" id="g_cut_date"></div>
+              <div class="qc-form-group"><label>上机缝制</label><input type="date" class="qc-form-control" id="g_sew_start"></div>
+              <div class="qc-form-group"><label>缝制结束</label><input type="date" class="qc-form-control" id="g_sew_end"></div>
+              <div class="qc-form-group"><label>后道整理</label><input type="date" class="qc-form-control" id="g_finish"></div>
+              <div class="qc-form-group"><label>包装日期</label><input type="date" class="qc-form-control" id="g_pack"></div>
+              <div class="qc-form-group"><label>出货日期</label><input type="date" class="qc-form-control" id="g_ship"></div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">上线记录（可多次登记，多个QC查看）</label>
+              <table class="qc-sub-table" id="onlineTable">
+                <thead><tr><th style="width:30px;">#</th><th style="width:140px;">上线日期</th><th style="width:120px;">QC姓名</th><th>查看备注</th><th style="width:36px;"></th></tr></thead>
+                <tbody id="onlineTableBody"></tbody>
+              </table>
+              <button class="qc-btn qc-btn-outline qc-btn-sm" style="margin-top:6px;" onclick="addOnlineRow()">+ 添加上线记录</button>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">生产中问题及整改</label>
+              <table class="qc-sub-table" id="issueTable">
+                <thead><tr><th style="width:30px;">#</th><th style="width:120px;">发现日期</th><th>问题描述</th><th>整改措施</th><th style="width:90px;">状态</th><th style="width:120px;">解决日期</th><th style="width:36px;"></th></tr></thead>
+                <tbody id="issueTableBody"></tbody>
+              </table>
+              <button class="qc-btn qc-btn-outline qc-btn-sm" style="margin-top:6px;" onclick="addIssueRow()">+ 添加问题</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="qc-form-actions">
+          <button class="qc-btn qc-btn-outline" onclick="resetForm()">重置</button>
+          <button class="qc-btn qc-btn-primary" onclick="saveRecord()">保存记录</button>
+        </div>
+      </div>
+
+      <!-- Tab 2: 数据查询 -->
+      <div class="qc-tab-content" id="tab-query">
+        <div class="qc-search-bar">
+          <input type="text" class="qc-form-control" id="searchInput" placeholder="搜索服装厂/订单号/款号/QC姓名..." oninput="renderQueryTable()">
+          <div class="qc-filter-chips" id="filterChips">
+            <div class="qc-filter-chip active" data-filter="all" onclick="setFilter('all')">全部</div>
+            <div class="qc-filter-chip" data-filter="progress" onclick="setFilter('progress')">进行中</div>
+            <div class="qc-filter-chip" data-filter="issue" onclick="setFilter('issue')">有问题</div>
+            <div class="qc-filter-chip" data-filter="done" onclick="setFilter('done')">已完成</div>
+            <div class="qc-filter-chip" data-filter="overdue" onclick="setFilter('overdue')">已逾期</div>
+          </div>
+        </div>
+        <div id="queryTableContainer"></div>
+      </div>
+
+      <!-- Tab 3: 进度看板 -->
+      <div class="qc-tab-content" id="tab-dashboard">
+        <div class="qc-stats-grid" id="statsGrid"></div>
+        <div class="qc-card">
+          <div class="qc-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span><span class="icon">📊</span>工序进度看板</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select class="qc-form-control" id="dashFactoryFilter" style="font-size:12px;width:auto;" onchange="renderDashboard()">
+                <option value="">全部服装厂</option>
+              </select>
+              <select class="qc-form-control" id="dashQcFilter" style="font-size:12px;width:auto;" onchange="renderDashboard()">
+                <option value="">全部QC</option>
+              </select>
+            </div>
+          </div>
+          <div class="qc-card-body" style="padding:0;">
+            <div class="qc-legend" style="padding:10px 16px;border-bottom:1px solid var(--qc-border);">
+              <div class="qc-legend-item"><div class="qc-legend-color" style="background:var(--qc-success);"></div>已完成</div>
+              <div class="qc-legend-item"><div class="qc-legend-color" style="background:var(--qc-primary);"></div>进行中</div>
+              <div class="qc-legend-item"><div class="qc-legend-color" style="background:var(--qc-danger);"></div>有问题</div>
+              <div class="qc-legend-item"><div class="qc-legend-color" style="background:#e9ecef;"></div>未开始</div>
+              <div class="qc-legend-item"><div class="qc-legend-color" style="background:#f8f9fa;border:1px solid var(--qc-border);"></div>不适用</div>
+            </div>
+            <div id="ganttContainer"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Modal -->
+      <div class="qc-modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+        <div class="qc-modal">
+          <div class="qc-modal-header">
+            <h2 id="modalTitle">详情</h2>
+            <button class="qc-modal-close" onclick="closeModal()">&times;</button>
+          </div>
+          <div class="qc-modal-body" id="modalBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js?v=20260823a"></script>
+<!-- Supabase 云端同步 + 独立轮询 -->
+<script src="js/localstorage-patch.js?v=20260823a"></script>
+<script src="js/supabase-store.js?v=20260823a"></script>
+<script src="js/init-page.js?v=20260823a"></script>
+<!-- Supabase 登录守卫 -->
+<script src="js/auth-guard.js?v=20260823a"></script>
+<!-- 管理员邮箱配置 -->
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<!-- 统一表单提交 + 文件上传 helper -->
+<script type="module" src="js/form-submit.js?v=20260823a"></script>
+<!-- 退出登录 -->
+<script type="module" src="js/logout.js?v=20260813"></script>
+<script>
+// ===== 云端同步：提前注册监听器 =====
+var PageDataSyncGuard = {
+  inited: false, pending: false,
+  watchKeys: ['qc_field_mgmt_v2'],
+  emptyCheckKeys: ['qc_field_mgmt_v2'],
+  afterInit: function() {
+    var self = this; this.inited = true;
+    function doRefresh() {
+      try {
+        loadData();
+        updateCount();
+        if (typeof renderQueryTable === 'function') renderQueryTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+      } catch(e) {}
+    }
+    if (self.pending) setTimeout(doRefresh, 200);
+    setTimeout(function() {
+      var allEmpty = self.emptyCheckKeys.every(function(k){
+        try{ var a=App.store.get(k,[]); return !a||a.length===0; }catch(e){return true;}
+      });
+      if (allEmpty) doRefresh();
+    }, 2000);
+  }
+};
+window.addEventListener('cloud-data-updated', function(e){
+  var keys = (e.detail&&e.detail.keys)||[];
+  var need = keys.some(function(k){ return PageDataSyncGuard.watchKeys.indexOf(k)>=0; });
+  if (need) {
+    if (!PageDataSyncGuard.inited) { PageDataSyncGuard.pending=true; return; }
+    try {
+      loadData();
+      updateCount();
+      if (typeof renderQueryTable === 'function') renderQueryTable();
+      if (typeof renderDashboard === 'function') renderDashboard();
+    } catch(e){}
+  }
+});
+
+App.init('qcField');
+App.checkLogin();
+App.initSampleData();
+App.enforcePagePermission('qcField');
+setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
+
+// ==================== 数据管理 ====================
+const STORAGE_KEY = 'qc_field_mgmt_v2';
+let records = [];
+let editingId = null;
+let currentFilter = 'all';
+let needWash = false;
+
+const STAGES_WASH = [
+  {key:'w_sample',name:'水洗标样确认',short:'标样确认'},
+  {key:'w_first',name:'头缸试洗',short:'头缸'},
+  {key:'w_method',name:'大货水洗方法',short:'水洗方法'},
+  {key:'w_bulk',name:'大货水洗执行',short:'大货水洗'},
+  {key:'w_resolve',name:'大货问题解决',short:'问题解决'}
+];
+const STAGES_GARMENT = [
+  {key:'g_seal',name:'封样样衣',short:'封样'},
+  {key:'g_pp',name:'PP产前样',short:'PP产前样'},
+  {key:'g_mat',name:'面里辅料核对',short:'辅料核对'},
+  {key:'g_cut',name:'开裁',short:'开裁'},
+  {key:'g_online',name:'上线生产',short:'上线'},
+  {key:'g_sew_start',name:'上机缝制',short:'上机'},
+  {key:'g_sew_end',name:'缝制结束',short:'缝制完'},
+  {key:'g_finish',name:'后道整理',short:'后道'},
+  {key:'g_pack',name:'包装',short:'包装'},
+  {key:'g_ship',name:'出货',short:'出货'},
+  {key:'g_issue',name:'问题整改',short:'问题整改'}
+];
+
+function loadData(){
+  try{ records = App.store.get(STORAGE_KEY, []); }catch(e){ records = []; }
+  if(!Array.isArray(records)) records = [];
+}
+function saveData(){
+  App.store.set(STORAGE_KEY, records);
+  updateCount();
+}
+function genId(){ return 'qc_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+function updateCount(){ var el = document.getElementById('recordCount'); if(el) el.textContent = records.length + ' 条记录'; }
+
+// ==================== 标签页 ====================
+function switchTab(tab){
+  document.querySelectorAll('.qc-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.qc-tab-content').forEach(c=>c.classList.toggle('active',c.id==='tab-'+tab));
+  if(tab==='query') renderQueryTable();
+  if(tab==='dashboard') renderDashboard();
+}
+
+// ==================== 水洗开关 ====================
+function toggleWash(){
+  needWash = !needWash;
+  var ts = document.getElementById('washToggle');
+  ts.classList.toggle('on',needWash);
+  document.getElementById('washLabel').textContent = needWash ? '是' : '否';
+  document.getElementById('washSection').style.display = needWash ? 'block' : 'none';
+}
+
+// ==================== 尺码表 ====================
+function addSizeRow(size='',qty=''){
+  var tbody = document.getElementById('sizeTableBody');
+  var tr = document.createElement('tr');
+  var idx = tbody.children.length + 1;
+  tr.innerHTML = '<td>'+idx+'</td><td><input type="text" value="'+escAttr(size)+'" placeholder="如 S/M/L"></td><td><input type="number" value="'+escAttr(qty)+'" placeholder="数量" min="0"></td><td><button class="qc-btn-icon danger" onclick="this.closest(\'tr\').remove();renumberSize();">&times;</button></td>';
+  tbody.appendChild(tr);
+}
+function renumberSize(){
+  document.querySelectorAll('#sizeTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+}
+
+// ==================== 上线记录 ====================
+function addOnlineRow(date='',qc='',notes=''){
+  var tbody = document.getElementById('onlineTableBody');
+  var tr = document.createElement('tr');
+  var idx = tbody.children.length + 1;
+  tr.innerHTML = '<td>'+idx+'</td><td><input type="date" value="'+escAttr(date)+'"></td><td><input type="text" value="'+escAttr(qc)+'" placeholder="QC姓名"></td><td><input type="text" value="'+escAttr(notes)+'" placeholder="查看情况/备注"></td><td><button class="qc-btn-icon danger" onclick="this.closest(\'tr\').remove();renumberOnline();">&times;</button></td>';
+  tbody.appendChild(tr);
+}
+function renumberOnline(){
+  document.querySelectorAll('#onlineTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+}
+
+// ==================== 问题记录 ====================
+function addIssueRow(date='',issue='',rect='',status='open',resolveDate=''){
+  var tbody = document.getElementById('issueTableBody');
+  var tr = document.createElement('tr');
+  var idx = tbody.children.length + 1;
+  tr.innerHTML = '<td>'+idx+'</td><td><input type="date" value="'+escAttr(date)+'"></td><td><input type="text" value="'+escAttr(issue)+'" placeholder="问题描述"></td><td><input type="text" value="'+escAttr(rect)+'" placeholder="整改措施"></td><td><select onchange="onIssueStatusChange(this)"><option value="open" '+(status==='open'?'selected':'')+'>未解决</option><option value="resolved" '+(status==='resolved'?'selected':'')+'>已解决</option></select></td><td><input type="date" value="'+escAttr(resolveDate)+'"></td><td><button class="qc-btn-icon danger" onclick="this.closest(\'tr\').remove();renumberIssue();">&times;</button></td>';
+  tbody.appendChild(tr);
+}
+function renumberIssue(){
+  document.querySelectorAll('#issueTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+}
+function onIssueStatusChange(sel){
+  // no-op, value read at save time
+}
+
+// ==================== 图片上传 ====================
+function handleImageUpload(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      var maxW = 400;
+      var w = img.width, h = img.height;
+      if(w > maxW){ h = h * maxW / w; w = maxW; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      showImagePreview(dataUrl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function showImagePreview(dataUrl){
+  var container = document.getElementById('imageContainer');
+  container.innerHTML = '<div class="preview-box"><img src="'+dataUrl+'" class="qc-image-preview"><button class="remove-img" onclick="removeImage()">&times;</button></div><div class="qc-image-upload" style="flex:1;" onclick="document.getElementById(\'styleImageInput\').click()"><div style="font-size:24px;">📷</div><div style="font-size:12px;color:#868e96;">点击更换图片</div></div>';
+}
+function removeImage(){
+  var container = document.getElementById('imageContainer');
+  if(!container) return;
+  container.innerHTML = '<div class="qc-image-upload" id="imageUpload" onclick="document.getElementById(\'styleImageInput\').click()"><div style="font-size:24px;color:#adb5bd;">📷</div><div style="font-size:12px;color:#868e96;">点击上传款式图</div></div>';
+  var input = document.getElementById('styleImageInput');
+  if(input) input.value = '';
+}
+function getCurrentImage(){
+  var img = document.querySelector('#imageContainer .qc-image-preview');
+  return img ? img.src : '';
+}
+
+// ==================== 表单收集/填充 ====================
+function collectFormData(){
+  var sizes = [];
+  document.querySelectorAll('#sizeTableBody tr').forEach(tr=>{
+    var inputs = tr.querySelectorAll('input');
+    if(inputs[0] && inputs[0].value) sizes.push({size:inputs[0].value, qty:parseInt(inputs[1].value)||0});
+  });
+  var onlineRecords = [];
+  document.querySelectorAll('#onlineTableBody tr').forEach(tr=>{
+    var inputs = tr.querySelectorAll('input');
+    if(inputs[0].value || inputs[1].value || inputs[2].value)
+      onlineRecords.push({date:inputs[0].value, qcName:inputs[1].value, notes:inputs[2].value});
+  });
+  var productionIssues = [];
+  document.querySelectorAll('#issueTableBody tr').forEach(tr=>{
+    var inputs = tr.querySelectorAll('input');
+    var sel = tr.querySelector('select');
+    if(inputs[0].value || inputs[1].value || inputs[2].value)
+      productionIssues.push({date:inputs[0].value, issue:inputs[1].value, rectification:inputs[2].value, status:sel?sel.value:'open', resolvedDate:inputs[3]?inputs[3].value:''});
+  });
+
+  var data = {
+    id: editingId || genId(),
+    factory: val('factory'),
+    qcName: val('qcName'),
+    orderNo: val('orderNo'),
+    styleNo: val('styleNo'),
+    deliveryDate: val('deliveryDate'),
+    styleImage: getCurrentImage(),
+    sizes: sizes,
+    needWash: needWash,
+    washing: needWash ? {
+      sampleReceived: {date: val('w_sample_date'), confirmed: document.getElementById('w_sample_confirmed').checked},
+      firstBatch: {date: val('w_first_date'), quantity: val('w_first_qty'), issues: val('w_first_issues')},
+      bulkMethod: {date: val('w_method_date'), method: val('w_method_text'), confirmed: document.getElementById('w_method_confirmed').checked},
+      bulkWashing: {date: val('w_bulk_date'), endDate: val('w_bulk_end'), totalBatches: parseInt(val('w_bulk_total'))||0, issues: val('w_bulk_issues'), rectification: val('w_bulk_rect')},
+      bulkResolved: {date: val('w_resolve_date'), resolved: document.getElementById('w_resolved').checked}
+    } : null,
+    garment: {
+      sealedSample: {date: val('g_seal_date'), opinion: val('g_seal_opinion'), confirmed: document.getElementById('g_seal_confirmed').checked},
+      ppSample: {date: val('g_pp_date'), confirmed: document.getElementById('g_pp_confirmed').checked, notes: val('g_pp_notes')},
+      materialsCheck: {date: val('g_mat_date'), status: val('g_mat_status'), notes: val('g_mat_notes')},
+      cuttingDate: val('g_cut_date'),
+      sewStartDate: val('g_sew_start'),
+      sewEndDate: val('g_sew_end'),
+      finishDate: val('g_finish'),
+      packDate: val('g_pack'),
+      shipDate: val('g_ship'),
+      onlineRecords: onlineRecords,
+      productionIssues: productionIssues
+    },
+    createdAt: editingId ? (records.find(r=>r.id===editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  return data;
+}
+function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+function fillForm(r){
+  editingId = r.id;
+  var banner = document.getElementById('editBanner');
+  var bannerText = document.getElementById('editBannerText');
+  if(banner){ banner.classList.add('show'); }
+  if(bannerText){ bannerText.textContent = (r.factory||'') + ' / ' + (r.styleNo||'') + ' / ' + (r.orderNo||''); }
+  setVal('factory', r.factory);
+  setVal('qcName', r.qcName);
+  setVal('orderNo', r.orderNo);
+  setVal('styleNo', r.styleNo);
+  setVal('deliveryDate', r.deliveryDate);
+  // Image
+  if(r.styleImage){
+    showImagePreview(r.styleImage);
+  } else {
+    removeImage();
+  }
+  // Sizes
+  document.getElementById('sizeTableBody').innerHTML = '';
+  if(r.sizes && r.sizes.length){
+    r.sizes.forEach(s => addSizeRow(s.size, s.qty));
+  } else {
+    addSizeRow();
+  }
+  // Wash
+  needWash = !!r.needWash;
+  document.getElementById('washToggle').classList.toggle('on', needWash);
+  document.getElementById('washLabel').textContent = needWash ? '是' : '否';
+  document.getElementById('washSection').style.display = needWash ? 'block' : 'none';
+  if(r.washing){
+    var w = r.washing;
+    setVal('w_sample_date', w.sampleReceived?.date||'');
+    document.getElementById('w_sample_confirmed').checked = !!w.sampleReceived?.confirmed;
+    setVal('w_first_date', w.firstBatch?.date||'');
+    setVal('w_first_qty', w.firstBatch?.quantity||'');
+    setVal('w_first_issues', w.firstBatch?.issues||'');
+    setVal('w_method_date', w.bulkMethod?.date||'');
+    setVal('w_method_text', w.bulkMethod?.method||'');
+    document.getElementById('w_method_confirmed').checked = !!w.bulkMethod?.confirmed;
+    setVal('w_bulk_date', w.bulkWashing?.date||'');
+    setVal('w_bulk_end', w.bulkWashing?.endDate||'');
+    setVal('w_bulk_total', w.bulkWashing?.totalBatches||'');
+    setVal('w_bulk_issues', w.bulkWashing?.issues||'');
+    setVal('w_bulk_rect', w.bulkWashing?.rectification||'');
+    setVal('w_resolve_date', w.bulkResolved?.date||'');
+    document.getElementById('w_resolved').checked = !!w.bulkResolved?.resolved;
+  }
+  // Garment
+  var g = r.garment;
+  setVal('g_seal_date', g?.sealedSample?.date||'');
+  setVal('g_seal_opinion', g?.sealedSample?.opinion||'');
+  document.getElementById('g_seal_confirmed').checked = !!g?.sealedSample?.confirmed;
+  setVal('g_pp_date', g?.ppSample?.date||'');
+  document.getElementById('g_pp_confirmed').checked = !!g?.ppSample?.confirmed;
+  setVal('g_pp_notes', g?.ppSample?.notes||'');
+  setVal('g_mat_date', g?.materialsCheck?.date||'');
+  setVal('g_mat_status', g?.materialsCheck?.status||'');
+  setVal('g_mat_notes', g?.materialsCheck?.notes||'');
+  setVal('g_cut_date', g?.cuttingDate||'');
+  setVal('g_sew_start', g?.sewStartDate||'');
+  setVal('g_sew_end', g?.sewEndDate||'');
+  setVal('g_finish', g?.finishDate||'');
+  setVal('g_pack', g?.packDate||'');
+  setVal('g_ship', g?.shipDate||'');
+  // Online records
+  document.getElementById('onlineTableBody').innerHTML = '';
+  if(g?.onlineRecords?.length){
+    g.onlineRecords.forEach(o => addOnlineRow(o.date, o.qcName, o.notes));
+  }
+  // Issues
+  document.getElementById('issueTableBody').innerHTML = '';
+  if(g?.productionIssues?.length){
+    g.productionIssues.forEach(i => addIssueRow(i.date, i.issue, i.rectification, i.status, i.resolvedDate));
+  }
+  switchTab('register');
+  window.scrollTo(0,0);
+}
+function setVal(id, v){ var el = document.getElementById(id); if(el) el.value = v||''; }
+
+function resetForm(){
+  editingId = null;
+  var banner = document.getElementById('editBanner');
+  if(banner){ banner.classList.remove('show'); }
+  document.querySelectorAll('#tab-register input[type=text],#tab-register input[type=date],#tab-register input[type=number],#tab-register textarea').forEach(el=>el.value='');
+  document.querySelectorAll('#tab-register input[type=checkbox]').forEach(el=>el.checked=false);
+  document.querySelectorAll('#tab-register select').forEach(el=>el.selectedIndex=0);
+  needWash = false;
+  document.getElementById('washToggle').classList.remove('on');
+  document.getElementById('washLabel').textContent = '否';
+  document.getElementById('washSection').style.display = 'none';
+  document.getElementById('sizeTableBody').innerHTML = '';
+  document.getElementById('onlineTableBody').innerHTML = '';
+  document.getElementById('issueTableBody').innerHTML = '';
+  addSizeRow();
+  removeImage();
+}
+
+function saveRecord(){
+  // 只读模式拦截
+  if(document.body.classList.contains('readonly-mode')){
+    if(window.App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
+    return;
+  }
+  if(!val('factory') || !val('qcName') || !val('orderNo') || !val('styleNo')){
+    alert('请填写必填项：服装厂名称、QC姓名、订单号、款号');
+    return;
+  }
+  var data = collectFormData();
+  var idx = records.findIndex(r=>r.id===data.id);
+  if(idx >= 0){ records[idx] = data; }
+  else { records.push(data); }
+  saveData();
+  resetForm();
+  if(window.App && App.toast) App.toast('保存成功！', 'success');
+  switchTab('query');
+}
+
+// ==================== 查询 ====================
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll('.qc-filter-chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===f));
+  renderQueryTable();
+}
+
+function renderQueryTable(){
+  var search = (document.getElementById('searchInput').value||'').toLowerCase();
+  var filtered = records.filter(r=>{
+    if(search){
+      var text = (r.factory+' '+r.qcName+' '+r.orderNo+' '+r.styleNo).toLowerCase();
+      if(!text.includes(search)) return false;
+    }
+    var status = getOverallStatus(r);
+    if(currentFilter==='all') return true;
+    if(currentFilter==='progress') return status==='progress';
+    if(currentFilter==='issue') return status==='issue';
+    if(currentFilter==='done') return status==='done';
+    if(currentFilter==='overdue') return status==='overdue';
+    return true;
+  });
+  var container = document.getElementById('queryTableContainer');
+  if(filtered.length === 0){
+    container.innerHTML = '<div class="qc-empty-state"><div class="icon">📭</div><p>暂无数据，请前往"外勤登记"添加记录</p></div>';
+    return;
+  }
+  var html = '<table class="qc-data-table"><thead><tr>'+
+    '<th>服装厂</th><th>QC</th><th>订单号</th><th>款号</th><th>交期</th><th>尺寸/数量</th><th>状态</th><th>进度</th><th>问题</th><th style="width:90px;">操作</th>'+
+  '</tr></thead><tbody>';
+  filtered.forEach(r=>{
+    var status = getOverallStatus(r);
+    var pct = getProgressPercent(r);
+    var issueCount = getIssueCount(r);
+    var sizeStr = (r.sizes||[]).map(s=>s.size+':'+s.qty).join(' ');
+    var statusMap = {done:['已完成','qc-status-done'],progress:['进行中','qc-status-progress'],issue:['有问题','qc-status-issue'],overdue:['已逾期','qc-status-overdue'],pending:['未开始','qc-status-pending']};
+    var pair = statusMap[status]||['未知','qc-status-pending'];
+    html += '<tr>'+
+      '<td>'+esc(r.factory)+'</td>'+
+      '<td>'+esc(r.qcName)+'</td>'+
+      '<td>'+esc(r.orderNo)+'</td>'+
+      '<td>'+esc(r.styleNo)+'</td>'+
+      '<td>'+(r.deliveryDate||'-')+'</td>'+
+      '<td style="font-size:11px;">'+(esc(sizeStr)||'-')+'</td>'+
+      '<td><span class="qc-status-badge '+pair[1]+'">'+pair[0]+'</span></td>'+
+      '<td class="qc-progress-cell"><div style="font-size:11px;">'+pct+'%</div><div class="qc-progress-bar-mini"><div class="qc-progress-bar-fill" style="width:'+pct+'%;"></div></div></td>'+
+      '<td>'+(issueCount>0?'<span class="qc-status-badge qc-status-issue">'+issueCount+'</span>':'-')+'</td>'+
+      '<td>'+
+        '<button class="qc-btn-icon" title="查看" onclick="viewRecord(\''+r.id+'\')">👁</button>'+
+        '<button class="qc-btn-icon" title="编辑" onclick="editRecord(\''+r.id+'\')">✏</button>'+
+        '<button class="qc-btn-icon danger" title="删除" onclick="deleteRecord(\''+r.id+'\')">🗑</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function editRecord(id){
+  // 只读模式拦截
+  if(document.body.classList.contains('readonly-mode')){
+    if(window.App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
+    return;
+  }
+  var r = records.find(x=>x.id===id);
+  if(r) fillForm(r);
+}
+function deleteRecord(id){
+  if(document.body.classList.contains('readonly-mode')){
+    if(window.App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
+    return;
+  }
+  if(!confirm('确认删除该条记录？此操作不可撤销。')) return;
+  records = records.filter(r=>r.id!==id);
+  saveData();
+  renderQueryTable();
+  if(window.App && App.toast) App.toast('已删除', 'success');
+}
+function viewRecord(id){
+  var r = records.find(x=>x.id===id);
+  if(!r) return;
+  showDetailModal(r);
+}
+
+// ==================== 状态计算 ====================
+function getStageStatus(r, key){
+  var w = r.washing, g = r.garment;
+  switch(key){
+    case 'w_sample':
+      if(!r.needWash) return 'na';
+      if(w?.sampleReceived?.confirmed) return 'done';
+      if(w?.sampleReceived?.date) return 'progress';
+      return 'pending';
+    case 'w_first':
+      if(!r.needWash) return 'na';
+      var fb = w?.firstBatch;
+      if(fb?.date && fb.issues) return 'issue';
+      if(fb?.date && fb.quantity) return 'done';
+      if(fb?.date) return 'progress';
+      return 'pending';
+    case 'w_method':
+      if(!r.needWash) return 'na';
+      if(w?.bulkMethod?.confirmed) return 'done';
+      if(w?.bulkMethod?.date) return 'progress';
+      return 'pending';
+    case 'w_bulk':
+      if(!r.needWash) return 'na';
+      var bw = w?.bulkWashing;
+      if(bw?.date && bw.issues && !w?.bulkResolved?.resolved) return 'issue';
+      if(bw?.date && !bw.issues) return 'done';
+      if(bw?.date) return 'progress';
+      return 'pending';
+    case 'w_resolve':
+      if(!r.needWash) return 'na';
+      if(w?.bulkResolved?.resolved) return 'done';
+      if(w?.bulkWashing?.issues) return 'issue';
+      if(w?.bulkWashing?.date) return 'progress';
+      return 'pending';
+    case 'g_seal':
+      if(g?.sealedSample?.confirmed) return 'done';
+      if(g?.sealedSample?.date) return 'progress';
+      return 'pending';
+    case 'g_pp':
+      if(g?.ppSample?.confirmed) return 'done';
+      if(g?.ppSample?.date) return 'progress';
+      return 'pending';
+    case 'g_mat':
+      if(g?.materialsCheck?.status==='inconsistent') return 'issue';
+      if(g?.materialsCheck?.status==='consistent') return 'done';
+      if(g?.materialsCheck?.date) return 'progress';
+      return 'pending';
+    case 'g_cut':
+      if(g?.cuttingDate) return 'done';
+      return 'pending';
+    case 'g_online':
+      if(g?.onlineRecords?.length>0) return 'done';
+      return 'pending';
+    case 'g_sew_start':
+      if(g?.sewStartDate) return 'done';
+      return 'pending';
+    case 'g_sew_end':
+      if(g?.sewEndDate) return 'done';
+      return 'pending';
+    case 'g_finish':
+      if(g?.finishDate) return 'done';
+      return 'pending';
+    case 'g_pack':
+      if(g?.packDate) return 'done';
+      return 'pending';
+    case 'g_ship':
+      if(g?.shipDate) return 'done';
+      return 'pending';
+    case 'g_issue':
+      var issues = g?.productionIssues||[];
+      if(issues.length===0) return 'pending';
+      if(issues.some(i=>i.status!=='resolved')) return 'issue';
+      return 'done';
+    default: return 'pending';
+  }
+}
+
+function getStageDate(r, key){
+  var w = r.washing, g = r.garment;
+  switch(key){
+    case 'w_sample': return w?.sampleReceived?.date||'';
+    case 'w_first': return w?.firstBatch?.date||'';
+    case 'w_method': return w?.bulkMethod?.date||'';
+    case 'w_bulk': return w?.bulkWashing?.date||'';
+    case 'w_resolve': return w?.bulkResolved?.date||'';
+    case 'g_seal': return g?.sealedSample?.date||'';
+    case 'g_pp': return g?.ppSample?.date||'';
+    case 'g_mat': return g?.materialsCheck?.date||'';
+    case 'g_cut': return g?.cuttingDate||'';
+    case 'g_online': return g?.onlineRecords?.length ? g.onlineRecords[g.onlineRecords.length-1].date : '';
+    case 'g_sew_start': return g?.sewStartDate||'';
+    case 'g_sew_end': return g?.sewEndDate||'';
+    case 'g_finish': return g?.finishDate||'';
+    case 'g_pack': return g?.packDate||'';
+    case 'g_ship': return g?.shipDate||'';
+    case 'g_issue': return g?.productionIssues?.length ? (g.productionIssues[g.productionIssues.length-1].resolvedDate||g.productionIssues[g.productionIssues.length-1].date) : '';
+    default: return '';
+  }
+}
+
+function getOverallStatus(r){
+  var allStages = (r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+  var statuses = allStages.map(s=>getStageStatus(r, s.key));
+  if(statuses.some(s=>s==='issue')) return 'issue';
+  if(statuses.every(s=>s==='done')) return 'done';
+  // Check overdue
+  if(r.deliveryDate){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dd = new Date(r.deliveryDate);
+    if(dd < today && statuses.some(s=>s!=='done')) return 'overdue';
+  }
+  if(statuses.some(s=>s==='progress')) return 'progress';
+  return 'pending';
+}
+
+function getProgressPercent(r){
+  var allStages = (r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+  var applicable = allStages.filter(s=>s.key.startsWith('g_') || r.needWash);
+  var done = applicable.filter(s=>getStageStatus(r,s.key)==='done').length;
+  return Math.round(done / applicable.length * 100);
+}
+
+function getIssueCount(r){
+  var count = 0;
+  var allStages = (r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+  allStages.forEach(s=>{
+    if(getStageStatus(r, s.key)==='issue') count++;
+  });
+  return count;
+}
+
+// ==================== 进度看板 ====================
+function renderDashboard(){
+  // Stats
+  var total = records.length;
+  var done = records.filter(r=>getOverallStatus(r)==='done').length;
+  var progress = records.filter(r=>getOverallStatus(r)==='progress').length;
+  var issue = records.filter(r=>getOverallStatus(r)==='issue').length;
+  var overdue = records.filter(r=>getOverallStatus(r)==='overdue').length;
+  document.getElementById('statsGrid').innerHTML =
+    '<div class="qc-stat-card"><div class="qc-stat-icon blue">📦</div><div class="qc-stat-info"><div class="qc-stat-value">'+total+'</div><div class="qc-stat-label">总款数</div></div></div>'+
+    '<div class="qc-stat-card"><div class="qc-stat-icon green">✅</div><div class="qc-stat-info"><div class="qc-stat-value">'+done+'</div><div class="qc-stat-label">已完成</div></div></div>'+
+    '<div class="qc-stat-card"><div class="qc-stat-icon blue">🔄</div><div class="qc-stat-info"><div class="qc-stat-value">'+progress+'</div><div class="qc-stat-label">进行中</div></div></div>'+
+    '<div class="qc-stat-card"><div class="qc-stat-icon red">⚠</div><div class="qc-stat-info"><div class="qc-stat-value">'+issue+'</div><div class="qc-stat-label">有问题</div></div></div>'+
+    '<div class="qc-stat-card"><div class="qc-stat-icon orange">⏰</div><div class="qc-stat-info"><div class="qc-stat-value">'+overdue+'</div><div class="qc-stat-label">已逾期</div></div></div>';
+  // Filters
+  var factories = [...new Set(records.map(r=>r.factory))].filter(Boolean);
+  var qcs = [...new Set(records.map(r=>r.qcName))].filter(Boolean);
+  var fFilter = document.getElementById('dashFactoryFilter');
+  var qFilter = document.getElementById('dashQcFilter');
+  var curF = fFilter.value, curQ = qFilter.value;
+  fFilter.innerHTML = '<option value="">全部服装厂</option>' + factories.map(f=>'<option value="'+esc(f)+'" '+(curF===f?'selected':'')+'>'+esc(f)+'</option>').join('');
+  qFilter.innerHTML = '<option value="">全部QC</option>' + qcs.map(q=>'<option value="'+esc(q)+'" '+(curQ===q?'selected':'')+'>'+esc(q)+'</option>').join('');
+  fFilter.value = curF; qFilter.value = curQ;
+
+  var fVal = fFilter.value, qVal = qFilter.value;
+  var filtered = records.filter(r=>{
+    if(fVal && r.factory!==fVal) return false;
+    if(qVal && r.qcName!==qVal) return false;
+    return true;
+  });
+
+  var container = document.getElementById('ganttContainer');
+  if(filtered.length === 0){
+    container.innerHTML = '<div class="qc-empty-state"><div class="icon">📊</div><p>暂无数据</p></div>';
+    return;
+  }
+
+  // Header
+  var html = '<div class="qc-gantt-container"><div class="qc-gantt-header">';
+  html += '<div class="qc-gantt-info">服装厂 / 款号</div>';
+  html += '<div class="qc-gantt-stages">';
+  html += '<div class="qc-gantt-stage check-col">最新检查</div>';
+  STAGES_WASH.forEach(s=>{ html += '<div class="qc-gantt-stage">'+s.short+'</div>'; });
+  STAGES_GARMENT.filter(s=>s.key!=='g_online').forEach(s=>{ html += '<div class="qc-gantt-stage">'+s.short+'</div>'; });
+  html += '</div><div class="qc-gantt-delivery">交期</div></div>';
+
+  // Rows
+  filtered.forEach(r=>{
+    var pct = getProgressPercent(r);
+    var today = new Date(); today.setHours(0,0,0,0);
+    var countdown = '', cdClass = 'ok';
+    if(r.deliveryDate){
+      var dd = new Date(r.deliveryDate);
+      var days = Math.ceil((dd - today) / (1000*60*60*24));
+      if(days < 0){ countdown = '逾期'+(-days)+'天'; cdClass='overdue'; }
+      else if(days <= 7){ countdown = '剩'+days+'天'; cdClass='soon'; }
+      else { countdown = '剩'+days+'天'; cdClass='ok'; }
+    }
+
+    html += '<div class="qc-gantt-row" onclick="viewRecord(\''+r.id+'\')" style="cursor:pointer;">';
+    html += '<div class="qc-gantt-info"><div class="factory">'+esc(r.factory)+'</div><div class="meta">'+esc(r.styleNo)+' | '+esc(r.qcName)+' | '+esc(r.orderNo)+'</div></div>';
+    html += '<div class="qc-gantt-stages">';
+    // 最新检查 column (first)
+    var onlineRecs = r.garment?.onlineRecords||[];
+    var latestRec = onlineRecs.length>0 ? onlineRecs[onlineRecs.length-1] : null;
+    if(latestRec){
+      html += '<div class="qc-gantt-stage check-col" title="最新检查 - '+esc(latestRec.qcName||'-')+' '+(latestRec.date||'')+'"><span class="stage-name">'+esc(latestRec.qcName||'-')+'</span><span class="stage-date">'+(latestRec.date?latestRec.date.slice(5):'')+'</span></div>';
+    } else {
+      html += '<div class="qc-gantt-stage check-col empty" title="最新检查 - 无记录"><span class="stage-name">-</span></div>';
+    }
+    STAGES_WASH.forEach(s=>{
+      if(!r.needWash){
+        html += '<div class="qc-gantt-stage na" title="不适用"><span class="stage-name">'+s.short+'</span></div>';
+      } else {
+        var st = getStageStatus(r, s.key);
+        var dt = getStageDate(r, s.key);
+        html += '<div class="qc-gantt-stage '+st+'" title="'+s.name+' - '+(st==='done'?'已完成':st==='progress'?'进行中':st==='issue'?'有问题':'未开始')+(dt?' ('+dt+')':'')+'"><span class="stage-name">'+s.short+'</span>'+(dt?'<span class="stage-date">'+dt.slice(5)+'</span>':'')+(st==='issue'?'<span class="issue-flag">!</span>':'')+'</div>';
+      }
+    });
+    STAGES_GARMENT.filter(s=>s.key!=='g_online').forEach(s=>{
+      var st = getStageStatus(r, s.key);
+      var dt = getStageDate(r, s.key);
+      html += '<div class="qc-gantt-stage '+st+'" title="'+s.name+' - '+(st==='done'?'已完成':st==='progress'?'进行中':st==='issue'?'有问题':'未开始')+(dt?' ('+dt+')':'')+'"><span class="stage-name">'+s.short+'</span>'+(dt?'<span class="stage-date">'+dt.slice(5)+'</span>':'')+(st==='issue'?'<span class="issue-flag">!</span>':'')+'</div>';
+    });
+    html += '</div>';
+    html += '<div class="qc-gantt-delivery"><div class="date">'+(r.deliveryDate||'-')+'</div><div class="countdown '+cdClass+'">'+countdown+'</div></div>';
+    html += '</div>';
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ==================== 详情弹窗 ====================
+function showDetailModal(r){
+  document.getElementById('modalTitle').textContent = r.factory + ' - ' + r.styleNo;
+  var g = r.garment, w = r.washing;
+  var status = getOverallStatus(r);
+  var pct = getProgressPercent(r);
+  var statusMap = {done:'已完成',progress:'进行中',issue:'有问题',overdue:'已逾期',pending:'未开始'};
+  var matStatusMap = {consistent:'核对一致',inconsistent:'有差异',pending:'待核对'};
+
+  var html = '<div class="qc-detail-section"><h3>📋 基础信息</h3><div class="qc-detail-grid">';
+  html += detailItem('服装厂', r.factory);
+  html += detailItem('QC姓名', r.qcName);
+  html += detailItem('订单号', r.orderNo);
+  html += detailItem('款号', r.styleNo);
+  html += detailItem('交期', r.deliveryDate);
+  html += detailItem('状态', statusMap[status]||status);
+  html += detailItem('进度', pct+'%');
+  html += '</div></div>';
+
+  if(r.styleImage){
+    html += '<div class="qc-detail-section"><h3>📷 款式图</h3><img src="'+r.styleImage+'" style="max-width:200px;max-height:280px;border-radius:6px;border:1px solid var(--qc-border);"></div>';
+  }
+
+  if(r.sizes && r.sizes.length){
+    html += '<div class="qc-detail-section"><h3>📏 尺寸数量</h3><table class="qc-detail-table"><thead><tr><th>尺码</th><th>数量</th></tr></thead><tbody>';
+    var total = 0;
+    r.sizes.forEach(s=>{ html += '<tr><td>'+esc(s.size)+'</td><td>'+s.qty+'</td></tr>'; total += s.qty; });
+    html += '<tr><td style="font-weight:600;">合计</td><td style="font-weight:600;">'+total+'</td></tr>';
+    html += '</tbody></table></div>';
+  }
+
+  // Flow diagram
+  var allStages = r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT;
+  html += '<div class="qc-detail-section"><h3>🔄 工序流程</h3><div class="qc-flow-diagram">';
+  allStages.forEach((s,i)=>{
+    if(i>0) html += '<span class="qc-flow-arrow">→</span>';
+    var st = getStageStatus(r, s.key);
+    html += '<span class="qc-flow-node '+st+'">'+s.short+'</span>';
+  });
+  html += '</div></div>';
+
+  // Washing details
+  if(r.needWash && w){
+    html += '<div class="qc-detail-section"><h3>🌊 水洗版块</h3><div class="qc-detail-grid">';
+    html += detailItem('水洗标样确认', (w.sampleReceived?.confirmed?'✅ 已确认':'⬜ 未确认')+(w.sampleReceived?.date?' ('+w.sampleReceived.date+')':''));
+    html += detailItem('头缸时间', w.firstBatch?.date||'-');
+    html += detailItem('头缸数量', w.firstBatch?.quantity||'-');
+    html += detailItem('头缸问题', w.firstBatch?.issues||'-');
+    html += detailItem('大货水洗方法', (w.bulkMethod?.confirmed?'✅ ':'')+ (w.bulkMethod?.method||'-'));
+    html += detailItem('大货水洗时间', w.bulkWashing?.date||'-');
+    html += detailItem('大货水洗结束', w.bulkWashing?.endDate||'-');
+    html += detailItem('大货总缸数', w.bulkWashing?.totalBatches||'-');
+    html += detailItem('大货水洗问题', w.bulkWashing?.issues||'-');
+    html += detailItem('问题整改', w.bulkWashing?.rectification||'-');
+    html += detailItem('大货问题解决', (w.bulkResolved?.resolved?'✅ 已解决':'⬜ 未解决')+(w.bulkResolved?.date?' ('+w.bulkResolved.date+')':''));
+    html += '</div></div>';
+  }
+
+  // Garment details
+  if(g){
+    html += '<div class="qc-detail-section"><h3>👕 服装版块</h3><div class="qc-detail-grid">';
+    html += detailItem('封样样衣', (g.sealedSample?.confirmed?'✅ 已确认':'⬜ 未确认')+(g.sealedSample?.date?' ('+g.sealedSample.date+')':''));
+    html += detailItem('封样意见', g.sealedSample?.opinion||'-');
+    html += detailItem('PP产前样', (g.ppSample?.confirmed?'✅ 已确认':'⬜ 未确认')+(g.ppSample?.date?' ('+g.ppSample.date+')':''));
+    html += detailItem('PP产前样备注', g.ppSample?.notes||'-');
+    html += detailItem('面里辅料核对', (matStatusMap[g.materialsCheck?.status]||'-')+(g.materialsCheck?.date?' ('+g.materialsCheck.date+')':''));
+    html += detailItem('辅料核对备注', g.materialsCheck?.notes||'-');
+    html += detailItem('开裁时间', g.cuttingDate||'-');
+    html += detailItem('上机缝制', g.sewStartDate||'-');
+    html += detailItem('缝制结束', g.sewEndDate||'-');
+    html += detailItem('后道整理', g.finishDate||'-');
+    html += detailItem('包装日期', g.packDate||'-');
+    html += detailItem('出货日期', g.shipDate||'-');
+    html += '</div></div>';
+  }
+
+  // Online records
+  if(g?.onlineRecords?.length){
+    html += '<div class="qc-detail-section"><h3>🏭 上线记录</h3><table class="qc-detail-table"><thead><tr><th>序号</th><th>日期</th><th>QC姓名</th><th>查看备注</th></tr></thead><tbody>';
+    g.onlineRecords.forEach((o,i)=>{
+      html += '<tr><td>'+(i+1)+'</td><td>'+(o.date||'-')+'</td><td>'+(esc(o.qcName)||'-')+'</td><td>'+(esc(o.notes)||'-')+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Production issues
+  if(g?.productionIssues?.length){
+    html += '<div class="qc-detail-section"><h3>⚠ 生产问题及整改</h3><table class="qc-detail-table"><thead><tr><th>序号</th><th>发现日期</th><th>问题描述</th><th>整改措施</th><th>状态</th><th>解决日期</th></tr></thead><tbody>';
+    g.productionIssues.forEach((p,i)=>{
+      html += '<tr><td>'+(i+1)+'</td><td>'+(p.date||'-')+'</td><td>'+(esc(p.issue)||'-')+'</td><td>'+(esc(p.rectification)||'-')+'</td><td>'+(p.status==='resolved'?'<span class="qc-status-badge qc-status-done">已解决</span>':'<span class="qc-status-badge qc-status-issue">未解决</span>')+'</td><td>'+(p.resolvedDate||'-')+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Action buttons
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;"><button class="qc-btn qc-btn-primary" onclick="closeModal();editRecord(\''+r.id+'\')">编辑</button><button class="qc-btn qc-btn-outline" onclick="closeModal()">关闭</button></div>';
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+function detailItem(label, value){
+  return '<div class="qc-detail-item"><span class="label">'+label+'</span><span class="value">'+esc(String(value||'-'))+'</span></div>';
+}
+function closeModal(){
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+// ==================== 导入导出 ====================
+function exportData(){
+  if(records.length === 0){ alert('暂无数据可导出'); return; }
+  var blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '外勤QC数据_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  if(window.App && App.toast) App.toast('已导出 '+records.length+' 条记录', 'success');
+}
+function importData(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var data = JSON.parse(ev.target.result);
+      if(!Array.isArray(data)) throw new Error();
+      if(records.length > 0 && !confirm('当前已有数据，是否合并导入？点击"取消"则覆盖导入。')) {
+        // Overwrite
+        records = data;
+      } else {
+        // Merge
+        var existingIds = new Set(records.map(r=>r.id));
+        data.forEach(r=>{ if(!existingIds.has(r.id)) records.push(r); });
+      }
+      saveData();
+      renderQueryTable();
+      renderDashboard();
+      if(window.App && App.toast) App.toast('成功导入 '+data.length+' 条记录', 'success');
+    }catch(err){
+      alert('导入失败：文件格式不正确');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ==================== 工具 ====================
+function esc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escAttr(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ==================== 初始化 ====================
+function init(){
+  loadData();
+  updateCount();
+  addSizeRow();
+}
+
+init();
+</script>
+</body>
+</html>

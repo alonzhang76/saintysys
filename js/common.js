@@ -152,6 +152,7 @@ const App = {
     { key: 'sample', text: '样衣管理', icon: '✂️', url: 'sample.html' },
     { key: 'consumption', text: '用料及纸板', icon: '📐', url: 'consumption.html' },
     { group: '生产与财务' },
+    { key: 'qcField', text: '外勤QC', icon: '🔍', url: 'qc-field.html' },
     { key: 'production', text: '生产管理', icon: '🏭', url: 'production.html' },
     { key: 'shipping', text: '出运管理', icon: '🚢', url: 'shipping.html' },
     { key: 'express', text: '寄件管理', icon: '📦', url: 'express.html' },
@@ -742,15 +743,16 @@ const App = {
 
   // ===== 角色定义 =====
   roles: {
-    admin:       { name: '系统管理员', isAdmin: true },
-    merchandiser:{ name: '业务跟单员', isAdmin: false },
-    purchaser:   { name: '面辅料采购员', isAdmin: false },
-    designer:    { name: '样衣师', isAdmin: false },
-    qc:          { name: '品控员', isAdmin: false },
-    finance:     { name: '财务专员', isAdmin: false },
-    documentary: { name: '单证员', isAdmin: false },
-    manager:     { name: '管理层', isAdmin: false },
-    user:        { name: '普通用户', isAdmin: false },
+    admin:        { name: '系统管理员', isAdmin: true },
+    merchandiser: { name: '业务跟单员', isAdmin: false },
+    purchaser:    { name: '面辅料采购员', isAdmin: false },
+    designer:     { name: '样衣师', isAdmin: false },
+    qc:           { name: '品控员', isAdmin: false },
+    qcInspector:  { name: 'QC检验员', isAdmin: false },
+    finance:      { name: '财务专员', isAdmin: false },
+    documentary:  { name: '单证员', isAdmin: false },
+    manager:      { name: '管理层', isAdmin: false },
+    user:         { name: '普通用户', isAdmin: false },
   },
 
   // ===== 价格可见角色（只有这些角色可以看到订单的单价和金额）=====
@@ -773,6 +775,7 @@ const App = {
     wash:         '水洗管理',
     sample:       '样衣管理',
     consumption:  '用料及纸板',
+    qcField:      '外勤QC',
     production:   '生产管理',
     shipping:     '出运管理',
     express:      '寄件管理',
@@ -969,30 +972,31 @@ window.addEventListener('auth-role-updated', function() {
 });
 
 // ===== 截图级模块权限默认值（唯一事实来源）=====
-// 严格对齐 settings.html 用户组页面的 8 个非管理员角色 × 15 个模块。
-// 角色顺序（非 admin）：merchandiser 业务跟单员 / purchaser 面辅料采购员 / designer 样衣师 / qc 品控员 / finance 财务专员 / documentary 单证员 / manager 管理层 / user 普通用户
+// 严格对齐 settings.html 用户组页面的 9 个非管理员角色 × 16 个模块。
+// 角色顺序（非 admin）：merchandiser 业务跟单员 / purchaser 面辅料采购员 / designer 样衣师 / qc 品控员 / qcInspector QC检验员 / finance 财务专员 / documentary 单证员 / manager 管理层 / user 普通用户
 // 注：admin 角色在 getPermission 中直接返回 write，不需要在矩阵中配置
 App.SCREENSHOT_DEFAULT_PERMISSIONS = {
-  index:       { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 首页：全只读
-  order:       { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 订单管理：仅管理层读写
-  fabric:      { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 面里衬采购：仅管理层读写
-  accessory:   { merchandiser: 'read',  purchaser: 'write', designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 辅料采购：采购读写
-  wash:        { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 水洗管理：跟单读写
-  sample:      { merchandiser: 'read',  purchaser: 'read',  designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 样衣管理：设计读写
-  consumption: { merchandiser: 'read',  purchaser: 'read',  designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 用料及纸板：设计读写
-  production:  { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 生产管理：跟单/管理层读写
-  shipping:    { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 出运管理：跟单读写
-  express:     { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 寄件管理：跟单/采购/设计/经理读写
-  finance:     { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 财务管理：管理层读写
-  nasDrive:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 云盘NAS：跟单/采购/设计/经理读写
-  contacts:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 通讯录：跟单/采购/设计/经理读写
-  maintenance: { merchandiser: 'write', purchaser: 'write', designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 维护资料：跟单/采购/经理读写
-  settings:    { merchandiser: 'hidden',purchaser: 'hidden',designer: 'hidden',qc: 'hidden',finance: 'hidden',documentary: 'hidden',manager: 'hidden',user: 'hidden'}, // 设置：全不显示（仅管理员可见）
+  index:       { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 首页：全只读
+  order:       { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 订单管理：仅管理层读写
+  fabric:      { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 面里衬采购：仅管理层读写
+  accessory:   { merchandiser: 'read',  purchaser: 'write', designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 辅料采购：采购读写
+  wash:        { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 水洗管理：跟单读写
+  sample:      { merchandiser: 'read',  purchaser: 'read',  designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 样衣管理：设计读写
+  consumption: { merchandiser: 'read',  purchaser: 'read',  designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 用料及纸板：设计读写
+  qcField:     { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'write', finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 外勤QC：QC检验员/管理层读写
+  production:  { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 生产管理：跟单/管理层读写
+  shipping:    { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 出运管理：跟单读写
+  express:     { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 寄件管理：跟单/采购/设计/经理读写
+  finance:     { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 财务管理：管理层读写
+  nasDrive:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 云盘NAS：跟单/采购/设计/经理读写
+  contacts:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 通讯录：跟单/采购/设计/经理读写
+  maintenance: { merchandiser: 'write', purchaser: 'write', designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 维护资料：跟单/采购/经理读写
+  settings:    { merchandiser: 'hidden',purchaser: 'hidden',designer: 'hidden',qc: 'hidden',qcInspector: 'hidden',finance: 'hidden',documentary: 'hidden',manager: 'hidden',user: 'hidden'}, // 设置：全不显示（仅管理员可见）
 };
 
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
-  const DATA_VERSION = '10'; // v10: 升级为截图级权限矩阵，跨所有电脑强制重置一次默认权限
+  const DATA_VERSION = '11'; // v11: 新增"外勤QC"模块与"QC检验员"角色，跨所有电脑强制重置一次默认权限
   const currentVersion = localStorage.getItem('dataVersion');
   const isVersionChanged = currentVersion !== DATA_VERSION;
 

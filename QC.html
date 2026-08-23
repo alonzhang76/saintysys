@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外勤QC管理</title>
+<style>
+:root{
+  --bg:#f0f2f5;--card:#fff;--primary:#2b6cb0;--primary-light:#ebf4ff;
+  --success:#2f9e44;--success-light:#ebfbee;
+  --warning:#f59f00;--warning-light:#fff9db;
+  --danger:#e03131;--danger-light:#fff5f5;
+  --gray:#adb5bd;--gray-light:#f1f3f5;
+  --text:#333;--text-light:#868e96;--border:#e0e0e0;
+  --radius:6px;--shadow:0 1px 3px rgba(0,0,0,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;font-size:13px;background:var(--bg);color:var(--text);line-height:1.5;}
+/* Header */
+.header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.header h1{font-size:18px;font-weight:600;}
+.header-actions{display:flex;gap:8px;}
+.header-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;transition:.2s;}
+.header-btn:hover{background:rgba(255,255,255,.3);}
+/* Tabs */
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);padding:0 20px;}
+.tab-btn{padding:10px 24px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--text-light);border-bottom:3px solid transparent;transition:.2s;font-weight:500;}
+.tab-btn:hover{color:var(--primary);}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
+/* Tabs sticky */
+.tabs{position:sticky;top:0;z-index:10;}
+/* Tab content */
+.tab-content{display:none;padding:16px 20px;}
+.tab-content.active{display:block;}
+/* Cards */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;}
+.card-header{background:#f8f9fa;padding:10px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;color:#495057;}
+.card-header .icon{font-size:15px;}
+.card-body{padding:16px;}
+/* Form */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group.full{grid-column:1/-1;}
+.form-group label{font-size:12px;color:#495057;font-weight:500;}
+.form-group label .req{color:var(--danger);}
+.form-control{padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:#fffde7;transition:.2s;width:100%;}
+.form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(43,108,176,.1);}
+textarea.form-control{resize:vertical;min-height:48px;font-family:inherit;}
+select.form-control{cursor:pointer;}
+.checkbox-group{display:flex;align-items:center;gap:6px;padding:5px 0;}
+.checkbox-group input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+/* Size table */
+.size-table,.sub-table{width:100%;border-collapse:collapse;font-size:12px;}
+.size-table th,.sub-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border:1px solid var(--border);font-weight:600;white-space:nowrap;}
+.size-table td,.sub-table td{padding:4px 8px;border:1px solid var(--border);text-align:left;}
+.size-table input,.sub-table input,.sub-table textarea,.sub-table select{border:1px solid var(--border);border-radius:3px;padding:3px 6px;font-size:12px;width:100%;background:#fffde7;}
+.size-table input:focus,.sub-table input:focus,.sub-table textarea:focus,.sub-table select:focus{outline:none;border-color:var(--primary);}
+/* Buttons */
+.btn{padding:5px 14px;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;transition:.2s;display:inline-flex;align-items:center;gap:4px;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:#1e4d7b;}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{background:#237b35;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{background:#b92525;}
+.btn-outline{background:#fff;border:1px solid var(--border);color:#495057;}
+.btn-outline:hover{background:#f8f9fa;border-color:var(--primary);color:var(--primary);}
+.btn-sm{padding:3px 8px;font-size:12px;}
+.btn-icon{padding:3px 7px;font-size:14px;border:none;border-radius:3px;cursor:pointer;background:transparent;transition:.2s;}
+.btn-icon:hover{background:#e9ecef;}
+.btn-icon.danger:hover{background:var(--danger-light);color:var(--danger);}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;padding:12px 0 0;}
+/* Image upload */
+.image-upload{border:2px dashed var(--border);border-radius:6px;padding:16px;text-align:center;cursor:pointer;transition:.2s;}
+.image-upload:hover{border-color:var(--primary);background:var(--primary-light);}
+.image-preview{max-width:120px;max-height:160px;border-radius:4px;border:1px solid var(--border);}
+.image-container{display:flex;gap:12px;align-items:flex-start;}
+.image-container .preview-box{position:relative;}
+.image-container .remove-img{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+/* Section toggle */
+.section-toggle{display:flex;align-items:center;gap:10px;}
+.toggle-switch{position:relative;width:44px;height:22px;background:#ccc;border-radius:11px;cursor:pointer;transition:.2s;}
+.toggle-switch.on{background:var(--success);}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;}
+.toggle-switch.on::after{left:24px;}
+.toggle-label{font-size:13px;font-weight:500;}
+/* Query page */
+.search-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.search-bar .form-control{width:auto;min-width:160px;}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-chip{padding:4px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:#fff;transition:.2s;}
+.filter-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.filter-chip:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+/* Data table */
+.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+.data-table th{background:#f8f9fa;padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);font-weight:600;white-space:nowrap;color:#495057;}
+.data-table td{padding:6px 10px;border-bottom:1px solid #f1f3f5;text-align:left;vertical-align:middle;}
+.data-table tr:hover{background:#f8f9fa;}
+.status-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap;}
+.status-done{background:var(--success-light);color:var(--success);}
+.status-progress{background:var(--primary-light);color:var(--primary);}
+.status-issue{background:var(--danger-light);color:var(--danger);}
+.status-pending{background:var(--gray-light);color:#6c757d;}
+.status-overdue{background:var(--danger);color:#fff;}
+.progress-cell{min-width:120px;}
+.progress-bar-mini{height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;margin-top:2px;}
+.progress-bar-fill{height:100%;background:var(--primary);border-radius:3px;transition:.3s;}
+/* Dashboard */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px;}
+.stat-card{background:#fff;border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;}
+.stat-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.stat-icon.blue{background:var(--primary-light);color:var(--primary);}
+.stat-icon.green{background:var(--success-light);color:var(--success);}
+.stat-icon.orange{background:var(--warning-light);color:var(--warning);}
+.stat-icon.red{background:var(--danger-light);color:var(--danger);}
+.stat-icon.gray{background:var(--gray-light);color:#6c757d;}
+.stat-info{flex:1;}
+.stat-value{font-size:22px;font-weight:700;line-height:1.2;}
+.stat-label{font-size:11px;color:var(--text-light);}
+/* Gantt chart */
+.gantt-container{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto;}
+.gantt-row{display:flex;align-items:stretch;border-bottom:1px solid #f1f3f5;min-height:48px;transition:.15s;}
+.gantt-row:hover{background:#f8f9fa;}
+.gantt-info{min-width:200px;width:200px;padding:8px 12px;border-right:2px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:2px;flex-shrink:0;}
+.gantt-info .factory{font-weight:600;font-size:12px;color:#333;}
+.gantt-info .meta{font-size:11px;color:var(--text-light);}
+.gantt-stages{display:flex;flex:1;align-items:stretch;}
+.gantt-stage{flex:1;min-width:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;border-right:1px solid #f1f3f5;position:relative;cursor:pointer;transition:.15s;font-size:10px;text-align:center;color:#fff;min-height:48px;}
+.gantt-stage:hover{filter:brightness(1.1);z-index:1;}
+.gantt-stage.done{background:var(--success);}
+.gantt-stage.progress{background:var(--primary);}
+.gantt-stage.issue{background:var(--danger);}
+.gantt-stage.pending{background:#e9ecef;color:#adb5bd;}
+.gantt-stage.na{background:#f8f9fa;color:#dee2e6;}
+.gantt-stage.check-col{background:var(--warning);color:#fff;}
+.gantt-stage.check-col.empty{background:#fff3e0;color:#adb5bd;}
+.gantt-header .gantt-stage.check-col{background:#fff3e0;color:#866a00;}
+.gantt-stage .stage-name{font-weight:500;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gantt-stage .stage-date{font-size:9px;opacity:.85;margin-top:1px;}
+.gantt-stage .issue-flag{position:absolute;top:2px;right:2px;background:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--danger);font-weight:700;}
+.gantt-header{display:flex;border-bottom:2px solid var(--border);background:#f8f9fa;position:sticky;top:0;z-index:2;}
+.gantt-header .gantt-info{font-weight:600;font-size:12px;color:#495057;display:flex;align-items:center;}
+.gantt-header .gantt-stages{display:flex;}
+.gantt-header .gantt-stage{background:#f8f9fa;color:#495057;font-weight:600;min-height:36px;cursor:default;}
+.gantt-header .gantt-stage:hover{filter:none;}
+.gantt-delivery{min-width:90px;width:90px;padding:8px 6px;border-left:2px solid var(--border);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;flex-shrink:0;font-size:11px;}
+.gantt-delivery .date{font-weight:600;}
+.gantt-delivery .countdown{font-size:10px;margin-top:1px;}
+.gantt-delivery .countdown.overdue{color:var(--danger);font-weight:600;}
+.gantt-delivery .countdown.soon{color:var(--warning);font-weight:600;}
+.gantt-delivery .countdown.ok{color:var(--success);}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-light);}
+.empty-state .icon{font-size:48px;margin-bottom:8px;}
+.empty-state p{font-size:14px;}
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:1000;justify-content:center;align-items:flex-start;padding:30px 20px;overflow-y:auto;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:8px;width:90%;max-width:900px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;}
+.modal-header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.modal-header h2{font-size:16px;font-weight:600;}
+.modal-close{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0;}
+.modal-body{padding:20px;max-height:70vh;overflow-y:auto;}
+.detail-section{margin-bottom:20px;}
+.detail-section h3{font-size:14px;color:var(--primary);border-bottom:2px solid var(--border);padding-bottom:4px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.detail-item{display:flex;flex-direction:column;gap:2px;}
+.detail-item .label{font-size:11px;color:var(--text-light);}
+.detail-item .value{font-size:13px;font-weight:500;}
+.detail-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.detail-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border:1px solid var(--border);font-weight:600;}
+.detail-table td{padding:5px 8px;border:1px solid var(--border);text-align:left;}
+/* Flow diagram */
+.flow-diagram{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:12px;background:#f8f9fa;border-radius:6px;margin-bottom:16px;}
+.flow-node{padding:6px 12px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;}
+.flow-node.done{background:var(--success);color:#fff;}
+.flow-node.progress{background:var(--primary);color:#fff;}
+.flow-node.issue{background:var(--danger);color:#fff;}
+.flow-node.pending{background:#e9ecef;color:#adb5bd;}
+.flow-node.na{background:#f8f9fa;color:#dee2e6;text-decoration:line-through;}
+.flow-arrow{color:#adb5bd;font-size:14px;}
+/* Legend */
+.legend{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:8px 0;font-size:12px;color:#495057;}
+.legend-item{display:flex;align-items:center;gap:6px;}
+.legend-color{width:14px;height:14px;border-radius:3px;}
+/* Responsive */
+@media(max-width:768px){
+  .form-grid{grid-template-columns:1fr;}
+  .gantt-info{min-width:140px;width:140px;}
+  .gantt-stage{min-width:60px;}
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .header h1{font-size:15px;}
+  .tab-btn{padding:8px 14px;font-size:12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>外勤QC管理</h1>
+  <div class="header-actions">
+    <span class="header-btn" style="cursor:default;" id="recordCount">0 条记录</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="register" onclick="switchTab('register')">外勤登记</button>
+  <button class="tab-btn" data-tab="query" onclick="switchTab('query')">数据查询</button>
+  <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')">进度看板</button>
+</div>
+
+<!-- Tab 1: 外勤登记 -->
+<div class="tab-content active" id="tab-register">
+  <div id="editBanner" style="display:none;background:var(--warning-light);border:1px solid var(--warning);border-radius:var(--radius);padding:8px 16px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;">
+    <span style="font-size:13px;color:#866a00;font-weight:500;">✏ 正在编辑记录：<span id="editBannerText"></span></span>
+    <button class="btn btn-outline btn-sm" onclick="resetForm()">取消编辑</button>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="icon">📋</span>基础信息</div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>服装厂名称 <span class="req">*</span></label><input type="text" class="form-control" id="factory" placeholder="输入服装厂名称"></div>
+        <div class="form-group"><label>QC姓名 <span class="req">*</span></label><input type="text" class="form-control" id="qcName" placeholder="输入QC姓名"></div>
+        <div class="form-group"><label>订单号 <span class="req">*</span></label><input type="text" class="form-control" id="orderNo" placeholder="输入订单号"></div>
+        <div class="form-group"><label>款号 <span class="req">*</span></label><input type="text" class="form-control" id="styleNo" placeholder="输入款号"></div>
+        <div class="form-group"><label>交期 <span class="req">*</span></label><input type="date" class="form-control" id="deliveryDate"></div>
+        <div class="form-group">
+          <label>是否需要水洗工序</label>
+          <div class="section-toggle">
+            <div class="toggle-switch" id="washToggle" onclick="toggleWash()"></div>
+            <span class="toggle-label" id="washLabel">否</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">款式图</label>
+        <div class="image-container" id="imageContainer">
+          <div class="image-upload" id="imageUpload" onclick="document.getElementById('styleImageInput').click()">
+            <div style="font-size:24px;color:#adb5bd;">📷</div>
+            <div style="font-size:12px;color:#868e96;margin-top:4px;">点击上传款式图</div>
+          </div>
+        </div>
+        <input type="file" id="styleImageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+      </div>
+      <div style="margin-top:12px;">
+        <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">订单各尺寸数量</label>
+        <table class="size-table" id="sizeTable">
+          <thead><tr><th style="width:40px;">#</th><th>尺码</th><th>数量</th><th style="width:40px;"></th></tr></thead>
+          <tbody id="sizeTableBody"></tbody>
+        </table>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addSizeRow()">+ 添加尺码</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 水洗版块 -->
+  <div class="card" id="washSection" style="display:none;">
+    <div class="card-header"><span class="icon">🌊</span>水洗版块</div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>水洗标样确认收到</label>
+          <div class="checkbox-group"><input type="checkbox" id="w_sample_confirmed"><label for="w_sample_confirmed" style="font-weight:normal;">已确认收到</label></div>
+          <input type="date" class="form-control" id="w_sample_date" style="margin-top:4px;">
+        </div>
+        <div class="form-group"><label>头缸时间</label><input type="date" class="form-control" id="w_first_date"></div>
+        <div class="form-group"><label>头缸数量</label><input type="text" class="form-control" id="w_first_qty" placeholder="数量/缸数"></div>
+        <div class="form-group full"><label>头缸问题</label><textarea class="form-control" id="w_first_issues" placeholder="描述头缸试洗中发现的问题"></textarea></div>
+        <div class="form-group full">
+          <label>大货水洗方法确定</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div class="checkbox-group" style="margin:0;"><input type="checkbox" id="w_method_confirmed"><label for="w_method_confirmed" style="font-weight:normal;">方法已确定</label></div>
+            <input type="date" class="form-control" id="w_method_date" style="width:150px;flex-shrink:0;">
+            <input type="text" class="form-control" id="w_method_text" placeholder="大货水洗方法，如：酵素洗+软油" style="flex:1;min-width:180px;">
+          </div>
+        </div>
+        <div class="form-group"><label>大货水洗时间</label><input type="date" class="form-control" id="w_bulk_date"></div>
+        <div class="form-group"><label>大货水洗结束时间</label><input type="date" class="form-control" id="w_bulk_end"></div>
+        <div class="form-group"><label>大货总缸数</label><input type="number" class="form-control" id="w_bulk_total" min="0" placeholder="0"></div>
+        <div class="form-group full"><label>大货水洗问题</label><textarea class="form-control" id="w_bulk_issues" placeholder="大货水洗过程中的问题"></textarea></div>
+        <div class="form-group full"><label>问题整改情况</label><textarea class="form-control" id="w_bulk_rect" placeholder="整改措施及结果"></textarea></div>
+        <div class="form-group">
+          <label>大货问题解决</label>
+          <div class="checkbox-group"><input type="checkbox" id="w_resolved"><label for="w_resolved" style="font-weight:normal;">问题已解决</label></div>
+          <input type="date" class="form-control" id="w_resolve_date" style="margin-top:4px;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 服装版块 -->
+  <div class="card">
+    <div class="card-header"><span class="icon">👕</span>服装版块</div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>封样样衣日期</label><input type="date" class="form-control" id="g_seal_date"></div>
+        <div class="form-group">
+          <label>封样确认</label>
+          <div class="checkbox-group"><input type="checkbox" id="g_seal_confirmed"><label for="g_seal_confirmed" style="font-weight:normal;">封样已确认</label></div>
+        </div>
+        <div class="form-group full"><label>封样意见</label><textarea class="form-control" id="g_seal_opinion" placeholder="封样意见/修改建议"></textarea></div>
+        <div class="form-group"><label>PP产前样日期</label><input type="date" class="form-control" id="g_pp_date"></div>
+        <div class="form-group">
+          <label>PP产前样确认</label>
+          <div class="checkbox-group"><input type="checkbox" id="g_pp_confirmed"><label for="g_pp_confirmed" style="font-weight:normal;">PP样已确认</label></div>
+        </div>
+        <div class="form-group full"><label>PP产前样备注</label><textarea class="form-control" id="g_pp_notes" placeholder="PP产前样备注"></textarea></div>
+        <div class="form-group"><label>面里辅料核对日期</label><input type="date" class="form-control" id="g_mat_date"></div>
+        <div class="form-group">
+          <label>核对结果</label>
+          <select class="form-control" id="g_mat_status">
+            <option value="">请选择</option>
+            <option value="consistent">核对一致</option>
+            <option value="inconsistent">有差异</option>
+            <option value="pending">待核对</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>面里辅料核对备注</label><textarea class="form-control" id="g_mat_notes" placeholder="面料、里料、辅料核对情况"></textarea></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
+        <div class="form-group"><label>开裁时间</label><input type="date" class="form-control" id="g_cut_date"></div>
+        <div class="form-group"><label>上机缝制</label><input type="date" class="form-control" id="g_sew_start"></div>
+        <div class="form-group"><label>缝制结束</label><input type="date" class="form-control" id="g_sew_end"></div>
+        <div class="form-group"><label>后道整理</label><input type="date" class="form-control" id="g_finish"></div>
+        <div class="form-group"><label>包装日期</label><input type="date" class="form-control" id="g_pack"></div>
+        <div class="form-group"><label>出货日期</label><input type="date" class="form-control" id="g_ship"></div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">上线记录（可多次登记，多个QC查看）</label>
+        <table class="sub-table" id="onlineTable">
+          <thead><tr><th style="width:30px;">#</th><th style="width:140px;">上线日期</th><th style="width:120px;">QC姓名</th><th>查看备注</th><th style="width:36px;"></th></tr></thead>
+          <tbody id="onlineTableBody"></tbody>
+        </table>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addOnlineRow()">+ 添加上线记录</button>
+      </div>
+
+      <div style="margin-top:16px;">
+        <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">生产中问题及整改</label>
+        <table class="sub-table" id="issueTable">
+          <thead><tr><th style="width:30px;">#</th><th style="width:120px;">发现日期</th><th>问题描述</th><th>整改措施</th><th style="width:90px;">状态</th><th style="width:120px;">解决日期</th><th style="width:36px;"></th></tr></thead>
+          <tbody id="issueTableBody"></tbody>
+        </table>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addIssueRow()">+ 添加问题</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-outline" onclick="resetForm()">重置</button>
+    <button class="btn btn-primary" onclick="saveRecord()">保存记录</button>
+  </div>
+</div>
+
+<!-- Tab 2: 数据查询 -->
+<div class="tab-content" id="tab-query">
+  <div class="search-bar">
+    <input type="text" class="form-control" id="searchInput" placeholder="搜索服装厂/订单号/款号/QC姓名..." oninput="renderQueryTable()">
+    <div class="filter-chips" id="filterChips">
+      <div class="filter-chip active" data-filter="all" onclick="setFilter('all')">全部</div>
+      <div class="filter-chip" data-filter="progress" onclick="setFilter('progress')">进行中</div>
+      <div class="filter-chip" data-filter="issue" onclick="setFilter('issue')">有问题</div>
+      <div class="filter-chip" data-filter="done" onclick="setFilter('done')">已完成</div>
+      <div class="filter-chip" data-filter="overdue" onclick="setFilter('overdue')">已逾期</div>
+    </div>
+  </div>
+  <div id="queryTableContainer"></div>
+</div>
+
+<!-- Tab 3: 进度看板 -->
+<div class="tab-content" id="tab-dashboard">
+  <div class="stats-grid" id="statsGrid"></div>
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span><span class="icon">📊</span>工序进度看板</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="form-control" id="dashFactoryFilter" style="font-size:12px;width:auto;" onchange="renderDashboard()">
+          <option value="">全部服装厂</option>
+        </select>
+        <select class="form-control" id="dashQcFilter" style="font-size:12px;width:auto;" onchange="renderDashboard()">
+          <option value="">全部QC</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <div class="legend" style="padding:10px 16px;border-bottom:1px solid var(--border);">
+        <div class="legend-item"><div class="legend-color" style="background:var(--success);"></div>已完成</div>
+        <div class="legend-item"><div class="legend-color" style="background:var(--primary);"></div>进行中</div>
+        <div class="legend-item"><div class="legend-color" style="background:var(--danger);"></div>有问题</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e9ecef;"></div>未开始</div>
+        <div class="legend-item"><div class="legend-color" style="background:#f8f9fa;border:1px solid var(--border);"></div>不适用</div>
+      </div>
+      <div id="ganttContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">详情</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ==================== 数据管理 ====================
+const STORAGE_KEY = 'qc_field_mgmt_v2';
+let records = [];
+let editingId = null;
+let currentFilter = 'all';
+let needWash = false;
+
+const STAGES_WASH = [
+  {key:'w_sample',name:'水洗标样确认',short:'标样确认'},
+  {key:'w_first',name:'头缸试洗',short:'头缸'},
+  {key:'w_method',name:'大货水洗方法',short:'水洗方法'},
+  {key:'w_bulk',name:'大货水洗执行',short:'大货水洗'},
+  {key:'w_resolve',name:'大货问题解决',short:'问题解决'}
+];
+const STAGES_GARMENT = [
+  {key:'g_seal',name:'封样样衣',short:'封样'},
+  {key:'g_pp',name:'PP产前样',short:'PP产前样'},
+  {key:'g_mat',name:'面里辅料核对',short:'辅料核对'},
+  {key:'g_cut',name:'开裁',short:'开裁'},
+  {key:'g_online',name:'上线生产',short:'上线'},
+  {key:'g_sew_start',name:'上机缝制',short:'上机'},
+  {key:'g_sew_end',name:'缝制结束',short:'缝制完'},
+  {key:'g_finish',name:'后道整理',short:'后道'},
+  {key:'g_pack',name:'包装',short:'包装'},
+  {key:'g_ship',name:'出货',short:'出货'},
+  {key:'g_issue',name:'问题整改',short:'问题整改'}
+];
+
+function loadData(){
+  try{ const d = localStorage.getItem(STORAGE_KEY); records = d ? JSON.parse(d) : []; }catch(e){ records = []; }
+}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  updateCount();
+}
+function genId(){ return 'qc_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+function updateCount(){ document.getElementById('recordCount').textContent = records.length + ' 条记录'; }
+
+// ==================== 标签页 ====================
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('active',c.id==='tab-'+tab));
+  if(tab==='query') renderQueryTable();
+  if(tab==='dashboard') renderDashboard();
+}
+
+// ==================== 水洗开关 ====================
+function toggleWash(){
+  needWash = !needWash;
+  const ts = document.getElementById('washToggle');
+  ts.classList.toggle('on',needWash);
+  document.getElementById('washLabel').textContent = needWash ? '是' : '否';
+  document.getElementById('washSection').style.display = needWash ? 'block' : 'none';
+}
+
+// ==================== 尺码表 ====================
+function addSizeRow(size='',qty=''){
+  const tbody = document.getElementById('sizeTableBody');
+  const tr = document.createElement('tr');
+  const idx = tbody.children.length + 1;
+  tr.innerHTML = `<td>${idx}</td><td><input type="text" value="${size}" placeholder="如 S/M/L"></td><td><input type="number" value="${qty}" placeholder="数量" min="0"></td><td><button class="btn-icon danger" onclick="this.closest('tr').remove();renumberSize();">&times;</button></td>`;
+  tbody.appendChild(tr);
+}
+function renumberSize(){
+  document.querySelectorAll('#sizeTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+}
+
+// ==================== 上线记录 ====================
+function addOnlineRow(date='',qc='',notes=''){
+  const tbody = document.getElementById('onlineTableBody');
+  const tr = document.createElement('tr');
+  const idx = tbody.children.length + 1;
+  tr.innerHTML = `<td>${idx}</td><td><input type="date" value="${date}"></td><td><input type="text" value="${qc}" placeholder="QC姓名"></td><td><input type="text" value="${notes}" placeholder="查看情况/备注"></td><td><button class="btn-icon danger" onclick="this.closest('tr').remove();renumberOnline();">&times;</button></td>`;
+  tbody.appendChild(tr);
+}
+function renumberOnline(){
+  document.querySelectorAll('#onlineTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+}
+
+// ==================== 问题记录 ====================
+function addIssueRow(date='',issue='',rect='',status='open',resolveDate=''){
+  const tbody = document.getElementById('issueTableBody');
+  const tr = document.createElement('tr');
+  const idx = tbody.children.length + 1;
+  tr.innerHTML = `<td>${idx}</td><td><input type="date" value="${date}"></td><td><input type="text" value="${issue}" placeholder="问题描述"></td><td><input type="text" value="${rect}" placeholder="整改措施"></td><td><select onchange="onIssueStatusChange(this)"><option value="open" ${status==='open'?'selected':''}>未解决</option><option value="resolved" ${status==='resolved'?'selected':''}>已解决</option></select></td><td><input type="date" value="${resolveDate}"></td><td><button class="btn-icon danger" onclick="this.closest('tr').remove();renumberIssue();">&times;</button></td>`;
+  tbody.appendChild(tr);
+}
+function renumberIssue(){
+  document.querySelectorAll('#issueTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+}
+function onIssueStatusChange(sel){
+  // no-op, value read at save time
+}
+
+// ==================== 图片上传 ====================
+function handleImageUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const img = new Image();
+    img.onload = function(){
+      const maxW = 400;
+      let w = img.width, h = img.height;
+      if(w > maxW){ h = h * maxW / w; w = maxW; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      showImagePreview(dataUrl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function showImagePreview(dataUrl){
+  const container = document.getElementById('imageContainer');
+  container.innerHTML = `<div class="preview-box"><img src="${dataUrl}" class="image-preview"><button class="remove-img" onclick="removeImage()">&times;</button></div><div class="image-upload" style="flex:1;" onclick="document.getElementById('styleImageInput').click()"><div style="font-size:24px;">📷</div><div style="font-size:12px;color:#868e96;">点击更换图片</div></div>`;
+}
+function removeImage(){
+  const container = document.getElementById('imageContainer');
+  if(!container) return;
+  container.innerHTML = `<div class="image-upload" id="imageUpload" onclick="document.getElementById('styleImageInput').click()"><div style="font-size:24px;color:#adb5bd;">📷</div><div style="font-size:12px;color:#868e96;">点击上传款式图</div></div>`;
+  const input = document.getElementById('styleImageInput');
+  if(input) input.value = '';
+}
+function getCurrentImage(){
+  const img = document.querySelector('#imageContainer .image-preview');
+  return img ? img.src : '';
+}
+
+// ==================== 表单收集/填充 ====================
+function collectFormData(){
+  const sizes = [];
+  document.querySelectorAll('#sizeTableBody tr').forEach(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    if(inputs[0] && inputs[0].value) sizes.push({size:inputs[0].value, qty:parseInt(inputs[1].value)||0});
+  });
+  const onlineRecords = [];
+  document.querySelectorAll('#onlineTableBody tr').forEach(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    if(inputs[0].value || inputs[1].value || inputs[2].value)
+      onlineRecords.push({date:inputs[0].value, qcName:inputs[1].value, notes:inputs[2].value});
+  });
+  const productionIssues = [];
+  document.querySelectorAll('#issueTableBody tr').forEach(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    const sel = tr.querySelector('select');
+    if(inputs[0].value || inputs[1].value || inputs[2].value)
+      productionIssues.push({date:inputs[0].value, issue:inputs[1].value, rectification:inputs[2].value, status:sel?sel.value:'open', resolvedDate:inputs[3]?inputs[3].value:''});
+  });
+
+  const data = {
+    id: editingId || genId(),
+    factory: val('factory'),
+    qcName: val('qcName'),
+    orderNo: val('orderNo'),
+    styleNo: val('styleNo'),
+    deliveryDate: val('deliveryDate'),
+    styleImage: getCurrentImage(),
+    sizes: sizes,
+    needWash: needWash,
+    washing: needWash ? {
+      sampleReceived: {date: val('w_sample_date'), confirmed: document.getElementById('w_sample_confirmed').checked},
+      firstBatch: {date: val('w_first_date'), quantity: val('w_first_qty'), issues: val('w_first_issues')},
+      bulkMethod: {date: val('w_method_date'), method: val('w_method_text'), confirmed: document.getElementById('w_method_confirmed').checked},
+      bulkWashing: {date: val('w_bulk_date'), endDate: val('w_bulk_end'), totalBatches: parseInt(val('w_bulk_total'))||0, issues: val('w_bulk_issues'), rectification: val('w_bulk_rect')},
+      bulkResolved: {date: val('w_resolve_date'), resolved: document.getElementById('w_resolved').checked}
+    } : null,
+    garment: {
+      sealedSample: {date: val('g_seal_date'), opinion: val('g_seal_opinion'), confirmed: document.getElementById('g_seal_confirmed').checked},
+      ppSample: {date: val('g_pp_date'), confirmed: document.getElementById('g_pp_confirmed').checked, notes: val('g_pp_notes')},
+      materialsCheck: {date: val('g_mat_date'), status: val('g_mat_status'), notes: val('g_mat_notes')},
+      cuttingDate: val('g_cut_date'),
+      sewStartDate: val('g_sew_start'),
+      sewEndDate: val('g_sew_end'),
+      finishDate: val('g_finish'),
+      packDate: val('g_pack'),
+      shipDate: val('g_ship'),
+      onlineRecords: onlineRecords,
+      productionIssues: productionIssues
+    },
+    createdAt: editingId ? (records.find(r=>r.id===editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  return data;
+}
+function val(id){ return document.getElementById(id).value.trim(); }
+
+function fillForm(r){
+  editingId = r.id;
+  const banner = document.getElementById('editBanner');
+  const bannerText = document.getElementById('editBannerText');
+  if(banner){ banner.style.display = 'flex'; }
+  if(bannerText){ bannerText.textContent = (r.factory||'') + ' / ' + (r.styleNo||'') + ' / ' + (r.orderNo||''); }
+  setVal('factory', r.factory);
+  setVal('qcName', r.qcName);
+  setVal('orderNo', r.orderNo);
+  setVal('styleNo', r.styleNo);
+  setVal('deliveryDate', r.deliveryDate);
+  // Image
+  if(r.styleImage){
+    showImagePreview(r.styleImage);
+  } else {
+    removeImage();
+  }
+  // Sizes
+  document.getElementById('sizeTableBody').innerHTML = '';
+  if(r.sizes && r.sizes.length){
+    r.sizes.forEach(s => addSizeRow(s.size, s.qty));
+  } else {
+    addSizeRow();
+  }
+  // Wash
+  needWash = !!r.needWash;
+  document.getElementById('washToggle').classList.toggle('on', needWash);
+  document.getElementById('washLabel').textContent = needWash ? '是' : '否';
+  document.getElementById('washSection').style.display = needWash ? 'block' : 'none';
+  if(r.washing){
+    const w = r.washing;
+    setVal('w_sample_date', w.sampleReceived?.date||'');
+    document.getElementById('w_sample_confirmed').checked = !!w.sampleReceived?.confirmed;
+    setVal('w_first_date', w.firstBatch?.date||'');
+    setVal('w_first_qty', w.firstBatch?.quantity||'');
+    setVal('w_first_issues', w.firstBatch?.issues||'');
+    setVal('w_method_date', w.bulkMethod?.date||'');
+    setVal('w_method_text', w.bulkMethod?.method||'');
+    document.getElementById('w_method_confirmed').checked = !!w.bulkMethod?.confirmed;
+    setVal('w_bulk_date', w.bulkWashing?.date||'');
+    setVal('w_bulk_end', w.bulkWashing?.endDate||'');
+    setVal('w_bulk_total', w.bulkWashing?.totalBatches||'');
+    setVal('w_bulk_issues', w.bulkWashing?.issues||'');
+    setVal('w_bulk_rect', w.bulkWashing?.rectification||'');
+    setVal('w_resolve_date', w.bulkResolved?.date||'');
+    document.getElementById('w_resolved').checked = !!w.bulkResolved?.resolved;
+  }
+  // Garment
+  const g = r.garment;
+  setVal('g_seal_date', g?.sealedSample?.date||'');
+  setVal('g_seal_opinion', g?.sealedSample?.opinion||'');
+  document.getElementById('g_seal_confirmed').checked = !!g?.sealedSample?.confirmed;
+  setVal('g_pp_date', g?.ppSample?.date||'');
+  document.getElementById('g_pp_confirmed').checked = !!g?.ppSample?.confirmed;
+  setVal('g_pp_notes', g?.ppSample?.notes||'');
+  setVal('g_mat_date', g?.materialsCheck?.date||'');
+  setVal('g_mat_status', g?.materialsCheck?.status||'');
+  setVal('g_mat_notes', g?.materialsCheck?.notes||'');
+  setVal('g_cut_date', g?.cuttingDate||'');
+  setVal('g_sew_start', g?.sewStartDate||'');
+  setVal('g_sew_end', g?.sewEndDate||'');
+  setVal('g_finish', g?.finishDate||'');
+  setVal('g_pack', g?.packDate||'');
+  setVal('g_ship', g?.shipDate||'');
+  // Online records
+  document.getElementById('onlineTableBody').innerHTML = '';
+  if(g?.onlineRecords?.length){
+    g.onlineRecords.forEach(o => addOnlineRow(o.date, o.qcName, o.notes));
+  }
+  // Issues
+  document.getElementById('issueTableBody').innerHTML = '';
+  if(g?.productionIssues?.length){
+    g.productionIssues.forEach(i => addIssueRow(i.date, i.issue, i.rectification, i.status, i.resolvedDate));
+  }
+  switchTab('register');
+  window.scrollTo(0,0);
+}
+function setVal(id, v){ const el = document.getElementById(id); if(el) el.value = v||''; }
+
+function resetForm(){
+  editingId = null;
+  const banner = document.getElementById('editBanner');
+  if(banner){ banner.style.display = 'none'; }
+  document.querySelectorAll('#tab-register input[type=text],#tab-register input[type=date],#tab-register input[type=number],#tab-register textarea').forEach(el=>el.value='');
+  document.querySelectorAll('#tab-register input[type=checkbox]').forEach(el=>el.checked=false);
+  document.querySelectorAll('#tab-register select').forEach(el=>el.selectedIndex=0);
+  needWash = false;
+  document.getElementById('washToggle').classList.remove('on');
+  document.getElementById('washLabel').textContent = '否';
+  document.getElementById('washSection').style.display = 'none';
+  document.getElementById('sizeTableBody').innerHTML = '';
+  document.getElementById('onlineTableBody').innerHTML = '';
+  document.getElementById('issueTableBody').innerHTML = '';
+  addSizeRow();
+  removeImage();
+}
+
+function saveRecord(){
+  if(!val('factory') || !val('qcName') || !val('orderNo') || !val('styleNo')){
+    alert('请填写必填项：服装厂名称、QC姓名、订单号、款号');
+    return;
+  }
+  const data = collectFormData();
+  const idx = records.findIndex(r=>r.id===data.id);
+  if(idx >= 0){ records[idx] = data; }
+  else { records.push(data); }
+  saveData();
+  resetForm();
+  alert('保存成功！');
+  switchTab('query');
+}
+
+// ==================== 查询 ====================
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===f));
+  renderQueryTable();
+}
+
+function renderQueryTable(){
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  let filtered = records.filter(r=>{
+    if(search){
+      const text = (r.factory+' '+r.qcName+' '+r.orderNo+' '+r.styleNo).toLowerCase();
+      if(!text.includes(search)) return false;
+    }
+    const status = getOverallStatus(r);
+    if(currentFilter==='all') return true;
+    if(currentFilter==='progress') return status==='progress';
+    if(currentFilter==='issue') return status==='issue';
+    if(currentFilter==='done') return status==='done';
+    if(currentFilter==='overdue') return status==='overdue';
+    return true;
+  });
+  const container = document.getElementById('queryTableContainer');
+  if(filtered.length === 0){
+    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>暂无数据，请前往"外勤登记"添加记录</p></div>`;
+    return;
+  }
+  let html = `<table class="data-table"><thead><tr>
+    <th>服装厂</th><th>QC</th><th>订单号</th><th>款号</th><th>交期</th><th>尺寸/数量</th><th>状态</th><th>进度</th><th>问题</th><th style="width:90px;">操作</th>
+  </tr></thead><tbody>`;
+  filtered.forEach(r=>{
+    const status = getOverallStatus(r);
+    const pct = getProgressPercent(r);
+    const issueCount = getIssueCount(r);
+    const sizeStr = (r.sizes||[]).map(s=>`${s.size}:${s.qty}`).join(' ');
+    const statusMap = {done:['已完成','status-done'],progress:['进行中','status-progress'],issue:['有问题','status-issue'],overdue:['已逾期','status-overdue'],pending:['未开始','status-pending']};
+    const [sLabel,sClass] = statusMap[status]||['未知','status-pending'];
+    html += `<tr>
+      <td>${esc(r.factory)}</td>
+      <td>${esc(r.qcName)}</td>
+      <td>${esc(r.orderNo)}</td>
+      <td>${esc(r.styleNo)}</td>
+      <td>${r.deliveryDate||'-'}</td>
+      <td style="font-size:11px;">${esc(sizeStr)||'-'}</td>
+      <td><span class="status-badge ${sClass}">${sLabel}</span></td>
+      <td class="progress-cell"><div style="font-size:11px;">${pct}%</div><div class="progress-bar-mini"><div class="progress-bar-fill" style="width:${pct}%;"></div></div></td>
+      <td>${issueCount>0?`<span class="status-badge status-issue">${issueCount}</span>`:'-'}</td>
+      <td>
+        <button class="btn-icon" title="查看" onclick="viewRecord('${r.id}')">👁</button>
+        <button class="btn-icon" title="编辑" onclick="editRecord('${r.id}')">✏</button>
+        <button class="btn-icon danger" title="删除" onclick="deleteRecord('${r.id}')">🗑</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function editRecord(id){
+  const r = records.find(x=>x.id===id);
+  if(r) fillForm(r);
+}
+function deleteRecord(id){
+  if(!confirm('确认删除该条记录？此操作不可撤销。')) return;
+  records = records.filter(r=>r.id!==id);
+  saveData();
+  renderQueryTable();
+}
+function viewRecord(id){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  showDetailModal(r);
+}
+
+// ==================== 状态计算 ====================
+function getStageStatus(r, key){
+  const w = r.washing, g = r.garment;
+  switch(key){
+    case 'w_sample':
+      if(!r.needWash) return 'na';
+      if(w?.sampleReceived?.confirmed) return 'done';
+      if(w?.sampleReceived?.date) return 'progress';
+      return 'pending';
+    case 'w_first':
+      if(!r.needWash) return 'na';
+      const fb = w?.firstBatch;
+      if(fb?.date && fb.issues) return 'issue';
+      if(fb?.date && fb.quantity) return 'done';
+      if(fb?.date) return 'progress';
+      return 'pending';
+    case 'w_method':
+      if(!r.needWash) return 'na';
+      if(w?.bulkMethod?.confirmed) return 'done';
+      if(w?.bulkMethod?.date) return 'progress';
+      return 'pending';
+    case 'w_bulk':
+      if(!r.needWash) return 'na';
+      const bw = w?.bulkWashing;
+      if(bw?.date && bw.issues && !w?.bulkResolved?.resolved) return 'issue';
+      if(bw?.date && !bw.issues) return 'done';
+      if(bw?.date) return 'progress';
+      return 'pending';
+    case 'w_resolve':
+      if(!r.needWash) return 'na';
+      if(w?.bulkResolved?.resolved) return 'done';
+      if(w?.bulkWashing?.issues) return 'issue';
+      if(w?.bulkWashing?.date) return 'progress';
+      return 'pending';
+    case 'g_seal':
+      if(g?.sealedSample?.confirmed) return 'done';
+      if(g?.sealedSample?.date) return 'progress';
+      return 'pending';
+    case 'g_pp':
+      if(g?.ppSample?.confirmed) return 'done';
+      if(g?.ppSample?.date) return 'progress';
+      return 'pending';
+    case 'g_mat':
+      if(g?.materialsCheck?.status==='inconsistent') return 'issue';
+      if(g?.materialsCheck?.status==='consistent') return 'done';
+      if(g?.materialsCheck?.date) return 'progress';
+      return 'pending';
+    case 'g_cut':
+      if(g?.cuttingDate) return 'done';
+      return 'pending';
+    case 'g_online':
+      if(g?.onlineRecords?.length>0) return 'done';
+      return 'pending';
+    case 'g_sew_start':
+      if(g?.sewStartDate) return 'done';
+      return 'pending';
+    case 'g_sew_end':
+      if(g?.sewEndDate) return 'done';
+      return 'pending';
+    case 'g_finish':
+      if(g?.finishDate) return 'done';
+      return 'pending';
+    case 'g_pack':
+      if(g?.packDate) return 'done';
+      return 'pending';
+    case 'g_ship':
+      if(g?.shipDate) return 'done';
+      return 'pending';
+    case 'g_issue':
+      const issues = g?.productionIssues||[];
+      if(issues.length===0) return 'pending';
+      if(issues.some(i=>i.status!=='resolved')) return 'issue';
+      return 'done';
+    default: return 'pending';
+  }
+}
+
+function getStageDate(r, key){
+  const w = r.washing, g = r.garment;
+  switch(key){
+    case 'w_sample': return w?.sampleReceived?.date||'';
+    case 'w_first': return w?.firstBatch?.date||'';
+    case 'w_method': return w?.bulkMethod?.date||'';
+    case 'w_bulk': return w?.bulkWashing?.date||'';
+    case 'w_resolve': return w?.bulkResolved?.date||'';
+    case 'g_seal': return g?.sealedSample?.date||'';
+    case 'g_pp': return g?.ppSample?.date||'';
+    case 'g_mat': return g?.materialsCheck?.date||'';
+    case 'g_cut': return g?.cuttingDate||'';
+    case 'g_online': return g?.onlineRecords?.length ? g.onlineRecords[g.onlineRecords.length-1].date : '';
+    case 'g_sew_start': return g?.sewStartDate||'';
+    case 'g_sew_end': return g?.sewEndDate||'';
+    case 'g_finish': return g?.finishDate||'';
+    case 'g_pack': return g?.packDate||'';
+    case 'g_ship': return g?.shipDate||'';
+    case 'g_issue': return g?.productionIssues?.length ? g.productionIssues[g.productionIssues.length-1].resolvedDate||g.productionIssues[g.productionIssues.length-1].date : '';
+    default: return '';
+  }
+}
+
+function getOverallStatus(r){
+  const allStages = (r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+  const statuses = allStages.map(s=>getStageStatus(r, s.key));
+  if(statuses.some(s=>s==='issue')) return 'issue';
+  if(statuses.every(s=>s==='done')) return 'done';
+  // Check overdue
+  if(r.deliveryDate){
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dd = new Date(r.deliveryDate);
+    if(dd < today && statuses.some(s=>s!=='done')) return 'overdue';
+  }
+  if(statuses.some(s=>s==='progress')) return 'progress';
+  return 'pending';
+}
+
+function getProgressPercent(r){
+  const allStages = (r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+  const applicable = allStages.filter(s=>s.key.startsWith('g_') || r.needWash);
+  const done = applicable.filter(s=>getStageStatus(r,s.key)==='done').length;
+  return Math.round(done / applicable.length * 100);
+}
+
+function getIssueCount(r){
+  let count = 0;
+  const allStages = (r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+  allStages.forEach(s=>{
+    if(getStageStatus(r, s.key)==='issue') count++;
+  });
+  return count;
+}
+
+// ==================== 进度看板 ====================
+function renderDashboard(){
+  // Stats
+  const total = records.length;
+  const done = records.filter(r=>getOverallStatus(r)==='done').length;
+  const progress = records.filter(r=>getOverallStatus(r)==='progress').length;
+  const issue = records.filter(r=>getOverallStatus(r)==='issue').length;
+  const overdue = records.filter(r=>getOverallStatus(r)==='overdue').length;
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-icon blue">📦</div><div class="stat-info"><div class="stat-value">${total}</div><div class="stat-label">总款数</div></div></div>
+    <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-value">${done}</div><div class="stat-label">已完成</div></div></div>
+    <div class="stat-card"><div class="stat-icon blue">🔄</div><div class="stat-info"><div class="stat-value">${progress}</div><div class="stat-label">进行中</div></div></div>
+    <div class="stat-card"><div class="stat-icon red">⚠</div><div class="stat-info"><div class="stat-value">${issue}</div><div class="stat-label">有问题</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏰</div><div class="stat-info"><div class="stat-value">${overdue}</div><div class="stat-label">已逾期</div></div></div>
+  `;
+  // Filters
+  const factories = [...new Set(records.map(r=>r.factory))].filter(Boolean);
+  const qcs = [...new Set(records.map(r=>r.qcName))].filter(Boolean);
+  const fFilter = document.getElementById('dashFactoryFilter');
+  const qFilter = document.getElementById('dashQcFilter');
+  const curF = fFilter.value, curQ = qFilter.value;
+  fFilter.innerHTML = '<option value="">全部服装厂</option>' + factories.map(f=>`<option value="${esc(f)}" ${curF===f?'selected':''}>${esc(f)}</option>`).join('');
+  qFilter.innerHTML = '<option value="">全部QC</option>' + qcs.map(q=>`<option value="${esc(q)}" ${curQ===q?'selected':''}>${esc(q)}</option>`).join('');
+  fFilter.value = curF; qFilter.value = curQ;
+
+  const fVal = fFilter.value, qVal = qFilter.value;
+  let filtered = records.filter(r=>{
+    if(fVal && r.factory!==fVal) return false;
+    if(qVal && r.qcName!==qVal) return false;
+    return true;
+  });
+
+  const container = document.getElementById('ganttContainer');
+  if(filtered.length === 0){
+    container.innerHTML = `<div class="empty-state"><div class="icon">📊</div><p>暂无数据</p></div>`;
+    return;
+  }
+
+  const allStages = (r=>r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT);
+
+  // Header
+  let html = '<div class="gantt-container"><div class="gantt-header">';
+  html += '<div class="gantt-info">服装厂 / 款号</div>';
+  html += '<div class="gantt-stages">';
+  html += '<div class="gantt-stage check-col">最新检查</div>';
+  STAGES_WASH.forEach(s=>{ html += `<div class="gantt-stage">${s.short}</div>`; });
+  STAGES_GARMENT.filter(s=>s.key!=='g_online').forEach(s=>{ html += `<div class="gantt-stage">${s.short}</div>`; });
+  html += '</div><div class="gantt-delivery">交期</div></div>';
+
+  // Rows
+  filtered.forEach(r=>{
+    const stages = r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT;
+    const pct = getProgressPercent(r);
+    const issueCount = getIssueCount(r);
+    const today = new Date(); today.setHours(0,0,0,0);
+    let countdown = '', cdClass = 'ok';
+    if(r.deliveryDate){
+      const dd = new Date(r.deliveryDate);
+      const days = Math.ceil((dd - today) / (1000*60*60*24));
+      if(days < 0){ countdown = `逾期${-days}天`; cdClass='overdue'; }
+      else if(days <= 7){ countdown = `剩${days}天`; cdClass='soon'; }
+      else { countdown = `剩${days}天`; cdClass='ok'; }
+    }
+
+    html += `<div class="gantt-row" onclick="viewRecord('${r.id}')" style="cursor:pointer;">`;
+    html += `<div class="gantt-info"><div class="factory">${esc(r.factory)}</div><div class="meta">${esc(r.styleNo)} | ${esc(r.qcName)} | ${esc(r.orderNo)}</div></div>`;
+    html += '<div class="gantt-stages">';
+    // 最新检查 column (first)
+    const onlineRecs = r.garment?.onlineRecords||[];
+    const latestRec = onlineRecs.length>0 ? onlineRecs[onlineRecs.length-1] : null;
+    if(latestRec){
+      html += `<div class="gantt-stage check-col" title="最新检查 - ${esc(latestRec.qcName)||'-'} ${latestRec.date||''}"><span class="stage-name">${esc(latestRec.qcName)||'-'}</span><span class="stage-date">${latestRec.date?latestRec.date.slice(5):''}</span></div>`;
+    } else {
+      html += '<div class="gantt-stage check-col empty" title="最新检查 - 无记录"><span class="stage-name">-</span></div>';
+    }
+    STAGES_WASH.forEach(s=>{
+      if(!r.needWash){
+        html += `<div class="gantt-stage na" title="不适用"><span class="stage-name">${s.short}</span></div>`;
+      } else {
+        const st = getStageStatus(r, s.key);
+        const dt = getStageDate(r, s.key);
+        html += `<div class="gantt-stage ${st}" title="${s.name} - ${st==='done'?'已完成':st==='progress'?'进行中':st==='issue'?'有问题':'未开始'}${dt?' ('+dt+')':''}"><span class="stage-name">${s.short}</span>${dt?`<span class="stage-date">${dt.slice(5)}</span>`:''}${st==='issue'?'<span class="issue-flag">!</span>':''}</div>`;
+      }
+    });
+    STAGES_GARMENT.filter(s=>s.key!=='g_online').forEach(s=>{
+      const st = getStageStatus(r, s.key);
+      const dt = getStageDate(r, s.key);
+      html += `<div class="gantt-stage ${st}" title="${s.name} - ${st==='done'?'已完成':st==='progress'?'进行中':st==='issue'?'有问题':'未开始'}${dt?' ('+dt+')':''}"><span class="stage-name">${s.short}</span>${dt?`<span class="stage-date">${dt.slice(5)}</span>`:''}${st==='issue'?'<span class="issue-flag">!</span>':''}</div>`;
+    });
+    html += '</div>';
+    html += `<div class="gantt-delivery"><div class="date">${r.deliveryDate||'-'}</div><div class="countdown ${cdClass}">${countdown}</div></div>`;
+    html += '</div>';
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ==================== 详情弹窗 ====================
+function showDetailModal(r){
+  document.getElementById('modalTitle').textContent = `${r.factory} - ${r.styleNo}`;
+  const g = r.garment, w = r.washing;
+  const status = getOverallStatus(r);
+  const pct = getProgressPercent(r);
+  const statusMap = {done:'已完成',progress:'进行中',issue:'有问题',overdue:'已逾期',pending:'未开始'};
+  const matStatusMap = {consistent:'核对一致',inconsistent:'有差异',pending:'待核对'};
+
+  let html = '<div class="detail-section"><h3>📋 基础信息</h3><div class="detail-grid">';
+  html += detailItem('服装厂', r.factory);
+  html += detailItem('QC姓名', r.qcName);
+  html += detailItem('订单号', r.orderNo);
+  html += detailItem('款号', r.styleNo);
+  html += detailItem('交期', r.deliveryDate);
+  html += detailItem('状态', statusMap[status]||status);
+  html += detailItem('进度', pct+'%');
+  html += '</div></div>';
+
+  if(r.styleImage){
+    html += `<div class="detail-section"><h3>📷 款式图</h3><img src="${r.styleImage}" style="max-width:200px;max-height:280px;border-radius:6px;border:1px solid var(--border);"></div>`;
+  }
+
+  if(r.sizes && r.sizes.length){
+    html += '<div class="detail-section"><h3>📏 尺寸数量</h3><table class="detail-table"><thead><tr><th>尺码</th><th>数量</th></tr></thead><tbody>';
+    let total = 0;
+    r.sizes.forEach(s=>{ html += `<tr><td>${esc(s.size)}</td><td>${s.qty}</td></tr>`; total += s.qty; });
+    html += `<tr><td style="font-weight:600;">合计</td><td style="font-weight:600;">${total}</td></tr>`;
+    html += '</tbody></table></div>';
+  }
+
+  // Flow diagram
+  const allStages = r.needWash ? [...STAGES_WASH, ...STAGES_GARMENT] : STAGES_GARMENT;
+  html += '<div class="detail-section"><h3>🔄 工序流程</h3><div class="flow-diagram">';
+  allStages.forEach((s,i)=>{
+    if(i>0) html += '<span class="flow-arrow">→</span>';
+    const st = getStageStatus(r, s.key);
+    html += `<span class="flow-node ${st}">${s.short}</span>`;
+  });
+  html += '</div></div>';
+
+  // Washing details
+  if(r.needWash && w){
+    html += '<div class="detail-section"><h3>🌊 水洗版块</h3><div class="detail-grid">';
+    html += detailItem('水洗标样确认', w.sampleReceived?.confirmed?'✅ 已确认'+(w.sampleReceived?.date?' ('+w.sampleReceived.date+')':''):'⬜ 未确认'+(w.sampleReceived?.date?' ('+w.sampleReceived.date+')':''));
+    html += detailItem('头缸时间', w.firstBatch?.date||'-');
+    html += detailItem('头缸数量', w.firstBatch?.quantity||'-');
+    html += detailItem('头缸问题', w.firstBatch?.issues||'-');
+    html += detailItem('大货水洗方法', (w.bulkMethod?.confirmed?'✅ ':'')+ (w.bulkMethod?.method||'-'));
+    html += detailItem('大货水洗时间', w.bulkWashing?.date||'-');
+    html += detailItem('大货水洗结束', w.bulkWashing?.endDate||'-');
+    html += detailItem('大货总缸数', w.bulkWashing?.totalBatches||'-');
+    html += detailItem('大货水洗问题', w.bulkWashing?.issues||'-');
+    html += detailItem('问题整改', w.bulkWashing?.rectification||'-');
+    html += detailItem('大货问题解决', w.bulkResolved?.resolved?'✅ 已解决'+(w.bulkResolved?.date?' ('+w.bulkResolved.date+')':''):'⬜ 未解决'+(w.bulkResolved?.date?' ('+w.bulkResolved.date+')':''));
+    html += '</div></div>';
+  }
+
+  // Garment details
+  if(g){
+    html += '<div class="detail-section"><h3>👕 服装版块</h3><div class="detail-grid">';
+    html += detailItem('封样样衣', g.sealedSample?.confirmed?'✅ 已确认':'⬜ 未确认'+(g.sealedSample?.date?' ('+g.sealedSample.date+')':''));
+    html += detailItem('封样意见', g.sealedSample?.opinion||'-');
+    html += detailItem('PP产前样', g.ppSample?.confirmed?'✅ 已确认':'⬜ 未确认'+(g.ppSample?.date?' ('+g.ppSample.date+')':''));
+    html += detailItem('PP产前样备注', g.ppSample?.notes||'-');
+    html += detailItem('面里辅料核对', matStatusMap[g.materialsCheck?.status]||'-'+(g.materialsCheck?.date?' ('+g.materialsCheck.date+')':''));
+    html += detailItem('辅料核对备注', g.materialsCheck?.notes||'-');
+    html += detailItem('开裁时间', g.cuttingDate||'-');
+    html += detailItem('上机缝制', g.sewStartDate||'-');
+    html += detailItem('缝制结束', g.sewEndDate||'-');
+    html += detailItem('后道整理', g.finishDate||'-');
+    html += detailItem('包装日期', g.packDate||'-');
+    html += detailItem('出货日期', g.shipDate||'-');
+    html += '</div></div>';
+  }
+
+  // Online records
+  if(g?.onlineRecords?.length){
+    html += '<div class="detail-section"><h3>🏭 上线记录</h3><table class="detail-table"><thead><tr><th>序号</th><th>日期</th><th>QC姓名</th><th>查看备注</th></tr></thead><tbody>';
+    g.onlineRecords.forEach((o,i)=>{
+      html += `<tr><td>${i+1}</td><td>${o.date||'-'}</td><td>${esc(o.qcName)||'-'}</td><td>${esc(o.notes)||'-'}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Production issues
+  if(g?.productionIssues?.length){
+    html += '<div class="detail-section"><h3>⚠ 生产问题及整改</h3><table class="detail-table"><thead><tr><th>序号</th><th>发现日期</th><th>问题描述</th><th>整改措施</th><th>状态</th><th>解决日期</th></tr></thead><tbody>';
+    g.productionIssues.forEach((p,i)=>{
+      html += `<tr><td>${i+1}</td><td>${p.date||'-'}</td><td>${esc(p.issue)||'-'}</td><td>${esc(p.rectification)||'-'}</td><td>${p.status==='resolved'?'<span class="status-badge status-done">已解决</span>':'<span class="status-badge status-issue">未解决</span>'}</td><td>${p.resolvedDate||'-'}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Action buttons
+  html += `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;"><button class="btn btn-primary" onclick="closeModal();editRecord('${r.id}')">编辑</button><button class="btn btn-outline" onclick="closeModal()">关闭</button></div>`;
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+function detailItem(label, value){
+  return `<div class="detail-item"><span class="label">${label}</span><span class="value">${esc(String(value||'-'))}</span></div>`;
+}
+function closeModal(){
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+// ==================== 导入导出 ====================
+function exportData(){
+  if(records.length === 0){ alert('暂无数据可导出'); return; }
+  const blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `外勤QC数据_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!Array.isArray(data)) throw new Error();
+      if(records.length > 0 && !confirm('当前已有数据，是否合并导入？点击"取消"则覆盖导入。')) {
+        // Overwrite
+        records = data;
+      } else {
+        // Merge
+        const existingIds = new Set(records.map(r=>r.id));
+        data.forEach(r=>{ if(!existingIds.has(r.id)) records.push(r); });
+      }
+      saveData();
+      renderQueryTable();
+      renderDashboard();
+      alert(`成功导入 ${data.length} 条记录`);
+    }catch(err){
+      alert('导入失败：文件格式不正确');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ==================== 工具 ====================
+function esc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ==================== 初始化 ====================
+function init(){
+  loadData();
+  updateCount();
+  addSizeRow();
+}
+
+init();
+</script>
+</body>
+</html>
