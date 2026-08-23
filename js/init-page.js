@@ -79,14 +79,18 @@
 
     function doRefresh() {
       var store = window.SupabaseStore;
-      
+
       // 兜底：即使 SupabaseStore 完全不可用，也通过独立轮询获取数据
       if (!store) {
         console.log('[init-page] ⚠️ SupabaseStore 未加载，使用独立 fetch 兜底...');
         // 直接使用 fetch 获取数据（与 independentPoll 类似但更简单）
         var FALLBACK_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
         var FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(FALLBACK_KEY), {cache: 'no-store'})
+        var userToken = null;
+        try { userToken = (typeof getUserAccessToken === 'function') ? getUserAccessToken() : null; } catch(_e) {}
+        var fbHeaders = {};
+        if (userToken) fbHeaders['Authorization'] = 'Bearer ' + userToken;
+        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(FALLBACK_KEY), {cache: 'no-store', headers: fbHeaders})
           .then(function(resp) { return resp.ok ? resp.json() : Promise.reject(resp.status); })
           .then(function(rows) {
             if (!Array.isArray(rows)) return;
@@ -330,11 +334,19 @@
 
     var isFirstRun = (_independentLastHashes === null);
     var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
-    
+
+    // 关键修复：带上当前登录用户的 JWT，否则 RLS 会把 app_data_store 过滤成空表
+    // （绝大多数表级策略写的是 auth.uid() = user_id 或 owner_id，匿名 apikey 查不到任何行）
+    var headers = {};
+    var userToken = null;
+    try { userToken = getUserAccessToken(); } catch(_e) {}
+    if (userToken) headers['Authorization'] = 'Bearer ' + userToken;
+
     fetch(url, {
-      // 不使用自定义头（避免 CORS 预检请求被 Safari file:// 阻止）
-      // API key 通过 URL 查询参数传递
-      cache: 'no-store'
+      // Authorization 自定义头会触发 CORS 预检，但 Supabase REST/Storage 端点默认对预检放行
+      // （Safari file:// 下万一预检失败，catch 分支会打印诊断，不会卡死轮询）
+      cache: 'no-store',
+      headers: headers
     })
     .then(function(resp) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -440,6 +452,16 @@
 
       _independentLastHashes = newHashes;
 
+      // ===== 首次拉取成功（不论是否有变更）= 打开 runAutoBackup 的安全锁 =====
+      // 只有首次 REST 请求 HTTP 200 且 rows 是数组，才算"基线已建"，后续才允许本地备份上传。
+      // 这样 A 电脑新写的订单不会被 B 电脑的本地旧值覆盖。
+      if (isFirstRun && !_firstPollDone) {
+        _firstPollDone = true;
+        console.log('[init-page] 🔓 首次云端基线建立完成，自动备份解锁（当前云端行数=' + rows.length + '）');
+        // 解锁后立即触发一次 runAutoBackup（否则还要等 visibilitychange 或下次 60s）
+        try { setTimeout(runAutoBackup, 300); } catch(_) {}
+      }
+
       if (changedKeys.length > 0) {
         console.log('[init-page] 🛡️ 独立轮询' + (isFirstRun ? '(首次基线+触发)' : '检测到变更') + ':', 
           changedKeys.join(', '), '(共' + changedKeys.length + '个)');
@@ -449,7 +471,7 @@
         }));
       } else {
         if (isFirstRun) {
-          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端均为空数据)');
+          console.log('[init-page] 🛡️ 独立轮询(首次基线): 无需要更新的key(云端均为空数据或本地已是最新)');
           // 首次运行云端为空 → 可能数据正在通过独立写入通道上传中
           // 5 秒后立即再执行一次轮询（不等15秒），快速捕获刚上传完成的数据
           setTimeout(function() { independentPoll(); }, 5000);
@@ -748,12 +770,19 @@
     setTimeout(flushWriteQueue, 100);
   });
 
-  // 启动后 10 秒：把当前所有 SUPERSET_KEYS 的本地数据一次性"检查并上传"
+  // 启动后：把当前所有 SUPERSET_KEYS 的本地数据一次性"检查并上传"
   // 用于在 Supabase 表为空（前一版 Bug 清空）时把 localStorage 中的已有数据补到云端
   var _lastBackupTs = 0;
+  var _firstPollDone = false;   // 首次 independentPoll 拉云端成功后，才允许 runAutoBackup 上传，避免用本机旧值覆盖云端新值
   function runAutoBackup() {
     // 60 秒冷却，避免频繁切前台重复触发
     if (Date.now() - _lastBackupTs < 60000) return;
+    // 关键安全锁：必须先跑通一次 independentPoll（把云端最新值拉下来），才允许本地"备份"上传。
+    // 如果这个锁没开，直接返回；doRefresh 的首次成功会自动再调用本函数一次。
+    if (!_firstPollDone) {
+      console.log('[init-page] ⏳ 自动备份延迟执行：尚未完成首次云端拉取，避免用旧值覆盖云端。首次拉取成功后会自动触发。');
+      return;
+    }
     _lastBackupTs = Date.now();
 
     var ALL_KEYS = [

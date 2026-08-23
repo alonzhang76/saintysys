@@ -1412,5 +1412,101 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
       }
     } catch(_ee) {}
   }
+
+  // 3) 兜底：Storage LIST 被 RLS 阻止时，直接"猜"常用路径并逐个 createSignedUrl 试
+  //    ——只要有一条命中（signed 成功且浏览器可加载），就等同于找到了。
+  //    这种方式完全不依赖 LIST 权限（只需 sign 权限，即 storage.objects SELECT）。
+  try {
+    var exts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+    var names = [];
+    // 纯款号文件名（桶根手动上传的：GW27-003.png、3011043.png…）
+    for (var ie = 0; ie < exts.length; ie++) names.push(sn + '.' + exts[ie]);
+    for (var ie2 = 0; ie2 < exts.length; ie2++) names.push(sn.toUpperCase() + '.' + exts[ie2]);
+    for (var ie3 = 0; ie3 < exts.length; ie3++) names.push(sn.toLowerCase() + '.' + exts[ie3]);
+    // 常见带 uuid 前缀：uuid-款号.ext（旧模块上传路径，在 userId/order/ 等下）
+    // 这里不试 userId，因为跨机不一样；改试款号文件夹下任意标准命名
+    var subfolderHints = [
+      sn + '/',
+      sn.toUpperCase() + '/',
+      sn.toLowerCase() + '/'
+    ];
+    var styleLikeNames = ['款式图', 'style', 'styleImg', 'main', 'front', 'preview', 'image', 'photo'];
+    var fullLikeNames  = ['大图', 'full', 'big', 'large', 'back'];
+    var candidates = [];
+    // 桶根裸图
+    for (var ni = 0; ni < names.length; ni++) candidates.push({ path: names[ni], hint: 'style' });
+    // 款号文件夹 + 常见名字
+    for (var si = 0; si < subfolderHints.length; si++) {
+      var sf = subfolderHints[si];
+      // 款号文件夹内：款号.ext（最常见）
+      for (var ne = 0; ne < exts.length; ne++) {
+        candidates.push({ path: sf + sn + '.' + exts[ne], hint: 'style' });
+        candidates.push({ path: sf + sn.toUpperCase() + '.' + exts[ne], hint: 'style' });
+      }
+      // 款号文件夹内：命名关键字
+      for (var k = 0; k < styleLikeNames.length; k++) {
+        for (var ee = 0; ee < exts.length; ee++) {
+          candidates.push({ path: sf + styleLikeNames[k] + '.' + exts[ee], hint: 'style' });
+        }
+      }
+      for (var k2 = 0; k2 < fullLikeNames.length; k2++) {
+        for (var ee2 = 0; ee2 < exts.length; ee2++) {
+          candidates.push({ path: sf + fullLikeNames[k2] + '.' + exts[ee2], hint: 'full' });
+        }
+      }
+    }
+    // 去重
+    var seenCand = {};
+    var uniqueCand = [];
+    for (var ci = 0; ci < candidates.length; ci++) {
+      if (!seenCand[candidates[ci].path]) {
+        seenCand[candidates[ci].path] = 1;
+        uniqueCand.push(candidates[ci]);
+      }
+    }
+    var stylePath = '', styleSigned = null;
+    var fullPath  = '', fullSigned  = null;
+    // 批量试 sign：每个都通过 resolveImageUrl 走（含 sign 缓存、REST 回退）
+    for (var cj = 0; cj < uniqueCand.length; cj++) {
+      var cand = uniqueCand[cj];
+      // 小节流，避免瞬间 100+ sign 请求
+      if (cj > 0 && (cj % 8 === 0)) {
+        await new Promise(function(res){ setTimeout(res, 25); });
+      }
+      var tryUrl = await resolveImageUrl(cand.path, { hintStyleNo: sn });
+      if (!tryUrl) continue;
+      if (cand.hint === 'full' && !fullPath) {
+        fullPath = cand.path; fullSigned = tryUrl;
+      } else if (!stylePath) {
+        stylePath = cand.path; styleSigned = tryUrl;
+      }
+      if (stylePath && fullPath) break;
+    }
+    // 至少有一条命中就返回
+    if (stylePath || fullPath) {
+      if (window.StyleImgCache) {
+        try {
+          StyleImgCache.put(sn, {
+            styleImg_path: stylePath,
+            styleImg_name: (stylePath ? stylePath.split('/').pop() : ''),
+            fullImg_path: fullPath,
+            fullImg_name: (fullPath ? fullPath.split('/').pop() : '')
+          });
+        } catch(_eCache) {}
+      }
+      console.log('[getStyleImagesForStyleNo] LIST 未命中，按候选路径直试成功：style=' + stylePath + '  full=' + fullPath);
+      return {
+        styleImg_path: stylePath,
+        fullImg_path:  fullPath,
+        styleImg_name: stylePath ? stylePath.split('/').pop() : '',
+        fullImg_name:  fullPath  ? fullPath.split('/').pop()  : '',
+        styleImg_signed: styleSigned,
+        fullImg_signed:  fullSigned
+      };
+    }
+  } catch(_eFallback) {
+    console.warn('[getStyleImagesForStyleNo] 直试候选路径兜底异常:', _eFallback);
+  }
+
   return null;
 };
