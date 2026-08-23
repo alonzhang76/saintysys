@@ -1806,34 +1806,49 @@ var Cons = {
     self.updateFullscreenImg();
     document.getElementById('fullscreenOverlay').classList.add('active');
   },
+  // 按款号打开全屏（卡片自身没存图时使用，先查再显示）
+  openFullscreenByStyleNo: async function(styleNo, styleId) {
+    if (!styleNo) return;
+    var self = this;
+    try { if (App && App.toast) App.toast('正在查找款号 ' + styleNo + ' 的图片…', 'info', 1200); } catch(_) {}
+    var imgs = null;
+    if (window.getStyleImagesForStyleNo) {
+      try { imgs = await getStyleImagesForStyleNo(styleNo); } catch(_e) {}
+    }
+    var paths = [];
+    if (imgs) {
+      if (imgs.styleImg_path) paths.push(imgs.styleImg_path);
+      if (imgs.fullImg_path)  paths.push(imgs.fullImg_path);
+    }
+    // 兜底：从 thumb 缓存中取回已渲染的 URL
+    if (paths.length === 0 && styleId) {
+      var t = document.querySelector('.style-thumb[data-style-id="' + styleId + '"]');
+      if (t) {
+        var img = t.querySelector('img');
+        if (img && img.src && /^https?:/i.test(img.src)) { self.openFullscreen([img.src], 0); return; }
+      }
+    }
+    if (paths.length > 0) self.openFullscreen(paths, 0);
+    else try { if (App && App.toast) App.toast('未找到款号 ' + styleNo + ' 的图片', 'warning'); } catch(_) {}
+  },
   updateFullscreenImg: async function() {
     var self = this;
-    var overlay = document.getElementById('fullscreenOverlay');
     var imgEl = document.getElementById('fullscreenImg');
     var cap = document.getElementById('fullscreenCaption');
     if (!imgEl) return;
     var src = self.fullscreenImgs[self.fullscreenIdx] || '';
     imgEl.src = '';
-    // base64 data URL → 直接显示
-    if (src && src.startsWith('data:image')) {
-      imgEl.src = src;
-      cap.textContent = (self.fullscreenIdx + 1) + ' / ' + self.fullscreenImgs.length;
-      return;
+    if (!src) return;
+    var resolved = src;
+    if (!src.startsWith('data:image') && !/^https?:\/\//i.test(src) && window.resolveImageUrl) {
+      resolved = await resolveImageUrl(src) || src;
     }
-    try {
-      var url = await self.getSignedUrl(src);
-      if (url) { imgEl.src = url; }
-      else {
-        var bucket = window.STORAGE_BUCKET || 'app-photos';
-        var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(src);
-        imgEl.src = directUrl || src || '';
-      }
-    } catch(e) {
-      var bucket2 = window.STORAGE_BUCKET || 'app-photos';
-      var directUrl2 = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket2) + '/' + encodeURIComponent(src);
-      imgEl.src = directUrl2 || src || '';
+    if (!resolved && !src.startsWith('data:image') && !/^https?:\/\//i.test(src)) {
+      var bucket = window.STORAGE_BUCKET || 'app-photos';
+      resolved = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(src);
     }
-    cap.textContent = (self.fullscreenIdx + 1) + ' / ' + self.fullscreenImgs.length;
+    imgEl.src = resolved;
+    cap.textContent = (self.fullscreenIdx + 1) + ' / ' + Math.max(1, self.fullscreenImgs.length);
   },
   navFullscreen: function(dir) {
     var self = this;
@@ -2129,21 +2144,32 @@ function renderList() {
     if (s.styleImg_path) { imgs.push(s.styleImg_path); imgPaths.push(s.styleImg_path); }
     if (s.fullImg_path)  { imgs.push(s.fullImg_path);  imgPaths.push(s.fullImg_path);  }
     var hasImgs = imgs.length > 0;
+    var canBackfill = !hasImgs && s.styleNo;
 
     var thumbClick = hasImgs
       ? 'onclick="event.stopPropagation(); Cons.openFullscreen([' + imgPaths.map(function(p){return "'"+p.replace(/'/g,"\\'")+"'";}).join(',') + '], 0);"'
-      : '';
-    var navHtml = imgs.length > 1
-      ? ('<div class="thumb-nav prev" onclick="event.stopPropagation(); Cons.navThumb(this, \'' + s.id + '\', -1)">&#10094;</div>' +
-         '<div class="thumb-nav next" onclick="event.stopPropagation(); Cons.navThumb(this, \'' + s.id + '\', 1)">&#10095;</div>' +
-         '<div class="thumb-dots">' + imgs.map(function(_,i){return '<div class="thumb-dot '+(i===0?'active':'')+'"></div>';}).join('') + '</div>')
-      : '';
-    var thumbInner = hasImgs
-      ? '<img src="" alt="款式图" data-cons-path="' + App.utils.escapeHtml(imgs[0]) + '" style="display:block;" onload="this.style.display=\'block\'">'
-      : '📷 暂无图片';
+      : (canBackfill ? 'onclick="event.stopPropagation(); Cons.openFullscreenByStyleNo(\'' + App.utils.escapeHtml(s.styleNo.replace(/'/g,"\\'")) + '\', \'' + s.id + '\');"' : '');
+
+    var navHtml = '';
+    if (hasImgs && imgs.length > 1) {
+      navHtml = '<div class="thumb-nav prev" onclick="event.stopPropagation(); Cons.navThumb(this, \'' + s.id + '\', -1)">&#10094;</div>' +
+                '<div class="thumb-nav next" onclick="event.stopPropagation(); Cons.navThumb(this, \'' + s.id + '\', 1)">&#10095;</div>' +
+                '<div class="thumb-dots">' + imgs.map(function(_,i){return '<div class="thumb-dot '+(i===0?'active':'')+'"></div>';}).join('') + '</div>';
+    } else if (canBackfill) {
+      navHtml = '<div class="thumb-dots" style="opacity:.5;"><div class="thumb-dot active"></div></div>';
+    }
+
+    var thumbInner;
+    if (hasImgs) {
+      thumbInner = '<img src="" alt="款式图" data-cons-path="' + App.utils.escapeHtml(imgs[0]) + '" style="display:block;" onload="this.style.display=\'block\'">';
+    } else if (canBackfill) {
+      thumbInner = '<img src="" alt="款式图" data-style-no-backfill="' + App.utils.escapeHtml(s.styleNo) + '" data-style-id="' + s.id + '" style="max-width:100%;max-height:100%;display:none;" onload="this.style.display=\'block\'; var ph=this.parentElement&&this.parentElement.querySelector(\'.placeholder-text\'); if(ph){ph.style.display=\'none\';} this.parentElement && this.parentElement.classList.add(\'has-backfilled\');"><span class="placeholder-text" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;">🔍 云端查找中…</span>';
+    } else {
+      thumbInner = '📷 暂无图片';
+    }
 
     return '<div class="style-card" onclick="Cons.openEditor(\'' + s.id + '\')">' +
-      '<div class="style-thumb" data-style-id="' + s.id + '" data-thumb-idx="0"' + thumbClick + '>' +
+      '<div class="style-thumb" data-style-id="' + s.id + '" data-thumb-idx="0" data-style-no="' + App.utils.escapeHtml(s.styleNo || '') + '"' + thumbClick + '>' +
         thumbInner + navHtml +
       '</div>' +
       '<div class="style-no">' + App.utils.escapeHtml(s.styleNo || '未命名') + '</div>' +
@@ -2163,8 +2189,9 @@ function renderList() {
     '</div>';
   }).join('');
 
-  // 异步 hydrate 图片 src
+  // 异步 hydrate 图片 src：1) 自身有图的直接解签；2) 自身无图但有款号的，按款号云端搜索
   setTimeout(function(){ hydrateThumbImages(); }, 30);
+  if (window.getStyleImagesForStyleNo) setTimeout(function(){ backfillThumbImagesByStyleNo(); }, 120);
 }
 
 Cons.navThumb = function(el, styleId, dir) {
@@ -2172,11 +2199,19 @@ Cons.navThumb = function(el, styleId, dir) {
   if (!thumb) return;
   var data = Cons.getConsumptions();
   var s = data.find(function(x){ return x.id === styleId; });
-  if (!s) return;
   var imgs = [];
-  if (s.styleImg_path) imgs.push(s.styleImg_path);
-  if (s.fullImg_path)  imgs.push(s.fullImg_path);
-  if (imgs.length < 2) return;
+  if (s) {
+    if (s.styleImg_path) imgs.push(s.styleImg_path);
+    if (s.fullImg_path)  imgs.push(s.fullImg_path);
+  }
+  // 兜底：如果自身没图，但是 backfill 填充过的，取 backfill-paths
+  if (imgs.length === 0) {
+    var raw = thumb.getAttribute('data-backfill-paths');
+    if (raw) {
+      try { imgs = JSON.parse(raw); } catch(_) {}
+    }
+  }
+  if (!imgs || imgs.length < 2) return;
   var idx = parseInt(thumb.dataset.thumbIdx || '0', 10);
   idx = (idx + dir + imgs.length) % imgs.length;
   thumb.dataset.thumbIdx = String(idx);
@@ -2185,12 +2220,9 @@ Cons.navThumb = function(el, styleId, dir) {
   dots.forEach(function(d, i){ d.classList.toggle('active', i === idx); });
   if (!imgEl) return;
   var p = imgs[idx];
-  // base64 data URL → 直接显示
-  if (p && p.startsWith('data:image')) {
-    imgEl.src = p; return;
-  }
+  if (p && p.startsWith('data:image')) { imgEl.src = p; return; }
   (async function(){
-    var src = await Cons.getSignedUrl(p);
+    var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await Cons.getSignedUrl(p));
     if (src) { imgEl.src = src; return; }
     var bucket = window.STORAGE_BUCKET || 'app-photos';
     var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
@@ -2203,19 +2235,98 @@ function hydrateThumbImages() {
   imgs.forEach(function(img){
     var p = img.getAttribute('data-cons-path');
     if (!p) return;
-    // base64 data URL → 直接显示
     if (p.startsWith('data:image')) {
       img.src = p; img.style.display = 'block'; return;
     }
     (async function(){
-      var src = await Cons.getSignedUrl(p);
-      if (src) { img.src = src; img.style.display = 'block'; return; }
-      // 兜底：直接下载 URL
-      var bucket = window.STORAGE_BUCKET || 'app-photos';
-      var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
-      img.src = directUrl; img.style.display = 'block';
+      var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await Cons.getSignedUrl(p));
+      if (!src) {
+        var bucket = window.STORAGE_BUCKET || 'app-photos';
+        src = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
+      }
+      img.src = src; img.style.display = 'block';
     })();
   });
+}
+
+/**
+ * 按款号云端搜索并回填卡片图（只回填自身没图但 data-style-no-backfill 标记的 img）
+ * 同一 styleNo 去重搜索一次，批处理避免重复请求
+ */
+async function backfillThumbImagesByStyleNo() {
+  if (!window.getStyleImagesForStyleNo) return;
+  var imgs = document.querySelectorAll('#styleGrid .style-thumb img[data-style-no-backfill]');
+  if (imgs.length === 0) return;
+
+  // 收集去重
+  var groups = {};
+  imgs.forEach(function(img){
+    var sn = (img.getAttribute('data-style-no-backfill') || '').trim();
+    if (!sn) return;
+    (groups[sn] = groups[sn] || []).push(img);
+  });
+
+  var styleNos = Object.keys(groups);
+  for (var i = 0; i < styleNos.length; i++) {
+    (async function(sn, elements){
+      try {
+        var result = await getStyleImagesForStyleNo(sn);
+        if (!result) {
+          // 没找到：替换占位文字为「暂无图片」
+          elements.forEach(function(img){
+            var thumb = img.closest('.style-thumb');
+            var ph = thumb ? thumb.querySelector('.placeholder-text') : null;
+            if (ph) ph.textContent = '📷 暂无图片';
+          });
+          return;
+        }
+        var pathToUse = result.styleImg_signed || null;
+        var pathStorage = result.styleImg_path || '';
+        var pathsForFullscreen = [];
+        if (result.styleImg_path) pathsForFullscreen.push(result.styleImg_path);
+        if (result.fullImg_path)  pathsForFullscreen.push(result.fullImg_path);
+        if (!pathToUse && pathStorage && window.resolveImageUrl) pathToUse = await resolveImageUrl(pathStorage);
+
+        elements.forEach(function(img){
+          var styleId = img.getAttribute('data-style-id') || '';
+          var thumb = img.closest('.style-thumb');
+          if (pathToUse) {
+            img.src = pathToUse;
+            img.style.display = 'block';
+            var ph = thumb ? thumb.querySelector('.placeholder-text') : null;
+            if (ph) ph.style.display = 'none';
+            if (thumb) thumb.classList.add('has-backfilled');
+            // 更新缩略图点击 onclick（已有的 openFullscreenByStyleNo 保持可用）
+            if (thumb && pathsForFullscreen.length > 0 && styleId) {
+              // 保留原 onclick（openFullscreenByStyleNo），它会再次查找（缓存已在）
+            }
+            // 若有 2 张图，给缩略图加上向前向后切换
+            if (thumb && pathsForFullscreen.length >= 2) {
+              // 把 backfilled 的 paths 存到 thumb 上，供 navThumb 使用
+              thumb.setAttribute('data-backfill-paths', JSON.stringify(pathsForFullscreen));
+              var dotsWrap = thumb.querySelector('.thumb-dots');
+              if (dotsWrap) dotsWrap.innerHTML = pathsForFullscreen.map(function(_,k){return '<div class="thumb-dot '+(k===0?'active':'')+'"></div>';}).join('');
+              // 加 prev/next 按钮
+              var hasPrev = thumb.querySelector('.thumb-nav.prev');
+              if (!hasPrev) {
+                var prev = document.createElement('div'); prev.className = 'thumb-nav prev'; prev.innerHTML = '&#10094;';
+                prev.setAttribute('onclick', "event.stopPropagation(); Cons.navThumb(this, '" + styleId + "', -1);");
+                var next = document.createElement('div'); next.className = 'thumb-nav next'; next.innerHTML = '&#10095;';
+                next.setAttribute('onclick', "event.stopPropagation(); Cons.navThumb(this, '" + styleId + "', 1);");
+                thumb.insertBefore(prev, thumb.firstChild);
+                thumb.appendChild(next);
+              }
+            }
+          } else {
+            var ph2 = thumb ? thumb.querySelector('.placeholder-text') : null;
+            if (ph2) ph2.textContent = '📷 暂无图片';
+          }
+        });
+      } catch(_err) {}
+    })(styleNos[i], groups[styleNos[i]]);
+    // 串行间隔一下，避免瞬间并发太多 Supabase 请求
+    if (i < styleNos.length - 1) await new Promise(function(r){ setTimeout(r, 60); });
+  }
 }
 
 // ===== 从云盘 NAS 选择图片注入 consumption 表单 =====

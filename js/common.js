@@ -1163,3 +1163,120 @@ const StyleImgCache = {
 
 // 暴露到全局
 window.StyleImgCache = StyleImgCache;
+
+/**
+ * 跨模块通用：把 Supabase Storage 存储路径解析为可跨浏览器显示的 URL
+ * 策略：1) data:image 直出；2) 优先 signed URL；3) 兜底 object/public URL（RLS 公开读可用）
+ * @param {string} path  存储路径（如 {userId}/consumption/uuid-GW27-003.png），也接受已完整 URL
+ * @param {Object} [opts]
+ * @param {number} [opts.ttlSec=7200] signed URL 有效期（秒）
+ * @returns {Promise<string>} 可直接赋给 img.src 的 URL，失败返回空串
+ */
+window.resolveImageUrl = async function resolveImageUrl(path, opts) {
+  opts = opts || {};
+  var ttl = opts.ttlSec || 7200;
+  if (!path) return '';
+  if (path.startsWith('data:image')) return path;
+  if (/^https?:\/\//i.test(path)) return path; // 已经是完整 URL
+
+  var bucket = window.STORAGE_BUCKET || 'app-photos';
+  var sb = window.supabase;
+  var sbUrl = window.SUPABASE_URL || '';
+  var anon = window.SUPABASE_ANON_KEY || '';
+
+  // 1) 优先走 JS client：取 signed URL
+  if (sb && sb.storage && sb.storage.from) {
+    try {
+      var r = await sb.storage.from(bucket).createSignedUrl(path, ttl);
+      if (r && !r.error && r.data && r.data.signedUrl) return r.data.signedUrl;
+    } catch(_e) { /* 继续兜底 */ }
+  }
+
+  // 2) 尝试 REST API sign 兜底
+  if (sbUrl && anon) {
+    try {
+      var signUrl = sbUrl + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path);
+      var resp = await fetch(signUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': anon,
+          'Authorization': 'Bearer ' + anon,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      });
+      if (resp.ok) {
+        var j = await resp.json();
+        if (j && j.signedUrl) return j.signedUrl;
+      }
+    } catch(_e2) {}
+  }
+
+  // 3) 终极兜底：如果 bucket 是 public 或 RLS 允许匿名 SELECT，则直出 public 路径
+  if (sbUrl) {
+    return sbUrl + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path);
+  }
+  return '';
+};
+
+/**
+ * 跨模块：按款号获取款式图/大图（先本地缓存→再 Supabase Storage 文件名搜索）
+ * 返回的对象中 *_path 是存储相对路径，*_signed 是已生成的临时 signed URL（可直接赋给 img.src，没有则为 null）
+ * @param {string} styleNo
+ * @returns {Promise<{styleImg_path:string, fullImg_path:string, styleImg_name:string, fullImg_name:string, styleImg_signed:string|null, fullImg_signed:string|null}|null>}
+ */
+window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleNo) {
+  if (!styleNo) return null;
+  var sn = String(styleNo).trim();
+  if (!sn) return null;
+
+  // 1) 本地缓存优先
+  if (window.StyleImgCache) {
+    var c = null;
+    try { c = StyleImgCache.resolve(sn); } catch(_e) {}
+    if (c && (c.styleImg_path || c.fullImg_path)) {
+      var s1 = c.styleImg_path ? await resolveImageUrl(c.styleImg_path) : null;
+      var f1 = c.fullImg_path  ? await resolveImageUrl(c.fullImg_path)  : null;
+      return {
+        styleImg_path: c.styleImg_path || '',
+        fullImg_path:  c.fullImg_path  || '',
+        styleImg_name: c.styleImg_name || '',
+        fullImg_name:  c.fullImg_name  || '',
+        styleImg_signed: s1,
+        fullImg_signed:  f1
+      };
+    }
+  }
+
+  // 2) 去 Supabase 按文件名搜索
+  if (window.SupabaseSubmit && typeof SupabaseSubmit.findStyleImages === 'function') {
+    try {
+      var r = await SupabaseSubmit.findStyleImages(sn);
+      if (r && (r.styleImg_path || r.fullImg_path)) {
+        // 写回缓存，下次秒开（只写路径，不写 base64，避免 localStorage 膨胀）
+        if (window.StyleImgCache) {
+          try {
+            StyleImgCache.set(sn, {
+              styleImg_path: r.styleImg_path || '',
+              styleImg_name: r.styleImg_name || '',
+              fullImg_path:  r.fullImg_path  || '',
+              fullImg_name:  r.fullImg_name  || ''
+            });
+          } catch(_ec) {}
+        }
+        // 已经在 findStyleImages 里生成了 signedUrl，没有则再次 resolve
+        var s2 = r.styleImg_signed || (r.styleImg_path ? await resolveImageUrl(r.styleImg_path) : null);
+        var f2 = r.fullImg_signed  || (r.fullImg_path  ? await resolveImageUrl(r.fullImg_path)  : null);
+        return {
+          styleImg_path: r.styleImg_path || '',
+          fullImg_path:  r.fullImg_path  || '',
+          styleImg_name: r.styleImg_name || '',
+          fullImg_name:  r.fullImg_name  || '',
+          styleImg_signed: s2,
+          fullImg_signed:  f2
+        };
+      }
+    } catch(_ee) {}
+  }
+  return null;
+};

@@ -313,17 +313,24 @@ function renderTable() {
         var imgs = [];
         if (row.styleImg_path) imgs.push(row.styleImg_path);
         if (row.fullImg_path) imgs.push(row.fullImg_path);
-        if (imgs.length === 0) return '<span style="color:var(--text-muted);font-size:11px;">无</span>';
-        var idx = parseInt(row._thumbIdx || '0', 10);
-        var currentImg = imgs[idx] || imgs[0];
-        var dots = imgs.length > 1 ? imgs.map(function(_, i){ return '<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:' + (i===idx?'var(--primary)':'var(--border)') + ';margin:0 1px;"></span>'; }).join('') : '';
-        var navBtns = imgs.length > 1 ? '<button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',-1)" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">‹</button><button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',1)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">›</button>' : '';
-        // Use placeholder that will be hydrated later
-        var imgSrc = currentImg && currentImg.startsWith('data:image') ? currentImg : '';
-        var dataAttr = currentImg ? 'data-order-img="' + row.id + '"' : '';
-        return '<div style="position:relative;display:flex;flex-direction:column;align-items:center;">' +
-          '<img ' + dataAttr + ' src="' + (imgSrc || '') + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="OrderImg.openRowFullscreen(\'' + row.id + '\')">' +
-          dots + navBtns + '</div>';
+        var hasOwn = imgs.length > 0;
+        var canBackfill = !hasOwn && row.styleNo;
+        if (!hasOwn && !canBackfill) return '<span style="color:var(--text-muted);font-size:11px;">无</span>';
+
+        if (hasOwn) {
+          var idx = parseInt(row._thumbIdx || '0', 10);
+          var currentImg = imgs[idx] || imgs[0];
+          var dots = imgs.length > 1 ? imgs.map(function(_, i){ return '<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:' + (i===idx?'var(--primary)':'var(--border)') + ';margin:0 1px;"></span>'; }).join('') : '';
+          var navBtns = imgs.length > 1 ? '<button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',-1)" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">‹</button><button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',1)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">›</button>' : '';
+          var imgSrc = currentImg && currentImg.startsWith('data:image') ? currentImg : '';
+          return '<div style="position:relative;display:flex;flex-direction:column;align-items:center;">' +
+            '<img data-order-img="' + row.id + '" src="' + (imgSrc || '') + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="OrderImg.openRowFullscreen(\'' + row.id + '\')">' +
+            dots + navBtns + '</div>';
+        }
+        // backfill 占位：渲染带查找标记的 img，后续 hydrate 填入
+        return '<div style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:48px;height:48px;">' +
+          '<img data-order-img-backfill="' + row.id + '" data-style-no="' + App.utils.escapeHtml(row.styleNo || '') + '" src="" style="width:48px;height:48px;object-fit:cover;border-radius:4px;display:none;cursor:pointer;" onclick="OrderImg.openRowFullscreenByStyleNo(\'' + row.id + '\', ' + JSON.stringify(row.styleNo ? String(row.styleNo).replace(/'/g,"\\'") : '') + ')">' +
+          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:10px;">🔍</span></div>';
       } },
       { key: 'orderNo', title: 'PO', width: '130px' },
       { key: 'styleNo', title: 'Style No.', width: '110px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
@@ -357,7 +364,10 @@ function renderTable() {
     `
   });
   // 水合图片缩略图
-  if (window.OrderImg && OrderImg.hydrateTableImages) OrderImg.hydrateTableImages();
+  if (window.OrderImg) {
+    if (OrderImg.hydrateTableImages) OrderImg.hydrateTableImages();
+    if (OrderImg.backfillTableImages && window.getStyleImagesForStyleNo) setTimeout(function(){ OrderImg.backfillTableImages(); }, 150);
+  }
 }
 
 // ===== 尺码矩阵状态 =====
@@ -1065,19 +1075,16 @@ const OrderImg = {
     if (!imgEl) return;
     var src = this.fullscreenImgs[this.fullscreenIdx] || '';
     imgEl.src = '';
-    if (src && src.startsWith('data:image')) {
-      imgEl.src = src;
-      cap.textContent = (this.fullscreenIdx + 1) + ' / ' + this.fullscreenImgs.length;
-      return;
+    if (!src) return;
+    var resolved = src;
+    if (!src.startsWith('data:image') && !/^https?:\/\//i.test(src) && window.resolveImageUrl) {
+      resolved = (await resolveImageUrl(src)) || '';
     }
-    try {
-      var url = await this.getSignedUrl(src);
-      if (url) { imgEl.src = url; }
-      else { imgEl.src = this._directUrl(src) || src || ''; }
-    } catch(e) {
-      imgEl.src = this._directUrl(src) || src || '';
+    if (!resolved && !src.startsWith('data:image') && !/^https?:\/\//i.test(src)) {
+      resolved = this._directUrl(src) || src;
     }
-    cap.textContent = (this.fullscreenIdx + 1) + ' / ' + this.fullscreenImgs.length;
+    imgEl.src = resolved;
+    cap.textContent = (this.fullscreenIdx + 1) + ' / ' + Math.max(1, this.fullscreenImgs.length);
   },
 
   // 表格行缩略图导航
@@ -1089,22 +1096,30 @@ const OrderImg = {
     var imgs = [];
     if (order.styleImg_path) imgs.push(order.styleImg_path);
     if (order.fullImg_path) imgs.push(order.fullImg_path);
+    // 兜底：自身没图但 backfill 过的，从 DOM 取回缓存
+    if (imgs.length === 0) {
+      var rowImg = document.querySelector('img[data-order-img-backfill="' + orderId + '"]');
+      if (rowImg) {
+        try {
+          var raw = rowImg.getAttribute('data-backfill-paths');
+          if (raw) imgs = JSON.parse(raw);
+        } catch(_) {}
+      }
+    }
     if (imgs.length < 2) return;
     var idx = parseInt(order._thumbIdx || '0', 10);
     idx = (idx + dir + imgs.length) % imgs.length;
     order._thumbIdx = idx;
-    // 更新 DOM
-    var imgEl = document.querySelector('img[data-order-img="' + orderId + '"]');
+    var imgEl = document.querySelector('img[data-order-img="' + orderId + '"]') || document.querySelector('img[data-order-img-backfill="' + orderId + '"]');
     if (imgEl) {
       var p = imgs[idx];
       if (p.startsWith('data:image')) {
         imgEl.src = p;
       } else {
-        var src = await this.getSignedUrl(p);
+        var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await this.getSignedUrl(p));
         imgEl.src = src || this._directUrl(p);
       }
     }
-    // 更新圆点
     var row = imgEl ? imgEl.closest('tr') : null;
     if (row) {
       var dots = row.querySelectorAll('span[style*="border-radius:50%"]');
@@ -1126,7 +1141,26 @@ const OrderImg = {
     this.openFullscreen(imgs, idx);
   },
 
-  // 表格渲染后水合缩略图
+  // 自身没图，按款号打开全屏
+  openRowFullscreenByStyleNo: async function(orderId, styleNo) {
+    if (!styleNo) return;
+    var self = this;
+    try { if (App && App.toast) App.toast('正在查找款号 ' + styleNo + ' 的图片…', 'info', 1200); } catch(_) {}
+    var r = window.getStyleImagesForStyleNo ? (await getStyleImagesForStyleNo(styleNo)) : null;
+    var paths = [];
+    if (r) {
+      if (r.styleImg_path) paths.push(r.styleImg_path);
+      if (r.fullImg_path)  paths.push(r.fullImg_path);
+    }
+    if (paths.length === 0) {
+      var rowImg = document.querySelector('img[data-order-img-backfill="' + orderId + '"]');
+      if (rowImg && rowImg.src && /^https?:/i.test(rowImg.src)) { self.openFullscreen([rowImg.src], 0); return; }
+    }
+    if (paths.length > 0) self.openFullscreen(paths, 0);
+    else try { if (App && App.toast) App.toast('未找到款号 ' + styleNo + ' 的图片', 'warning'); } catch(_) {}
+  },
+
+  // 表格渲染后水合缩略图（自身有图的记录）
   hydrateTableImages: function() {
     var imgs = document.querySelectorAll('img[data-order-img]');
     var self = this;
@@ -1142,10 +1176,81 @@ const OrderImg = {
         return;
       }
       (async function() {
-        var src = await self.getSignedUrl(p);
+        var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await self.getSignedUrl(p));
         img.src = src || self._directUrl(p);
       })();
     });
+  },
+
+  // 按款号云端搜索，回填表格缩略图（自身没图但 styleNo 设置了的记录）
+  backfillTableImages: async function() {
+    if (!window.getStyleImagesForStyleNo) return;
+    var imgs = document.querySelectorAll('img[data-order-img-backfill]');
+    if (imgs.length === 0) return;
+    var groups = {};
+    imgs.forEach(function(img){
+      var sn = (img.getAttribute('data-style-no') || '').trim();
+      if (!sn) return;
+      (groups[sn] = groups[sn] || []).push(img);
+    });
+    var styleNos = Object.keys(groups);
+    for (var i = 0; i < styleNos.length; i++) {
+      var sn = styleNos[i];
+      var elements = groups[sn];
+      try {
+        var r = await getStyleImagesForStyleNo(sn);
+        if (!r) {
+          elements.forEach(function(img){
+            var cell = img.parentElement;
+            if (cell) {
+              var sp = cell.querySelector('span');
+              if (sp) sp.textContent = '无';
+            }
+          });
+          continue;
+        }
+        var signedUrl = r.styleImg_signed || null;
+        if (!signedUrl && r.styleImg_path && window.resolveImageUrl) signedUrl = await resolveImageUrl(r.styleImg_path);
+        var paths = [];
+        if (r.styleImg_path) paths.push(r.styleImg_path);
+        if (r.fullImg_path)  paths.push(r.fullImg_path);
+        var self = this;
+        elements.forEach(function(img){
+          var orderId = img.getAttribute('data-order-img-backfill') || '';
+          var cell = img.parentElement;
+          if (signedUrl) {
+            img.src = signedUrl;
+            img.style.display = 'block';
+            if (cell) {
+              var sp = cell.querySelector('span');
+              if (sp) sp.style.display = 'none';
+            }
+            if (paths.length >= 2) {
+              img.setAttribute('data-backfill-paths', JSON.stringify(paths));
+              // 加 prev/next 按钮
+              var hasNav = cell.querySelector('button');
+              if (!hasNav) {
+                var prev = document.createElement('button');
+                prev.textContent = '‹';
+                prev.style.cssText = 'position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;padding:0;line-height:1;';
+                prev.onclick = function(ev){ ev.stopPropagation(); if (window.OrderImg) OrderImg.navTableRow(ev, orderId, -1); };
+                var next = document.createElement('button');
+                next.textContent = '›';
+                next.style.cssText = 'position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;padding:0;line-height:1;';
+                next.onclick = function(ev){ ev.stopPropagation(); if (window.OrderImg) OrderImg.navTableRow(ev, orderId, 1); };
+                cell.appendChild(prev); cell.appendChild(next);
+              }
+            }
+          } else {
+            if (cell) {
+              var sp2 = cell.querySelector('span');
+              if (sp2) sp2.textContent = '无';
+            }
+          }
+        });
+      } catch(_e) {}
+      if (i < styleNos.length - 1) await new Promise(function(r){ setTimeout(r, 60); });
+    }
   },
 
   // 详情页图片水合
@@ -1154,7 +1259,6 @@ const OrderImg = {
     var order = orders.find(function(o){ return o.id === orderId; });
     if (!order) return;
     var self = this;
-    // 款式图
     var styleImg = document.querySelector('img[data-order-detail-img="0"]');
     if (styleImg && order.styleImg_path) {
       var p = order.styleImg_path;
@@ -1162,12 +1266,11 @@ const OrderImg = {
         styleImg.src = p;
       } else {
         (async function(){
-          var src = await self.getSignedUrl(p);
+          var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await self.getSignedUrl(p));
           styleImg.src = src || self._directUrl(p);
         })();
       }
     }
-    // 大图
     var fullImg = document.querySelector('img[data-order-detail-img="1"]');
     if (fullImg && order.fullImg_path) {
       var p2 = order.fullImg_path;
@@ -1175,7 +1278,7 @@ const OrderImg = {
         fullImg.src = p2;
       } else {
         (async function(){
-          var src2 = await self.getSignedUrl(p2);
+          var src2 = window.resolveImageUrl ? (await resolveImageUrl(p2)) : (await self.getSignedUrl(p2));
           fullImg.src = src2 || self._directUrl(p2);
         })();
       }
