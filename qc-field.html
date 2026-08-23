@@ -78,8 +78,10 @@ select.qc-form-control{cursor:pointer;}
 .qc-issue-img-preview img{width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:pointer;display:block;background:#fff;}
 .qc-issue-img-preview .remove-btn{position:absolute;top:-6px;right:-6px;background:var(--qc-danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
 .qc-issue-img-actions{display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;}
-.qc-issue-img-actions .btn-row{display:flex;gap:6px;flex-wrap:wrap;}
-.qc-issue-img-actions .btn-row .qc-btn{flex:1;justify-content:center;min-width:90px;}
+.qc-issue-img-actions .btn-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.qc-issue-img-actions .btn-row .qc-btn{flex:0 1 auto;justify-content:center;min-width:90px;}
+.qc-issue-img-actions .btn-row .date-inline-label{font-size:11px;color:#6c757d;white-space:nowrap;margin-left:4px;}
+.qc-issue-img-actions .btn-row .date-inline-input{flex:0 0 130px;font-size:12px;padding:3px 6px;border:1px solid var(--qc-border);border-radius:3px;}
 .qc-issue-img-actions .date-row{display:flex;gap:6px;align-items:center;}
 .qc-issue-img-actions .date-row label{font-size:11px;color:#6c757d;white-space:nowrap;}
 .qc-issue-img-actions .date-row input{flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--qc-border);border-radius:3px;}
@@ -292,11 +294,11 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
                 <datalist id="styleNoList"></datalist>
               </div>
               <div class="qc-form-group">
-                <label>订单号 <span class="req">*</span></label>
-                <input type="text" class="qc-form-control" id="orderNo" list="orderNoList" placeholder="选择或输入订单号" autocomplete="off" onchange="onOrderNoChange()">
+                <label>订单号 <span class="req">*</span> <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（自动带出）</span></label>
+                <input type="text" class="qc-form-control" id="orderNo" list="orderNoList" placeholder="输入款号后自动带出" autocomplete="off" readonly onchange="onOrderNoChange()">
                 <datalist id="orderNoList"></datalist>
               </div>
-              <div class="qc-form-group"><label>交期 <span class="req">*</span></label><input type="date" class="qc-form-control" id="deliveryDate"></div>
+              <div class="qc-form-group"><label>交期 <span class="req">*</span> <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（同订单ETD）</span></label><input type="date" class="qc-form-control" id="deliveryDate" readonly></div>
               <div class="qc-form-group">
                 <label>是否需要水洗工序</label>
                 <div class="qc-section-toggle">
@@ -569,6 +571,27 @@ let editingId = null;
 let currentFilter = 'all';
 let needWash = false;
 
+// 等待 window.SupabaseSubmit 异步加载完成（form-submit.js 是 type=module，加载较慢）
+// 超时后返回 null，由调用方走 base64/本地兜底
+function waitForSupabaseSubmit(timeoutMs){
+  timeoutMs = timeoutMs || 8000;
+  var start = Date.now();
+  return new Promise(function(resolve){
+    function check(){
+      if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+        resolve(window.SupabaseSubmit);
+        return;
+      }
+      if(Date.now() - start > timeoutMs){
+        resolve(null);
+        return;
+      }
+      setTimeout(check, 100);
+    }
+    check();
+  });
+}
+
 const STAGES_WASH = [
   {key:'w_sample',name:'水洗标样确认',short:'标样确认'},
   {key:'w_first',name:'头缸试洗',short:'头缸'},
@@ -623,10 +646,11 @@ function populateContactDatalists(){
   try{
     var contacts = App.store.get('contacts', []) || [];
     var factories = contacts.filter(function(c){ return c && c.type === '服装厂'; })
-      .map(function(c){ return (c.company || c.name || '').trim(); })
-      .filter(function(s){ return s; });
-    var colleagues = contacts.filter(function(c){ return c && c.type === '同事'; })
       .map(function(c){ return (c.name || '').trim(); })
+      .filter(function(s){ return s; });
+    // QC姓名：取"同事"分类下的"联系人姓名"（contactPerson），而非公司名称
+    var colleagues = contacts.filter(function(c){ return c && c.type === '同事'; })
+      .map(function(c){ return (c.contactPerson || c.name || '').trim(); })
       .filter(function(s){ return s; });
     var fdl = document.getElementById('factoryList');
     if(fdl) fdl.innerHTML = unique(factories).map(function(s){ return '<option value="'+escAttr(s)+'">'; }).join('');
@@ -697,12 +721,33 @@ function onStyleNoChange(){
     if(oEl && oEl.value !== uniqueOrderNos[0]){
       oEl.value = uniqueOrderNos[0];
     }
+    // 同步填充交期（同订单 ETD）
+    var matchedOrder = matched.find(function(o){ return (o.orderNo||'').trim() === uniqueOrderNos[0]; });
+    var ddEl = document.getElementById('deliveryDate');
+    if(ddEl && matchedOrder && matchedOrder.etd){
+      ddEl.value = matchedOrder.etd;
+    }
+  } else {
+    // 多订单或无订单：清空交期，等用户在订单号选择后再填
+    var ddEl2 = document.getElementById('deliveryDate');
+    if(ddEl2) ddEl2.value = '';
   }
   refreshSizeMatrix();
   refreshStyleImageFromCache(sn);
 }
 
 function onOrderNoChange(){
+  // 订单号变化 → 同步填充交期（= 订单 ETD）
+  try {
+    var sn = val('styleNo'), on = val('orderNo');
+    if(on){
+      var order = findOrderByNo(on, sn);
+      var ddEl = document.getElementById('deliveryDate');
+      if(ddEl && order && order.etd){
+        ddEl.value = order.etd;
+      }
+    }
+  } catch(_e){}
   refreshSizeMatrix();
 }
 
@@ -823,8 +868,9 @@ function renderIssueImageBlock(prefix){
         '<div class="btn-row">' +
           '<button class="qc-btn qc-btn-outline qc-btn-sm" onclick="document.getElementById(\'' + prefix + 'FileInput\').click()">💻 本地上传</button>' +
           '<button class="qc-btn qc-btn-outline qc-btn-sm" id="' + prefix + 'NasBtn" onclick="nasPickIssueImage(\'' + prefix + '\')">☁ NAS</button>' +
+          '<label class="date-inline-label">📅 拍照日期</label>' +
+          '<input type="date" class="date-inline-input" id="' + prefix + 'ImgDate" value="' + escAttr(st.date) + '" onchange="setIssueImageDate(\'' + prefix + '\', this.value)">' +
         '</div>' +
-        '<div class="date-row"><label>拍照日期</label><input type="date" id="' + prefix + 'ImgDate" value="' + escAttr(st.date) + '" onchange="setIssueImageDate(\'' + prefix + '\', this.value)"></div>' +
         '<div class="qc-issue-img-status" id="' + prefix + 'ImgStatus"></div>' +
       '</div>' +
     '</div>' +
@@ -879,12 +925,16 @@ async function uploadIssueImageFile(prefix, file){
       box.style.display = 'block';
     }
   } catch(_e) {}
-  // 强制 Supabase 上传
+  // 强制 Supabase 上传（模块未就绪时等待加载完成，最多等 8s）
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
-    _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
-    if(statusEl) statusEl.textContent = '⚠ 云端模块未就绪，仅本地保存（其他电脑看不到）';
-    try { if(App && App.toast) App.toast('云端上传模块未就绪，图片仅本地保存', 'warning'); } catch(_) {}
-    return;
+    if(statusEl) statusEl.textContent = '⏳ 等待云端上传模块加载...';
+    var submitReady = await waitForSupabaseSubmit(8000);
+    if(!submitReady){
+      _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
+      if(statusEl) statusEl.textContent = '⚠ 云端上传模块未就绪，仅本地保存（其他电脑看不到）';
+      try { if(App && App.toast) App.toast('云端上传模块未就绪，图片仅本地保存', 'warning'); } catch(_) {}
+      return;
+    }
   }
   try {
     // 注意：问题图片不传 styleNo，避免污染 StyleImgCache（否则问题图会被当作款式图共享给其它模块）
@@ -910,7 +960,7 @@ async function uploadIssueImageFile(prefix, file){
 // NAS 选择问题图片
 async function nasPickIssueImage(prefix){
   var btn = document.getElementById(prefix + 'NasBtn');
-  if(!window.App || typeof App.pickFromNas !== 'function'){
+  if(typeof App === 'undefined' || !App || typeof App.pickFromNas !== 'function'){
     try { if(App && App.toast) App.toast('云盘 NAS 模块未加载', 'error'); } catch(_) {}
     return;
   }
@@ -951,17 +1001,31 @@ function showIssueImagePreviewByPath(prefix, path, name){
   img.onclick = function(){ openImageFullscreenByPath(path); };
   box.style.display = 'block';
   if(statusEl && name) statusEl.textContent = '⏳ 加载图片...';
-  if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
-    SupabaseSubmit.getSignedUrl(path).then(function(url){
-      if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
-      else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
-    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
-  } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-    App.utils.getSignedUrl(path).then(function(url){
-      if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
-      else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
-    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
-  } else if(statusEl){ statusEl.textContent = '⚠ 图片加载模块未就绪'; }
+  var tryResolveIssue = function(submit){
+    if(submit && typeof submit.getSignedUrl === 'function'){
+      submit.getSignedUrl(path).then(function(url){
+        if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
+        else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
+      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+      return true;
+    }
+    if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+      App.utils.getSignedUrl(path).then(function(url){
+        if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
+        else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
+      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+      return true;
+    }
+    return false;
+  };
+  if(!tryResolveIssue(window.SupabaseSubmit)){
+    if(statusEl && name) statusEl.textContent = '⏳ 等待图片模块加载...';
+    waitForSupabaseSubmit(8000).then(function(submit){
+      if(!tryResolveIssue(submit)){
+        if(statusEl) statusEl.textContent = '⚠ 图片加载模块未就绪';
+      }
+    });
+  }
 }
 
 // 清除一个固定问题图片
@@ -1056,7 +1120,7 @@ function refreshIssueRowImageCell(idx){
           var im = cell.querySelector('img');
           if(im && url) im.src = url;
         }).catch(function(){});
-      } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+      } else if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
         App.utils.getSignedUrl(st.path).then(function(url){
           var im = cell.querySelector('img');
           if(im && url) im.src = url;
@@ -1101,10 +1165,14 @@ async function uploadIssueRowImage(idx, file){
   // 先用 base64 占位预览
   _issueRowImages[idx] = { path: '', name: file.name || '', base64: base64DataUrl, date: (_issueRowImages[idx] && _issueRowImages[idx].date) || '' };
   refreshIssueRowImageCell(idx);
-  // 强制 Supabase 上传
+  // 强制 Supabase 上传（模块未就绪时等待加载完成，最多等 8s）
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
-    if(statusEl) statusEl.textContent = '⚠ 云端模块未就绪，仅本地';
-    return;
+    if(statusEl) statusEl.textContent = '⏳ 等待云端上传模块加载...';
+    var submitReady = await waitForSupabaseSubmit(8000);
+    if(!submitReady){
+      if(statusEl) statusEl.textContent = '⚠ 云端模块未就绪，仅本地';
+      return;
+    }
   }
   try {
     // 注意：问题图片不传 styleNo，避免污染 StyleImgCache
@@ -1128,7 +1196,7 @@ function onIssueRowFileChange(e, idx){
   e.target.value = '';
 }
 async function nasPickIssueRowImage(idx){
-  if(!window.App || typeof App.pickFromNas !== 'function'){
+  if(typeof App === 'undefined' || !App || typeof App.pickFromNas !== 'function'){
     try { if(App && App.toast) App.toast('云盘 NAS 模块未加载', 'error'); } catch(_) {}
     return;
   }
@@ -1163,7 +1231,7 @@ function openImageFullscreenByPath(path){
     SupabaseSubmit.getSignedUrl(path).then(function(url){
       if(url) openImageFullscreen(url);
     }).catch(function(){});
-  } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+  } else if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
     App.utils.getSignedUrl(path).then(function(url){
       if(url) openImageFullscreen(url);
     }).catch(function(){});
@@ -1329,18 +1397,32 @@ function showImagePreviewByPath(path, name){
   img.src = '';
   box.style.display = 'block';
   if(statusEl) statusEl.textContent = '⏳ 加载图片中...';
-  if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
-    SupabaseSubmit.getSignedUrl(path).then(function(url){
-      if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
-      else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
-    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
-  } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-    App.utils.getSignedUrl(path).then(function(url){
-      if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
-      else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
-    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
-  } else {
-    if(statusEl) statusEl.textContent = '⚠ 图片加载模块未就绪';
+  // 优先用已就绪的 SupabaseSubmit；若未就绪则等待异步模块加载完成
+  var tryResolve = function(submit){
+    if(submit && typeof submit.getSignedUrl === 'function'){
+      submit.getSignedUrl(path).then(function(url){
+        if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
+        else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
+      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+      return true;
+    }
+    if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+      App.utils.getSignedUrl(path).then(function(url){
+        if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
+        else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
+      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+      return true;
+    }
+    return false;
+  };
+  if(!tryResolve(window.SupabaseSubmit)){
+    // 模块未就绪 → 等待加载完成后再试
+    if(statusEl) statusEl.textContent = '⏳ 等待图片模块加载...';
+    waitForSupabaseSubmit(8000).then(function(submit){
+      if(!tryResolve(submit)){
+        if(statusEl) statusEl.textContent = '⚠ 图片加载模块未就绪（已重试）';
+      }
+    });
   }
 }
 
@@ -1388,12 +1470,17 @@ async function uploadStyleImageFile(file){
     var img = document.getElementById('styleImagePreview');
     if(box && img){ img.src = base64DataUrl; box.style.display = 'block'; }
   } catch(_e) {}
-  // 2) 尝试 Supabase 上传
+  // 2) 尝试 Supabase 上传（模块未就绪时等待加载完成，最多等 8s）
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
-    // 上传模块未就绪 → base64 兜底
-    _currentStyleImage = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl };
-    if(statusEl) statusEl.textContent = '⚠ 云端上传模块未就绪，已用本地图片';
-    return;
+    if(statusEl) statusEl.textContent = '⏳ 等待云端上传模块加载...';
+    var submitReady = await waitForSupabaseSubmit(8000);
+    if(!submitReady){
+      // 模块仍未就绪 → base64 兜底
+      _currentStyleImage = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl };
+      if(statusEl) statusEl.textContent = '⚠ 云端上传模块未就绪，已用本地图片';
+      try { if(App && App.toast) App.toast('云端上传模块未就绪，图片仅本地保存', 'warning'); } catch(_) {}
+      return;
+    }
   }
   try {
     var result = await SupabaseSubmit.uploadPicture(file, 'qcField', styleNo);
@@ -1432,7 +1519,7 @@ async function uploadStyleImageFromNas(){
     return;
   }
   var btn = document.getElementById('nasUploadBtn');
-  if(!window.App || typeof App.pickFromNas !== 'function'){
+  if(typeof App === 'undefined' || !App || typeof App.pickFromNas !== 'function'){
     try { if(App && App.toast) App.toast('云盘 NAS 模块未加载', 'error'); } catch(_) {}
     return;
   }
@@ -1622,7 +1709,7 @@ function resetForm(){
 function saveRecord(){
   // 只读模式拦截
   if(document.body.classList.contains('readonly-mode')){
-    if(window.App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
+    if(App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
     return;
   }
   if(!val('factory') || !val('qcName') || !val('orderNo') || !val('styleNo')){
@@ -1635,7 +1722,7 @@ function saveRecord(){
   else { records.push(data); }
   saveData();
   resetForm();
-  if(window.App && App.toast) App.toast('保存成功！', 'success');
+  if(App && App.toast) App.toast('保存成功！', 'success');
   switchTab('query');
 }
 
@@ -1700,7 +1787,7 @@ function renderQueryTable(){
 function editRecord(id){
   // 只读模式拦截
   if(document.body.classList.contains('readonly-mode')){
-    if(window.App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
+    if(App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
     return;
   }
   var r = records.find(x=>x.id===id);
@@ -1708,14 +1795,14 @@ function editRecord(id){
 }
 function deleteRecord(id){
   if(document.body.classList.contains('readonly-mode')){
-    if(window.App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
+    if(App && App.toast) App.toast('当前为只读模式，如需修改请联系管理员', 'warning', 3000);
     return;
   }
   if(!confirm('确认删除该条记录？此操作不可撤销。')) return;
   records = records.filter(r=>r.id!==id);
   saveData();
   renderQueryTable();
-  if(window.App && App.toast) App.toast('已删除', 'success');
+  if(App && App.toast) App.toast('已删除', 'success');
 }
 function viewRecord(id){
   var r = records.find(x=>x.id===id);
@@ -2126,7 +2213,7 @@ function resolveModalImages(){
         if(url) img.src = url;
         else img.alt = '加载失败';
       }).catch(function(){ img.alt = '加载失败'; });
-    } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+    } else if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
       App.utils.getSignedUrl(path).then(function(url){
         if(url) img.src = url;
         else img.alt = '加载失败';
