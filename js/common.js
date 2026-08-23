@@ -1436,6 +1436,22 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
     for (var ie = 0; ie < exts.length; ie++) names.push(sn + '.' + exts[ie]);
     for (var ie2 = 0; ie2 < exts.length; ie2++) names.push(sn.toUpperCase() + '.' + exts[ie2]);
     for (var ie3 = 0; ie3 < exts.length; ie3++) names.push(sn.toLowerCase() + '.' + exts[ie3]);
+    // 桶根常见前缀 + 款号（手动上传用的：ss-3011043.png、IMG_3011043.jpg、style-GW27-003.png、3011043-款式图.png …）
+    var namePrefixes = ['ss-', 'SS-', 'st-', 'ST-', 'sk-', 'SK-', 'img-', 'IMG-', 'image-', 'IMAGE-',
+      'photo-', 'PHOTO-', 'preview-', 'PREVIEW-', 'style-', 'STYLE-', 'main-', 'MAIN-',
+      'front-', 'FRONT-', '款式图-', '样式-', '图片-', '照片-', '大图-'];
+    var nameSuffixes = ['-款式图', '-样式', '-图片', '-照片', '-style', '-main', '-front', '-preview', '-st', '-ss'];
+    var nameCases = [sn, sn.toUpperCase(), sn.toLowerCase()];
+    for (var np = 0; np < namePrefixes.length; np++) {
+      for (var nci = 0; nci < nameCases.length; nci++) {
+        for (var nep = 0; nep < exts.length; nep++) names.push(namePrefixes[np] + nameCases[nci] + '.' + exts[nep]);
+      }
+    }
+    for (var ns = 0; ns < nameSuffixes.length; ns++) {
+      for (var ncj = 0; ncj < nameCases.length; ncj++) {
+        for (var nes = 0; nes < exts.length; nes++) names.push(nameCases[ncj] + nameSuffixes[ns] + '.' + exts[nes]);
+      }
+    }
     // 常见带 uuid 前缀：uuid-款号.ext（旧模块上传路径，在 userId/order/ 等下）
     // 这里不试 userId，因为跨机不一样；改试款号文件夹下任意标准命名
     var subfolderHints = [

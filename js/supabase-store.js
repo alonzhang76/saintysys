@@ -480,6 +480,9 @@ async function migrateFromLocalStorage() {
       }
       payload = normalizePayload(payload);
 
+      // 共享模式：如果云端已经有这一行（store_key unique 冲突=409），说明 init-page.js 的独立写入
+      // 通道已经先一步写成功了，直接忽略冲突即可，不要打红色的"迁移失败"误导用户。
+      // 这里故意用 insert，若冲突再走 update，避免 upsert 时 accidentally 覆盖管理员刚更新的 newer 值。
       const { error } = await safeQuery(
         getSupabase()
           .from('app_data_store')
@@ -492,7 +495,17 @@ async function migrateFromLocalStorage() {
       );
 
       if (error) {
-        console.warn('[SupabaseStore] 迁移失败:', key, error);
+        const isDup = error && (
+          error.code === '23505' ||
+          (String(error.message || '').indexOf('duplicate key') >= 0) ||
+          (String(error.details || '').indexOf('store_key_key') >= 0) ||
+          (String(error.message || '').indexOf('app_data_store_store_key_key') >= 0)
+        );
+        if (isDup) {
+          console.log('[SupabaseStore] 迁移键已存在(云端优先)，跳过: ' + key);
+        } else {
+          console.warn('[SupabaseStore] 迁移失败:', key, error);
+        }
       } else {
         migratedCount++;
         console.log('[SupabaseStore] 已迁移:', key);

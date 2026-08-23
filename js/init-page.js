@@ -696,18 +696,71 @@
   }
 
   // 判断当前登录用户是否管理员（用于 ADMIN_ONLY_WRITE_KEYS 的写入守卫）
-  // 注意：此处只做最保守的判断：role = 'admin' 直接放行；其它角色一律视为非管理员。
-  // 这样不会影响普通业务键的上传，只用于保护全局共享的 NAS 配置类键不被误覆盖。
+  // 保守 + 多来源兜底：避免"实际上是管理员但角色还没写入 localStorage.userRole"
+  //                  → 误把 nas_config 当"非管理员上传"跳过。
   function _currentUserIsAdmin() {
     try {
       var ls = window._origLocalStorage || window.localStorage;
-      var roleKey = ls ? (ls.getItem('userRole') || '') : '';
-      if (!roleKey) roleKey = (window.localStorage.getItem && window.localStorage.getItem('userRole')) || '';
+      // 1) localStorage 明确 userRole='admin'
+      var roleKey = '';
+      try { roleKey = ls ? (ls.getItem('userRole') || '') : ''; } catch(_) {}
+      if (!roleKey) { try { roleKey = (window.localStorage.getItem && window.localStorage.getItem('userRole')) || ''; } catch(_) {} }
       if (roleKey === 'admin') return true;
-      // 兜底：isLoggedIn 用户信息里如果有 isAdmin=true
-      var info = null;
-      try { info = ls.getItem('currentUserInfo'); } catch(_) {}
-      if (info) { try { var p = JSON.parse(info); if (p && p.isAdmin) return true; } catch(_) {} }
+
+      // 2) currentUserInfo 里 isAdmin=true（旧系统兼容字段）
+      try {
+        var info = ls.getItem('currentUserInfo');
+        if (info) { try { var p = JSON.parse(info); if (p && p.isAdmin) return true; } catch(_) {} }
+      } catch(_) {}
+
+      // 3) App 对象上挂载的当前角色
+      if (window.App) {
+        try {
+          if (App._currentUser && App._currentUser.role === 'admin') return true;
+          if (App._currentUser && App._currentUser.isAdmin) return true;
+        } catch(_) {}
+        //   · 顶栏用户信息
+        try {
+          var uApp = App.user || (App.getCurrentUser ? App.getCurrentUser() : null) || null;
+          if (uApp && (uApp.role === 'admin' || uApp.isAdmin)) return true;
+        } catch(_) {}
+      }
+
+      // 4) Supabase 登录用户：user_metadata.role / 邮箱白名单（与 auth-guard 对齐）
+      if (window.currentSupabaseUser) {
+        var meta = window.currentSupabaseUser.user_metadata || {};
+        if (meta.role === 'admin') return true;
+        var emails = window.ADMIN_EMAILS || [];
+        if (emails.indexOf(window.currentSupabaseUser.email || '') >= 0) return true;
+      }
+      if (window.supabase && typeof window.supabase.auth === 'object') {
+        try {
+          if (window.supabase.auth.currentUser &&
+              window.supabase.auth.currentUser.user_metadata &&
+              window.supabase.auth.currentUser.user_metadata.role === 'admin') return true;
+          if (window.supabase.auth.currentUser &&
+              (window.ADMIN_EMAILS || []).indexOf(window.supabase.auth.currentUser.email || '') >= 0) return true;
+        } catch(_) {}
+      }
+
+      // 5) 本地 users 表记录里的 role 字段（SupabaseStore 初始化前 localStorage 就有）
+      try {
+        var rawUsers = ls.getItem('users');
+        if (rawUsers) {
+          var usersArr = JSON.parse(rawUsers);
+          if (Array.isArray(usersArr)) {
+            var curEmail = window.currentSupabaseUser && window.currentSupabaseUser.email;
+            var curId = window.currentSupabaseUser && window.currentSupabaseUser.id;
+            for (var ui = 0; ui < usersArr.length; ui++) {
+              var u = usersArr[ui] || {};
+              if ((curId && u.id === curId) || (curEmail && u.email && u.email === curEmail) ||
+                  (u.username && (ls.getItem('username') || '') && u.username === ls.getItem('username'))) {
+                if (u.role === 'admin') return true;
+              }
+            }
+          }
+        }
+      } catch(_) {}
     } catch(_) {}
     return false;
   }

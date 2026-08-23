@@ -468,6 +468,29 @@ function renderTable() {
         if (row.styleImg_path) imgs.push(row.styleImg_path);
         if (row.fullImg_path) imgs.push(row.fullImg_path);
         var hasOwn = imgs.length > 0;
+
+        // ============ 新增：渲染时直接用共享 styleImages 缓存，秒显缩略图，不等 backfill ============
+        if (!hasOwn && row.styleNo && window.StyleImgCache) {
+          try {
+            var sc = StyleImgCache.resolve(String(row.styleNo).trim());
+            if (sc && (sc.styleImg_path || sc.fullImg_path)) {
+              if (sc.styleImg_path) imgs.push(sc.styleImg_path);
+              if (sc.fullImg_path)  imgs.push(sc.fullImg_path);
+              hasOwn = imgs.length > 0;
+              if (hasOwn) {
+                // 把共享缓存找到的路径临时挂到 row 上，hydrateTableImages 就会按 orderImg 分支去 resolve + 渲染
+                // 注意：不写回订单 payload（避免把别的模块的图片路径污染进订单记录，除非用户手动保存）
+                if (!row._sharedStyleImg) {
+                  row._sharedStyleImg = sc.styleImg_path || '';
+                  row._sharedFullImg  = sc.fullImg_path  || '';
+                  if (!row.styleImg_path) row.styleImg_path = sc.styleImg_path || '';
+                  if (!row.fullImg_path)  row.fullImg_path  = sc.fullImg_path  || '';
+                }
+              }
+            }
+          } catch(_scErr) {}
+        }
+
         var canBackfill = !hasOwn && row.styleNo;
         if (!hasOwn && !canBackfill) return '<span style="color:var(--text-muted);font-size:11px;">无</span>';
 
@@ -517,10 +540,29 @@ function renderTable() {
       <button class="btn btn-sm btn-danger" title="删除" onclick="deleteOrder('${row.id}')">🗑️</button>
     `
   });
-  // 水合图片缩略图
+  // 水合图片缩略图：try/catch 单条包，任何异常都不能短路掉 backfill（这是为什么之前款图不显示的头号原因）
   if (window.OrderImg) {
-    if (OrderImg.hydrateTableImages) OrderImg.hydrateTableImages();
-    if (OrderImg.backfillTableImages && window.getStyleImagesForStyleNo) setTimeout(function(){ OrderImg.backfillTableImages(); }, 150);
+    try {
+      if (OrderImg.hydrateTableImages) OrderImg.hydrateTableImages();
+      console.log('[renderTable] ✅ hydrateTableImages 同步段完成');
+    } catch(eH) {
+      console.warn('[renderTable] ⚠️ hydrateTableImages 抛异常（不影响 backfill 继续）:', eH && eH.message ? eH.message : eH);
+    }
+    if (OrderImg.backfillTableImages && window.getStyleImagesForStyleNo) {
+      // 150ms 先试一次（大多数 App.renderTable 同步 DOM），不行 800ms 再来一次（异步渲染/React 风格的兜底）
+      var backfillRetries = [120, 900];
+      backfillRetries.forEach(function(delay){
+        setTimeout(function(){
+          try { OrderImg.backfillTableImages(); }
+          catch(eB) { console.error('[renderTable] backfillTableImages 延迟 ' + delay + 'ms 执行异常:', eB && eB.message ? eB.message : eB); }
+        }, delay);
+      });
+    } else {
+      console.log('[renderTable] ⚠️ 跳过 backfill：OrderImg.backfillTableImages=' + !!(OrderImg && OrderImg.backfillTableImages) +
+        '  getStyleImagesForStyleNo=' + !!window.getStyleImagesForStyleNo);
+    }
+  } else {
+    console.log('[renderTable] ⚠️ window.OrderImg 尚未定义，跳过图片水合');
   }
 }
 
