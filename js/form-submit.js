@@ -727,6 +727,148 @@ const SupabaseSubmit = {
       return null;
     }
   },
+
+  /**
+   * 按款号在 Supabase 中搜索图片，同时返回“款式图”和“大图”的最佳匹配
+   * @param {string} styleNo 款号
+   * @returns {Promise<{styleImg_path:string|null, fullImg_path:string|null, styleImg_signed:string|null, fullImg_signed:string|null, styleImg_name:string, fullImg_name:string}|null>}
+   */
+  async findStyleImages(styleNo) {
+    if (!styleNo) return null;
+    const sn = String(styleNo).trim();
+    // 要搜索的子目录：order / consumption / sample 是已知模块，但任何用户/任何目录下只要文件名含款号都可能是匹配
+    const subFolders = ["order", "consumption", "sample", "uploads", "wash", "fabric", "accessory", ""];
+    const self = this;
+
+    // 结果池：收集所有命中，按分数排序
+    const allHits = [];
+    for (const subFolder of subFolders) {
+      try {
+        // 对每个 subFolder 调用 findPictureByStyleNo 会重复搜索 root，效率低
+        // 改为直接在所有用户/所有目录中搜索一次，按文件名匹配度排序
+        const searchTargets = subFolder ? [subFolder] : ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
+        for (const sf of searchTargets) {
+          // 先查当前用户
+          try {
+            const user = await getCurrentUserOrRedirect();
+            if (user) {
+              const r1 = await self.findPictureByStyleNo(sn, sf, null);
+              if (r1) {
+                allHits.push({ path: r1.path, signedUrl: r1.signedUrl, score: r1.score, folder: sf, isFull: self._isFull(r1.path, sf, sn) });
+              }
+            }
+          } catch(_e) {}
+        }
+        // 已经通过 findPictureByStyleNo 完成跨用户搜索，不需要再重复
+        break;
+      } catch(_e) {}
+    }
+
+    // 如上面无结果，做一次根目录广泛扫描（策略：所有用户/所有子目录，按文件名含款号匹配）
+    if (allHits.length === 0) {
+      try {
+        const broadResults = await self._searchAllFoldersForStyleNo(sn);
+        if (broadResults && broadResults.length) allHits.push(...broadResults);
+      } catch(_e2) {}
+    }
+
+    if (allHits.length === 0) return null;
+
+    // 分款式图/大图：含 full、big、large、大图 关键词的判为大图
+    // 其余按分数：最高分 = 款式图，次高分且包含 full/big = 大图
+    var sorted = allHits.slice().sort(function(a, b){ return b.score - a.score; });
+    var styleHit = null;
+    var fullHit = null;
+
+    // 先把标记为大图的挑出来
+    var fullCandidates = sorted.filter(function(h){ return h.isFull; });
+    var styleCandidates = sorted.filter(function(h){ return !h.isFull; });
+
+    if (styleCandidates.length > 0) styleHit = styleCandidates[0];
+    else if (sorted.length > 0) styleHit = sorted[0]; // 无明确区分时第一个当款式图
+
+    if (fullCandidates.length > 0) fullHit = fullCandidates[0];
+    else if (sorted.length >= 2 && styleHit) {
+      // 找第二个不同路径的
+      var second = sorted.find(function(h){ return h.path !== styleHit.path; });
+      if (second) fullHit = second;
+    }
+
+    var result = {
+      styleImg_path: null, fullImg_path: null,
+      styleImg_signed: null, fullImg_signed: null,
+      styleImg_name: '', fullImg_name: ''
+    };
+    if (styleHit) {
+      result.styleImg_path = styleHit.path;
+      result.styleImg_signed = styleHit.signedUrl;
+      result.styleImg_name = styleHit.path.split('/').pop() || '';
+    }
+    if (fullHit) {
+      result.fullImg_path = fullHit.path;
+      result.fullImg_signed = fullHit.signedUrl;
+      result.fullImg_name = fullHit.path.split('/').pop() || '';
+    }
+    return (result.styleImg_path || result.fullImg_path) ? result : null;
+  },
+
+  _isFull: function(path, folder, styleNo) {
+    if (!path) return false;
+    var p = path.toLowerCase();
+    // 文件名或目录里含 full/big/large/大图
+    if (p.indexOf('full') >= 0) return true;
+    if (p.indexOf('big') >= 0) return true;
+    if (p.indexOf('large') >= 0) return true;
+    if (p.indexOf('大图') >= 0) return true;
+    return false;
+  },
+
+  // 根目录广泛扫描：所有用户目录下所有 subFolder
+  async _searchAllFoldersForStyleNo(styleNo) {
+    if (!window.supabase) return [];
+    const bucket = window.STORAGE_BUCKET || 'app-photos';
+    const results = [];
+    try {
+      const { data: rootData } = await supabase.storage.from(bucket).list('', { limit: 400 });
+      if (!rootData || !Array.isArray(rootData)) return results;
+
+      const subFolders = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
+      for (const entry of rootData) {
+        if (entry.type !== 'folder') continue;
+        for (const sf of subFolders) {
+          const folderPath = entry.name + "/" + sf;
+          try {
+            const { data } = await supabase.storage.from(bucket).list(folderPath, { limit: 400 });
+            if (!data) continue;
+            for (const item of data) {
+              const lower = item.name.toLowerCase();
+              const sn = String(styleNo).toLowerCase();
+              var score = 0;
+              var nameNoExt = lower.replace(/\.[^.]+$/, '');
+              if (nameNoExt === sn) score = 100;
+              else if (nameNoExt.indexOf(sn) === 0) score = 85;
+              else if (nameNoExt.indexOf(sn) >= 0) score = 70;
+              if (score === 0) continue;
+              const fullPath = folderPath + "/" + item.name;
+              var signed = null;
+              try {
+                const r = await supabase.storage.from(bucket).createSignedUrl(fullPath, 3600);
+                if (r && r.data && r.data.signedUrl) signed = r.data.signedUrl;
+              } catch(_e) {}
+              results.push({
+                path: fullPath,
+                signedUrl: signed,
+                score: score,
+                folder: sf,
+                isFull: (lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0)
+              });
+            }
+          } catch(_e) {}
+        }
+      }
+    } catch(_e) {}
+    return results;
+  },
 };
 
 // 暴露到全局，便于非模块脚本调用

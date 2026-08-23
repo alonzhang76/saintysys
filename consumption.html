@@ -1432,12 +1432,13 @@ var Cons = {
     setTimeout(function(){ self.autoPopulateImagesFromCache(); }, 100);
   },
 
-  // ===== 按款号自动从缓存回查图片 =====
+  // ===== 按款号自动从缓存回查图片（缓存未命中则搜索 Supabase Storage）=====
   autoPopulateImagesFromCache: function() {
+    var self = this;
     var styleNoEl = document.getElementById('c_f_styleNo');
     if (!styleNoEl) return;
     var styleNo = styleNoEl.value.trim();
-    if (!styleNo || !window.StyleImgCache) return;
+    if (!styleNo) return;
     // 如果当前记录已有图片，不覆盖
     var stylePath = document.getElementById('c_style_picture_path');
     var fullPath = document.getElementById('c_full_picture_path');
@@ -1445,48 +1446,75 @@ var Cons = {
     var hasCurrentFull = fullPath && fullPath.value;
     if (hasCurrentStyle && hasCurrentFull) return;
 
-    var cached = StyleImgCache.resolve(styleNo);
-    if (!cached) return;
+    var done = function(cached, fromWhere) {
+      if (!cached) return;
+      var populated = false;
+      if (!hasCurrentStyle && cached.styleImg_path) {
+        stylePath.value = cached.styleImg_path;
+        var nameEl = document.getElementById('c_style_picture_name');
+        if (nameEl) nameEl.value = cached.styleImg_name || '';
+        var previewImg = document.getElementById('c_style_picPreview');
+        if (previewImg) {
+          previewImg.src = cached.styleImg_signed || cached.styleImg_path;
+          previewImg.style.display = 'block';
+        }
+        var placeholder = document.getElementById('c_style_PicturePlaceholder') || document.querySelector('#c_style_box .upload-hint');
+        if (placeholder) placeholder.style.display = 'none';
+        var sbox = document.getElementById('c_style_box');
+        if (sbox) sbox.classList.add('has-img');
+        populated = true;
+      }
+      if (!hasCurrentFull && cached.fullImg_path) {
+        fullPath.value = cached.fullImg_path;
+        var nameEl2 = document.getElementById('c_full_picture_name');
+        if (nameEl2) nameEl2.value = cached.fullImg_name || '';
+        var previewImg2 = document.getElementById('c_full_picPreview');
+        if (previewImg2) {
+          previewImg2.src = cached.fullImg_signed || cached.fullImg_path;
+          previewImg2.style.display = 'block';
+        }
+        var placeholder2 = document.getElementById('c_full_PicturePlaceholder') || document.querySelector('#c_full_box .upload-hint');
+        if (placeholder2) placeholder2.style.display = 'none';
+        var fbox = document.getElementById('c_full_box');
+        if (fbox) fbox.classList.add('has-img');
+        populated = true;
+      }
+      if (populated && window.StyleImgCache) {
+        StyleImgCache.set(styleNo, {
+          styleImg_path: cached.styleImg_path,
+          styleImg_name: cached.styleImg_name,
+          fullImg_path: cached.fullImg_path,
+          fullImg_name: cached.fullImg_name
+        });
+        console.log('[consumption] ' + fromWhere + '，款号=' + styleNo);
+        try { if (App && App.toast) App.toast('已自动加载款号 ' + styleNo + ' 的图片（' + fromWhere + '）', 'info', 2200); } catch(_) {}
+      }
+    };
 
-    var populated = false;
-    if (!hasCurrentStyle && cached.styleImg_path) {
-      stylePath.value = cached.styleImg_path;
-      var nameEl = document.getElementById('c_style_picture_name');
-      if (nameEl) nameEl.value = cached.styleImg_name || '';
-      var previewImg = document.getElementById('c_style_picPreview');
-      if (previewImg) {
-        previewImg.src = cached.styleImg_path;
-        previewImg.style.display = 'block';
+    // 策略1：先查缓存
+    if (window.StyleImgCache) {
+      var cached = StyleImgCache.resolve(styleNo);
+      if (cached && (cached.styleImg_path || cached.fullImg_path)) {
+        done(cached, '缓存');
+        return;
       }
-      var placeholder = document.getElementById('c_style_PicturePlaceholder') || document.querySelector('#c_style_box .upload-hint');
-      if (placeholder) placeholder.style.display = 'none';
-      document.getElementById('c_style_box').classList.add('has-img');
-      populated = true;
     }
-    if (!hasCurrentFull && cached.fullImg_path) {
-      fullPath.value = cached.fullImg_path;
-      var nameEl2 = document.getElementById('c_full_picture_name');
-      if (nameEl2) nameEl2.value = cached.fullImg_name || '';
-      var previewImg2 = document.getElementById('c_full_picPreview');
-      if (previewImg2) {
-        previewImg2.src = cached.fullImg_path;
-        previewImg2.style.display = 'block';
-      }
-      var placeholder2 = document.getElementById('c_full_PicturePlaceholder') || document.querySelector('#c_full_box .upload-hint');
-      if (placeholder2) placeholder2.style.display = 'none';
-      document.getElementById('c_full_box').classList.add('has-img');
-      populated = true;
-    }
-    if (populated) {
-      console.log('[consumption] 从缓存回查图片，款号=' + styleNo);
-      try { if (App && App.toast) App.toast('已自动加载款号 ' + styleNo + ' 的共享图片', 'info'); } catch(_) {}
+
+    // 策略2：去 Supabase Storage 按款号搜索文件名
+    if (window.SupabaseSubmit && typeof SupabaseSubmit.findStyleImages === 'function') {
+      try {
+        if (App && App.toast) App.toast('正在从云端查找款号 ' + styleNo + ' 的图片…', 'info', 1500);
+        SupabaseSubmit.findStyleImages(styleNo).then(function(result){
+          if (result) done(result, '云端');
+        }).catch(function(e){ console.warn('[consumption] findStyleImages 失败', e); });
+      } catch(_err) {}
     }
   },
 
   onStyleNoChange: function() {
     var self = this;
     clearTimeout(self._styleNoTimer);
-    self._styleNoTimer = setTimeout(function(){ self.autoPopulateImagesFromCache(); }, 300);
+    self._styleNoTimer = setTimeout(function(){ self.autoPopulateImagesFromCache(); }, 400);
   },
 
   // ===== 动态表格：面料 =====
