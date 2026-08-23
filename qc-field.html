@@ -28,7 +28,7 @@
 .qc-tab-btn{padding:10px 24px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--qc-text-light);border-bottom:3px solid transparent;transition:.2s;font-weight:500;}
 .qc-tab-btn:hover{color:var(--qc-primary);}
 .qc-tab-btn.active{color:var(--qc-primary);border-bottom-color:var(--qc-primary);font-weight:600;}
-.qc-tabs{position:sticky;top:0;z-index:10;}
+.qc-tabs{position:sticky;top:var(--header-h,42px);z-index:40;background:#fff;border-bottom:2px solid var(--qc-border);padding:0 12px;border-radius:0;box-shadow:0 1px 6px rgba(0,0,0,.06);}
 /* Tab content */
 .qc-tab-content{display:none;padding:16px 4px;}
 .qc-tab-content.active{display:block;}
@@ -71,6 +71,25 @@ select.qc-form-control{cursor:pointer;}
 .qc-btn-icon.danger:hover{background:var(--qc-danger-light);color:var(--qc-danger);}
 .qc-form-actions{display:flex;gap:8px;justify-content:flex-end;padding:12px 0 0;}
 /* Image upload */
+.qc-status{color:#6c757d;padding:2px 4px;min-height:14px;}
+.qc-issue-img-block{border:1px solid var(--qc-border);border-radius:6px;padding:8px;background:#fafbfc;margin-top:6px;}
+.qc-issue-img-row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;}
+.qc-issue-img-preview{position:relative;flex-shrink:0;}
+.qc-issue-img-preview img{width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:pointer;display:block;background:#fff;}
+.qc-issue-img-preview .remove-btn{position:absolute;top:-6px;right:-6px;background:var(--qc-danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.qc-issue-img-actions{display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;}
+.qc-issue-img-actions .btn-row{display:flex;gap:6px;flex-wrap:wrap;}
+.qc-issue-img-actions .btn-row .qc-btn{flex:1;justify-content:center;min-width:90px;}
+.qc-issue-img-actions .date-row{display:flex;gap:6px;align-items:center;}
+.qc-issue-img-actions .date-row label{font-size:11px;color:#6c757d;white-space:nowrap;}
+.qc-issue-img-actions .date-row input{flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--qc-border);border-radius:3px;}
+.qc-issue-img-status{font-size:11px;color:#6c757d;padding:2px 0;}
+.qc-issue-img-empty{padding:6px;font-size:11px;color:var(--qc-text-light);text-align:center;background:var(--qc-gray-light);border-radius:4px;border:1px dashed var(--qc-border);}
+/* Issue table inline image */
+.qc-issue-table-img{position:relative;width:46px;height:46px;border:1px dashed var(--qc-border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;color:#adb5bd;font-size:18px;overflow:hidden;}
+.qc-issue-table-img:hover{border-color:var(--qc-primary);color:var(--qc-primary);}
+.qc-issue-table-img img{width:100%;height:100%;object-fit:cover;}
+.qc-issue-table-img .remove-btn{position:absolute;top:-4px;right:-4px;background:var(--qc-danger);color:#fff;border:none;border-radius:50%;width:14px;height:14px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:2;}
 .qc-image-upload{border:2px dashed var(--qc-border);border-radius:6px;padding:16px;text-align:center;cursor:pointer;transition:.2s;}
 .qc-image-upload:hover{border-color:var(--qc-primary);background:var(--qc-primary-light);}
 .qc-image-preview{max-width:120px;max-height:160px;border-radius:4px;border:1px solid var(--qc-border);}
@@ -189,6 +208,7 @@ select.qc-form-control{cursor:pointer;}
 body.readonly-mode .qc-btn-primary,
 body.readonly-mode .qc-btn-success,
 body.readonly-mode .qc-btn-danger,
+body.readonly-mode .qc-btn-outline,
 body.readonly-mode .qc-btn-icon.danger,
 body.readonly-mode .qc-image-upload,
 body.readonly-mode .qc-toggle-switch,
@@ -198,7 +218,13 @@ body.readonly-mode .qc-sub-table input,
 body.readonly-mode .qc-sub-table textarea,
 body.readonly-mode .qc-sub-table select,
 body.readonly-mode .qc-size-table input,
-body.readonly-mode .qc-checkbox-group input{pointer-events:none;opacity:.55;}
+body.readonly-mode .qc-checkbox-group input,
+body.readonly-mode .remove-img,
+body.readonly-mode .remove-btn,
+body.readonly-mode #nasUploadBtn,
+body.readonly-mode #styleImageInput,
+body.readonly-mode #tab-register input[type=file],
+body.readonly-mode .qc-issue-table-img{pointer-events:none;opacity:.55;}
 body.readonly-mode .qc-btn-primary::before,
 body.readonly-mode .qc-btn-success::before,
 body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
@@ -231,9 +257,6 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
         <h1>外勤QC管理</h1>
         <div class="qc-header-actions">
           <span class="qc-header-btn" style="cursor:default;" id="recordCount">0 条记录</span>
-          <button class="qc-header-btn outline" onclick="exportData()" title="导出 JSON">📤</button>
-          <button class="qc-header-btn outline" onclick="document.getElementById('importFile').click()" title="导入 JSON">📥</button>
-          <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
         </div>
       </div>
 
@@ -253,10 +276,26 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
           <div class="qc-card-header"><span class="icon">📋</span>基础信息</div>
           <div class="qc-card-body">
             <div class="qc-form-grid">
-              <div class="qc-form-group"><label>服装厂名称 <span class="req">*</span></label><input type="text" class="qc-form-control" id="factory" placeholder="输入服装厂名称"></div>
-              <div class="qc-form-group"><label>QC姓名 <span class="req">*</span></label><input type="text" class="qc-form-control" id="qcName" placeholder="输入QC姓名"></div>
-              <div class="qc-form-group"><label>订单号 <span class="req">*</span></label><input type="text" class="qc-form-control" id="orderNo" placeholder="输入订单号"></div>
-              <div class="qc-form-group"><label>款号 <span class="req">*</span></label><input type="text" class="qc-form-control" id="styleNo" placeholder="输入款号"></div>
+              <div class="qc-form-group">
+                <label>服装厂名称 <span class="req">*</span></label>
+                <input type="text" class="qc-form-control" id="factory" list="factoryList" placeholder="选择或输入服装厂" autocomplete="off">
+                <datalist id="factoryList"></datalist>
+              </div>
+              <div class="qc-form-group">
+                <label>QC姓名 <span class="req">*</span></label>
+                <input type="text" class="qc-form-control" id="qcName" list="qcNameList" placeholder="选择或输入QC姓名" autocomplete="off">
+                <datalist id="qcNameList"></datalist>
+              </div>
+              <div class="qc-form-group">
+                <label>款号 <span class="req">*</span></label>
+                <input type="text" class="qc-form-control" id="styleNo" list="styleNoList" placeholder="选择或输入款号" autocomplete="off" oninput="onStyleNoChange()" onchange="onStyleNoChange()">
+                <datalist id="styleNoList"></datalist>
+              </div>
+              <div class="qc-form-group">
+                <label>订单号 <span class="req">*</span></label>
+                <input type="text" class="qc-form-control" id="orderNo" list="orderNoList" placeholder="选择或输入订单号" autocomplete="off" onchange="onOrderNoChange()">
+                <datalist id="orderNoList"></datalist>
+              </div>
               <div class="qc-form-group"><label>交期 <span class="req">*</span></label><input type="date" class="qc-form-control" id="deliveryDate"></div>
               <div class="qc-form-group">
                 <label>是否需要水洗工序</label>
@@ -267,22 +306,25 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
               </div>
             </div>
             <div style="margin-top:12px;">
-              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">款式图</label>
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">款式图 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（同款号跨模块共享）</span></label>
               <div class="qc-image-container" id="imageContainer">
-                <div class="qc-image-upload" id="imageUpload" onclick="document.getElementById('styleImageInput').click()">
-                  <div style="font-size:24px;color:#adb5bd;">📷</div>
-                  <div style="font-size:12px;color:#868e96;margin-top:4px;">点击上传款式图</div>
+                <div class="preview-box" id="imagePreviewBox" style="display:none;">
+                  <img id="styleImagePreview" class="qc-image-preview" alt="">
+                  <button class="remove-img" onclick="clearCurrentImage()">&times;</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
+                  <button class="qc-btn qc-btn-outline qc-btn-sm" onclick="document.getElementById('styleImageInput').click()">💻 本地电脑上传</button>
+                  <button class="qc-btn qc-btn-outline qc-btn-sm" id="nasUploadBtn" onclick="uploadStyleImageFromNas()">☁ 从云盘 NAS 选择</button>
+                  <div class="qc-status" id="imageStatus" style="font-size:11px;"></div>
                 </div>
               </div>
               <input type="file" id="styleImageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
             </div>
             <div style="margin-top:12px;">
-              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">订单各尺寸数量</label>
-              <table class="qc-size-table" id="sizeTable">
-                <thead><tr><th style="width:40px;">#</th><th>尺码</th><th>数量</th><th style="width:40px;"></th></tr></thead>
-                <tbody id="sizeTableBody"></tbody>
-              </table>
-              <button class="qc-btn qc-btn-outline qc-btn-sm" style="margin-top:6px;" onclick="addSizeRow()">+ 添加尺码</button>
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">订单各尺寸数量 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（自动从订单中调取，只读）</span></label>
+              <div id="sizeTableContainer">
+                <div style="padding:12px;text-align:center;color:var(--qc-text-light);font-size:12px;background:var(--qc-gray-light);border:1px dashed var(--qc-border);border-radius:4px;">输入款号与订单号后自动加载</div>
+              </div>
             </div>
           </div>
         </div>
@@ -299,7 +341,11 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
               </div>
               <div class="qc-form-group"><label>头缸时间</label><input type="date" class="qc-form-control" id="w_first_date"></div>
               <div class="qc-form-group"><label>头缸数量</label><input type="text" class="qc-form-control" id="w_first_qty" placeholder="数量/缸数"></div>
-              <div class="qc-form-group full"><label>头缸问题</label><textarea class="qc-form-control" id="w_first_issues" placeholder="描述头缸试洗中发现的问题"></textarea></div>
+              <div class="qc-form-group full">
+                <label>头缸问题</label>
+                <textarea class="qc-form-control" id="w_first_issues" placeholder="描述头缸试洗中发现的问题"></textarea>
+                <div class="qc-issue-img-block" id="wFirstIssueBlock"></div>
+              </div>
               <div class="qc-form-group full">
                 <label>大货水洗方法确定</label>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -311,7 +357,11 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
               <div class="qc-form-group"><label>大货水洗时间</label><input type="date" class="qc-form-control" id="w_bulk_date"></div>
               <div class="qc-form-group"><label>大货水洗结束时间</label><input type="date" class="qc-form-control" id="w_bulk_end"></div>
               <div class="qc-form-group"><label>大货总缸数</label><input type="number" class="qc-form-control" id="w_bulk_total" min="0" placeholder="0"></div>
-              <div class="qc-form-group full"><label>大货水洗问题</label><textarea class="qc-form-control" id="w_bulk_issues" placeholder="大货水洗过程中的问题"></textarea></div>
+              <div class="qc-form-group full">
+                <label>大货水洗问题</label>
+                <textarea class="qc-form-control" id="w_bulk_issues" placeholder="大货水洗过程中的问题"></textarea>
+                <div class="qc-issue-img-block" id="wBulkIssueBlock"></div>
+              </div>
               <div class="qc-form-group full"><label>问题整改情况</label><textarea class="qc-form-control" id="w_bulk_rect" placeholder="整改措施及结果"></textarea></div>
               <div class="qc-form-group">
                 <label>大货问题解决</label>
@@ -349,7 +399,11 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
                   <option value="pending">待核对</option>
                 </select>
               </div>
-              <div class="qc-form-group full"><label>面里辅料核对备注</label><textarea class="qc-form-control" id="g_mat_notes" placeholder="面料、里料、辅料核对情况"></textarea></div>
+              <div class="qc-form-group full">
+                <label>面里辅料核对备注</label>
+                <textarea class="qc-form-control" id="g_mat_notes" placeholder="面料、里料、辅料核对情况"></textarea>
+                <div class="qc-issue-img-block" id="gMatIssueBlock"></div>
+              </div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
               <div class="qc-form-group"><label>开裁时间</label><input type="date" class="qc-form-control" id="g_cut_date"></div>
@@ -370,9 +424,9 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
             </div>
 
             <div style="margin-top:16px;">
-              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">生产中问题及整改</label>
+              <label style="font-size:12px;color:#495057;font-weight:500;display:block;margin-bottom:6px;">生产中问题及整改 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（每行可附加问题图片）</span></label>
               <table class="qc-sub-table" id="issueTable">
-                <thead><tr><th style="width:30px;">#</th><th style="width:120px;">发现日期</th><th>问题描述</th><th>整改措施</th><th style="width:90px;">状态</th><th style="width:120px;">解决日期</th><th style="width:36px;"></th></tr></thead>
+                <thead><tr><th style="width:30px;">#</th><th style="width:120px;">发现日期</th><th>问题描述</th><th>整改措施</th><th style="width:90px;">状态</th><th style="width:120px;">解决日期</th><th style="width:70px;">问题图片</th><th style="width:36px;"></th></tr></thead>
                 <tbody id="issueTableBody"></tbody>
               </table>
               <button class="qc-btn qc-btn-outline qc-btn-sm" style="margin-top:6px;" onclick="addIssueRow()">+ 添加问题</button>
@@ -493,6 +547,13 @@ window.addEventListener('cloud-data-updated', function(e){
       if (typeof renderDashboard === 'function') renderDashboard();
     } catch(e){}
   }
+  // 联系录 / 订单变化时刷新下拉数据源
+  if (keys.indexOf('contacts')>=0 && typeof populateContactDatalists === 'function') {
+    try { populateContactDatalists(); } catch(_e){}
+  }
+  if (keys.indexOf('orders')>=0 && typeof populateStyleNoDatalist === 'function') {
+    try { populateStyleNoDatalist(); } catch(_e){}
+  }
 });
 
 App.init('qcField');
@@ -557,16 +618,556 @@ function toggleWash(){
   document.getElementById('washSection').style.display = needWash ? 'block' : 'none';
 }
 
-// ==================== 尺码表 ====================
-function addSizeRow(size='',qty=''){
-  var tbody = document.getElementById('sizeTableBody');
-  var tr = document.createElement('tr');
-  var idx = tbody.children.length + 1;
-  tr.innerHTML = '<td>'+idx+'</td><td><input type="text" value="'+escAttr(size)+'" placeholder="如 S/M/L"></td><td><input type="number" value="'+escAttr(qty)+'" placeholder="数量" min="0"></td><td><button class="qc-btn-icon danger" onclick="this.closest(\'tr\').remove();renumberSize();">&times;</button></td>';
-  tbody.appendChild(tr);
+// ==================== 下拉数据源：通讯录 + 订单款号 ====================
+function populateContactDatalists(){
+  try{
+    var contacts = App.store.get('contacts', []) || [];
+    var factories = contacts.filter(function(c){ return c && c.type === '服装厂'; })
+      .map(function(c){ return (c.company || c.name || '').trim(); })
+      .filter(function(s){ return s; });
+    var colleagues = contacts.filter(function(c){ return c && c.type === '同事'; })
+      .map(function(c){ return (c.name || '').trim(); })
+      .filter(function(s){ return s; });
+    var fdl = document.getElementById('factoryList');
+    if(fdl) fdl.innerHTML = unique(factories).map(function(s){ return '<option value="'+escAttr(s)+'">'; }).join('');
+    var qdl = document.getElementById('qcNameList');
+    if(qdl) qdl.innerHTML = unique(colleagues).map(function(s){ return '<option value="'+escAttr(s)+'">'; }).join('');
+  }catch(_e){}
 }
-function renumberSize(){
-  document.querySelectorAll('#sizeTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+function populateStyleNoDatalist(){
+  try{
+    var orders = App.store.get('orders', []) || [];
+    var styleNos = orders.map(function(o){ return (o.styleNo || '').trim(); }).filter(function(s){ return s; });
+    var dl = document.getElementById('styleNoList');
+    if(dl) dl.innerHTML = unique(styleNos).map(function(s){ return '<option value="'+escAttr(s)+'">'; }).join('');
+  }catch(_e){}
+}
+function unique(arr){ var seen = {}; var out = []; arr.forEach(function(s){ if(!seen[s]){ seen[s] = true; out.push(s); } }); return out; }
+
+// 根据款号查找匹配的订单
+function findOrdersByStyleNo(styleNo){
+  if(!styleNo) return [];
+  try{
+    var orders = App.store.get('orders', []) || [];
+    return orders.filter(function(o){
+      return (o.styleNo || '').trim().toLowerCase() === String(styleNo).trim().toLowerCase();
+    });
+  }catch(_e){ return []; }
+}
+function findOrderByNo(orderNo, styleNo){
+  if(!orderNo) return null;
+  try{
+    var orders = App.store.get('orders', []) || [];
+    var matched = orders.filter(function(o){
+      return (o.orderNo || '').trim().toLowerCase() === String(orderNo).trim().toLowerCase();
+    });
+    if(styleNo){
+      matched = matched.filter(function(o){
+        return (o.styleNo || '').trim().toLowerCase() === String(styleNo).trim().toLowerCase();
+      });
+    }
+    return matched[0] || null;
+  }catch(_e){ return null; }
+}
+
+// ==================== 款号 → 订单号 + 尺寸表 联动 ====================
+function onStyleNoChange(){
+  var sn = val('styleNo');
+  // 订单号 datalist
+  var matched = findOrdersByStyleNo(sn);
+  var odl = document.getElementById('orderNoList');
+  if(odl){
+    var seen = {};
+    var opts = [];
+    matched.forEach(function(o){
+      var v = (o.orderNo || '').trim();
+      if(v && !seen[v]){ seen[v] = true; opts.push('<option value="'+escAttr(v)+'">'); }
+    });
+    odl.innerHTML = opts.join('');
+  }
+  // 唯一订单：自动填入订单号
+  var uniqueOrderNos = [];
+  var seen2 = {};
+  matched.forEach(function(o){
+    var v = (o.orderNo || '').trim();
+    if(v && !seen2[v]){ seen2[v] = true; uniqueOrderNos.push(v); }
+  });
+  if(uniqueOrderNos.length === 1){
+    var oEl = document.getElementById('orderNo');
+    if(oEl && oEl.value !== uniqueOrderNos[0]){
+      oEl.value = uniqueOrderNos[0];
+    }
+  }
+  refreshSizeMatrix();
+  refreshStyleImageFromCache(sn);
+}
+
+function onOrderNoChange(){
+  refreshSizeMatrix();
+}
+
+// 从订单 sizeMatrix 渲染只读尺寸数量表
+function refreshSizeMatrix(){
+  var container = document.getElementById('sizeTableContainer');
+  if(!container) return;
+  var sn = val('styleNo'), on = val('orderNo');
+  if(!sn || !on){
+    container.innerHTML = '<div style="padding:12px;text-align:center;color:var(--qc-text-light);font-size:12px;background:var(--qc-gray-light);border:1px dashed var(--qc-border);border-radius:4px;">输入款号与订单号后自动加载</div>';
+    return;
+  }
+  var order = findOrderByNo(on, sn);
+  if(!order || !order.sizeMatrix || !order.sizeMatrix.rows || order.sizeMatrix.rows.length === 0){
+    container.innerHTML = '<div style="padding:12px;text-align:center;color:var(--qc-text-light);font-size:12px;background:var(--qc-gray-light);border:1px dashed var(--qc-border);border-radius:4px;">该订单未配置尺寸矩阵</div>';
+    return;
+  }
+  var sizes = order.sizeMatrix.sizes || [];
+  var rows = order.sizeMatrix.rows || [];
+  var html = '<table class="qc-sub-table" style="background:#fff;"><thead><tr>'+
+    '<th style="width:30px;">#</th><th>部位</th><th>Ass.Type</th><th>Color Code</th><th>Color</th><th>箱数</th>' +
+    sizes.map(function(s){ return '<th style="text-align:center;min-width:50px;">'+esc(s)+'</th>'; }).join('') +
+    '<th style="text-align:center;">合计</th></tr></thead><tbody>';
+  var grandTotal = 0;
+  rows.forEach(function(row, idx){
+    var cartons = parseInt(row.noOfCartons) || 0;
+    var rowTotal = 0;
+    var qtyCells = sizes.map(function(s){
+      var q = parseInt((row.quantities || {})[s]) || 0;
+      var lineTotal = (row.assType === 'SOLID') ? q : q * cartons;
+      rowTotal += lineTotal;
+      return '<td style="text-align:center;">'+(q > 0 ? q : '-')+'</td>';
+    }).join('');
+    grandTotal += rowTotal;
+    html += '<tr>' +
+      '<td style="text-align:center;">'+(idx+1)+'</td>' +
+      '<td>'+esc(row.packageId || '-')+'</td>' +
+      '<td>'+esc(row.assType || '-')+'</td>' +
+      '<td>'+esc(row.colorCode || '-')+'</td>' +
+      '<td>'+esc(row.colorName || '-')+'</td>' +
+      '<td style="text-align:center;">'+(cartons || '-')+'</td>' +
+      qtyCells +
+      '<td style="text-align:center;font-weight:600;">'+rowTotal+'</td>' +
+      '</tr>';
+  });
+  html += '<tr style="background:#f8f9fa;font-weight:600;"><td colspan="'+(6+sizes.length)+'" style="text-align:right;">总计</td><td style="text-align:center;">'+grandTotal+'</td></tr>';
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// 收集尺寸表快照（保存时存档，详情弹窗中回显用）
+function collectSizeSnapshot(){
+  var sn = val('styleNo'), on = val('orderNo');
+  if(!sn || !on) return null;
+  var order = findOrderByNo(on, sn);
+  if(!order || !order.sizeMatrix) return null;
+  var sizes = order.sizeMatrix.sizes || [];
+  var rows = (order.sizeMatrix.rows || []).map(function(r){
+    var cartons = parseInt(r.noOfCartons) || 0;
+    var qtyPerSize = {};
+    var rowTotal = 0;
+    (sizes || []).forEach(function(s){
+      var q = parseInt((r.quantities || {})[s]) || 0;
+      var lineTotal = (r.assType === 'SOLID') ? q : q * cartons;
+      qtyPerSize[s] = q;
+      rowTotal += lineTotal;
+    });
+    return {
+      packageId: r.packageId || '', assType: r.assType || '',
+      colorCode: r.colorCode || '', colorName: r.colorName || '',
+      noOfCartons: cartons, quantities: qtyPerSize, rowTotal: rowTotal
+    };
+  });
+  return { sizes: sizes, rows: rows };
+}
+
+// 兼容旧数据的尺寸字符串
+function formatSizeSnapshot(snapshot){
+  if(!snapshot) return '';
+  if(Array.isArray(snapshot)){
+    // 旧格式：[{size, qty}]
+    return snapshot.map(function(s){ return s.size+':'+s.qty; }).join(' ');
+  }
+  if(snapshot.rows && snapshot.sizes){
+    return snapshot.rows.map(function(r){
+      var head = [r.packageId, r.assType, r.colorCode, r.colorName].filter(function(s){ return s; }).join('|');
+      var qty = (snapshot.sizes || []).map(function(s){ return s+'='+(r.quantities[s]||0); }).join(' ');
+      return '['+head+'] '+qty;
+    }).join(' ; ');
+  }
+  return '';
+}
+
+// ==================== 问题图片：上传/预览/清除（全部走 Supabase 存储） ====================
+// 三个固定问题图片块：wFirstIssue / wBulkIssue / gMatIssue
+// 每个块的状态：{ path, name, base64, date }
+var _issueImages = {
+  wFirstIssue: { path: '', name: '', base64: null, date: '' },
+  wBulkIssue:  { path: '', name: '', base64: null, date: '' },
+  gMatIssue:   { path: '', name: '', base64: null, date: '' }
+};
+var _issueRowImages = []; // 生产中问题表格每行的图片状态，按行索引对应
+
+// 初始化/渲染一个固定问题图片块
+function renderIssueImageBlock(prefix){
+  var container = document.getElementById(prefix + 'Block');
+  if(!container) return;
+  var st = _issueImages[prefix] || { path:'', name:'', base64:null, date:'' };
+  var hasImg = !!(st.path || st.base64);
+  // 不把 base64 嵌入 HTML 属性，避免 HTML 体积过大；点击事件通过 JS 绑定
+  container.innerHTML =
+    '<div class="qc-issue-img-row">' +
+      '<div class="qc-issue-img-preview" id="' + prefix + 'PreviewBox" style="' + (hasImg ? '' : 'display:none;') + '">' +
+        '<img id="' + prefix + 'PreviewImg">' +
+        '<button class="remove-btn" onclick="clearIssueImage(\'' + prefix + '\')">&times;</button>' +
+      '</div>' +
+      '<div class="qc-issue-img-actions">' +
+        '<div class="btn-row">' +
+          '<button class="qc-btn qc-btn-outline qc-btn-sm" onclick="document.getElementById(\'' + prefix + 'FileInput\').click()">💻 本地上传</button>' +
+          '<button class="qc-btn qc-btn-outline qc-btn-sm" id="' + prefix + 'NasBtn" onclick="nasPickIssueImage(\'' + prefix + '\')">☁ NAS</button>' +
+        '</div>' +
+        '<div class="date-row"><label>拍照日期</label><input type="date" id="' + prefix + 'ImgDate" value="' + escAttr(st.date) + '" onchange="setIssueImageDate(\'' + prefix + '\', this.value)"></div>' +
+        '<div class="qc-issue-img-status" id="' + prefix + 'ImgStatus"></div>' +
+      '</div>' +
+    '</div>' +
+    '<input type="file" id="' + prefix + 'FileInput" accept="image/*" style="display:none;" onchange="onIssueFileChange(event, \'' + prefix + '\')">';
+  // 渲染后通过 JS 绑定图片源与点击事件
+  var box = document.getElementById(prefix + 'PreviewBox');
+  var img = document.getElementById(prefix + 'PreviewImg');
+  if(hasImg && img && box){
+    if(st.base64){
+      img.src = st.base64;
+      img.onclick = function(){ openImageFullscreen(st.base64); };
+      box.style.display = 'block';
+    } else if(st.path){
+      showIssueImagePreviewByPath(prefix, st.path, st.name);
+    }
+  }
+}
+
+function setIssueImageDate(prefix, date){
+  if(!_issueImages[prefix]) _issueImages[prefix] = { path:'', name:'', base64:null, date:'' };
+  _issueImages[prefix].date = date;
+}
+
+// 本地文件选择 → 上传
+function onIssueFileChange(e, prefix){
+  var file = e.target.files && e.target.files[0];
+  if(!file) return;
+  uploadIssueImageFile(prefix, file);
+  e.target.value = '';
+}
+
+// 上传逻辑：强制走 Supabase，失败时 base64 兜底（带警告）
+async function uploadIssueImageFile(prefix, file){
+  var statusEl = document.getElementById(prefix + 'ImgStatus');
+  var fmtSize = (App && App.utils && typeof App.utils.formatSize === 'function') ? App.utils.formatSize(file.size) : (file.size + ' B');
+  if(file.size > 10 * 1024 * 1024){
+    if(statusEl) statusEl.textContent = '⚠ 图片超过 10MB 限制（' + fmtSize + '）';
+    try { if(App && App.toast) App.toast('图片超过 10MB 限制', 'error'); } catch(_) {}
+    return;
+  }
+  if(statusEl) statusEl.textContent = '⏳ 上传中：' + (file.name || '');
+  // 先做本地预览（base64）
+  var base64DataUrl = null;
+  try {
+    base64DataUrl = await fileToDataUrl(file);
+    var box = document.getElementById(prefix + 'PreviewBox');
+    var img = document.getElementById(prefix + 'PreviewImg');
+    if(box && img){
+      img.removeAttribute('data-img-path');
+      img.src = base64DataUrl;
+      img.onclick = function(){ openImageFullscreen(base64DataUrl); };
+      box.style.display = 'block';
+    }
+  } catch(_e) {}
+  // 强制 Supabase 上传
+  if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
+    _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
+    if(statusEl) statusEl.textContent = '⚠ 云端模块未就绪，仅本地保存（其他电脑看不到）';
+    try { if(App && App.toast) App.toast('云端上传模块未就绪，图片仅本地保存', 'warning'); } catch(_) {}
+    return;
+  }
+  try {
+    // 注意：问题图片不传 styleNo，避免污染 StyleImgCache（否则问题图会被当作款式图共享给其它模块）
+    // 路径策略：{userId}/qcFieldIssue/{uuid}-{name}，其它电脑仍可通过 signed URL 读取
+    var result = await SupabaseSubmit.uploadPicture(file, 'qcFieldIssue', null);
+    if(result && result.path){
+      _issueImages[prefix] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: _issueImages[prefix]?.date || '' };
+      if(statusEl) statusEl.textContent = '✓ 上传成功：' + _issueImages[prefix].name;
+      showIssueImagePreviewByPath(prefix, result.path, _issueImages[prefix].name);
+      try { if(App && App.toast) App.toast('✅ 上传成功', 'success'); } catch(_) {}
+    } else {
+      _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
+      if(statusEl) statusEl.textContent = '⚠ 云端上传失败，仅本地保存（其他电脑看不到）';
+      try { if(App && App.toast) App.toast('云端上传失败，图片仅本地保存', 'warning'); } catch(_) {}
+    }
+  } catch(err){
+    _issueImages[prefix] = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: _issueImages[prefix]?.date || '' };
+    if(statusEl) statusEl.textContent = '⚠ 上传失败：' + ((err && err.message) || err);
+    try { if(App && App.toast) App.toast('上传失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
+  }
+}
+
+// NAS 选择问题图片
+async function nasPickIssueImage(prefix){
+  var btn = document.getElementById(prefix + 'NasBtn');
+  if(!window.App || typeof App.pickFromNas !== 'function'){
+    try { if(App && App.toast) App.toast('云盘 NAS 模块未加载', 'error'); } catch(_) {}
+    return;
+  }
+  try {
+    if(btn){ btn.disabled = true; btn.style.opacity = 0.6; btn.textContent = '⏳ 选择中...'; }
+    var picks = await App.pickFromNas({ multi:false, filter:'images', view:'large' });
+    if(!picks || picks.length === 0) return;
+    var pick = picks[0];
+    if(btn) btn.textContent = '⬇ 下载中...';
+    var got = await App.utils.nasFetchAsFile(pick.logicPath);
+    await uploadIssueImageFile(prefix, got.file);
+    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入：' + pick.name, 'success'); } catch(_) {}
+  } catch(err){
+    try { if(App && App.toast) App.toast('NAS 选择失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
+  } finally {
+    if(btn){ btn.disabled = false; btn.style.opacity = 1; btn.textContent = '☁ NAS'; }
+  }
+}
+
+// 通过路径显示问题图片预览
+function showIssueImagePreviewByPath(prefix, path, name){
+  var box = document.getElementById(prefix + 'PreviewBox');
+  var img = document.getElementById(prefix + 'PreviewImg');
+  var statusEl = document.getElementById(prefix + 'ImgStatus');
+  if(!box || !img) return;
+  if(!path){ box.style.display = 'none'; return; }
+  // base64 直接 src
+  if(typeof path === 'string' && path.indexOf('data:image') === 0){
+    img.removeAttribute('data-img-path');
+    img.src = path;
+    img.onclick = function(){ openImageFullscreen(path); };
+    box.style.display = 'block';
+    return;
+  }
+  // Supabase path → signed URL
+  img.setAttribute('data-img-path', path);
+  img.src = '';
+  img.onclick = function(){ openImageFullscreenByPath(path); };
+  box.style.display = 'block';
+  if(statusEl && name) statusEl.textContent = '⏳ 加载图片...';
+  if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+    SupabaseSubmit.getSignedUrl(path).then(function(url){
+      if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
+      else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
+    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+  } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+    App.utils.getSignedUrl(path).then(function(url){
+      if(url){ img.src = url; if(statusEl && name) statusEl.textContent = '✓ ' + name; }
+      else if(statusEl){ statusEl.textContent = '⚠ 图片加载失败'; }
+    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+  } else if(statusEl){ statusEl.textContent = '⚠ 图片加载模块未就绪'; }
+}
+
+// 清除一个固定问题图片
+function clearIssueImage(prefix){
+  var keepDate = _issueImages[prefix] ? _issueImages[prefix].date : '';
+  _issueImages[prefix] = { path: '', name: '', base64: null, date: keepDate };
+  var box = document.getElementById(prefix + 'PreviewBox');
+  var img = document.getElementById(prefix + 'PreviewImg');
+  var statusEl = document.getElementById(prefix + 'ImgStatus');
+  if(box) box.style.display = 'none';
+  if(img){ img.removeAttribute('data-img-path'); img.src = ''; }
+  if(statusEl) statusEl.textContent = '';
+  var input = document.getElementById(prefix + 'FileInput');
+  if(input) input.value = '';
+}
+
+// 初始化固定问题图片块（依据记录数据回填）
+function initIssueImageBlocks(r){
+  var w = r && r.washing || {};
+  var g = r && r.garment || {};
+  _issueImages.wFirstIssue = {
+    path: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.path) || '',
+    name: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.name) || '',
+    base64: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.path && w.firstBatch.image.path.indexOf('data:image')===0) ? w.firstBatch.image.path : null,
+    date: (w.firstBatch && w.firstBatch.image && w.firstBatch.image.date) || ''
+  };
+  _issueImages.wBulkIssue = {
+    path: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.path) || '',
+    name: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.name) || '',
+    base64: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.path && w.bulkWashing.image.path.indexOf('data:image')===0) ? w.bulkWashing.image.path : null,
+    date: (w.bulkWashing && w.bulkWashing.image && w.bulkWashing.image.date) || ''
+  };
+  _issueImages.gMatIssue = {
+    path: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.path) || '',
+    name: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.name) || '',
+    base64: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.path && g.materialsCheck.image.path.indexOf('data:image')===0) ? g.materialsCheck.image.path : null,
+    date: (g.materialsCheck && g.materialsCheck.image && g.materialsCheck.image.date) || ''
+  };
+  ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){
+    renderIssueImageBlock(prefix);
+    var st = _issueImages[prefix];
+    if(st.path && !st.base64){
+      showIssueImagePreviewByPath(prefix, st.path, st.name);
+    }
+    var dateEl = document.getElementById(prefix + 'ImgDate');
+    if(dateEl) dateEl.value = st.date || '';
+  });
+}
+
+// 重置所有问题图片块
+function resetIssueImageBlocks(){
+  _issueImages = {
+    wFirstIssue: { path: '', name: '', base64: null, date: '' },
+    wBulkIssue:  { path: '', name: '', base64: null, date: '' },
+    gMatIssue:   { path: '', name: '', base64: null, date: '' }
+  };
+  _issueRowImages = [];
+  ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){ renderIssueImageBlock(prefix); });
+}
+
+// 收集固定问题图片数据（保存时用）
+function collectIssueImages(){
+  var out = {};
+  ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){
+    var st = _issueImages[prefix] || {};
+    out[prefix] = {
+      path: st.path || st.base64 || '',
+      name: st.name || '',
+      date: st.date || ''
+    };
+  });
+  return out;
+}
+
+// ==================== 生产中问题表格行的图片 ====================
+function setIssueRowImage(idx, imageData){
+  _issueRowImages[idx] = imageData || { path:'', name:'', base64:null, date:'' };
+  refreshIssueRowImageCell(idx);
+}
+function refreshIssueRowImageCell(idx){
+  var tbody = document.getElementById('issueTableBody');
+  if(!tbody || !tbody.children[idx]) return;
+  var cell = tbody.children[idx].querySelector('.qc-issue-table-img');
+  if(!cell) return;
+  var st = _issueRowImages[idx] || { path:'', base64:null };
+  if(st.path || st.base64){
+    var src = st.base64 || '';
+    if(!src && st.path){
+      // 走 signed URL
+      if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+        SupabaseSubmit.getSignedUrl(st.path).then(function(url){
+          var im = cell.querySelector('img');
+          if(im && url) im.src = url;
+        }).catch(function(){});
+      } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+        App.utils.getSignedUrl(st.path).then(function(url){
+          var im = cell.querySelector('img');
+          if(im && url) im.src = url;
+        }).catch(function(){});
+      }
+    } else {
+      // base64 直接显示
+      var im = cell.querySelector('img');
+      if(im) im.src = src;
+    }
+    cell.innerHTML = (src ? '<img src="'+escAttr(src)+'">' : '<img alt="">') + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
+    if(src){
+      var im2 = cell.querySelector('img');
+      if(im2) im2.onclick = function(e){ e.stopPropagation(); openImageFullscreen(src); };
+    } else {
+      var im3 = cell.querySelector('img');
+      if(im3){
+        im3.onclick = function(e){ e.stopPropagation(); if(st.path) openImageFullscreenByPath(st.path); };
+        if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+          SupabaseSubmit.getSignedUrl(st.path).then(function(url){ if(im3 && url) im3.src = url; }).catch(function(){});
+        }
+      }
+    }
+  } else {
+    cell.innerHTML = '📷';
+  }
+}
+function clearIssueRowImage(idx){
+  var keepDate = (_issueRowImages[idx] && _issueRowImages[idx].date) || '';
+  _issueRowImages[idx] = { path:'', name:'', base64:null, date: keepDate };
+  refreshIssueRowImageCell(idx);
+}
+async function uploadIssueRowImage(idx, file){
+  var statusEl = document.getElementById('issueRowImgStatus_' + idx);
+  if(!file) return;
+  if(file.size > 10 * 1024 * 1024){
+    try { if(App && App.toast) App.toast('图片超过 10MB 限制', 'error'); } catch(_) {}
+    return;
+  }
+  var base64DataUrl = null;
+  try { base64DataUrl = await fileToDataUrl(file); } catch(_e) {}
+  // 先用 base64 占位预览
+  _issueRowImages[idx] = { path: '', name: file.name || '', base64: base64DataUrl, date: (_issueRowImages[idx] && _issueRowImages[idx].date) || '' };
+  refreshIssueRowImageCell(idx);
+  // 强制 Supabase 上传
+  if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
+    if(statusEl) statusEl.textContent = '⚠ 云端模块未就绪，仅本地';
+    return;
+  }
+  try {
+    // 注意：问题图片不传 styleNo，避免污染 StyleImgCache
+    var result = await SupabaseSubmit.uploadPicture(file, 'qcFieldIssue', null);
+    if(result && result.path){
+      var keepDate = (_issueRowImages[idx] && _issueRowImages[idx].date) || '';
+      _issueRowImages[idx] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: keepDate };
+      refreshIssueRowImageCell(idx);
+      try { if(App && App.toast) App.toast('✅ 问题图片上传成功', 'success'); } catch(_) {}
+    } else {
+      if(statusEl) statusEl.textContent = '⚠ 上传失败，已用本地';
+    }
+  } catch(err){
+    if(statusEl) statusEl.textContent = '⚠ 上传失败：' + ((err && err.message) || err);
+  }
+}
+function onIssueRowFileChange(e, idx){
+  var file = e.target.files && e.target.files[0];
+  if(!file) return;
+  uploadIssueRowImage(idx, file);
+  e.target.value = '';
+}
+async function nasPickIssueRowImage(idx){
+  if(!window.App || typeof App.pickFromNas !== 'function'){
+    try { if(App && App.toast) App.toast('云盘 NAS 模块未加载', 'error'); } catch(_) {}
+    return;
+  }
+  try {
+    var picks = await App.pickFromNas({ multi:false, filter:'images', view:'large' });
+    if(!picks || picks.length === 0) return;
+    var pick = picks[0];
+    var got = await App.utils.nasFetchAsFile(pick.logicPath);
+    await uploadIssueRowImage(idx, got.file);
+    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入：' + pick.name, 'success'); } catch(_) {}
+  } catch(err){
+    try { if(App && App.toast) App.toast('NAS 选择失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
+  }
+}
+
+// 全屏查看图片
+function openImageFullscreen(dataUrl){
+  if(!dataUrl) return;
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px;';
+  ov.onclick = function(){ document.body.removeChild(ov); };
+  var im = document.createElement('img');
+  im.src = dataUrl;
+  im.style.cssText = 'max-width:95%;max-height:95%;object-fit:contain;border-radius:6px;';
+  ov.appendChild(im);
+  document.body.appendChild(ov);
+}
+function openImageFullscreenByPath(path){
+  if(!path) return;
+  if(typeof path === 'string' && path.indexOf('data:image') === 0){ openImageFullscreen(path); return; }
+  if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+    SupabaseSubmit.getSignedUrl(path).then(function(url){
+      if(url) openImageFullscreen(url);
+    }).catch(function(){});
+  } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+    App.utils.getSignedUrl(path).then(function(url){
+      if(url) openImageFullscreen(url);
+    }).catch(function(){});
+  }
 }
 
 // ==================== 上线记录 ====================
@@ -582,78 +1183,299 @@ function renumberOnline(){
 }
 
 // ==================== 问题记录 ====================
-function addIssueRow(date='',issue='',rect='',status='open',resolveDate=''){
+function addIssueRow(date='',issue='',rect='',status='open',resolveDate='', image){
   var tbody = document.getElementById('issueTableBody');
   var tr = document.createElement('tr');
-  var idx = tbody.children.length + 1;
-  tr.innerHTML = '<td>'+idx+'</td><td><input type="date" value="'+escAttr(date)+'"></td><td><input type="text" value="'+escAttr(issue)+'" placeholder="问题描述"></td><td><input type="text" value="'+escAttr(rect)+'" placeholder="整改措施"></td><td><select onchange="onIssueStatusChange(this)"><option value="open" '+(status==='open'?'selected':'')+'>未解决</option><option value="resolved" '+(status==='resolved'?'selected':'')+'>已解决</option></select></td><td><input type="date" value="'+escAttr(resolveDate)+'"></td><td><button class="qc-btn-icon danger" onclick="this.closest(\'tr\').remove();renumberIssue();">&times;</button></td>';
+  var idx = tbody.children.length;
+  tr.innerHTML =
+    '<td>'+(idx+1)+'</td>' +
+    '<td><input type="date" value="'+escAttr(date)+'"></td>' +
+    '<td><input type="text" value="'+escAttr(issue)+'" placeholder="问题描述"></td>' +
+    '<td><input type="text" value="'+escAttr(rect)+'" placeholder="整改措施"></td>' +
+    '<td><select onchange="onIssueStatusChange(this)"><option value="open" '+(status==='open'?'selected':'')+'>未解决</option><option value="resolved" '+(status==='resolved'?'selected':'')+'>已解决</option></select></td>' +
+    '<td><input type="date" value="'+escAttr(resolveDate)+'"></td>' +
+    '<td>' +
+      '<div class="qc-issue-table-img" onclick="openIssueRowImagePicker('+idx+')">📷</div>' +
+      '<input type="file" id="issueRowFileInput_'+idx+'" accept="image/*" style="display:none;" onchange="onIssueRowFileChange(event, '+idx+')">' +
+      '<div class="qc-issue-img-status" id="issueRowImgStatus_'+idx+'" style="font-size:10px;"></div>' +
+    '</td>' +
+    '<td><button class="qc-btn-icon danger" onclick="removeIssueRow('+idx+')">&times;</button></td>';
   tbody.appendChild(tr);
+  // 初始化该行图片状态
+  if(image && typeof image === 'object'){
+    var p = image.path || '';
+    _issueRowImages[idx] = {
+      path: p,
+      name: image.name || '',
+      base64: (p && p.indexOf('data:image')===0) ? p : null,
+      date: image.date || ''
+    };
+  } else {
+    _issueRowImages[idx] = { path:'', name:'', base64:null, date:'' };
+  }
+  refreshIssueRowImageCell(idx);
+}
+function removeIssueRow(idx){
+  var tbody = document.getElementById('issueTableBody');
+  if(!tbody || !tbody.children[idx]) return;
+  if(!confirm('确认删除该问题？')) return;
+  // 先从 _issueRowImages 删除该索引，再删 DOM 行（保证后续索引对齐）
+  _issueRowImages.splice(idx, 1);
+  tbody.removeChild(tbody.children[idx]);
+  renumberIssue();
+}
+function rebuildIssueRowImages(){
+  // 仅用于 fillForm 重置后的兜底：以当前 DOM 行数为长度重排数组
+  var tbody = document.getElementById('issueTableBody');
+  if(!tbody) return;
+  var newArr = [];
+  for(var i = 0; i < tbody.children.length; i++){
+    newArr.push(_issueRowImages[i] || { path:'', name:'', base64:null, date:'' });
+  }
+  _issueRowImages = newArr;
+}
+function openIssueRowImagePicker(idx){
+  var input = document.getElementById('issueRowFileInput_'+idx);
+  if(input) input.click();
 }
 function renumberIssue(){
-  document.querySelectorAll('#issueTableBody tr').forEach((tr,i)=>{ tr.children[0].textContent = i+1; });
+  document.querySelectorAll('#issueTableBody tr').forEach((tr,i)=>{
+    tr.children[0].textContent = i+1;
+    // 同步该行的 input id 与图片状态 idx
+    var fileInput = tr.querySelector('input[type=file]');
+    if(fileInput){
+      var newId = 'issueRowFileInput_'+i;
+      if(fileInput.id !== newId){
+        fileInput.id = newId;
+        fileInput.setAttribute('onchange', 'onIssueRowFileChange(event, '+i+')');
+      }
+    }
+    var imgCell = tr.querySelector('.qc-issue-table-img');
+    if(imgCell){
+      imgCell.setAttribute('onclick', 'openIssueRowImagePicker('+i+')');
+    }
+  });
+  rebuildIssueRowImages();
 }
 function onIssueStatusChange(sel){
   // no-op, value read at save time
 }
 
-// ==================== 图片上传 ====================
-function handleImageUpload(e){
-  var file = e.target.files[0];
-  if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var img = new Image();
-    img.onload = function(){
-      var maxW = 400;
-      var w = img.width, h = img.height;
-      if(w > maxW){ h = h * maxW / w; w = maxW; }
-      var canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-      showImagePreview(dataUrl);
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+// 收集问题表格行（含图片）
+function collectIssueRows(){
+  var rows = [];
+  var tbody = document.getElementById('issueTableBody');
+  if(!tbody) return rows;
+  var trs = tbody.children;
+  for(var i = 0; i < trs.length; i++){
+    var inputs = trs[i].querySelectorAll('input[type=date], input[type=text]');
+    var sel = trs[i].querySelector('select');
+    var date = inputs[0] ? inputs[0].value : '';
+    var issue = inputs[1] ? inputs[1].value : '';
+    var rect = inputs[2] ? inputs[2].value : '';
+    var resolveDate = inputs[3] ? inputs[3].value : '';
+    if(!date && !issue && !rect) continue;
+    var img = _issueRowImages[i] || { path:'', name:'', base64:null, date:'' };
+    rows.push({
+      date: date,
+      issue: issue,
+      rectification: rect,
+      status: sel ? sel.value : 'open',
+      resolvedDate: resolveDate,
+      image: {
+        path: img.path || img.base64 || '',
+        name: img.name || '',
+        // 行图片无独立日期输入框：默认用行的"发现日期"，配合文字更直观
+        date: img.date || date || ''
+      }
+    });
+  }
+  return rows;
 }
-function showImagePreview(dataUrl){
-  var container = document.getElementById('imageContainer');
-  container.innerHTML = '<div class="preview-box"><img src="'+dataUrl+'" class="qc-image-preview"><button class="remove-img" onclick="removeImage()">&times;</button></div><div class="qc-image-upload" style="flex:1;" onclick="document.getElementById(\'styleImageInput\').click()"><div style="font-size:24px;">📷</div><div style="font-size:12px;color:#868e96;">点击更换图片</div></div>';
+
+// ==================== 款式图：StyleImgCache 共享 + 本地/NAS 上传 ====================
+var _currentStyleImage = { path: '', name: '', base64: null }; // 当前表单内图片信息
+
+// 从 StyleImgCache 拉取该款号的图片（跨模块共享）
+function refreshStyleImageFromCache(styleNo){
+  if(!styleNo){ clearCurrentImage(); return; }
+  if(!window.StyleImgCache){ return; }
+  var entry = StyleImgCache.resolve(styleNo);
+  if(entry && (entry.styleImg_path || entry.fullImg_path)){
+    var path = entry.styleImg_path || entry.fullImg_path;
+    var name = entry.styleImg_name || entry.fullImg_name || '';
+    _currentStyleImage = { path: path, name: name, base64: null };
+    showImagePreviewByPath(path, name);
+  } else {
+    clearCurrentImage();
+  }
 }
-function removeImage(){
-  var container = document.getElementById('imageContainer');
-  if(!container) return;
-  container.innerHTML = '<div class="qc-image-upload" id="imageUpload" onclick="document.getElementById(\'styleImageInput\').click()"><div style="font-size:24px;color:#adb5bd;">📷</div><div style="font-size:12px;color:#868e96;">点击上传款式图</div></div>';
+
+// 通过路径显示图片：base64 直接 src；Supabase path 走 getSignedUrl
+function showImagePreviewByPath(path, name){
+  var box = document.getElementById('imagePreviewBox');
+  var img = document.getElementById('styleImagePreview');
+  var statusEl = document.getElementById('imageStatus');
+  if(!box || !img) return;
+  if(!path){ clearCurrentImage(); return; }
+  // base64 data URL
+  if(typeof path === 'string' && path.indexOf('data:image') === 0){
+    img.src = path;
+    box.style.display = 'block';
+    if(statusEl) statusEl.textContent = '✓ 已加载图片' + (name ? '：'+name : '');
+    return;
+  }
+  // Supabase path → signed URL
+  img.src = '';
+  box.style.display = 'block';
+  if(statusEl) statusEl.textContent = '⏳ 加载图片中...';
+  if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+    SupabaseSubmit.getSignedUrl(path).then(function(url){
+      if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
+      else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
+    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+  } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+    App.utils.getSignedUrl(path).then(function(url){
+      if(url){ img.src = url; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
+      else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
+    }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+  } else {
+    if(statusEl) statusEl.textContent = '⚠ 图片加载模块未就绪';
+  }
+}
+
+function clearCurrentImage(){
+  _currentStyleImage = { path: '', name: '', base64: null };
+  var box = document.getElementById('imagePreviewBox');
+  var img = document.getElementById('styleImagePreview');
+  var statusEl = document.getElementById('imageStatus');
+  if(box) box.style.display = 'none';
+  if(img) img.src = '';
+  if(statusEl) statusEl.textContent = '';
   var input = document.getElementById('styleImageInput');
   if(input) input.value = '';
 }
+
+// 本地电脑上传
+function handleImageUpload(e){
+  var file = e.target.files && e.target.files[0];
+  if(!file) return;
+  uploadStyleImageFile(file);
+  e.target.value = '';
+}
+
+// 共享上传逻辑：上传到 Supabase → 写入 StyleImgCache
+async function uploadStyleImageFile(file){
+  var statusEl = document.getElementById('imageStatus');
+  var styleNo = val('styleNo');
+  if(!styleNo){
+    if(statusEl) statusEl.textContent = '⚠ 请先输入款号再上传图片';
+    try { if(App && App.toast) App.toast('请先输入款号再上传图片', 'warning'); } catch(_) {}
+    return;
+  }
+  var fmtSize = (App && App.utils && typeof App.utils.formatSize === 'function') ? App.utils.formatSize(file.size) : (file.size + ' B');
+  if(file.size > 10 * 1024 * 1024){
+    if(statusEl) statusEl.textContent = '⚠ 图片超过 10MB 限制（当前 ' + fmtSize + '）';
+    try { if(App && App.toast) App.toast('图片超过 10MB 限制', 'error'); } catch(_) {}
+    return;
+  }
+  if(statusEl) statusEl.textContent = '⏳ 上传中：' + (file.name || '');
+  // 1) 先用本地预览
+  var base64DataUrl = null;
+  try {
+    base64DataUrl = await fileToDataUrl(file);
+    var box = document.getElementById('imagePreviewBox');
+    var img = document.getElementById('styleImagePreview');
+    if(box && img){ img.src = base64DataUrl; box.style.display = 'block'; }
+  } catch(_e) {}
+  // 2) 尝试 Supabase 上传
+  if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
+    // 上传模块未就绪 → base64 兜底
+    _currentStyleImage = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl };
+    if(statusEl) statusEl.textContent = '⚠ 云端上传模块未就绪，已用本地图片';
+    return;
+  }
+  try {
+    var result = await SupabaseSubmit.uploadPicture(file, 'qcField', styleNo);
+    if(result && result.path){
+      _currentStyleImage = { path: result.path, name: result.fileName || file.name || '', base64: null };
+      if(statusEl) statusEl.textContent = '✓ 上传成功：' + _currentStyleImage.name;
+      // 同步到共享缓存
+      if(window.StyleImgCache){
+        StyleImgCache.updateIfChanged(styleNo, {
+          styleImg_path: result.path,
+          styleImg_name: _currentStyleImage.name
+        });
+      }
+      // 用 signed URL 替换 base64 预览
+      showImagePreviewByPath(result.path, _currentStyleImage.name);
+      try { if(App && App.toast) App.toast('✅ 上传成功', 'success'); } catch(_) {}
+    } else {
+      _currentStyleImage = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl };
+      if(statusEl) statusEl.textContent = '⚠ 云端上传失败，已用本地图片';
+      try { if(App && App.toast) App.toast('云端上传失败，图片仅本地保存', 'warning'); } catch(_) {}
+    }
+  } catch(err){
+    _currentStyleImage = { path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl };
+    if(statusEl) statusEl.textContent = '⚠ 上传失败：' + ((err && err.message) || err);
+    try { if(App && App.toast) App.toast('上传失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
+  }
+}
+
+// 从云盘 NAS 选择图片
+async function uploadStyleImageFromNas(){
+  var styleNo = val('styleNo');
+  if(!styleNo){
+    var st = document.getElementById('imageStatus');
+    if(st) st.textContent = '⚠ 请先输入款号再选择图片';
+    try { if(App && App.toast) App.toast('请先输入款号再从 NAS 选择图片', 'warning'); } catch(_) {}
+    return;
+  }
+  var btn = document.getElementById('nasUploadBtn');
+  if(!window.App || typeof App.pickFromNas !== 'function'){
+    try { if(App && App.toast) App.toast('云盘 NAS 模块未加载', 'error'); } catch(_) {}
+    return;
+  }
+  try{
+    if(btn){ btn.disabled = true; btn.style.opacity = 0.6; btn.textContent = '⏳ 等待 NAS 选择...'; }
+    var picks = await App.pickFromNas({ multi:false, filter:'images', view:'large' });
+    if(!picks || picks.length === 0) return;
+    var pick = picks[0];
+    if(btn) btn.textContent = '⬇ 下载中「' + pick.name + '」...';
+    var got = await App.utils.nasFetchAsFile(pick.logicPath);
+    await uploadStyleImageFile(got.file);
+    try { if(App && App.toast) App.toast('✅ 已从 NAS 注入：' + pick.name, 'success'); } catch(_) {}
+  } catch(err){
+    try { if(App && App.toast) App.toast('NAS 选择失败：' + ((err && err.message) || err), 'error'); } catch(_) {}
+  } finally {
+    if(btn){ btn.disabled = false; btn.style.opacity = 1; btn.textContent = '☁ 从云盘 NAS 选择'; }
+  }
+}
+
+function fileToDataUrl(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(ev){ resolve(ev.target.result); };
+    reader.onerror = function(err){ reject(err); };
+    reader.readAsDataURL(file);
+  });
+}
+
+// 获取当前表单图片路径（保存到 record.styleImage 时使用）
 function getCurrentImage(){
-  var img = document.querySelector('#imageContainer .qc-image-preview');
-  return img ? img.src : '';
+  return _currentStyleImage.path || _currentStyleImage.base64 || '';
 }
 
 // ==================== 表单收集/填充 ====================
 function collectFormData(){
-  var sizes = [];
-  document.querySelectorAll('#sizeTableBody tr').forEach(tr=>{
-    var inputs = tr.querySelectorAll('input');
-    if(inputs[0] && inputs[0].value) sizes.push({size:inputs[0].value, qty:parseInt(inputs[1].value)||0});
-  });
   var onlineRecords = [];
   document.querySelectorAll('#onlineTableBody tr').forEach(tr=>{
     var inputs = tr.querySelectorAll('input');
     if(inputs[0].value || inputs[1].value || inputs[2].value)
       onlineRecords.push({date:inputs[0].value, qcName:inputs[1].value, notes:inputs[2].value});
   });
-  var productionIssues = [];
-  document.querySelectorAll('#issueTableBody tr').forEach(tr=>{
-    var inputs = tr.querySelectorAll('input');
-    var sel = tr.querySelector('select');
-    if(inputs[0].value || inputs[1].value || inputs[2].value)
-      productionIssues.push({date:inputs[0].value, issue:inputs[1].value, rectification:inputs[2].value, status:sel?sel.value:'open', resolvedDate:inputs[3]?inputs[3].value:''});
-  });
-
+  var productionIssues = collectIssueRows();
+  var issueImgs = collectIssueImages();
   var data = {
     id: editingId || genId(),
     factory: val('factory'),
@@ -662,19 +1484,19 @@ function collectFormData(){
     styleNo: val('styleNo'),
     deliveryDate: val('deliveryDate'),
     styleImage: getCurrentImage(),
-    sizes: sizes,
+    sizeSnapshot: collectSizeSnapshot(),
     needWash: needWash,
     washing: needWash ? {
       sampleReceived: {date: val('w_sample_date'), confirmed: document.getElementById('w_sample_confirmed').checked},
-      firstBatch: {date: val('w_first_date'), quantity: val('w_first_qty'), issues: val('w_first_issues')},
+      firstBatch: {date: val('w_first_date'), quantity: val('w_first_qty'), issues: val('w_first_issues'), image: issueImgs.wFirstIssue},
       bulkMethod: {date: val('w_method_date'), method: val('w_method_text'), confirmed: document.getElementById('w_method_confirmed').checked},
-      bulkWashing: {date: val('w_bulk_date'), endDate: val('w_bulk_end'), totalBatches: parseInt(val('w_bulk_total'))||0, issues: val('w_bulk_issues'), rectification: val('w_bulk_rect')},
+      bulkWashing: {date: val('w_bulk_date'), endDate: val('w_bulk_end'), totalBatches: parseInt(val('w_bulk_total'))||0, issues: val('w_bulk_issues'), rectification: val('w_bulk_rect'), image: issueImgs.wBulkIssue},
       bulkResolved: {date: val('w_resolve_date'), resolved: document.getElementById('w_resolved').checked}
     } : null,
     garment: {
       sealedSample: {date: val('g_seal_date'), opinion: val('g_seal_opinion'), confirmed: document.getElementById('g_seal_confirmed').checked},
       ppSample: {date: val('g_pp_date'), confirmed: document.getElementById('g_pp_confirmed').checked, notes: val('g_pp_notes')},
-      materialsCheck: {date: val('g_mat_date'), status: val('g_mat_status'), notes: val('g_mat_notes')},
+      materialsCheck: {date: val('g_mat_date'), status: val('g_mat_status'), notes: val('g_mat_notes'), image: issueImgs.gMatIssue},
       cuttingDate: val('g_cut_date'),
       sewStartDate: val('g_sew_start'),
       sewEndDate: val('g_sew_end'),
@@ -699,22 +1521,22 @@ function fillForm(r){
   if(bannerText){ bannerText.textContent = (r.factory||'') + ' / ' + (r.styleNo||'') + ' / ' + (r.orderNo||''); }
   setVal('factory', r.factory);
   setVal('qcName', r.qcName);
-  setVal('orderNo', r.orderNo);
   setVal('styleNo', r.styleNo);
-  setVal('deliveryDate', r.deliveryDate);
-  // Image
+  // 款号变化 → 重新填充订单号 datalist + 尺寸表 + 共享款式图
+  onStyleNoChange();
+  setVal('orderNo', r.orderNo);
+  // 若订单号非空但尺寸表未自动加载（如订单已被删除），重新尝试
+  if(r.orderNo) refreshSizeMatrix();
+  // 优先用记录自身的图片（base64 或 path）；若没有则尝试从 StyleImgCache 回填
   if(r.styleImage){
-    showImagePreview(r.styleImage);
+    _currentStyleImage = { path: r.styleImage, name: '', base64: (r.styleImage.indexOf('data:image')===0 ? r.styleImage : null) };
+    showImagePreviewByPath(r.styleImage, '');
+  } else if(r.styleNo){
+    refreshStyleImageFromCache(r.styleNo);
   } else {
-    removeImage();
+    clearCurrentImage();
   }
-  // Sizes
-  document.getElementById('sizeTableBody').innerHTML = '';
-  if(r.sizes && r.sizes.length){
-    r.sizes.forEach(s => addSizeRow(s.size, s.qty));
-  } else {
-    addSizeRow();
-  }
+  setVal('deliveryDate', r.deliveryDate);
   // Wash
   needWash = !!r.needWash;
   document.getElementById('washToggle').classList.toggle('on', needWash);
@@ -760,11 +1582,14 @@ function fillForm(r){
   if(g?.onlineRecords?.length){
     g.onlineRecords.forEach(o => addOnlineRow(o.date, o.qcName, o.notes));
   }
-  // Issues
+  // Issues（含每行图片）
   document.getElementById('issueTableBody').innerHTML = '';
+  _issueRowImages = [];
   if(g?.productionIssues?.length){
-    g.productionIssues.forEach(i => addIssueRow(i.date, i.issue, i.rectification, i.status, i.resolvedDate));
+    g.productionIssues.forEach(i => addIssueRow(i.date, i.issue, i.rectification, i.status, i.resolvedDate, i.image));
   }
+  // 问题图片块回填
+  initIssueImageBlocks(r);
   switchTab('register');
   window.scrollTo(0,0);
 }
@@ -781,11 +1606,17 @@ function resetForm(){
   document.getElementById('washToggle').classList.remove('on');
   document.getElementById('washLabel').textContent = '否';
   document.getElementById('washSection').style.display = 'none';
-  document.getElementById('sizeTableBody').innerHTML = '';
   document.getElementById('onlineTableBody').innerHTML = '';
   document.getElementById('issueTableBody').innerHTML = '';
-  addSizeRow();
-  removeImage();
+  // 清空尺寸表与图片
+  var sizeContainer = document.getElementById('sizeTableContainer');
+  if(sizeContainer) sizeContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--qc-text-light);font-size:12px;background:var(--qc-gray-light);border:1px dashed var(--qc-border);border-radius:4px;">输入款号与订单号后自动加载</div>';
+  clearCurrentImage();
+  // 重置问题图片块
+  resetIssueImageBlocks();
+  // 重置 datalist
+  populateContactDatalists();
+  populateStyleNoDatalist();
 }
 
 function saveRecord(){
@@ -842,7 +1673,7 @@ function renderQueryTable(){
     var status = getOverallStatus(r);
     var pct = getProgressPercent(r);
     var issueCount = getIssueCount(r);
-    var sizeStr = (r.sizes||[]).map(s=>s.size+':'+s.qty).join(' ');
+    var sizeStr = formatSizeSnapshot(r.sizeSnapshot || r.sizes);
     var statusMap = {done:['已完成','qc-status-done'],progress:['进行中','qc-status-progress'],issue:['有问题','qc-status-issue'],overdue:['已逾期','qc-status-overdue'],pending:['未开始','qc-status-pending']};
     var pair = statusMap[status]||['未知','qc-status-pending'];
     html += '<tr>'+
@@ -851,7 +1682,7 @@ function renderQueryTable(){
       '<td>'+esc(r.orderNo)+'</td>'+
       '<td>'+esc(r.styleNo)+'</td>'+
       '<td>'+(r.deliveryDate||'-')+'</td>'+
-      '<td style="font-size:11px;">'+(esc(sizeStr)||'-')+'</td>'+
+      '<td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+escAttr(sizeStr)+'">'+(esc(sizeStr)||'-')+'</td>'+
       '<td><span class="qc-status-badge '+pair[1]+'">'+pair[0]+'</span></td>'+
       '<td class="qc-progress-cell"><div style="font-size:11px;">'+pct+'%</div><div class="qc-progress-bar-mini"><div class="qc-progress-bar-fill" style="width:'+pct+'%;"></div></div></td>'+
       '<td>'+(issueCount>0?'<span class="qc-status-badge qc-status-issue">'+issueCount+'</span>':'-')+'</td>'+
@@ -1139,7 +1970,32 @@ function showDetailModal(r){
     html += '<div class="qc-detail-section"><h3>📷 款式图</h3><img src="'+r.styleImage+'" style="max-width:200px;max-height:280px;border-radius:6px;border:1px solid var(--qc-border);"></div>';
   }
 
-  if(r.sizes && r.sizes.length){
+  // 尺寸数量表（兼容旧 sizes 格式与新 sizeSnapshot 格式）
+  var snapshot = r.sizeSnapshot;
+  if(snapshot && snapshot.rows && snapshot.sizes && snapshot.rows.length){
+    html += '<div class="qc-detail-section"><h3>📏 订单各尺寸数量</h3><table class="qc-detail-table"><thead><tr>'+
+      '<th>部位</th><th>Ass.Type</th><th>Color Code</th><th>Color</th><th>箱数</th>' +
+      snapshot.sizes.map(function(s){ return '<th style="text-align:center;">'+esc(s)+'</th>'; }).join('') +
+      '<th style="text-align:center;">合计</th></tr></thead><tbody>';
+    var grandTotal = 0;
+    snapshot.rows.forEach(function(row){
+      html += '<tr>'+
+        '<td>'+esc(row.packageId || '-')+'</td>'+
+        '<td>'+esc(row.assType || '-')+'</td>'+
+        '<td>'+esc(row.colorCode || '-')+'</td>'+
+        '<td>'+esc(row.colorName || '-')+'</td>'+
+        '<td style="text-align:center;">'+(row.noOfCartons || '-')+'</td>' +
+        snapshot.sizes.map(function(s){
+          var q = (row.quantities && row.quantities[s]) || 0;
+          return '<td style="text-align:center;">'+(q > 0 ? q : '-')+'</td>';
+        }).join('') +
+        '<td style="text-align:center;font-weight:600;">'+(row.rowTotal || 0)+'</td>' +
+        '</tr>';
+      grandTotal += (row.rowTotal || 0);
+    });
+    html += '<tr style="background:#f8f9fa;font-weight:600;"><td colspan="'+(5+snapshot.sizes.length)+'" style="text-align:right;">总计</td><td style="text-align:center;">'+grandTotal+'</td></tr>';
+    html += '</tbody></table></div>';
+  } else if(r.sizes && r.sizes.length){
     html += '<div class="qc-detail-section"><h3>📏 尺寸数量</h3><table class="qc-detail-table"><thead><tr><th>尺码</th><th>数量</th></tr></thead><tbody>';
     var total = 0;
     r.sizes.forEach(s=>{ html += '<tr><td>'+esc(s.size)+'</td><td>'+s.qty+'</td></tr>'; total += s.qty; });
@@ -1164,11 +2020,17 @@ function showDetailModal(r){
     html += detailItem('头缸时间', w.firstBatch?.date||'-');
     html += detailItem('头缸数量', w.firstBatch?.quantity||'-');
     html += detailItem('头缸问题', w.firstBatch?.issues||'-');
+    if(w.firstBatch?.image && w.firstBatch.image.path){
+      html += detailIssueImage(w.firstBatch.image, '头缸问题图片');
+    }
     html += detailItem('大货水洗方法', (w.bulkMethod?.confirmed?'✅ ':'')+ (w.bulkMethod?.method||'-'));
     html += detailItem('大货水洗时间', w.bulkWashing?.date||'-');
     html += detailItem('大货水洗结束', w.bulkWashing?.endDate||'-');
     html += detailItem('大货总缸数', w.bulkWashing?.totalBatches||'-');
     html += detailItem('大货水洗问题', w.bulkWashing?.issues||'-');
+    if(w.bulkWashing?.image && w.bulkWashing.image.path){
+      html += detailIssueImage(w.bulkWashing.image, '大货水洗问题图片');
+    }
     html += detailItem('问题整改', w.bulkWashing?.rectification||'-');
     html += detailItem('大货问题解决', (w.bulkResolved?.resolved?'✅ 已解决':'⬜ 未解决')+(w.bulkResolved?.date?' ('+w.bulkResolved.date+')':''));
     html += '</div></div>';
@@ -1183,6 +2045,9 @@ function showDetailModal(r){
     html += detailItem('PP产前样备注', g.ppSample?.notes||'-');
     html += detailItem('面里辅料核对', (matStatusMap[g.materialsCheck?.status]||'-')+(g.materialsCheck?.date?' ('+g.materialsCheck.date+')':''));
     html += detailItem('辅料核对备注', g.materialsCheck?.notes||'-');
+    if(g.materialsCheck?.image && g.materialsCheck.image.path){
+      html += detailIssueImage(g.materialsCheck.image, '辅料核对图片');
+    }
     html += detailItem('开裁时间', g.cuttingDate||'-');
     html += detailItem('上机缝制', g.sewStartDate||'-');
     html += detailItem('缝制结束', g.sewEndDate||'-');
@@ -1203,9 +2068,9 @@ function showDetailModal(r){
 
   // Production issues
   if(g?.productionIssues?.length){
-    html += '<div class="qc-detail-section"><h3>⚠ 生产问题及整改</h3><table class="qc-detail-table"><thead><tr><th>序号</th><th>发现日期</th><th>问题描述</th><th>整改措施</th><th>状态</th><th>解决日期</th></tr></thead><tbody>';
+    html += '<div class="qc-detail-section"><h3>⚠ 生产问题及整改</h3><table class="qc-detail-table"><thead><tr><th>序号</th><th>发现日期</th><th>问题描述</th><th>整改措施</th><th>状态</th><th>解决日期</th><th>问题图片</th></tr></thead><tbody>';
     g.productionIssues.forEach((p,i)=>{
-      html += '<tr><td>'+(i+1)+'</td><td>'+(p.date||'-')+'</td><td>'+(esc(p.issue)||'-')+'</td><td>'+(esc(p.rectification)||'-')+'</td><td>'+(p.status==='resolved'?'<span class="qc-status-badge qc-status-done">已解决</span>':'<span class="qc-status-badge qc-status-issue">未解决</span>')+'</td><td>'+(p.resolvedDate||'-')+'</td></tr>';
+      html += '<tr><td>'+(i+1)+'</td><td>'+(p.date||'-')+'</td><td>'+(esc(p.issue)||'-')+'</td><td>'+(esc(p.rectification)||'-')+'</td><td>'+(p.status==='resolved'?'<span class="qc-status-badge qc-status-done">已解决</span>':'<span class="qc-status-badge qc-status-issue">未解决</span>')+'</td><td>'+(p.resolvedDate||'-')+'</td><td>'+detailIssueImageCell(p.image)+'</td></tr>';
     });
     html += '</tbody></table></div>';
   }
@@ -1215,52 +2080,62 @@ function showDetailModal(r){
 
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('detailModal').classList.add('show');
+  // 异步解析所有 Supabase 路径的图片
+  setTimeout(resolveModalImages, 50);
 }
 function detailItem(label, value){
   return '<div class="qc-detail-item"><span class="label">'+label+'</span><span class="value">'+esc(String(value||'-'))+'</span></div>';
 }
+// 详情弹窗：渲染一个固定问题图片块
+function detailIssueImage(img, label){
+  if(!img || !img.path) return '';
+  var p = img.path;
+  var dateStr = img.date ? ' (' + img.date + ')' : '';
+  // base64 直接显示
+  if(typeof p === 'string' && p.indexOf('data:image') === 0){
+    return '<div class="qc-detail-item" style="grid-column:1/-1;">'+
+      '<span class="label">'+esc(label)+dateStr+'</span>'+
+      '<img src="'+escAttr(p)+'" style="max-width:160px;max-height:200px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="openImageFullscreen(\''+escAttr(p)+'\')">'+
+      '</div>';
+  }
+  // Supabase path → 异步 signed URL（在 resolveModalImages 中处理）
+  return '<div class="qc-detail-item" style="grid-column:1/-1;">'+
+    '<span class="label">'+esc(label)+dateStr+(img.name?' - '+esc(img.name):'')+'</span>'+
+    '<img data-img-path="'+escAttr(p)+'" src="" style="max-width:160px;max-height:200px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;background:#f8f9fa;" alt="加载中...">'+
+    '</div>';
+}
+// 详情弹窗：生产问题表格中的图片单元格
+function detailIssueImageCell(img){
+  if(!img || !img.path) return '-';
+  var p = img.path;
+  if(typeof p === 'string' && p.indexOf('data:image') === 0){
+    return '<img src="'+escAttr(p)+'" style="width:46px;height:46px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="openImageFullscreen(\''+escAttr(p)+'\')" title="'+(img.date||'')+'">';
+  }
+  return '<img data-img-path="'+escAttr(p)+'" src="" style="width:46px;height:46px;object-fit:cover;border-radius:4px;border:1px solid var(--qc-border);background:#f8f9fa;cursor:zoom-in;" alt="..." title="'+escAttr(img.date||'')+'">';
+}
+// 详情弹窗渲染后：解析所有 [data-img-path] 为 signed URL
+function resolveModalImages(){
+  var imgs = document.querySelectorAll('#modalBody img[data-img-path]');
+  imgs.forEach(function(img){
+    var path = img.getAttribute('data-img-path');
+    if(!path) return;
+    // 点击全屏
+    img.onclick = function(){ openImageFullscreenByPath(path); };
+    if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
+      SupabaseSubmit.getSignedUrl(path).then(function(url){
+        if(url) img.src = url;
+        else img.alt = '加载失败';
+      }).catch(function(){ img.alt = '加载失败'; });
+    } else if(window.App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+      App.utils.getSignedUrl(path).then(function(url){
+        if(url) img.src = url;
+        else img.alt = '加载失败';
+      }).catch(function(){ img.alt = '加载失败'; });
+    }
+  });
+}
 function closeModal(){
   document.getElementById('detailModal').classList.remove('show');
-}
-
-// ==================== 导入导出 ====================
-function exportData(){
-  if(records.length === 0){ alert('暂无数据可导出'); return; }
-  var blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = '外勤QC数据_'+new Date().toISOString().slice(0,10)+'.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  if(window.App && App.toast) App.toast('已导出 '+records.length+' 条记录', 'success');
-}
-function importData(e){
-  var file = e.target.files[0];
-  if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    try{
-      var data = JSON.parse(ev.target.result);
-      if(!Array.isArray(data)) throw new Error();
-      if(records.length > 0 && !confirm('当前已有数据，是否合并导入？点击"取消"则覆盖导入。')) {
-        // Overwrite
-        records = data;
-      } else {
-        // Merge
-        var existingIds = new Set(records.map(r=>r.id));
-        data.forEach(r=>{ if(!existingIds.has(r.id)) records.push(r); });
-      }
-      saveData();
-      renderQueryTable();
-      renderDashboard();
-      if(window.App && App.toast) App.toast('成功导入 '+data.length+' 条记录', 'success');
-    }catch(err){
-      alert('导入失败：文件格式不正确');
-    }
-    e.target.value = '';
-  };
-  reader.readAsText(file);
 }
 
 // ==================== 工具 ====================
@@ -1277,7 +2152,12 @@ function escAttr(s){
 function init(){
   loadData();
   updateCount();
-  addSizeRow();
+  populateContactDatalists();
+  populateStyleNoDatalist();
+  // 初始化三个固定问题图片块（空白状态）
+  ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){
+    renderIssueImageBlock(prefix);
+  });
 }
 
 init();
