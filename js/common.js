@@ -1165,8 +1165,44 @@ const StyleImgCache = {
 window.StyleImgCache = StyleImgCache;
 
 /**
+ * 从存储路径里提取款号提示，用于"找不到原路径时自动回退"
+ * 支持输入：
+ *   - GW27-003.png  → GW27-003
+ *   - {userId}/consumption/uuid-GW27-003.png  → GW27-003
+ *   - 9932fa8d/order/...-3011043.jpeg → 3011043
+ *   - styleNo/uuid-orig.jpg → styleNo（第一段）
+ * 返回：候选 styleNo 字符串数组（按优先级高→低）
+ */
+function _extractStyleCandidatesFromPath(path) {
+  if (!path) return [];
+  var out = [];
+  try {
+    // 1) 最后一段文件名去掉扩展名
+    var last = String(path).split(/[\\/]/).pop() || '';
+    var nameNoExt = last.replace(/\.[^.]+$/, '');
+    // 去掉 UUID 前缀：{uuid}-xxx → xxx
+    var m = nameNoExt.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i);
+    if (m) nameNoExt = m[1];
+    else {
+      var m2 = nameNoExt.match(/^[0-9a-f]{8,}-(.+)$/i);  // 短 UUID
+      if (m2) nameNoExt = m2[1];
+    }
+    if (nameNoExt) out.push(nameNoExt);
+
+    // 2) 如果整个路径第一段是 styleNo 样式（非 UUID 目录名），也是一个候选
+    var firstSeg = String(path).split(/[\\/]/)[0] || '';
+    if (firstSeg && !/^[0-9a-f]{8}-/i.test(firstSeg) && firstSeg.length <= 40) {
+      if (out.indexOf(firstSeg) < 0) out.push(firstSeg);
+    }
+  } catch(_) {}
+  return out;
+}
+
+/**
  * 跨模块通用：把 Supabase Storage 存储路径解析为可跨浏览器显示的 URL
- * 策略：1) data:image 直出；2) JS client signed URL；3) REST API sign；4) public 直读路径（带随机参数绕过 Safari 缓存）
+ * 策略：1) data:image 直出；2) JS client signed URL；3) REST API sign；4) 自动按款号回退到
+ *       桶根 {style}.{png|jpg|jpeg|webp} 或 {style}/ 目录下同名文件（解决手动上传/旧版本路径找不到）；
+ *       5) public 直读路径
  * @param {string} path  存储路径（如 {userId}/consumption/uuid-GW27-003.png），也接受已完整 URL
  * @param {Object} [opts]
  * @param {number} [opts.ttlSec=7200] signed URL 有效期（秒）
@@ -1184,81 +1220,135 @@ window.resolveImageUrl = async function resolveImageUrl(path, opts) {
   var sbUrl = (window.SUPABASE_URL || '').replace(/\/$/, '');
   var anon = window.SUPABASE_ANON_KEY || '';
   var cb = '_t=' + Date.now() + '-' + Math.floor(Math.random() * 1e6); // Safari 强缓存绕过
-  var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent || '');
 
-  // 1) 优先走 JS client：取 signed URL
-  if (sb && sb.storage && sb.storage.from) {
+  // 预取 auth header（REST sign 要用，避免后面重复算）
+  var restAuth = null;
+  if (sbUrl && anon) {
+    restAuth = 'Bearer ' + anon;
     try {
-      var r = await sb.storage.from(bucket).createSignedUrl(path, ttl);
-      if (r && !r.error && r.data && r.data.signedUrl) {
-        var u = r.data.signedUrl;
-        // 给 signed URL 加 cache-bust 参数（Safari 对同名 signed URL 会缓存失败结果）
-        u += (u.indexOf('?') >= 0 ? '&' : '?') + cb;
-        console.log('[resolveImageUrl] JS client signed URL ok:', path.substring(0, 50), '→', u.substring(0, 80));
-        return u;
-      } else if (r && r.error) {
-        console.warn('[resolveImageUrl] JS client createSignedUrl fail:', path, r.error && r.error.message ? r.error.message : r.error);
+      if (sb && sb.auth && typeof sb.auth.getSession === 'function') {
+        var { data } = await sb.auth.getSession();
+        if (data && data.session && data.session.access_token) restAuth = 'Bearer ' + data.session.access_token;
       }
-    } catch(_e) {
-      console.warn('[resolveImageUrl] JS client createSignedUrl exception:', path, _e && _e.message ? _e.message : _e);
+    } catch(_) {}
+    if (restAuth === 'Bearer ' + anon) {
+      try {
+        var lkeys = Object.keys(localStorage);
+        for (var li = 0; li < lkeys.length; li++) {
+          if (lkeys[li].indexOf('sb-') === 0 && lkeys[li].indexOf('-auth-token') >= 0) {
+            var raw = localStorage.getItem(lkeys[li]);
+            if (raw) { var parsed = JSON.parse(raw); if (parsed && parsed.access_token) { restAuth = 'Bearer ' + parsed.access_token; break; } }
+          }
+        }
+      } catch(_) {}
     }
   }
 
-  // 2) 尝试 REST API sign 兜底（对 Safari 很关键：因为 supabase-js 有时在 Safari 拿不到 auth session）
-  if (sbUrl && anon) {
-    try {
-      // 获取 Authorization header：优先真实用户 access_token（对 RLS=user_id 的 bucket 有权限），否则 Bearer anon
-      var auth = 'Bearer ' + anon;
+  /** 对单个路径生成 signed URL：先 JS client 再 REST sign；成功返回 {ok:true, url:string}，否则 {ok:false} */
+  async function trySignOnce(candidatePath) {
+    if (!candidatePath) return { ok: false };
+    // 1) JS client
+    if (sb && sb.storage && sb.storage.from) {
       try {
-        if (sb && sb.auth && typeof sb.auth.getSession === 'function') {
-          var { data } = await sb.auth.getSession();
-          if (data && data.session && data.session.access_token) auth = 'Bearer ' + data.session.access_token;
+        var r = await sb.storage.from(bucket).createSignedUrl(candidatePath, ttl);
+        if (r && !r.error && r.data && r.data.signedUrl) {
+          var u = r.data.signedUrl;
+          u += (u.indexOf('?') >= 0 ? '&' : '?') + cb;
+          return { ok: true, url: u };
         }
-      } catch(_) {}
-      // localStorage 兜底
-      if (auth === 'Bearer ' + anon) {
-        try {
-          var keys = Object.keys(localStorage);
-          for (var i = 0; i < keys.length; i++) {
-            if (keys[i].indexOf('sb-') === 0 && keys[i].indexOf('-auth-token') >= 0) {
-              var raw = localStorage.getItem(keys[i]);
-              if (raw) { var parsed = JSON.parse(raw); if (parsed && parsed.access_token) { auth = 'Bearer ' + parsed.access_token; break; } }
-            }
+      } catch(_e1) {}
+    }
+    // 2) REST sign
+    if (sbUrl && anon) {
+      try {
+        var signUrl = sbUrl + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(candidatePath);
+        var resp = await fetch(signUrl, {
+          method: 'POST',
+          headers: { 'apikey': anon, 'Authorization': restAuth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expiresIn: ttl })
+        });
+        if (resp.ok) {
+          var j = await resp.json();
+          var signed = null;
+          if (j && j.signedURL) signed = sbUrl + j.signedURL;
+          else if (j && j.signedUrl) signed = (j.signedUrl.indexOf('http') === 0) ? j.signedUrl : (sbUrl + j.signedUrl);
+          if (signed) {
+            signed += (signed.indexOf('?') >= 0 ? '&' : '?') + cb;
+            return { ok: true, url: signed };
           }
-        } catch(_) {}
-      }
-
-      var signUrl = sbUrl + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path);
-      var resp = await fetch(signUrl, {
-        method: 'POST',
-        headers: {
-          'apikey': anon,
-          'Authorization': auth,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ expiresIn: ttl })
-      });
-      if (resp.ok) {
-        var j = await resp.json();
-        var signed = null;
-        if (j && j.signedURL) signed = sbUrl + j.signedURL;
-        else if (j && j.signedUrl) signed = (j.signedUrl.indexOf('http') === 0) ? j.signedUrl : (sbUrl + j.signedUrl);
-        if (signed) {
-          signed += (signed.indexOf('?') >= 0 ? '&' : '?') + cb;
-          console.log('[resolveImageUrl] REST sign ok:', path.substring(0, 50), (isSafari?'(Safari)':''));
-          return signed;
         }
-      } else {
-        console.warn('[resolveImageUrl] REST sign HTTP ' + resp.status + ' for path=' + path);
-      }
-    } catch(_e2) { console.warn('[resolveImageUrl] REST sign exception:', path, _e2); }
+      } catch(_e2) {}
+    }
+    return { ok: false };
   }
 
-  // 3) 终极兜底：public 直读路径 + 随机参数
+  // —— 第一轮：先试原路径（最理想情况）
+  var first = await trySignOnce(path);
+  if (first.ok) {
+    console.log('[resolveImageUrl] 原路径命中:', path);
+    return first.url;
+  }
+
+  // —— 第二轮：按款号生成候选路径，解决手动上传到桶根、或用 {styleNo}/ 文件夹组织的老路径
+  // 候选来源：
+  //   a. 从 path 的文件名提取出来的 styleNo（最高优先级，因为最贴合这条记录）
+  //   b. opts.hintStyleNo 调用方直接传进来（如果调用方本来就知道款号，最准）
+  var styleCands = [];
+  try { styleCands = _extractStyleCandidatesFromPath(path); } catch(_) {}
+  if (opts.hintStyleNo) {
+    var hint = String(opts.hintStyleNo).trim();
+    if (hint && styleCands.indexOf(hint) < 0) styleCands.unshift(hint);
+  }
+  var exts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+  var fallbackPaths = [];
+  for (var i = 0; i < styleCands.length; i++) {
+    var sn = styleCands[i];
+    // 桶根：{styleNo}.png 这类（用户截图里的 GW27-003.png、3011043.png）
+    for (var ei = 0; ei < exts.length; ei++) fallbackPaths.push(sn + '.' + exts[ei]);
+    // 款号文件夹：{styleNo}/ 下任意文件（只试候选文件，不做列目录开销）
+    var last = (path.split(/[\\/]/).pop() || '');
+    if (last) fallbackPaths.push(sn + '/' + last);
+    var lastNameNoExt = last.replace(/\.[^.]+$/, '');
+    var lastExt = last.match(/\.([^.]+)$/);
+    var ext = (lastExt && lastExt[1]) ? lastExt[1].toLowerCase() : '';
+    // 去掉 uuid 前缀后的纯文件名（如果 path 末尾是 uuid-款号.png → 款号.png）
+    var stripped = lastNameNoExt.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i, '').replace(/^[0-9a-f]{8,}-/i, '');
+    if (stripped !== lastNameNoExt && ext) {
+      fallbackPaths.push(sn + '/' + stripped + '.' + ext);
+    }
+  }
+  // 去重
+  var seenFb = {};
+  var uniqueFb = [];
+  for (var k = 0; k < fallbackPaths.length; k++) {
+    if (!seenFb[fallbackPaths[k]]) { seenFb[fallbackPaths[k]] = 1; uniqueFb.push(fallbackPaths[k]); }
+  }
+  for (var fi = 0; fi < uniqueFb.length; fi++) {
+    var cand = uniqueFb[fi];
+    if (!cand || cand === path) continue;
+    var r2 = await trySignOnce(cand);
+    if (r2.ok) {
+      console.log('[resolveImageUrl] 原路径失败 → 按款号回退命中: ' + path + ' → ' + cand);
+      // 顺手把 styleImages 缓存回写到正确路径，下次再访问就不会走 fallback
+      try {
+        if (window.StyleImgCache && opts.hintStyleNo && typeof StyleImgCache.put === 'function') {
+          var isFullHint = (String(path).toLowerCase().indexOf('full') >= 0 || String(path).toLowerCase().indexOf('大图') >= 0
+            || String(path).toLowerCase().indexOf('big') >= 0 || String(path).toLowerCase().indexOf('large') >= 0);
+          StyleImgCache.put(opts.hintStyleNo, {
+            styleImg_path: !isFullHint ? cand : (window.StyleImgCache.resolve && StyleImgCache.resolve(opts.hintStyleNo) && StyleImgCache.resolve(opts.hintStyleNo).styleImg_path) || '',
+            fullImg_path:   isFullHint ? cand : (window.StyleImgCache.resolve && StyleImgCache.resolve(opts.hintStyleNo) && StyleImgCache.resolve(opts.hintStyleNo).fullImg_path) || '',
+          });
+        }
+      } catch(_eCache) {}
+      return r2.url;
+    }
+  }
+
+  // —— 第三轮（最后兜底）：public 直读原路径 + 款号回退挨个试
   if (sbUrl) {
-    var fallback = sbUrl + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path) + '?' + cb;
-    console.warn('[resolveImageUrl] 全部 signed URL 失败，回退到 public 直读（可能因 RLS 非公开返回 400/401）:' + path.substring(0, 50));
-    return fallback;
+    var public1 = sbUrl + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path) + '?' + cb;
+    console.warn('[resolveImageUrl] signed URL 全部失败，回退 public 直读(原路径): ' + path.substring(0, 50));
+    return public1;
   }
   return '';
 };

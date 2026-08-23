@@ -478,7 +478,7 @@ const SupabaseSubmit = {
    * @param {string} subFolder 子文件夹路径（如 "sample"）
    * @returns {Promise<{path:string, fileName:string}|null>}
    */
-  async uploadPicture(file, subFolder) {
+  async uploadPicture(file, subFolder, styleNo) {
     subFolder = subFolder || "uploads";
     const user = await getCurrentUserOrRedirect();
     if (!user) return null;
@@ -494,18 +494,22 @@ const SupabaseSubmit = {
       return null;
     }
 
-    // 生成路径：{userId}/{subFolder}/{randomUUID}-{safeFileName}
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const path =
-      user.id +
-      "/" +
-      subFolder +
-      "/" +
-      crypto.randomUUID() +
-      "-" +
-      safeFileName(file.name);
+    // 路径策略：
+    //   a) 如果传了 styleNo（款号） → 新组织方式：{styleNo}/{uuid}-{safeOriginalName}
+    //      → 所有模块共用同一个款号文件夹，order / consumption / sample 传同一个款号自动相互复用图片
+    //   b) 没传 styleNo → 向后兼容旧路径：{userId}/{subFolder}/{uuid}-{safeOriginalName}
+    const safeOrig = safeFileName(file.name);
+    const ext = ((safeOrig.split(".").pop() || "jpg")).toLowerCase();
+    let path;
+    if (styleNo && String(styleNo).trim()) {
+      const sn = String(styleNo).trim();
+      path = sn + "/" + crypto.randomUUID() + "-" + safeOrig;
+    } else {
+      path = user.id + "/" + subFolder + "/" + crypto.randomUUID() + "-" + safeOrig;
+    }
+    const _subFolderHint = subFolder;
 
-    console.log("[form-submit] uploadPicture: bucket=" + STORAGE_BUCKET + ", path=" + path + ", userId=" + user.id);
+    console.log("[form-submit] uploadPicture: bucket=" + STORAGE_BUCKET + ", path=" + path + ", userId=" + user.id + (styleNo ? (", styleNo=" + styleNo) : ""));
 
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -518,16 +522,32 @@ const SupabaseSubmit = {
       console.error("[form-submit] uploadPicture error:", error);
       var errMsg = error.message || "请检查网络";
       if (errMsg.indexOf("violates") >= 0 || errMsg.indexOf("policy") >= 0 || errMsg.indexOf("RLS") >= 0) {
-        errMsg = "RLS策略拒绝写入，请检查Bucket " + STORAGE_BUCKET + "的INSERT策略";
+        errMsg = "RLS策略拒绝写入，请检查Bucket " + STORAGE_BUCKET + "的INSERT策略（本页底部给了一键可复制的SQL）";
       } else if (errMsg.indexOf("not found") >= 0 || errMsg.indexOf("bucket") >= 0) {
         errMsg = "Bucket " + STORAGE_BUCKET + " 不存在，请在Supabase Dashboard创建";
+      } else if (String(errMsg).indexOf("Object not found") >= 0 || String(errMsg).indexOf("already exists") >= 0 || String(errMsg).indexOf("duplicate") >= 0) {
+        // upload 本来不会报这类，但 upsert=false 冲突会报，忽略
       }
       toast("上传失败：" + errMsg, "error");
       return null;
     }
 
+    // 更新 StyleImgCache 共享缓存（款式图/大图根据文件名关键字判断），保证一上传其它模块同款号立刻能看到
+    if (styleNo && window.StyleImgCache && typeof window.StyleImgCache.put === 'function') {
+      try {
+        var lower = String(safeOrig).toLowerCase();
+        var isFull = (lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0
+          || lower.indexOf('大图') >= 0);
+        var existing = (typeof window.StyleImgCache.resolve === 'function') ? (window.StyleImgCache.resolve(styleNo) || {}) : {};
+        var patch = { styleImg_path: existing.styleImg_path || '', fullImg_path: existing.fullImg_path || '' };
+        if (isFull) { if (!patch.fullImg_path) patch.fullImg_path = path; else patch.styleImg_path = patch.styleImg_path || path; }
+        else       { if (!patch.styleImg_path) patch.styleImg_path = path; else patch.fullImg_path = patch.fullImg_path || path; }
+        window.StyleImgCache.put(styleNo, patch);
+      } catch(_e) {}
+    }
+
     console.log("[form-submit] uploadPicture 成功:", data);
-    toast("上传成功", "success");
+    toast("上传成功" + (styleNo ? "（已自动共享给同款号其它模块）" : ""), "success");
     return { path: path, fileName: file.name };
   },
 
@@ -916,35 +936,76 @@ const SupabaseSubmit = {
     if (userId) subFolders.forEach(function(sf){ prefixesToTry.push(userId + '/' + sf + '/'); });
     // 直接 subFolder/ 前缀（兼容旧数据）
     subFolders.forEach(function(sf){ prefixesToTry.push(sf + '/'); });
-    // 如果没有 userId，至少先列根目录看一层
-    if (!userId) prefixesToTry.push('');
+    // ===== 款号文件夹直查（新组织方式：{styleNo}/… 所有模块共用同一个款号文件夹）
+    prefixesToTry.push(sn + '/');
+    prefixesToTry.push(sn.toUpperCase() + '/');
+    prefixesToTry.push(sn.toLowerCase() + '/');
+    // ===== 桶根目录 ''（扫手动上传的 GW27-003.png、3011043.png 这类裸文件）
+    prefixesToTry.push('');
 
     for (var i = 0; i < prefixesToTry.length; i++) {
       var prefix = prefixesToTry[i];
       var items = await listDir(prefix);
       if (!items || items.length === 0) continue;
 
-      // 若 prefix 是根目录 '' 则 items 可能是用户 ID 文件夹，需要再深入
-      if (prefix === '') {
+      // 若 prefix 是根目录 '' 或款号文件夹(非 UUID)：里面可能直接就是图片文件(用户手动上传的 3011043.png、GW27-003.png)
+      //       或款号文件夹；另外对 ''，还要递归深入 UUID 用户子文件夹（原有逻辑）
+      if (prefix === '' || !/^[0-9a-f]{8}-/i.test(prefix.replace(/\/$/, ''))) {
         for (var k = 0; k < items.length; k++) {
           var entry = items[k];
-          if (entry && entry.type === 'folder' && /^[0-9a-f]{8}-/i.test(entry.name)) {
-            for (var m = 0; m < subFolders.length; m++) {
-              var subPath = entry.name + '/' + subFolders[m] + '/';
-              var more = await listDir(subPath);
-              for (var n = 0; n < more.length; n++) (function(item, sf){
-                var sc = scoreName(item.name);
-                if (sc > 0) {
-                  var fullPath = subPath.substring(0, subPath.length - 1) + '/' + item.name;
-                  results.push({
-                    path: fullPath,
-                    signedUrl: null,
-                    score: sc,
-                    folder: sf,
-                    isFull: (String(item.name).toLowerCase().indexOf('full') >= 0 || String(item.name).toLowerCase().indexOf('big') >= 0 || String(item.name).toLowerCase().indexOf('large') >= 0)
-                  });
-                }
-              })(more[n], subFolders[m]);
+          if (!entry) continue;
+          if (entry.type === 'folder') {
+            // 如果文件夹名本身就是款号（大小写都匹配），立刻深入扫里面的所有文件
+            var ename = (entry.name || '').toLowerCase();
+            if (ename === sn || ename === sn.toLowerCase() || ename === sn.toUpperCase().toLowerCase()) {
+              var subPath = (prefix === '' ? '' : prefix) + entry.name + '/';
+              var more2 = await listDir(subPath);
+              for (var y = 0; y < more2.length; y++) (function(item, sp){
+                if (!item || item.type === 'folder') return;
+                var sc3 = scoreName(item.name);
+                if (sc3 === 0) sc3 = 60;
+                var fullPath = (sp.endsWith('/') ? sp.substring(0, sp.length - 1) : sp) + '/' + item.name;
+                results.push({
+                  path: fullPath,
+                  signedUrl: null,
+                  score: sc3,
+                  folder: 'styleNoFolder',
+                  isFull: (String(item.name).toLowerCase().indexOf('full') >= 0 || String(item.name).toLowerCase().indexOf('big') >= 0 || String(item.name).toLowerCase().indexOf('large') >= 0)
+                });
+              })(more2[y], subPath);
+            }
+            // 根目录且是 UUID 文件夹 → 深入按老逻辑查 {userId}/subFolder/（兼容旧路径）
+            if (prefix === '' && /^[0-9a-f]{8}-/i.test(entry.name)) {
+              for (var m = 0; m < subFolders.length; m++) {
+                var subPathUuid = entry.name + '/' + subFolders[m] + '/';
+                var more = await listDir(subPathUuid);
+                for (var n = 0; n < more.length; n++) (function(item, sf){
+                  var sc = scoreName(item.name);
+                  if (sc > 0) {
+                    var fullPath = subPathUuid.substring(0, subPathUuid.length - 1) + '/' + item.name;
+                    results.push({
+                      path: fullPath,
+                      signedUrl: null,
+                      score: sc,
+                      folder: sf,
+                      isFull: (String(item.name).toLowerCase().indexOf('full') >= 0 || String(item.name).toLowerCase().indexOf('big') >= 0 || String(item.name).toLowerCase().indexOf('large') >= 0)
+                    });
+                  }
+                })(more[n], subFolders[m]);
+              }
+            }
+          } else {
+            // entry 本身是文件（绝大多数就是我们要找的根目录款号图）
+            var scFile = scoreName(entry.name);
+            if (scFile > 0) {
+              var fpFile = (prefix === '') ? entry.name : (prefix.endsWith('/') ? prefix.substring(0, prefix.length - 1) + '/' + entry.name : prefix + '/' + entry.name);
+              results.push({
+                path: fpFile,
+                signedUrl: null,
+                score: scFile + 5, // 桶根直接匹配 = 非常准，多加5分
+                folder: (prefix === '') ? 'root' : (prefix.replace(/\/$/, '')),
+                isFull: (String(entry.name).toLowerCase().indexOf('full') >= 0 || String(entry.name).toLowerCase().indexOf('big') >= 0 || String(entry.name).toLowerCase().indexOf('large') >= 0)
+              });
             }
           }
         }
@@ -1032,36 +1093,86 @@ const SupabaseSubmit = {
     return false;
   },
 
-  // 根目录广泛扫描：所有用户目录下所有 subFolder
+  // 根目录广泛扫描：桶根的款号直传文件 → 款号文件夹 → 旧 {userId}/subFolder 路径
   async _searchAllFoldersForStyleNo(styleNo) {
     if (!window.supabase) return [];
     const bucket = window.STORAGE_BUCKET || 'app-photos';
     const results = [];
+    const sn = String(styleNo).toLowerCase();
+    const scoreItem = function(name) {
+      const lower = String(name).toLowerCase();
+      const nameNoExt = lower.replace(/\.[^.]+$/, '');
+      let score = 0;
+      if (nameNoExt === sn) score = 100;
+      else if (nameNoExt.indexOf(sn) === 0) score = 85;
+      else if (nameNoExt.indexOf(sn) >= 0) score = 70;
+      if (score === 0 && (lower.indexOf('-' + sn + '.') >= 0 || lower.indexOf('_' + sn + '.') >= 0)) score = 75;
+      return score;
+    };
+    const isFullByLower = function(lower){ return (lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0); };
+
     try {
-      const { data: rootData, error: rootErr } = await supabase.storage.from(bucket).list('', { limit: 400 });
+      const { data: rootData, error: rootErr } = await supabase.storage.from(bucket).list('', { limit: 1000 });
       if (rootErr) { console.warn('[broadScan] root list error:', rootErr); }
       if (!rootData || !Array.isArray(rootData)) return results;
 
+      // 1) 桶根里直接是文件（手动上传的 GW27-003.png、3011043.png）→ 评分命中即收（加分项）
+      for (const entry of rootData) {
+        if (!entry || entry.type !== 'file') continue;
+        const sc = scoreItem(entry.name);
+        if (sc === 0) continue;
+        const fullPath = entry.name;
+        let signed = null;
+        try { const r = await supabase.storage.from(bucket).createSignedUrl(fullPath, 3600); if (r && !r.error && r.data && r.data.signedUrl) signed = r.data.signedUrl; } catch(_e) {}
+        results.push({
+          path: fullPath, signedUrl: signed,
+          score: sc + 5,
+          folder: 'root',
+          isFull: isFullByLower(entry.name.toLowerCase())
+        });
+      }
+
+      // 2) 桶根里的"款号文件夹" → 深入读里面所有文件（新的跨模块共享路径结构）
+      for (const entry of rootData) {
+        if (!entry || entry.type !== 'folder') continue;
+        const enameLower = (entry.name || '').toLowerCase();
+        // 名字就是款号（忽略大小写）
+        if (enameLower !== sn) continue;
+        try {
+          const { data, error } = await supabase.storage.from(bucket).list(entry.name, { limit: 500 });
+          if (error) continue;
+          if (!data) continue;
+          for (const item of data) {
+            if (item.type === 'folder') continue;
+            let sc = scoreItem(item.name);
+            if (sc === 0) sc = 60; // 既然文件夹本身就是款号，里面任何图都算匹配
+            const fullPath = entry.name + '/' + item.name;
+            let signed = null;
+            try { const r = await supabase.storage.from(bucket).createSignedUrl(fullPath, 3600); if (r && !r.error && r.data && r.data.signedUrl) signed = r.data.signedUrl; } catch(_e) {}
+            results.push({
+              path: fullPath, signedUrl: signed,
+              score: sc + 3,
+              folder: 'styleNoFolder',
+              isFull: isFullByLower(item.name.toLowerCase())
+            });
+          }
+        } catch(_eIn) {}
+      }
+
+      // 3) 旧 {userId}/{subFolder} 路径（兼容历史 UUID 用户目录）
       const subFolders = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
       for (const entry of rootData) {
         if (entry.type !== 'folder') continue;
+        if (!/^[0-9a-f]{8}-/i.test(entry.name)) continue;
         for (const sf of subFolders) {
           const folderPath = entry.name + "/" + sf;
           try {
             const { data, error } = await supabase.storage.from(bucket).list(folderPath, { limit: 400 });
-            if (error) { console.warn('[broadScan] list ' + folderPath + ' error:', error); continue; }
+            if (error) continue;
             if (!data) continue;
             for (const item of data) {
-              const lower = item.name.toLowerCase();
-              const sn = String(styleNo).toLowerCase();
-              var score = 0;
-              var nameNoExt = lower.replace(/\.[^.]+$/, '');
-              if (nameNoExt === sn) score = 100;
-              else if (nameNoExt.indexOf(sn) === 0) score = 85;
-              else if (nameNoExt.indexOf(sn) >= 0) score = 70;
-              // UUID-款号.jpg
-              if (score === 0 && (lower.indexOf('-' + sn + '.') >= 0 || lower.indexOf('_' + sn + '.') >= 0)) score = 75;
-              if (score === 0) continue;
+              const sc = scoreItem(item.name);
+              if (sc === 0) continue;
               const fullPath = folderPath + "/" + item.name;
               var signed = null;
               try {
@@ -1071,9 +1182,9 @@ const SupabaseSubmit = {
               results.push({
                 path: fullPath,
                 signedUrl: signed,
-                score: score,
+                score: sc,
                 folder: sf,
-                isFull: (lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0)
+                isFull: isFullByLower(item.name.toLowerCase())
               });
             }
           } catch(_e) {}

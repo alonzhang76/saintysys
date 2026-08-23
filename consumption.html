@@ -1230,8 +1230,10 @@ var Cons = {
       supabaseError = '上传模块未加载';
     } else {
       try {
-        console.log('[consumption] 尝试上传到 Supabase: bucket=' + (window.STORAGE_BUCKET || 'app-photos') + ', file=' + file.name + ', size=' + file.size);
-        var result = await SupabaseSubmit.uploadPicture(file, 'consumption');
+        var styleNo = '';
+        try { var snEl = document.getElementById('c_f_styleNo'); if (snEl) styleNo = (snEl.value || '').trim(); } catch(_) {}
+        console.log('[consumption] 尝试上传到 Supabase: bucket=' + (window.STORAGE_BUCKET || 'app-photos') + ', file=' + file.name + ', size=' + file.size + (styleNo ? ', styleNo=' + styleNo : ''));
+        var result = await SupabaseSubmit.uploadPicture(file, 'consumption', styleNo);
         if (result && result.path) {
           if (pathEl) pathEl.value = result.path;
           if (nameEl) nameEl.value = result.fileName || file.name;

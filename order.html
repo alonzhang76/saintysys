@@ -964,7 +964,9 @@ const OrderImg = {
       supabaseError = '上传模块未加载';
     } else {
       try {
-        var result = await SupabaseSubmit.uploadPicture(file, 'order');
+        var styleNo = '';
+        try { var snEl = document.getElementById('f_styleNo'); if (snEl) styleNo = (snEl.value || '').trim(); } catch(_) {}
+        var result = await SupabaseSubmit.uploadPicture(file, 'order', styleNo);
         if (result && result.path) {
           if (pathEl) pathEl.value = result.path;
           if (nameEl) nameEl.value = result.fileName || file.name;
