@@ -1674,42 +1674,135 @@
     closeSettings: function() {
       document.getElementById('nasSettingsDialogHost').style.display = 'none';
     },
-    /** 用给定 cfg 快速构造一次 PROPFIND 请求到 /webdav + rootFolder，返回 {ok, err} */
+    /** 用给定 cfg 快速构造一次 PROPFIND 请求到 /webdav + rootFolder，返回 {ok, err, detail} */
     _probeCfg: async function(cfg) {
-      if (!cfg || !cfg.serverUrl) return { ok: false, err: '缺少 serverUrl' };
+      if (!cfg || !cfg.serverUrl) return { ok: false, err: '缺少 serverUrl', detail: '' };
       var base = cfg.serverUrl.replace(/\/+$/, '');
       var wd = (cfg.webdavPath || '/webdav').replace(/\/+$/, '');
       if (!wd.startsWith('/')) wd = '/' + wd;
       var root = (cfg.rootFolder || '/saintydoc').replace(/\/+$/, '');
       if (!root.startsWith('/')) root = '/' + root;
-      var target = base + encodeURIComponent(wd + root).replace(/%2F/g, '/');
+      // 组合目标 URL：先对路径段逐个 encodeURIComponent，再用 / 拼起来，避免中文/空格失败
+      var pathParts = (wd + root).split('/').filter(Boolean);
+      var encodedPath = '/' + pathParts.map(function(p){ return encodeURIComponent(p); }).join('/');
+      var target = base + encodedPath;
+      var hostTextForHuman = '';
+      try { var uu = new URL(target); hostTextForHuman = uu.hostname + ':' + (uu.port || (uu.protocol === 'https:' ? '443' : '80')); } catch(_) {}
+
+      // 0) 混合内容：HTTPS 页面不能直接 fetch HTTP
+      var pageProto = (window.location.protocol || '').toLowerCase();
+      var targetProtoMatch = base.match(/^([a-zA-Z]+):\/\//);
+      var targetProto = targetProtoMatch ? targetProtoMatch[1].toLowerCase() : '';
+      if (pageProto === 'https:' && targetProto === 'http') {
+        return { ok: false, err: '混合内容拦截(Mixed Content)：当前页面是 HTTPS，但你填的 NAS 地址是 HTTP，浏览器禁止这种请求。',
+          detail: '解决：①把整站改为 HTTP 打开；或 ②在 NAS 上开启 HTTPS（自签也行）后填 HTTPS 地址。' };
+      }
+
+      // 1) 浏览器离线？
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        return { ok: false, err: '浏览器离线(offline)：本机网卡/WiFi 未连接到网络。', detail: '请先确认本机能联网，并能 ping NAS 主机。' };
+      }
+
       var headers = {};
-      if (cfg.username) try { headers['Authorization'] = 'Basic ' + btoa(cfg.username + ':' + (cfg.password || '')); } catch(_) {}
+      if (cfg.username) {
+        try { headers['Authorization'] = 'Basic ' + btoa(unescape(encodeURIComponent(cfg.username + ':' + (cfg.password || '')))); }
+        catch(_) {
+          // btoa 对纯中文/中日韩会抛；这里退回到 header 原样设置（大多数浏览器支持 UTF-8 Basic 中的 Latin-1 兼容）
+          try { headers['Authorization'] = 'Basic ' + btoa(cfg.username + ':' + (cfg.password || '')); } catch(_2) {}
+        }
+      }
       headers['Depth'] = '1';
+
       var ctrl = new AbortController();
-      var t = setTimeout(function(){ ctrl.abort(); }, 5000);
+      var timeoutMs = 6000;
+      var t = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
       try {
         var resp = await fetch(target, { method: 'PROPFIND', headers: headers, credentials: 'omit', signal: ctrl.signal });
         clearTimeout(t);
-        if (resp.status === 404) return { ok: false, err: 'HTTP 404：WebDAV 路径+根目录不存在 (试过：' + wd + root + ')，可尝试修改 rootFolder 或 服务器地址后重试。' };
-        if (resp.status === 401) return { ok: false, err: 'HTTP 401：账号或密码错误。' };
-        if (resp.status === 403) return { ok: false, err: 'HTTP 403：该账号无权限访问此路径。' };
-        if (resp.status >= 200 && resp.status < 300) return { ok: true, status: resp.status };
-        return { ok: false, err: 'HTTP ' + resp.status + ' ' + resp.statusText };
+        if (resp.status === 404) return { ok: false, status: resp.status, err: 'HTTP 404：路径不存在', detail: 'NAS WebDAV 根目录 + 业务根路径 ' + wd + root + ' 在服务器上不存在。请核对 WebDAV 子路径（常见 /webdav、/dav、空）、系统根目录（常见 /saintydoc、/、/share）。URL：' + target };
+        if (resp.status === 401) return { ok: false, status: resp.status, err: 'HTTP 401：账号或密码错误', detail: '或该账号未开通 WebDAV 权限。请在 NAS 管理后台核对账号密码/WebDAV 权限。用户名：' + (cfg.username || '(匿名)') };
+        if (resp.status === 403) return { ok: false, status: resp.status, err: 'HTTP 403：账号无权限访问该路径', detail: '请在 NAS 共享中心/WebDAV 设置里给该账号分配目录 ' + wd + root + ' 的读取权限。' };
+        if (resp.status === 405 || resp.status === 501) return { ok: false, status: resp.status, err: 'HTTP ' + resp.status + '：服务器不支持 PROPFIND', detail: '这可能不是一个 WebDAV 服务端 (很可能你填的端口是 Synology DSM/普通 HTTP 站点，不是 WebDAV 端口)。请改用正确的 WebDAV 端口。' };
+        if (resp.status >= 500) return { ok: false, status: resp.status, err: 'HTTP ' + resp.status + ' ' + resp.statusText, detail: 'NAS WebDAV 服务端异常，建议重启 NPM/Nginx/WebDAV 服务。' };
+        if (resp.status >= 200 && resp.status < 300) return { ok: true, status: resp.status, detail: 'URL=' + target };
+        return { ok: false, status: resp.status, err: 'HTTP ' + resp.status + ' ' + resp.statusText, detail: 'URL=' + target };
       } catch(e) {
         clearTimeout(t);
+        var name = (e && e.name) ? e.name : '';
         var msg = (e && e.message) ? e.message : String(e || '');
-        if ((e && e.name) === 'AbortError' || /timeout/i.test(msg)) return { ok: false, err: '超时：主机 ' + base + ' 未响应 (5s)' };
-        return { ok: false, err: '连接失败: ' + msg };
+        var outMsg = '';
+        var outDetail = '';
+        // 超时
+        if (name === 'AbortError' || /timeout|timed?\s*out/i.test(msg)) {
+          outMsg = '连接超时(' + (timeoutMs/1000) + 's 无响应)：主机 ' + hostTextForHuman + ' 无法到达';
+          outDetail = '最常见原因（按优先级）：\n' +
+            '① NAS 机器上的 Windows 防火墙拦截了该端口 → 请在 NAS 机器上把 NPM/WebDAV 监听的端口加到"入站规则-允许"，或临时关闭 Windows 防火墙测试 1 分钟；\n' +
+            '② NPM/Nginx/WebDAV 只监听在 127.0.0.1（回环）→ 请改为 0.0.0.0 或 NAS 的局域网 IP；\n' +
+            '③ 路由器 AP 隔离/访客 WiFi/双频合一 导致跨客户端不可达 → 请确认两台电脑都连同一个 2.4G/同一个有线交换机，并关闭"客户端隔离"；\n' +
+            '④ NAS 机器的 IP 已变/端口填错 → 你填的 serverUrl=' + base;
+          return { ok: false, err: outMsg, detail: outDetail, timedOut: true };
+        }
+
+        // 非超时但 Failed to fetch → 再分情况
+        // 先跑 CORS 探针
+        var cors = false;
+        try { cors = await NAS._probeCors(target); } catch(_) {}
+        if (cors) {
+          return { ok: false, err: 'CORS 拦截：NAS WebDAV 没有返回 Access-Control-Allow-Origin 头',
+            detail: '请在 NAS 的 Nginx/NPM/WebDAV 反向代理配置中加上响应头：\n' +
+              'add_header "Access-Control-Allow-Origin" "' + window.location.origin + '" always;\n' +
+              'add_header "Access-Control-Allow-Methods" "GET,HEAD,POST,PUT,DELETE,PROPFIND,PROPPATCH,MKCOL,COPY,MOVE,OPTIONS" always;\n' +
+              'add_header "Access-Control-Allow-Headers" "Depth,Authorization,Content-Type,If-Match,If-None-Match,Destination,Overwrite" always;\n' +
+              'add_header "Access-Control-Allow-Credentials" "true" always;\n' +
+              '并对 OPTIONS 预检直接 return 204;\n原始错误: ' + msg };
+        }
+
+        // HTTPS 的 Failed to fetch 极大概率是自签证书未被浏览器信任
+        if (targetProto === 'https') {
+          outMsg = 'HTTPS 证书未被信任/SSL握手失败';
+          outDetail = '请新开一个浏览器标签页，手动访问以下地址并"接受风险/继续访问"（把自签证书导入浏览器信任一次即可）：\n' + target + '\n然后再回到这里点 🧪 测试连接。\n如果确认不需要 HTTPS，直接改成 HTTP 地址也可（但整站也要是 HTTP）。原始错误: ' + msg;
+          return { ok: false, err: outMsg, detail: outDetail };
+        }
+
+        // 其它（DNS 解析失败、连接被拒 等）
+        outMsg = '连接失败: ' + msg;
+        outDetail = '请用下面三步快速定位根因：\n' +
+          '① 在当前电脑新开标签页直接打开 → ' + target + ' ← 看浏览器能不能加载；\n' +
+          '② 如果浏览器提示"无法访问此站点/拒绝连接"，说明 NAS 的端口没开放/没监听/防火墙拦截；\n' +
+          '③ 如果浏览器弹出 401 输入账号密码，说明主机和端口是通的 → 回到本页重新确认账号密码/子路径。\n主机: ' + hostTextForHuman + '；原始错误: ' + msg;
+        return { ok: false, err: outMsg, detail: outDetail, rawTarget: target };
       }
     },
     async testConnection() {
       this._diagClear();
       var cfg = this._readSettingsForm();
-      this._diag('🧪 测试连接：' + cfg.serverUrl + (cfg.username ? (' 账号=' + cfg.username) : ' （匿名）'));
+      var base = (cfg.serverUrl || '').replace(/\/+$/, '');
+      var wd = (cfg.webdavPath || '/webdav').replace(/\/+$/, ''); if (!wd.startsWith('/')) wd = '/' + wd;
+      var root = (cfg.rootFolder || '/saintydoc').replace(/\/+$/, ''); if (!root.startsWith('/')) root = '/' + root;
+      var pathParts = (wd + root).split('/').filter(Boolean);
+      var encodedPath = '/' + pathParts.map(function(p){ return encodeURIComponent(p); }).join('/');
+      var target = base + encodedPath;
+      this._diag('🧪 开始测试连接…');
+      this._diag('  serverUrl = ' + (cfg.serverUrl || '(空)'));
+      this._diag('  最终请求 URL = ' + target);
+      this._diag('  （👉 请先手动把上面这一整行 URL，复制到当前电脑的浏览器新标签里打开，这是最快的排查手段！）');
+      this._diag('  账号 = ' + (cfg.username || '(匿名)'));
+      this._diag('');
       var r = await this._probeCfg(cfg);
-      if (r.ok) this._diag('✅ 连接成功（HTTP ' + (r.status || '207') + '）。可以点「💾 保存」把这个配置写入。');
-      else this._diag('❌ 连接失败：' + r.err, true);
+      if (r.ok) {
+        this._diag('✅ 连接成功（HTTP ' + (r.status || '207') + '）。可以点「💾 保存」把这个配置发布给所有电脑用户。');
+        if (r.detail) this._diag('详情: ' + r.detail);
+      } else {
+        this._diag('❌ 连接失败：' + (r.err || '未知错误'), true);
+        if (r.detail) this._diag('🔎 排查提示：\n' + r.detail, true);
+        if (r.timedOut) {
+          this._diag('');
+          this._diag('⚠️  这是"连端口都没连上"的典型症状。请先按下面的 1-2-3 做：');
+          this._diag('  1) 在 NAS 机器上：Win+R → 输入 WF.msc → 入站规则 → 新建规则 → 端口 → TCP → 填你 WebDAV 的端口号 → 允许连接 → 域/专用/公网 全勾 → 命名"WebDAV入站"。勾完立刻再测一次。');
+          this._diag('  2) 在 NAS 机器上，打开 PowerShell 输入:  netstat -ano | findstr LISTENING  看 WebDAV 端口是不是在 0.0.0.0:<端口> 上 LISTENING。如果只有 127.0.0.1:<端口>，说明绑定错了，需要改 NPM/Nginx 监听为 0.0.0.0。');
+          this._diag('  3) 当前电脑打开 cmd 试:  ping <NAS主机名或IP>   看 ping 通不通。不通 → 两台电脑不在同一局域网/AP隔离。');
+        }
+      }
     },
     async saveSettings() {
       // 防御性检查：非管理员绝对不能写入全局共享 nas_config
