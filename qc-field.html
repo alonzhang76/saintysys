@@ -775,7 +775,7 @@ function refreshSizeMatrix(){
   var sizes = order.sizeMatrix.sizes || [];
   var rows = order.sizeMatrix.rows || [];
   var html = '<table class="qc-sub-table" style="background:#fff;"><thead><tr>'+
-    '<th style="width:30px;">#</th><th>部位</th><th>Ass.Type</th><th>Color Code</th><th>Color</th><th>箱数</th>' +
+    '<th style="width:30px;">#</th><th>包装ID</th><th>Ass.Type</th><th>Color Code</th><th>Color</th><th>箱数</th>' +
     sizes.map(function(s){ return '<th style="text-align:center;min-width:50px;">'+esc(s)+'</th>'; }).join('') +
     '<th style="text-align:center;">合计</th></tr></thead><tbody>';
   var grandTotal = 0;
@@ -2321,7 +2321,7 @@ function showDetailModal(r){
   var snapshot = r.sizeSnapshot;
   if(snapshot && snapshot.rows && snapshot.sizes && snapshot.rows.length){
     html += '<div class="qc-detail-section"><h3>📏 订单各尺寸数量</h3><table class="qc-detail-table"><thead><tr>'+
-      '<th>部位</th><th>Ass.Type</th><th>Color Code</th><th>Color</th><th>箱数</th>' +
+      '<th>包装ID</th><th>Ass.Type</th><th>Color Code</th><th>Color</th><th>箱数</th>' +
       snapshot.sizes.map(function(s){ return '<th style="text-align:center;">'+esc(s)+'</th>'; }).join('') +
       '<th style="text-align:center;">合计</th></tr></thead><tbody>';
     var grandTotal = 0;
