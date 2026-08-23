@@ -837,7 +837,7 @@ const App = {
       console.log('[权限调试] module=' + moduleKey + ' 无配置 (permissions[' + moduleKey + '] 为 undefined)');
     }
 
-    // 兜底：如果 permissions key 中无此模块配置，再检查 _userModulePerms
+    // 兜底1：如果 permissions key 中无此模块配置，再检查 _userModulePerms
     const userPerms = this._userModulePerms || {};
     if (userPerms[moduleKey]) {
       const p = userPerms[moduleKey];
@@ -847,15 +847,19 @@ const App = {
       }
     }
 
-    // 无配置默认为读写
+    // 兜底2：严格从截图默认矩阵取（SCREENSHOT_DEFAULT_PERMISSIONS）—— 不再无脑给 write，
+    // 这是防止"加载空白时立刻显示读写"并偶然写回成错误默认的关键修复。
+    const base = (typeof App.SCREENSHOT_DEFAULT_PERMISSIONS === 'object' && App.SCREENSHOT_DEFAULT_PERMISSIONS) ? App.SCREENSHOT_DEFAULT_PERMISSIONS : null;
     if (!modulePerm) {
-      console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → write (无配置默认)');
-      return 'write';
+      const fallback = (base && base[moduleKey] && base[moduleKey][roleKey]) || 'read';
+      console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + fallback + ' (无配置默认，取自截图默认矩阵)');
+      return fallback;
     }
     const rolePerm = modulePerm[roleKey];
     if (!rolePerm) {
-      console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → write (角色无配置默认)');
-      return 'write';
+      const fallback = (base && base[moduleKey] && base[moduleKey][roleKey]) || 'read';
+      console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + fallback + ' (角色无配置默认，取自截图默认矩阵)');
+      return fallback;
     }
     console.log('[权限] module=' + moduleKey + ', role=' + roleKey + ', user=' + user.email + ' → ' + rolePerm + ' (最终)');
     return rolePerm;
@@ -964,18 +968,45 @@ window.addEventListener('auth-role-updated', function() {
   }
 });
 
+// ===== 截图级模块权限默认值（唯一事实来源）=====
+// 严格对齐 settings.html 用户组页面的 8 个非管理员角色 × 15 个模块。
+// 角色顺序（非 admin）：merchandiser 业务跟单员 / purchaser 面辅料采购员 / designer 样衣师 / qc 品控员 / finance 财务专员 / documentary 单证员 / manager 管理层 / user 普通用户
+// 注：admin 角色在 getPermission 中直接返回 write，不需要在矩阵中配置
+App.SCREENSHOT_DEFAULT_PERMISSIONS = {
+  index:       { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 首页：全只读
+  order:       { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 订单管理：仅管理层读写
+  fabric:      { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 面里衬采购：仅管理层读写
+  accessory:   { merchandiser: 'read',  purchaser: 'write', designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 辅料采购：采购读写
+  wash:        { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 水洗管理：跟单读写
+  sample:      { merchandiser: 'read',  purchaser: 'read',  designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 样衣管理：设计读写
+  consumption: { merchandiser: 'read',  purchaser: 'read',  designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 用料及纸板：设计读写
+  production:  { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 生产管理：跟单/管理层读写
+  shipping:    { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 出运管理：跟单读写
+  express:     { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 寄件管理：跟单/采购/设计/经理读写
+  finance:     { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 财务管理：管理层读写
+  nasDrive:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 云盘NAS：跟单/采购/设计/经理读写
+  contacts:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 通讯录：跟单/采购/设计/经理读写
+  maintenance: { merchandiser: 'write', purchaser: 'write', designer: 'read',  qc: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 维护资料：跟单/采购/经理读写
+  settings:    { merchandiser: 'hidden',purchaser: 'hidden',designer: 'hidden',qc: 'hidden',finance: 'hidden',documentary: 'hidden',manager: 'hidden',user: 'hidden'}, // 设置：全不显示（仅管理员可见）
+};
+
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
-  const DATA_VERSION = '9'; // v9: 重置用户列表为5个新用户
+  const DATA_VERSION = '10'; // v10: 升级为截图级权限矩阵，跨所有电脑强制重置一次默认权限
   const currentVersion = localStorage.getItem('dataVersion');
   const isVersionChanged = currentVersion !== DATA_VERSION;
 
-  // 版本变更：清理旧用户和权限数据
+  // 版本变更：清理旧用户和权限数据（本地 + 远端），确保所有电脑都以截图默认值为基线
   if (isVersionChanged) {
     if (window.SupabaseStore) {
-      window.SupabaseStore.remove('permissions');
-      window.SupabaseStore.remove('users');
+      try { window.SupabaseStore.remove('permissions'); } catch(_) {}
+      try { window.SupabaseStore.remove('users'); } catch(_) {}
     }
+    // 走独立删除通道：确保远端 app_data_store 中的旧 permissions 行被真正清掉
+    try {
+      window.dispatchEvent(new CustomEvent('cloud-delete-request', { detail: { key: 'permissions' } }));
+      window.dispatchEvent(new CustomEvent('cloud-delete-request', { detail: { key: 'users' } }));
+    } catch(_) {}
     // 同时清理本地 localStorage 缓存，确保完全重置
     try {
       localStorage.removeItem('users');
@@ -997,39 +1028,27 @@ App.initSampleData = function() {
     ]);
   }
 
-  // 初始化模块权限配置（各角色默认对各模块的权限）
+  // 初始化模块权限配置（各角色默认对各模块的权限）—— 使用截图默认矩阵
   const existingPerms = App.store.get('permissions', null);
   if (!existingPerms || Object.keys(existingPerms).length === 0) {
-    const defaultPerms = {
-      // 角色对各模块的默认权限：write=读写, read=只读, none=无权限
-      // 注：admin 角色在 getPermission 中直接返回 write，不需要在表中配置
-      order:        { merchandiser: 'write', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
-      fabric:       { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
-      accessory:    { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
-      wash:         { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
-      sample:       { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
-      consumption:  { merchandiser: 'write', purchaser: 'read', designer: 'write', qc: 'read', finance: 'none', documentary: 'read', manager: 'write', user: 'write' },
-      production:   { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'write', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
-      shipping:     { merchandiser: 'write', purchaser: 'read', designer: 'none', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
-      express:      { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
-      finance:      { merchandiser: 'read', purchaser: 'read', designer: 'none', qc: 'none', finance: 'write', documentary: 'read', manager: 'write', user: 'write' },
-      nasDrive:     { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
-      contacts:     { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'write' },
-      maintenance:  { merchandiser: 'read', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
-      settings:     { merchandiser: 'none', purchaser: 'none', designer: 'none', qc: 'none', finance: 'none', documentary: 'none', manager: 'read', user: 'write' },
-    };
-    App.store.set('permissions', defaultPerms);
+    App.store.set('permissions', App.SCREENSHOT_DEFAULT_PERMISSIONS);
   }
 
-  // 迁移：为已有权限配置补充新模块权限（不重置已有数据）
+  // 迁移：为已有权限配置补充缺失的模块权限（严格以截图默认值补齐，不重置已有数据）
   const perms = App.store.get('permissions', {});
-  const newModulePerms = {
-    express: { merchandiser: 'write', purchaser: 'write', designer: 'read', qc: 'read', finance: 'read', documentary: 'write', manager: 'write', user: 'read' },
-    nasDrive: { merchandiser: 'read', purchaser: 'read', designer: 'read', qc: 'read', finance: 'read', documentary: 'read', manager: 'write', user: 'write' },
-  };
+  const base = App.SCREENSHOT_DEFAULT_PERMISSIONS;
   let permChanged = false;
-  Object.keys(newModulePerms).forEach(key => {
-    if (!perms[key]) { perms[key] = newModulePerms[key]; permChanged = true; }
+  Object.keys(base).forEach(key => {
+    if (!perms[key]) { perms[key] = base[key]; permChanged = true; }
+    // 若模块存在但角色缺失 → 补齐截图默认的该角色权限
+    const baseMod = base[key] || {};
+    Object.keys(baseMod).forEach(roleKey => {
+      if (!perms[key] || typeof perms[key][roleKey] !== 'string') {
+        if (!perms[key]) perms[key] = {};
+        perms[key][roleKey] = baseMod[roleKey];
+        permChanged = true;
+      }
+    });
   });
   if (permChanged) App.store.set('permissions', perms);
 };

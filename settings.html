@@ -66,6 +66,10 @@
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script src="js/init-page.js?v=20260823a"></script>
 <script>
+// ===== 关键：全局共享键（权限、用户、NAS 配置）仅管理员可写 =====
+// 防止非管理员在自动备份时把本地旧值覆盖管理员发布的全局权限
+window.ADMIN_ONLY_WRITE_KEYS = ['nas_config', 'nas_folder_perms', 'users', 'permissions'];
+
 // ===== 提前注册：云端数据变更监听器 =====
 var _SettingsInited = false;
 var _SettingsPendingRefresh = false;
@@ -81,6 +85,16 @@ window.addEventListener('cloud-data-updated', function(e) {
       return;
     }
     console.log('[settings.html] 云端数据变更 -> reload:', keys.join(','));
+    // permissions 更新：同步把基线 & 待保存缓存刷新成最新云端值（避免"未保存"红标误亮）
+    try {
+      if (keys.indexOf('permissions') >= 0) {
+        var storedNow = App.store.get('permissions', {});
+        if (typeof storedNow === 'object' && storedNow && Object.keys(storedNow).length > 0) {
+          _pendingPerms  = (typeof _deepClonePerms === 'function') ? _deepClonePerms(storedNow) : JSON.parse(JSON.stringify(storedNow || {}));
+          _baselinePerms = (typeof _deepClonePerms === 'function') ? _deepClonePerms(storedNow) : JSON.parse(JSON.stringify(storedNow || {}));
+        }
+      }
+    } catch(e) {}
     try {
       if (typeof window.renderUsers === 'function') renderUsers();
       if (typeof window.renderRoles === 'function') renderRoles();
@@ -479,42 +493,98 @@ function cancelPendingPerms() {
   });
 }
 
-// 真正保存：双写 localStorage + Supabase，防止后续被 refreshFromCloud 覆盖
+// 真正保存：双写 localStorage + Supabase + 独立写入通道（cloud-write-request），
+// 保证 flushWriteQueue 的 hash 去重、成功回调和自动备份逻辑全都一致，
+// 否则"Supabase.setSync 直接落盘 → hash 未更新 → 下次自动备份又把旧值冲回来"。
 function savePendingPerms() {
   if (!_hasPermChanges()) { App.toast('没有需要保存的修改', 'info'); return; }
   App.confirm('确认将当前权限配置写入本地并同步到云端？其他用户需重新登录后新权限生效。', function() {
     const toSave = _deepClonePerms(_pendingPerms);
-    // 双写：localStorage + 云端
+    const tsNow = Date.now();
+    // 1) 本地双写：App.store 代理 + 原始 localStorage
     App.store.set('permissions', toSave);
+    try { localStorage.setItem('permissions', JSON.stringify(toSave)); } catch(_) {}
+
+    // 2) Supabase 同步层 setSync（兼容旧桥）
     if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
       try { window.SupabaseStore.setSync('permissions', toSave); } catch(_) {}
     }
-    // 清理 localStorage 旧缓存以防被 App.store.get 的兜底读取又翻回来
-    try { localStorage.setItem('permissions', JSON.stringify(toSave)); } catch(_) {}
-    // 更新基线
+
+    // 3) 关键修复：强制走独立写入通道（cloud-write-request）
+    //    - 绕过"上次保存内容 hash 未更新 → 被自动备份旧值冲回"的问题
+    //    - 与其他模块（订单 / 款式图 / 云盘）保持一致的上传链路
+    //    - 管理员专属写 guard 已经在 init-page.js ADMIN_ONLY_WRITE_KEYS 里拦了非管理员
+    try {
+      window.dispatchEvent(new CustomEvent('cloud-write-request', {
+        detail: { key: 'permissions', value: toSave, ts: tsNow, __forceUpsert: true }
+      }));
+    } catch(_) {}
+
+    // 4) 同时把 users 也走独立写通道（保证权限页用户编辑也跨机一致）
+    try {
+      const usersNow = App.store.get('users', []);
+      if (Array.isArray(usersNow) && usersNow.length > 0) {
+        window.dispatchEvent(new CustomEvent('cloud-write-request', {
+          detail: { key: 'users', value: usersNow, ts: tsNow, __forceUpsert: true }
+        }));
+      }
+    } catch(_) {}
+
+    // 5) 更新基线 → 未保存红点消失
     _baselinePerms = _deepClonePerms(toSave);
-    // 触发当前页面权限重算
+
+    // 6) 触发当前页面权限重算 + 侧边栏重注（过滤 hidden 模块）
     if (window.App && window.App._currentPageModule) {
       try { App.enforcePagePermission(window.App._currentPageModule); } catch(_) {}
     }
+    try { window.dispatchEvent(new CustomEvent('auth-role-updated', { detail: { source: 'savePermissions' } })); } catch(_) {}
+
     renderRoles();
-    App.toast('✅ 权限已保存并同步到 Supabase', 'success');
+    App.toast('✅ 权限已保存（本地 + 云端双通道，跨电脑生效）', 'success');
   });
 }
 
 function resetPerms() {
-  App.confirm('确定恢复默认权限配置吗？会清除所有自定义权限（同样会先进入待保存，点击保存后才会生效）', function() {
-    // 清空本地缓存和云端缓存，然后用 initSampleData 重建默认
+  App.confirm('确定恢复为截图级默认权限吗？会清除所有自定义权限（立即写入本地 + 云端，跨电脑同步）', function() {
+    // 1) 清空本地缓存
     try { localStorage.removeItem('permissions'); } catch(_) {}
+    // 2) 清空 Supabase 同步层缓存 + 远端删除通道
     if (window.SupabaseStore && typeof window.SupabaseStore.remove === 'function') {
       try { window.SupabaseStore.remove('permissions'); } catch(_) {}
     }
+    try { window.dispatchEvent(new CustomEvent('cloud-delete-request', { detail: { key: 'permissions' } })); } catch(_) {}
+
+    // 3) 用 initSampleData 重建截图默认矩阵（DATA_VERSION=10 触发过的电脑也会重建）
+    //    先在 store 中显式置空确保 initSampleData 走重建分支
+    try { App.store.set('permissions', {}); } catch(_) {}
+    const prevVer = localStorage.getItem('dataVersion');
+    localStorage.removeItem('dataVersion'); // 强制 initSampleData 内部的版本变更分支也跑
     App.initSampleData();
-    const def = App.store.get('permissions', {});
+    // 若 dataVersion 被置空又被重写，恢复原版本避免所有键反复重置；这里用 DATA_VERSION 内部写回的即可
+    try {
+      // 如果 dataVersion 变成空了（initSampleData 里已写过新值，不会为空），补回
+      if (!localStorage.getItem('dataVersion') && prevVer) localStorage.setItem('dataVersion', prevVer);
+    } catch(_) {}
+
+    // 4) 取最新截图默认值 → 立即走独立写通道同步到远端
+    const def = _deepClonePerms(App.store.get('permissions', App.SCREENSHOT_DEFAULT_PERMISSIONS || {}));
     _pendingPerms = _deepClonePerms(def);
     _baselinePerms = _deepClonePerms(def);
+    try { localStorage.setItem('permissions', JSON.stringify(def)); } catch(_) {}
+    if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
+      try { window.SupabaseStore.setSync('permissions', def); } catch(_) {}
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('cloud-write-request', {
+        detail: { key: 'permissions', value: def, ts: Date.now(), __forceUpsert: true }
+      }));
+    } catch(_) {}
+
+    // 5) 侧边栏重注（hidden 模块）
+    try { window.dispatchEvent(new CustomEvent('auth-role-updated', { detail: { source: 'resetPermissions' } })); } catch(_) {}
+
     renderRoles();
-    App.toast('已恢复为默认权限（已自动写入本地 + 云端）', 'success');
+    App.toast('✅ 已恢复为截图默认权限（已同步云端）', 'success');
   });
 }
 

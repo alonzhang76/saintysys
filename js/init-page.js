@@ -770,12 +770,13 @@
     var key = e.detail.key;
     var value = e.detail.value;
     var ts = e.detail.ts || Date.now();
+    var forceUpsert = !!e.detail.__forceUpsert; // 来自 savePendingPerms/resetPerms：强制越过严格 hash 去重，保证"最后一次保存"赢
 
-    // ==== 全局共享键（NAS 配置/权限）仅管理员可写 ====
+    // ==== 全局共享键（NAS 配置/权限/用户）仅管理员可写 ====
     // 非管理员上传这些键会静默丢弃，避免覆盖管理员发布的全局设置。
     var ADMIN_KEYS = (typeof window.ADMIN_ONLY_WRITE_KEYS !== 'undefined')
       ? window.ADMIN_ONLY_WRITE_KEYS
-      : ['nas_config', 'nas_folder_perms'];
+      : ['nas_config', 'nas_folder_perms', 'users', 'permissions'];
     if (ADMIN_KEYS.indexOf(key) >= 0) {
       if (!_currentUserIsAdmin()) {
         console.warn('[init-page] 🛡️ 非管理员尝试上传全局共享键 ' + key + ' → 已跳过（请由管理员统一修改）。');
@@ -785,8 +786,9 @@
 
     // ==== 第一层去重：严格内容 hash 比对 ====
     // 如果新内容和最近一次成功上传的内容 hash 一样 → 直接跳过（根本不需要入队）
+    // 例外：__forceUpsert=true（权限保存按钮等用户显式点击保存场景）→ 跳过 hash 去重，保证"最后一次点击保存"始终胜出
     var newHash = hashValue(value);
-    if (_writeLastHash[key] && _writeLastHash[key] === newHash) {
+    if (!forceUpsert && _writeLastHash[key] && _writeLastHash[key] === newHash) {
       // 绝对相同内容，跳过不打日志
       return;
     }
@@ -801,7 +803,7 @@
     }
     _writeLastTs[key] = ts;
     // 把 hash 存到请求对象里，成功后再更新 _writeLastHash
-    _writeQueue.push({ type: 'write', key: key, value: value, ts: ts, hash: newHash });
+    _writeQueue.push({ type: 'write', key: key, value: value, ts: ts, hash: newHash, forceUpsert: forceUpsert });
 
     // 日志精简（非数组空数据场景省略，防止刷屏）
     var isEmptyArr = Array.isArray(value) && value.length === 0;
