@@ -868,12 +868,17 @@ function renderIssueImageBlock(prefix){
   var imgs = _issueImages[prefix] || [];
   var dateVal = imgs.length ? (imgs[0].date || '') : '';
   var galleryHtml = imgs.map(function(im, i){
-    var src = im.base64 || '';
+    var src = im.base64 || '';   // base64 用于即时显示
+    var dataPath = im.path && im.path.indexOf('data:image') !== 0 ? im.path : '';
     var html = '<div class="qc-issue-img-thumb" id="' + prefix + 'Thumb' + i + '">';
     if(src){
-      html += '<img src="' + escAttr(src) + '">';
+      // 有 base64：直接内联 + 可点击全屏
+      html += '<img src="' + escAttr(src) + '" data-img-path="' + escAttr(dataPath) + '" data-fullsrc="' + (src ? '1' : '') + '" style="cursor:zoom-in;" onclick="window._qcOpenThumb(\'' + prefix + '\',' + i + ')">';
+    } else if(dataPath){
+      // 无 base64 但有 path（Supabase）：通过 id 加载 signed URL 后填充
+      html += '<img id="' + prefix + 'ThumbImg' + i + '" data-img-path="' + escAttr(dataPath) + '" alt="' + escAttr(im.name||'') + '" style="min-width:80px;min-height:80px;background:#f8f9fa;">';
     } else {
-      html += '<img id="' + prefix + 'ThumbImg' + i + '" alt="' + escAttr(im.name||'') + '">';
+      html += '<img alt="' + escAttr(im.name||'') + '" style="width:80px;height:80px;background:#f8f9fa;">';
     }
     html += '<button class="remove-btn" onclick="removeIssueImageAt(\'' + prefix + '\',' + i + ')">&times;</button>';
     html += '</div>';
@@ -891,37 +896,49 @@ function renderIssueImageBlock(prefix){
       '<div class="qc-issue-img-status" id="' + prefix + 'ImgStatus"></div>' +
     '</div>' +
     '<input type="file" id="' + prefix + 'FileInput" accept="image/*" multiple style="display:none;" onchange="onIssueFileChange(event, \'' + prefix + '\')">';
-  // 异步加载 Supabase 路径图片
+  // 为每张 path 类型的缩略图异步加载 signed URL（并绑定点击全屏）
   imgs.forEach(function(im, i){
-    if(!im.base64 && im.path){
+    if(!im.base64 && im.path && im.path.indexOf('data:image') !== 0){
       loadIssueThumbImage(prefix, i, im.path, im.name);
     }
   });
 }
 
+// 点击缩略图：base64→直接全屏；path→转 signed URL 后全屏
+window._qcOpenThumb = function(prefix, i){
+  var im = (_issueImages[prefix] || [])[i];
+  if(!im) return;
+  if(im.base64){ openImageFullscreen(im.base64); return; }
+  if(im.path){ openImageFullscreenByPath(im.path); }
+};
+
 // 异步加载单张缩略图（不破坏已有 base64 预览）
 function loadIssueThumbImage(prefix, idx, path, name){
   var img = document.getElementById(prefix + 'ThumbImg' + idx);
-  if(!img) return;
+  // 如果该缩略图通过 _qcOpenThumb 方式绑定（data-fullsrc=1），跳过
+  var fallback = document.querySelector('#' + prefix + 'Gallery').children[idx];
+  var imgEl = img || (fallback && fallback.querySelector('img'));
+  if(!imgEl) return;
   if(typeof path === 'string' && path.indexOf('data:image') === 0){
-    img.src = path;
-    img.onclick = function(){ openImageFullscreen(path); };
+    imgEl.src = path;
+    imgEl.onclick = function(e){ e.stopPropagation(); openImageFullscreen(path); };
     return;
   }
-  img.onclick = function(){ openImageFullscreenByPath(path); };
+  imgEl.onclick = function(e){ e.stopPropagation(); openImageFullscreenByPath(path); };
+  imgEl.style.cursor = 'zoom-in';
   var tryResolve = function(submit){
     if(submit && typeof submit.getSignedUrl === 'function'){
-      submit.getSignedUrl(path).then(function(url){ if(url) img.src = url; }).catch(function(){});
+      submit.getSignedUrl(path).then(function(url){ if(url) imgEl.src = url; }).catch(function(){});
       return true;
     }
     if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-      App.utils.getSignedUrl(path).then(function(url){ if(url) img.src = url; }).catch(function(){});
+      App.utils.getSignedUrl(path).then(function(url){ if(url) imgEl.src = url; }).catch(function(){});
       return true;
     }
     return false;
   };
   if(!tryResolve(window.SupabaseSubmit)){
-    waitForSupabaseSubmit(8000).then(function(submit){ tryResolve(submit); });
+    waitForSupabaseSubmit(10000).then(function(submit){ tryResolve(submit); });
   }
 }
 
@@ -945,6 +962,7 @@ function onIssueFileChange(e, prefix){
 }
 
 // 上传逻辑：强制走 Supabase，失败时 base64 兜底（带警告）
+// 关键：无论上传成功与否，都保留 base64 供缩略图可见；成功后用 path 做共享字段
 async function uploadIssueImageFile(prefix, file){
   var statusEl = document.getElementById(prefix + 'ImgStatus');
   var fmtSize = (App && App.utils && typeof App.utils.formatSize === 'function') ? App.utils.formatSize(file.size) : (file.size + ' B');
@@ -961,7 +979,12 @@ async function uploadIssueImageFile(prefix, file){
   var base64DataUrl = null;
   try { base64DataUrl = await fileToDataUrl(file); } catch(_e) {}
   // 先以 base64 加入画廊（即时可见）
-  var tmpIdx = _issueImages[prefix].push({ path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: curDate }) - 1;
+  var tmpIdx = _issueImages[prefix].push({
+    path: base64DataUrl || file.name || '',
+    name: file.name || '',
+    base64: base64DataUrl,
+    date: curDate
+  }) - 1;
   renderIssueImageBlock(prefix);
   // 等待 SupabaseSubmit 加载
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
@@ -977,9 +1000,16 @@ async function uploadIssueImageFile(prefix, file){
     // 不传 styleNo，避免污染 StyleImgCache
     var result = await SupabaseSubmit.uploadPicture(file, 'qcFieldIssue', null);
     if(result && result.path){
-      _issueImages[prefix][tmpIdx] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: curDate };
+      // 关键：保留 base64 用作缩略图显示；path 保存 Supabase 存储路径，供 collectIssueImages 时写入
+      var curName = result.fileName || file.name || '';
+      _issueImages[prefix][tmpIdx] = {
+        path: result.path,
+        name: curName,
+        base64: base64DataUrl,   // ← 保留用于缩略图和点击全屏（本电脑立即可见）
+        date: curDate
+      };
       renderIssueImageBlock(prefix);
-      if(statusEl) statusEl.textContent = '✓ 上传成功：' + _issueImages[prefix][tmpIdx].name;
+      if(statusEl) statusEl.textContent = '✓ 上传成功：' + curName;
       try { if(App && App.toast) App.toast('✅ 上传成功', 'success'); } catch(_) {}
     } else {
       if(statusEl) statusEl.textContent = '⚠ 云端上传失败，仅本地保存（其他电脑看不到）';
@@ -1089,7 +1119,6 @@ function refreshIssueRowImageCell(idx){
   var cell = tbody.children[idx].querySelector('.qc-issue-table-img');
   if(!cell) return;
   var imgs = Array.isArray(_issueRowImages[idx]) ? _issueRowImages[idx] : [];
-  // 去掉 base64 占位但已上传成功的条目里仍有效的
   imgs = imgs.filter(function(im){ return im && (im.path || im.base64); });
   if(imgs.length === 0){
     cell.innerHTML = '📷';
@@ -1098,31 +1127,32 @@ function refreshIssueRowImageCell(idx){
   }
   // 显示第一张缩略图 + 数量角标
   var first = imgs[0];
-  var src = first.base64 || '';
+  var src = first.base64 || '';   // 优先用 base64 即时显示
   var badge = imgs.length > 1 ? '<span style="position:absolute;bottom:-2px;right:-2px;background:var(--qc-primary);color:#fff;border-radius:8px;font-size:9px;padding:0 4px;line-height:14px;z-index:2;">'+imgs.length+'</span>' : '';
   if(src){
     cell.innerHTML = '<img src="'+escAttr(src)+'">' + badge + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
     var im = cell.querySelector('img');
     if(im) im.onclick = function(e){ e.stopPropagation(); openRowImageGallery(idx); };
   } else {
-    cell.innerHTML = '<img alt="" style="opacity:0.3;">' + badge + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
+    // 无 base64 但有 path：放占位图，异步填 signed URL
+    cell.innerHTML = '<img alt="" style="width:100%;height:100%;object-fit:cover;">' + badge + '<button class="remove-btn" onclick="event.stopPropagation();clearIssueRowImage('+idx+')">&times;</button>';
     var im2 = cell.querySelector('img');
     if(im2){
       im2.onclick = function(e){ e.stopPropagation(); openRowImageGallery(idx); };
       // 异步加载 signed URL
       var tryResolve = function(submit){
         if(submit && typeof submit.getSignedUrl === 'function'){
-          submit.getSignedUrl(first.path).then(function(url){ if(url) im2.src = url; im2.style.opacity='1'; }).catch(function(){});
+          submit.getSignedUrl(first.path).then(function(url){ if(url){ im2.src=url; } }).catch(function(){});
           return true;
         }
         if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-          App.utils.getSignedUrl(first.path).then(function(url){ if(url){ im2.src=url; im2.style.opacity='1'; } }).catch(function(){});
+          App.utils.getSignedUrl(first.path).then(function(url){ if(url){ im2.src=url; } }).catch(function(){});
           return true;
         }
         return false;
       };
       if(!tryResolve(window.SupabaseSubmit)){
-        waitForSupabaseSubmit(8000).then(function(submit){ tryResolve(submit); });
+        waitForSupabaseSubmit(10000).then(function(submit){ tryResolve(submit); });
       }
     }
   }
@@ -1191,7 +1221,12 @@ async function uploadIssueRowImage(idx, file){
   var base64DataUrl = null;
   try { base64DataUrl = await fileToDataUrl(file); } catch(_e) {}
   // 先以 base64 加入（即时可见）
-  var tmpIdx = _issueRowImages[idx].push({ path: base64DataUrl || '', name: file.name || '', base64: base64DataUrl, date: curDate }) - 1;
+  var tmpIdx = _issueRowImages[idx].push({
+    path: base64DataUrl || file.name || '',
+    name: file.name || '',
+    base64: base64DataUrl,
+    date: curDate
+  }) - 1;
   refreshIssueRowImageCell(idx);
   // 等待 SupabaseSubmit
   if(!window.SupabaseSubmit || typeof SupabaseSubmit.uploadPicture !== 'function'){
@@ -1205,7 +1240,14 @@ async function uploadIssueRowImage(idx, file){
   try {
     var result = await SupabaseSubmit.uploadPicture(file, 'qcFieldIssue', null);
     if(result && result.path){
-      _issueRowImages[idx][tmpIdx] = { path: result.path, name: result.fileName || file.name || '', base64: null, date: curDate };
+      // 关键：保留 base64 用作缩略图，path 用于共享
+      var _cur = {
+        path: result.path,
+        name: result.fileName || file.name || '',
+        base64: base64DataUrl,
+        date: curDate
+      };
+      _issueRowImages[idx][tmpIdx] = _cur;
       refreshIssueRowImageCell(idx);
       try { if(App && App.toast) App.toast('✅ 问题图片上传成功', 'success'); } catch(_) {}
     } else {
@@ -1446,37 +1488,68 @@ function showImagePreviewByPath(path, name){
   // base64 data URL
   if(typeof path === 'string' && path.indexOf('data:image') === 0){
     img.src = path;
+    img.onclick = function(){ openImageFullscreen(path); };
     box.style.display = 'block';
-    if(statusEl) statusEl.textContent = '✓ 已加载图片' + (name ? '：'+name : '');
+    if(statusEl) statusEl.textContent = '✓ 已加载款式图' + (name ? '：'+name : '');
     return;
   }
+  // 记录当前 img.src 是否已有可见内容（避免后续解析失败时覆盖）
+  var alreadyHasDisplayable = !!(img.src && img.src.length > 30 && img.complete && img.naturalWidth > 0);
   // Supabase path → signed URL（不清空已有 src，等拿到 URL 再替换）
   box.style.display = 'block';
-  if(statusEl) statusEl.textContent = '⏳ 加载图片中...';
-  // 优先用已就绪的 SupabaseSubmit；若未就绪则等待异步模块加载完成
+  if(!alreadyHasDisplayable){ if(statusEl) statusEl.textContent = '⏳ 加载图片中...'; }
   var tryResolve = function(submit){
     if(submit && typeof submit.getSignedUrl === 'function'){
       submit.getSignedUrl(path).then(function(url){
-        if(url){ img.src = url; img.onclick = function(){ openImageFullscreen(url); }; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
-        else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
-      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+        if(url){
+          img.src = url;
+          img.onclick = function(){ openImageFullscreen(url); };
+          if(statusEl) statusEl.textContent = '✓ 已加载款式图' + (name ? '：'+name : '');
+        } else if(!alreadyHasDisplayable){
+          if(statusEl) statusEl.textContent = '⚠ 款式图加载失败';
+        }
+      }).catch(function(){ if(!alreadyHasDisplayable){ if(statusEl) statusEl.textContent = '⚠ 款式图加载失败'; } });
       return true;
     }
     if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
       App.utils.getSignedUrl(path).then(function(url){
-        if(url){ img.src = url; img.onclick = function(){ openImageFullscreen(url); }; if(statusEl) statusEl.textContent = '✓ 已加载' + (name ? '：'+name : ''); }
-        else { if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; }
-      }).catch(function(){ if(statusEl) statusEl.textContent = '⚠ 图片加载失败'; });
+        if(url){
+          img.src = url;
+          img.onclick = function(){ openImageFullscreen(url); };
+          if(statusEl) statusEl.textContent = '✓ 已加载款式图' + (name ? '：'+name : '');
+        } else if(!alreadyHasDisplayable){
+          if(statusEl) statusEl.textContent = '⚠ 款式图加载失败';
+        }
+      }).catch(function(){ if(!alreadyHasDisplayable){ if(statusEl) statusEl.textContent = '⚠ 款式图加载失败'; } });
       return true;
     }
     return false;
   };
   if(!tryResolve(window.SupabaseSubmit)){
     // 模块未就绪 → 等待加载完成后再试
-    if(statusEl) statusEl.textContent = '⏳ 等待图片模块加载...';
-    waitForSupabaseSubmit(8000).then(function(submit){
-      if(!tryResolve(submit)){
-        if(statusEl) statusEl.textContent = '⚠ 图片加载模块未就绪（已重试）';
+    if(!alreadyHasDisplayable){ if(statusEl) statusEl.textContent = '⏳ 等待图片模块加载...'; }
+    waitForSupabaseSubmit(15000).then(function(submit){
+      tryResolve(submit);
+      // 无论成功与否，只要已经有可显示的内容，就不报错
+      if(!submit){
+        var stillDisplayable = !!(img.src && img.src.length > 30 && img.complete && img.naturalWidth > 0);
+        if(!stillDisplayable && statusEl){
+          // 尝试用 localStorage 中 styleImages 缓存的 styleImg_signed 回显
+          try{
+            var sn = val('styleNo');
+            if(window.StyleImgCache){
+              var ent = StyleImgCache.resolve(sn);
+              var signedUrl = ent && (ent.styleImg_signed || ent.fullImg_signed);
+              if(signedUrl){
+                img.src = signedUrl;
+                img.onclick = function(){ openImageFullscreen(signedUrl); };
+                if(statusEl) statusEl.textContent = '✓ 已加载款式图（本地缓存）';
+                return;
+              }
+            }
+          }catch(_){}
+          if(statusEl) statusEl.textContent = '⚠ 云端未就绪，款式图显示受限制（可编辑保存，不影响数据）';
+        }
       }
     });
   }
@@ -1667,8 +1740,23 @@ function fillForm(r){
   onStyleNoChange();
   setVal('orderNo', r.orderNo);
   // 若订单号非空但尺寸表未自动加载（如订单已被删除），重新尝试
-  if(r.orderNo) refreshSizeMatrix();
-  // 优先用记录自身的图片（base64 或 path）；若没有则尝试从 StyleImgCache 回填
+  if(r.orderNo){ refreshSizeMatrix(); }
+  // 订单号确定后，同步从订单实时拿 ETD（不要用记录自身旧值，避免与订单不符）
+  if(r.orderNo){
+    var _order = findOrderByNo(r.orderNo, r.styleNo);
+    if(_order){
+      var _etd = _order.etd || _order.deliveryDate || _order.shipDate || '';
+      if(_etd) setVal('deliveryDate', _etd);
+      else setVal('deliveryDate', r.deliveryDate || '');
+    } else {
+      setVal('deliveryDate', r.deliveryDate || '');
+    }
+  } else {
+    setVal('deliveryDate', r.deliveryDate || '');
+  }
+  // 若记录中的 ETD 和订单不一致，也以订单为准（刷新一次）
+  onOrderNoChange();
+  // 优先用记录自身的款式图；若没有则从共享缓存/订单管理回填
   if(r.styleImage){
     _currentStyleImage = { path: r.styleImage, name: '', base64: (r.styleImage.indexOf('data:image')===0 ? r.styleImage : null) };
     showImagePreviewByPath(r.styleImage, '');
@@ -1677,12 +1765,10 @@ function fillForm(r){
   } else {
     clearCurrentImage();
   }
-  setVal('deliveryDate', r.deliveryDate);
   // Wash
   needWash = !!r.needWash;
   document.getElementById('washToggle').classList.toggle('on', needWash);
   document.getElementById('washLabel').textContent = needWash ? '是' : '否';
-  document.getElementById('washSection').style.display = needWash ? 'block' : 'none';
   if(r.washing){
     var w = r.washing;
     setVal('w_sample_date', w.sampleReceived?.date||'');
