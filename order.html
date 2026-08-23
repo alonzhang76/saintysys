@@ -663,6 +663,7 @@ function renderTable() {
       { key: 'customerId', title: 'Customer', width: '110px', render: (v) => App.utils.escapeHtml(getCustomerName(v)) },
       { key: 'orderDate', title: 'Date', width: '95px' },
       { key: 'season', title: 'Season', width: '70px', render: (v) => v || '-' },
+      { key: 'fabricComposition', title: 'Fabric', width: '120px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
       { key: 'styleDescription', title: 'Style Desc', width: '120px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
       { key: 'packageId', title: 'Package ID', width: '110px', render: (v) => v ? App.utils.escapeHtml(v) : '-' },
       { key: 'assType', title: 'Ass.Type', width: '60px', render: (v) => v || '-' },
@@ -1080,6 +1081,10 @@ function openForm(id) {
         <label class="form-label">Style No. (款号)</label>
         <input type="text" id="f_styleNo" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.styleNo || '') : ''}" placeholder="款号" oninput="OrderImg.onStyleNoChange()">
       </div>
+      <div class="form-group" style="flex:1;min-width:140px;">
+        <label class="form-label">Fabric Composition (面料成份)</label>
+        <input type="text" id="f_fabricComposition" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.fabricComposition || '') : ''}" placeholder="如：100%棉">
+      </div>
       <div class="form-group" style="flex:2;min-width:200px;">
         <label class="form-label">Style Description (款式描述)</label>
         <input type="text" id="f_styleDesc" class="form-input" value="${isEdit ? App.utils.escapeHtml(order.styleDescription || '') : ''}" placeholder="款式描述">
@@ -1096,18 +1101,10 @@ function openForm(id) {
           <input type="file" id="orderStyleImgFile" accept="image/*" style="display:none;" onchange="OrderImg.onFileChange('style', this)">
           <input type="hidden" id="orderStyleImgPath" value="${isEdit ? App.utils.escapeHtml(order.styleImg_path || '') : ''}">
           <input type="hidden" id="orderStyleImgName" value="${isEdit ? App.utils.escapeHtml(order.styleImg_name || '') : ''}">
-          <div id="orderStyleImgStatus" class="status" style="font-size:11px;margin-top:4px;"></div>
-        </div>
-      </div>
-      <div class="form-group" style="flex:1;min-width:200px;">
-        <label class="form-label">大图</label>
-        <div id="orderFullImgBox" style="border:2px dashed var(--border);border-radius:8px;padding:10px;text-align:center;cursor:pointer;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-secondary);position:relative;" onclick="document.getElementById('orderFullImgFile').click()">
-          <img id="orderFullImgPreview" src="" alt="" style="display:none;max-width:100%;max-height:160px;border-radius:4px;">
-          <div id="orderFullImgPlaceholder" style="color:var(--text-muted);font-size:12px;">📷 点击上传大图</div>
-          <input type="file" id="orderFullImgFile" accept="image/*" style="display:none;" onchange="OrderImg.onFileChange('full', this)">
+          <!-- 保留旧大图数据以兼容历史订单 -->
           <input type="hidden" id="orderFullImgPath" value="${isEdit ? App.utils.escapeHtml(order.fullImg_path || '') : ''}">
           <input type="hidden" id="orderFullImgName" value="${isEdit ? App.utils.escapeHtml(order.fullImg_name || '') : ''}">
-          <div id="orderFullImgStatus" class="status" style="font-size:11px;margin-top:4px;"></div>
+          <div id="orderStyleImgStatus" class="status" style="font-size:11px;margin-top:4px;"></div>
         </div>
       </div>
     </div>
@@ -1197,7 +1194,6 @@ function openForm(id) {
 
   // 初始化图片预览
   OrderImg.hydratePreview('style', order && order.styleImg_path);
-  OrderImg.hydratePreview('full', order && order.fullImg_path);
 
   // 自动从缓存回查图片（按款号共享）
   setTimeout(function(){ OrderImg.autoPopulateImagesFromCache(order && order.styleNo); }, 150);
@@ -1377,10 +1373,8 @@ const OrderImg = {
     if (!styleNo) return;
 
     var stylePath = document.getElementById('orderStyleImgPath');
-    var fullPath = document.getElementById('orderFullImgPath');
     var hasCurrentStyle = stylePath && stylePath.value;
-    var hasCurrentFull = fullPath && fullPath.value;
-    if (hasCurrentStyle && hasCurrentFull) return;
+    if (hasCurrentStyle) return;
 
     var done = function(cached, fromWhere) {
       if (!cached) return;
@@ -1398,18 +1392,12 @@ const OrderImg = {
         if (placeholder) placeholder.style.display = 'none';
         populated = true;
       }
-      if (!hasCurrentFull && cached.fullImg_path) {
-        fullPath.value = cached.fullImg_path;
+      // 同步大图数据到隐藏字段（兼容旧订单）
+      if (cached.fullImg_path) {
+        var fullPath = document.getElementById('orderFullImgPath');
+        if (fullPath) fullPath.value = cached.fullImg_path;
         var nameEl2 = document.getElementById('orderFullImgName');
         if (nameEl2) nameEl2.value = cached.fullImg_name || '';
-        var previewImg2 = document.getElementById('orderFullImgPreview');
-        if (previewImg2) {
-          previewImg2.src = cached.fullImg_signed || cached.fullImg_path;
-          previewImg2.style.display = 'block';
-        }
-        var placeholder2 = document.getElementById('orderFullImgPlaceholder');
-        if (placeholder2) placeholder2.style.display = 'none';
-        populated = true;
       }
       if (populated && window.StyleImgCache) {
         StyleImgCache.set(styleNo, {
@@ -1771,6 +1759,7 @@ function saveForm(id) {
   const orderDate = document.getElementById('f_orderDate').value;
   const season = document.getElementById('f_season').value;
   const styleDescription = document.getElementById('f_styleDesc').value.trim();
+  const fabricComposition = document.getElementById('f_fabricComposition')?.value.trim() || '';
   // 包装信息从尺码矩阵汇总（取各行非空值的唯一集合，逗号连接）
   const joinUnique = (field) => [...new Set(_sizeMatrix.rows.map(r => r[field]).filter(v => v))].join(', ');
   const packageId = joinUnique('packageId');
@@ -1804,7 +1793,7 @@ function saveForm(id) {
   const totalAmount = quantity * unitPrice;
 
   const data = {
-    orderNo, styleNo, customerId, orderDate, season, styleDescription,
+    orderNo, styleNo, customerId, orderDate, season, fabricComposition, styleDescription,
     packageId, assType, colorCode, colorName,
     noOfCartons, quantity, unitPrice, totalAmount,
     shipMethod, etd, planner, designer, pManager,
@@ -1972,6 +1961,7 @@ function viewDetail(id) {
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">PO</span><span class="detail-value font-bold">${App.utils.escapeHtml(order.orderNo)}</span></div>
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Season</span><span class="detail-value">${seasonMap[order.season] || order.season || '-'}</span></div>
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Style No.</span><span class="detail-value">${App.utils.escapeHtml(order.styleNo || '-')}</span></div>
+        <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Fabric Composition</span><span class="detail-value">${App.utils.escapeHtml(order.fabricComposition || '-')}</span></div>
         <div class="detail-item" style="flex:1;min-width:0;"><span class="detail-label">Style Desc</span><span class="detail-value">${App.utils.escapeHtml(order.styleDescription || '-')}</span></div>
       </div>
     </div>
@@ -2329,7 +2319,8 @@ function printOrderPDF(id) {
       <td class="label">Status</td><td>${esc(order.status || '草稿')}</td>
     </tr>
     <tr>
-      <td class="label">Style Desc</td><td colspan="7">${esc(order.styleDescription || '-')}</td>
+      <td class="label">Style Desc</td><td colspan="3">${esc(order.styleDescription || '-')}</td>
+      <td class="label">Fabric Composition</td><td colspan="3">${esc(order.fabricComposition || '-')}</td>
     </tr>
   </table>
 
