@@ -657,6 +657,8 @@ function resetPerms() {
 function renderAdvanced() {
   const users = getUsers();
   const perms = App.store.get('permissions', {});
+  const curRefDPR = localStorage.getItem('refDPR') || '-';
+  const curDPR = (window.devicePixelRatio || 1).toString();
 
   let html = `
     <div class="table-toolbar">
@@ -670,6 +672,15 @@ function renderAdvanced() {
           <button class="btn btn-sm" onclick="importData()">📥 导入数据</button>
           <button class="btn btn-sm" onclick="clearAllData()" style="color:#dc2626;">🗑️ 清空所有数据</button>
         </div>
+      </div>
+      <div style="border:1px solid var(--border-light);border-radius:8px;padding:16px;background:#f9fafb;">
+        <div style="font-weight:600;margin-bottom:8px;">🔍 页面缩放校正</div>
+        <div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:8px;">
+          <div>当前 DPR：<strong>${App.utils.escapeHtml(curDPR)}</strong></div>
+          <div>基线 DPR：<strong>${App.utils.escapeHtml(String(curRefDPR))}</strong></div>
+          <div style="font-size:11px;color:#6b7280;">(若两台电脑显示大小不一致，可按 <code>Ctrl+Shift+0</code> 立即重置)</div>
+        </div>
+        <button class="btn btn-sm" onclick="window.ResetDprBaseline && window.ResetDprBaseline()">🔄 重置缩放基线</button>
       </div>
       <div style="border:1px solid var(--border-light);border-radius:8px;padding:16px;background:#f9fafb;">
         <div style="font-weight:600;margin-bottom:8px;">👤 当前登录信息</div>

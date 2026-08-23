@@ -113,23 +113,77 @@ function _mapSupabaseUser(user) {
 
 /* ===== 浏览器缩放归一化 ===== */
 /* 解决Chrome/Edge为不同URL记住不同缩放级别导致页面大小不一致的问题 */
-/* 原理：以登录时的devicePixelRatio为基准，对比当前DPR，若差异超过5%则用CSS zoom反向校正 */
+/* 原理：以首次使用时的devicePixelRatio为基准，若当前DPR与基准差异过大（>35%），
+   判定为"跨机器/跨屏幕",直接丢弃旧基准并重新采集；仅在合理区间(±5%~±35%)内才应用CSS zoom校正 */
 (function() {
+  var htmlEl = document.documentElement;
   var currentDPR = window.devicePixelRatio;
-  var refDPR = localStorage.getItem('refDPR');
 
-  if (!refDPR) {
-    localStorage.setItem('refDPR', currentDPR.toString());
-  } else {
-    refDPR = parseFloat(refDPR);
-    if (refDPR > 0) {
-      var zoomRatio = currentDPR / refDPR;
-      if (Math.abs(zoomRatio - 1) > 0.05) {
-        document.documentElement.style.zoom = (1 / zoomRatio).toString();
-      } else {
-        document.documentElement.style.zoom = '';
-      }
+  function writeRefDPR(val) {
+    try { localStorage.setItem('refDPR', String(val)); } catch(e) {}
+  }
+  function readRefDPR() {
+    try {
+      var v = parseFloat(localStorage.getItem('refDPR'));
+      return isFinite(v) && v > 0 ? v : 0;
+    } catch(e) { return 0; }
+  }
+  function clearZoom() {
+    try { htmlEl.style.zoom = ''; htmlEl.style.transform = ''; } catch(e) {}
+  }
+
+  // 全局重置方法(快捷键/设置页调用)
+  window.ResetDprBaseline = function() {
+    clearZoom();
+    writeRefDPR(currentDPR);
+    try { App.toast && App.toast('已重置缩放基线(DPR=' + currentDPR + ')', 'success', 2200); } catch(e) {}
+  };
+
+  // ===== 快捷键 Ctrl/Cmd + Shift + 0 =====
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '0' || e.code === 'Digit0')) {
+      e.preventDefault();
+      window.ResetDprBaseline();
     }
+  }, true);
+
+  // ===== 读取基线并决定是否应用 zoom =====
+  if (!currentDPR || !isFinite(currentDPR) || currentDPR <= 0) {
+    clearZoom();
+    return;
+  }
+
+  var refDPR = readRefDPR();
+  if (!refDPR) {
+    writeRefDPR(currentDPR);
+    clearZoom();
+    return;
+  }
+
+  var zoomRatio = currentDPR / refDPR;
+  var diff = Math.abs(zoomRatio - 1);
+
+  // 极端差值 > 35%：判定为"跨设备/跨屏幕配置"(如从视网膜 Mac 切到 Windows、
+  // 或开启过 DevTools 设备模拟伪造 DPR)，直接丢弃旧基线，不再强行校正缩放。
+  if (diff > 0.35) {
+    console.warn('[DPR-Normalize] refDPR=' + refDPR + ', currentDPR=' + currentDPR +
+      ', 差异=' + Math.round(diff * 100) + '% > 35% → 判定为跨设备, 丢弃旧基线 (Ctrl+Shift+0 可手动重置)');
+    clearZoom();
+    writeRefDPR(currentDPR);   // 用当前机器的真实 DPR 重新建立基线
+    return;
+  }
+
+  // 合理范围(5%~35%)：应用 CSS zoom 反向校正浏览器的站点记忆缩放
+  if (diff > 0.05) {
+    var z = 1 / zoomRatio;
+    // 再次夹紧最终 zoom 到 0.7 ~ 1.43,防止任何边界异常导致页面不可读
+    if (z < 0.7) { z = 0.7; }
+    if (z > 1.43) { z = 1.43; }
+    htmlEl.style.zoom = z.toString();
+    console.log('[DPR-Normalize] refDPR=' + refDPR + ', currentDPR=' + currentDPR +
+      ', zoom=' + Math.round(z * 100) + '% (Ctrl+Shift+0 重置)');
+  } else {
+    clearZoom();
   }
 })();
 
