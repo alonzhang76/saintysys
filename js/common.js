@@ -1363,14 +1363,16 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
   if (!styleNo) return null;
   var sn = String(styleNo).trim();
   if (!sn) return null;
+  console.log('[getStyleImagesForStyleNo] 🟢 开始查找款号图: sn=' + sn);
 
   // 1) 本地缓存优先
   if (window.StyleImgCache) {
     var c = null;
     try { c = StyleImgCache.resolve(sn); } catch(_e) {}
     if (c && (c.styleImg_path || c.fullImg_path)) {
-      var s1 = c.styleImg_path ? await resolveImageUrl(c.styleImg_path) : null;
-      var f1 = c.fullImg_path  ? await resolveImageUrl(c.fullImg_path)  : null;
+      console.log('[getStyleImagesForStyleNo] ① 命中 StyleImgCache 本地缓存: styleImg_path=' + (c.styleImg_path || '') + ' fullImg_path=' + (c.fullImg_path || ''));
+      var s1 = c.styleImg_path ? await resolveImageUrl(c.styleImg_path, { hintStyleNo: sn }) : null;
+      var f1 = c.fullImg_path  ? await resolveImageUrl(c.fullImg_path,  { hintStyleNo: sn }) : null;
       return {
         styleImg_path: c.styleImg_path || '',
         fullImg_path:  c.fullImg_path  || '',
@@ -1380,13 +1382,18 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
         fullImg_signed:  f1
       };
     }
+    console.log('[getStyleImagesForStyleNo] ① StyleImgCache 无缓存（空路径），继续…');
+  } else {
+    console.log('[getStyleImagesForStyleNo] ① 未定义 StyleImgCache，跳过本地缓存');
   }
 
   // 2) 去 Supabase 按文件名搜索
   if (window.SupabaseSubmit && typeof SupabaseSubmit.findStyleImages === 'function') {
     try {
+      console.log('[getStyleImagesForStyleNo] ② 进入 findStyleImages(LIST 路径)...');
       var r = await SupabaseSubmit.findStyleImages(sn);
       if (r && (r.styleImg_path || r.fullImg_path)) {
+        console.log('[getStyleImagesForStyleNo] ② LIST 命中: ' + JSON.stringify(r).slice(0, 200));
         // 写回缓存，下次秒开（只写路径，不写 base64，避免 localStorage 膨胀）
         if (window.StyleImgCache) {
           try {
@@ -1399,8 +1406,8 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
           } catch(_ec) {}
         }
         // 已经在 findStyleImages 里生成了 signedUrl，没有则再次 resolve
-        var s2 = r.styleImg_signed || (r.styleImg_path ? await resolveImageUrl(r.styleImg_path) : null);
-        var f2 = r.fullImg_signed  || (r.fullImg_path  ? await resolveImageUrl(r.fullImg_path)  : null);
+        var s2 = r.styleImg_signed || (r.styleImg_path ? await resolveImageUrl(r.styleImg_path, { hintStyleNo: sn }) : null);
+        var f2 = r.fullImg_signed  || (r.fullImg_path  ? await resolveImageUrl(r.fullImg_path,  { hintStyleNo: sn }) : null);
         return {
           styleImg_path: r.styleImg_path || '',
           fullImg_path:  r.fullImg_path  || '',
@@ -1410,13 +1417,19 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
           fullImg_signed:  f2
         };
       }
-    } catch(_ee) {}
+      console.log('[getStyleImagesForStyleNo] ② LIST 未命中，兜底进入"候选路径直试"');
+    } catch(_ee) {
+      console.warn('[getStyleImagesForStyleNo] ② findStyleImages 抛异常:', _ee && _ee.message ? _ee.message : _ee);
+    }
+  } else {
+    console.log('[getStyleImagesForStyleNo] ② 没有 SupabaseSubmit.findStyleImages，跳过 LIST 搜索');
   }
 
   // 3) 兜底：Storage LIST 被 RLS 阻止时，直接"猜"常用路径并逐个 createSignedUrl 试
   //    ——只要有一条命中（signed 成功且浏览器可加载），就等同于找到了。
   //    这种方式完全不依赖 LIST 权限（只需 sign 权限，即 storage.objects SELECT）。
   try {
+    console.log('[getStyleImagesForStyleNo] ③ 候选路径直试兜底：sn=' + sn);
     var exts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
     var names = [];
     // 纯款号文件名（桶根手动上传的：GW27-003.png、3011043.png…）
@@ -1454,6 +1467,48 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
           candidates.push({ path: sf + fullLikeNames[k2] + '.' + exts[ee2], hint: 'full' });
         }
       }
+      // ===== 新增：款号文件夹内"任意一张已上传的文件"兜底（因为 uploadPicture 的标准存法是 {styleNo}/{uuid}-{origName}）
+      //   用 REST list 直查款号文件夹，不依赖 JS client。如果 RLS 是 SELECT=authenticated 就能通。
+      try {
+        var sbUrl2 = (window.SUPABASE_URL || '').replace(/\/$/, '');
+        var anon2 = window.SUPABASE_ANON_KEY || '';
+        var bucket2 = window.STORAGE_BUCKET || 'app-photos';
+        if (sbUrl2 && anon2) {
+          var userTok = null;
+          try {
+            if (window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function') {
+              var _sd = await window.supabase.auth.getSession();
+              if (_sd && _sd.data && _sd.data.session && _sd.data.session.access_token) userTok = _sd.data.session.access_token;
+            }
+          } catch(_ee2) {}
+          var restAuth2 = 'Bearer ' + (userTok || anon2);
+          var listUrl = sbUrl2 + '/storage/v1/object/list/' + encodeURIComponent(bucket2);
+          var lr = await fetch(listUrl, {
+            method: 'POST', cache: 'no-store',
+            headers: { 'apikey': anon2, 'Authorization': restAuth2, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prefix: sf.replace(/\/$/, ''), limit: 200, offset: 0 })
+          });
+          if (lr.ok) {
+            var lj = await lr.json();
+            if (Array.isArray(lj)) {
+              for (var li = 0; li < lj.length; li++) {
+                var entry = lj[li];
+                if (!entry || entry.type === 'folder') continue;
+                var name = String(entry.name || '');
+                if (!/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name)) continue;
+                var lower2 = name.toLowerCase();
+                var isFullHint2 = (lower2.indexOf('full') >= 0 || lower2.indexOf('big') >= 0 || lower2.indexOf('large') >= 0 || lower2.indexOf('大图') >= 0);
+                candidates.push({ path: sf + name, hint: isFullHint2 ? 'full' : 'style' });
+              }
+              console.log('[getStyleImagesForStyleNo] ③-extra REST list 子目录 ' + sf + ' 返回 ' + lj.length + ' 条，其中图片候选已追加');
+            }
+          } else {
+            console.warn('[getStyleImagesForStyleNo] ③-extra REST list 子目录 ' + sf + ' 失败: HTTP ' + lr.status);
+          }
+        }
+      } catch(_eList) {
+        console.warn('[getStyleImagesForStyleNo] ③-extra REST list 款号文件夹异常:', _eList && _eList.message ? _eList.message : _eList);
+      }
     }
     // 去重
     var seenCand = {};
@@ -1464,6 +1519,7 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
         uniqueCand.push(candidates[ci]);
       }
     }
+    console.log('[getStyleImagesForStyleNo] ③ 候选路径总数=' + uniqueCand.length + '，开始逐个 createSignedUrl…');
     var stylePath = '', styleSigned = null;
     var fullPath  = '', fullSigned  = null;
     // 批量试 sign：每个都通过 resolveImageUrl 走（含 sign 缓存、REST 回退）
@@ -1475,6 +1531,17 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
       }
       var tryUrl = await resolveImageUrl(cand.path, { hintStyleNo: sn });
       if (!tryUrl) continue;
+      // 为了防止"sign 成功但实际路径不存在 / 404"，这里多一层校验：
+      //   用 fetch HEAD 预请求检测，如果 4xx 就跳过该候选
+      try {
+        var probe = await fetch(tryUrl.split('#')[0], { method: 'HEAD', cache: 'no-store', mode: 'cors' });
+        if (!probe.ok) {
+          console.log('[getStyleImagesForStyleNo] ③ sign 后 HEAD=' + probe.status + '，跳过假命中: ' + cand.path);
+          continue;
+        }
+      } catch(_hp) {
+        // CORS 不允许 HEAD 的情况，保守认为成功
+      }
       if (cand.hint === 'full' && !fullPath) {
         fullPath = cand.path; fullSigned = tryUrl;
       } else if (!stylePath) {
@@ -1494,7 +1561,7 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
           });
         } catch(_eCache) {}
       }
-      console.log('[getStyleImagesForStyleNo] LIST 未命中，按候选路径直试成功：style=' + stylePath + '  full=' + fullPath);
+      console.log('[getStyleImagesForStyleNo] ③✅ LIST 未命中，按候选路径直试成功：style=' + stylePath + '  full=' + fullPath);
       return {
         styleImg_path: stylePath,
         fullImg_path:  fullPath,
@@ -1504,6 +1571,7 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
         fullImg_signed:  fullSigned
       };
     }
+    console.log('[getStyleImagesForStyleNo] ③❌ 候选路径直试未命中，将返回 null（说明桶里真的没有匹配图片）');
   } catch(_eFallback) {
     console.warn('[getStyleImagesForStyleNo] 直试候选路径兜底异常:', _eFallback);
   }

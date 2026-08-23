@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -143,14 +143,14 @@
   </div>
 </div>
 
-<script src="js/common.js?v=20260822f"></script>
+<script src="js/common.js?v=20260823a"></script>
 <!-- Supabase 登录守卫 -->
-<script src="js/localstorage-patch.js?v=20260822h"></script>
-<script src="js/supabase-store.js?v=20260822j"></script>
-<script src="js/init-page.js?v=20260822b"></script>
-<script src="js/auth-guard.js?v=20260822c"></script>
+<script src="js/localstorage-patch.js?v=20260823a"></script>
+<script src="js/supabase-store.js?v=20260823a"></script>
+<script src="js/init-page.js?v=20260823a"></script>
+<script src="js/auth-guard.js?v=20260823a"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
-<script type="module" src="js/form-submit.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260823a"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script>
 // ===== 云端同步：提前注册监听器 =====
@@ -187,10 +187,10 @@ App.initSampleData();
 App.enforcePagePermission('order');
   setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
 
-// ===== 诊断：检测 Supabase Storage 可用性 =====
-setTimeout(function() {
+// ===== 诊断：检测 Supabase Storage 可用性 & 订单款号 3011043 真实路径 =====
+setTimeout(async function() {
   var bucket = window.STORAGE_BUCKET || 'app-photos';
-  console.log('[order] Supabase 诊断:');
+  console.log('%c[order] Supabase 诊断:', 'background:#f3f4f6;padding:2px 6px;border-radius:4px;font-weight:bold;');
   console.log('  SUPABASE_URL:', window.SUPABASE_URL);
   console.log('  STORAGE_BUCKET:', bucket);
   console.log('  SUPABASE_ANON_KEY:', window.SUPABASE_ANON_KEY ? '(已设置)' : '(未设置)');
@@ -198,18 +198,94 @@ setTimeout(function() {
   console.log('  window.SupabaseSubmit:', !!window.SupabaseSubmit);
   console.log('  window.SupabaseStore:', !!window.SupabaseStore, '_isInitialized:',
     window.SupabaseStore && window.SupabaseStore._isInitialized ? window.SupabaseStore._isInitialized() : 'N/A');
+
+  // 先把订单记录的真实 styleNo + 自带 styleImg_path 打印出来（最准）
+  try {
+    var orders = (App && App.store && typeof App.store.get === 'function') ? (App.store.get('orders') || []) : [];
+    console.log('[order] 订单数=' + orders.length,
+      orders.map(function(o){ return {id:o.id, styleNo:o.styleNo||'', styleImg_path:o.styleImg_path||'', fullImg_path:o.fullImg_path||''}; }));
+  } catch(_) {}
+
+  // 共享 styleImages 缓存（styleImages key 存在 localStorage / Supabase 里）
+  try {
+    var ls = window._origLocalStorage || window.localStorage;
+    var raw = ls.getItem('styleImages');
+    var cacheDump = raw ? JSON.parse(raw) : null;
+    console.log('[order] styleImages(共享缓存) 条目数=' + (cacheDump ? Object.keys(cacheDump).length : 0), cacheDump || {});
+    if (cacheDump) {
+      Object.keys(cacheDump).forEach(function(k){
+        if (!k) return;
+        var item = cacheDump[k] || {};
+        console.log('   · 款号=' + k + '  styleImg=' + (item.styleImg_path||'') + '  fullImg=' + (item.fullImg_path||''));
+      });
+    }
+  } catch(_e) { console.warn('[order] 打印 styleImages 缓存失败:', _e && _e.message ? _e.message : _e); }
+
+  // 原生 Storage.list 探测 order/ 前缀 + 桶根 + 订单里第一个款号的文件夹
   if (window.supabase && window.supabase.storage) {
-    window.supabase.storage.from(bucket).list('order', { limit: 1 }).then(function(res) {
-      if (res.error) {
-        console.error('[order] Storage list 失败:', res.error.message, '（请检查 RLS Storage SELECT 策略是否允许 authenticated 角色 SELECT app-photos 下 order/ 路径）');
-      } else {
-        console.log('[order] Storage 连接正常, order/ 文件数:', res.data ? res.data.length : 0);
+    var listAndLog = function(prefix, label) {
+      window.supabase.storage.from(bucket).list(prefix || '', { limit: 20 }).then(function(res) {
+        if (res.error) {
+          console.error('[order] Storage list(' + label + ') 失败:', res.error.message,
+            '→ 请确认 patch_rls_shared_mode.sql 已经在 SQL Editor 执行过（放开 storage.objects SELECT 给 authenticated）');
+        } else {
+          var data = res.data || [];
+          console.log('[order] Storage ' + label + ' 文件数=' + data.length + '  (前12项):',
+            data.slice(0, 12).map(function(f){ return (f.type === 'folder' ? '[DIR] ' : '[FILE] ') + f.name; }));
+        }
+      }).catch(function(err) {
+        console.error('[order] Storage ' + label + ' 异常:', err && err.message);
+      });
+    };
+    listAndLog('order', 'order/ 子目录');
+    listAndLog('', '桶根目录');
+
+    // 用订单里第一个 styleNo 直接探测款号文件夹
+    try {
+      var orders2 = (App && App.store) ? (App.store.get('orders') || []) : [];
+      for (var oi = 0; oi < orders2.length; oi++) {
+        var sn = (orders2[oi].styleNo || '').trim();
+        if (!sn) continue;
+        listAndLog(sn, '款号文件夹="' + sn + '/"');
+        listAndLog(sn.toLowerCase(), '款号文件夹(lower)="' + sn.toLowerCase() + '/"');
+        listAndLog(sn.toUpperCase(), '款号文件夹(upper)="' + sn.toUpperCase() + '/"');
+        break;
       }
-    }).catch(function(err) {
-      console.error('[order] Storage 连接异常:', err && err.message);
-    });
+    } catch(_e2) {}
   }
-}, 1500);
+
+  // 再多一条：直接用 fetch + Authorization 调 Storage REST list（绕开 supabase-js，排查是不是 client 库问题）
+  try {
+    var sbUrl = (window.SUPABASE_URL || '').replace(/\/$/, '');
+    var anon = window.SUPABASE_ANON_KEY || '';
+    if (sbUrl && anon) {
+      var userTok = null;
+      try {
+        if (window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function') {
+          var _sd = await window.supabase.auth.getSession();
+          if (_sd && _sd.data && _sd.data.session && _sd.data.session.access_token) userTok = _sd.data.session.access_token;
+        }
+      } catch(_ee) {}
+      var auth = 'Bearer ' + (userTok || anon);
+      var lr = await fetch(sbUrl + '/storage/v1/object/list/' + encodeURIComponent(bucket), {
+        method: 'POST', cache: 'no-store',
+        headers: { 'apikey': anon, 'Authorization': auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: '', limit: 30 })
+      });
+      console.log('[order] REST list 桶根: HTTP ' + lr.status + '  (带JWT=' + !!userTok + '). ' +
+        (lr.ok ? '✅ RLS SELECT 已开（LIST 通了）' : '❌ RLS SELECT 仍然拒绝 → 需要执行 patch_rls_shared_mode.sql 第二块'));
+      if (lr.ok) {
+        var lj = await lr.json();
+        if (Array.isArray(lj)) {
+          console.log('[order] REST list 桶根前 20 项:',
+            lj.slice(0, 20).map(function(e){ return (e.type === 'folder' ? '[DIR] ' : '[FILE] ') + e.name; }));
+        }
+      }
+    }
+  } catch(_restE) {
+    console.warn('[order] REST list 探测异常:', _restE && _restE.message ? _restE.message : _restE);
+  }
+}, 2000);
 
 /**
  * 手动强制云端同步：
@@ -1264,8 +1340,10 @@ const OrderImg = {
 
   // 按款号云端搜索，回填表格缩略图（自身没图但 styleNo 设置了的记录）
   backfillTableImages: async function() {
+    console.log('[OrderImg.backfillTableImages] 🚀 开始，检查 window.getStyleImagesForStyleNo=' + !!window.getStyleImagesForStyleNo);
     if (!window.getStyleImagesForStyleNo) return;
     var imgs = document.querySelectorAll('img[data-order-img-backfill]');
+    console.log('[OrderImg.backfillTableImages] 表格内待回填 img 节点数=' + imgs.length);
     if (imgs.length === 0) return;
     var groups = {};
     imgs.forEach(function(img){
@@ -1274,12 +1352,15 @@ const OrderImg = {
       (groups[sn] = groups[sn] || []).push(img);
     });
     var styleNos = Object.keys(groups);
+    console.log('[OrderImg.backfillTableImages] 待搜索的款号列表=' + JSON.stringify(styleNos));
     for (var i = 0; i < styleNos.length; i++) {
       var sn = styleNos[i];
       var elements = groups[sn];
       try {
+        console.log('[OrderImg.backfillTableImages] 🔍 当前款号=' + sn + ', 覆盖行数=' + elements.length);
         var r = await getStyleImagesForStyleNo(sn);
         if (!r) {
+          console.log('[OrderImg.backfillTableImages] ❌ 款号=' + sn + ' getStyleImagesForStyleNo 返回 null，表格显示"无"');
           elements.forEach(function(img){
             var cell = img.parentElement;
             if (cell) {
@@ -1289,8 +1370,9 @@ const OrderImg = {
           });
           continue;
         }
+        console.log('[OrderImg.backfillTableImages] ✅ 款号=' + sn + ' 结果: styleImg_path=' + (r.styleImg_path || '') + ' fullImg_path=' + (r.fullImg_path || ''));
         var signedUrl = r.styleImg_signed || null;
-        if (!signedUrl && r.styleImg_path && window.resolveImageUrl) signedUrl = await resolveImageUrl(r.styleImg_path);
+        if (!signedUrl && r.styleImg_path && window.resolveImageUrl) signedUrl = await resolveImageUrl(r.styleImg_path, { hintStyleNo: sn });
         var paths = [];
         if (r.styleImg_path) paths.push(r.styleImg_path);
         if (r.fullImg_path)  paths.push(r.fullImg_path);
@@ -1322,15 +1404,19 @@ const OrderImg = {
               }
             }
           } else {
+            console.warn('[OrderImg.backfillTableImages] ⚠️ 款号=' + sn + ' 有路径但签名URL为空（RLS sign 权限异常？）');
             if (cell) {
               var sp2 = cell.querySelector('span');
               if (sp2) sp2.textContent = '无';
             }
           }
         });
-      } catch(_e) {}
+      } catch(_e) {
+        console.error('[OrderImg.backfillTableImages] 款号=' + sn + ' 抛异常:', _e && _e.message ? _e.message : _e);
+      }
       if (i < styleNos.length - 1) await new Promise(function(r){ setTimeout(r, 60); });
     }
+    console.log('[OrderImg.backfillTableImages] ✅ 全部款号处理完毕');
   },
 
   // 详情页图片水合
