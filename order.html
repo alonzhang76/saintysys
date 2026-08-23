@@ -12,6 +12,154 @@
 .no-spinner { -moz-appearance: textfield; }
 .modal-lg .modal-body { max-height: calc(60vh + 40mm); }
 .modal.modal-lg { max-width: 1100px; }
+
+/* ===== Quotation UI (scoped to #quotationTab) ===== */
+#quotationTab .q-subnav{display:flex;gap:4px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;}
+#quotationTab .q-subnav a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--radius);font-size:12px;color:var(--ink-secondary);background:transparent;cursor:pointer;}
+#quotationTab .q-subnav a:hover{background:var(--primary-light);}
+#quotationTab .q-subnav a.active{background:var(--primary);color:#fff;font-weight:600;}
+
+#quotationTab .q-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;}
+#quotationTab .q-card-header{padding:10px 14px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;}
+#quotationTab .q-card-title{font-size:13px;font-weight:600;color:var(--ink);}
+#quotationTab .q-card-body{padding:14px;}
+
+#quotationTab .q-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;padding:0 14px 12px;border-bottom:1px solid var(--border-light);}
+#quotationTab .q-search-box{position:relative;flex:1;max-width:280px;}
+#quotationTab .q-search-box input{width:100%;padding:6px 10px 6px 30px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:#fff;}
+#quotationTab .q-search-box .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+#quotationTab .q-filter-select{padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:#fff;}
+
+#quotationTab .q-data-table{width:100%;border-collapse:collapse;font-size:12px;}
+#quotationTab .q-data-table th{text-align:left;padding:8px 10px;font-weight:600;color:var(--ink-secondary);border-bottom:2px solid var(--border);background:var(--border-light);white-space:nowrap;}
+#quotationTab .q-data-table td{padding:8px 10px;border-bottom:1px solid var(--border-light);color:var(--ink);}
+#quotationTab .q-data-table tbody tr:hover{background:var(--primary-light);}
+#quotationTab .q-data-table .quote-no{font-weight:600;color:var(--primary);}
+#quotationTab .q-data-table .amount{font-family:'Consolas',monospace;font-weight:500;}
+#quotationTab .q-data-table .actions{display:flex;gap:2px;}
+
+#quotationTab .q-badge{display:inline-flex;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+#quotationTab .q-badge-draft{background:#f3f4f6;color:#4b5563;}
+#quotationTab .q-badge-sent{background:#dbeafe;color:#1e40af;}
+#quotationTab .q-badge-accepted{background:#d1fae5;color:#065f46;}
+#quotationTab .q-badge-rejected{background:#fee2e2;color:#991b1b;}
+#quotationTab .q-badge-expired{background:#fef3c7;color:#92400e;}
+
+#quotationTab .q-form-section{margin-bottom:16px;}
+#quotationTab .q-form-section-title{font-size:12px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--primary-light);display:flex;align-items:center;gap:6px;justify-content:space-between;}
+#quotationTab .q-form-row{display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+#quotationTab .q-form-group{flex:1;min-width:160px;}
+#quotationTab .q-form-group label{display:block;font-size:11px;font-weight:600;color:var(--ink-secondary);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
+#quotationTab .q-form-group input,#quotationTab .q-form-group select,#quotationTab .q-form-group textarea{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:#fff;}
+#quotationTab .q-form-group input:focus,#quotationTab .q-form-group select:focus,#quotationTab .q-form-group textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,77,109,.08);}
+#quotationTab .q-form-group textarea{resize:vertical;min-height:50px;}
+
+#quotationTab .q-items-table{width:100%;border-collapse:collapse;font-size:11px;}
+#quotationTab .q-items-table th{text-align:left;padding:6px 5px;font-weight:600;color:var(--ink-secondary);background:var(--border-light);border:1px solid var(--border);white-space:nowrap;font-size:10px;text-transform:uppercase;}
+#quotationTab .q-items-table td{padding:3px 5px;border:1px solid var(--border);}
+#quotationTab .q-items-table input{width:100%;border:1px solid transparent;background:transparent;padding:4px 6px;border-radius:3px;font-size:11px;}
+#quotationTab .q-items-table input:focus{border-color:var(--primary);background:#fff;}
+#quotationTab .q-items-table .col-del{width:30px;text-align:center;}
+#quotationTab .q-items-table .col-style{width:90px;}
+#quotationTab .q-items-table .col-qty{width:70px;}
+#quotationTab .q-items-table .col-price{width:80px;}
+#quotationTab .q-items-table .col-total{width:90px;text-align:right;font-family:'Consolas',monospace;font-weight:600;}
+#quotationTab .q-items-table .col-total-cell{text-align:right;font-family:'Consolas',monospace;font-weight:600;color:var(--primary);}
+
+#quotationTab .q-totals-section{display:flex;justify-content:flex-end;margin-top:10px;}
+#quotationTab .q-totals-table{width:280px;border-collapse:collapse;}
+#quotationTab .q-totals-table td{padding:4px 10px;font-size:12px;}
+#quotationTab .q-totals-table .label{color:var(--ink-secondary);text-align:right;}
+#quotationTab .q-totals-table .value{text-align:right;font-family:'Consolas',monospace;font-weight:500;width:110px;}
+#quotationTab .q-totals-table .grand-total{border-top:2px solid var(--primary);padding-top:8px;margin-top:4px;}
+#quotationTab .q-totals-table .grand-total .label{font-weight:700;color:var(--primary);font-size:13px;}
+#quotationTab .q-totals-table .grand-total .value{font-weight:700;color:var(--primary);font-size:15px;}
+
+#quotationTab .q-empty{text-align:center;padding:30px 14px;color:var(--muted);font-size:12px;}
+
+/* ===== Quotation Preview Overlay (modal-like) ===== */
+.q-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1500;display:none;overflow-y:auto;}
+.q-preview-overlay.show{display:block;}
+.q-preview-container{max-width:800px;margin:20px auto;background:#fff;border-radius:var(--radius-lg);box-shadow:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);overflow:hidden;}
+.q-preview-toolbar{padding:10px 16px;background:var(--gray-800,#1f2937);display:flex;justify-content:space-between;align-items:center;}
+.q-preview-toolbar .title{color:#fff;font-size:13px;font-weight:600;}
+.q-preview-toolbar .actions{display:flex;gap:6px;}
+
+/* Quotation Document */
+.q-quotation-doc{padding:36px 44px;min-height:900px;}
+.q-quote-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:18px;border-bottom:3px solid var(--primary);}
+.q-quote-header-left .company-name{font-size:15px;font-weight:700;color:var(--primary);letter-spacing:.3px;white-space:nowrap;}
+.q-quote-header-left .company-info{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;}
+.q-quote-header-right{text-align:right;}
+.q-quote-header-right .quote-title{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:2px;text-transform:uppercase;}
+.q-quote-header-right .quote-meta{font-size:11px;color:var(--ink-secondary);margin-top:6px;line-height:1.8;}
+.q-quote-header-right .quote-meta strong{color:var(--ink);}
+.q-quote-no-badge{display:inline-block;background:#d32f2f;color:#fff;font-weight:700;font-size:12px;padding:2px 8px;border-radius:3px;letter-spacing:.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+.q-quote-parties{display:flex;gap:24px;margin-bottom:20px;}
+.q-quote-party{flex:1;}
+.q-quote-party .party-label{font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--primary-light);}
+.q-quote-party .party-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px;}
+.q-quote-party .party-detail{font-size:10px;color:var(--muted);line-height:1.6;}
+
+.q-quote-items{width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;}
+.q-quote-items th{background:var(--primary);color:#fff;padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.q-quote-items th.right{text-align:right;}
+.q-quote-items th.center{text-align:center;}
+.q-quote-items td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--ink-secondary);}
+.q-quote-items td.right{text-align:right;font-family:'Consolas',monospace;}
+.q-quote-items td.center{text-align:center;}
+.q-quote-items tbody tr:nth-child(even){background:var(--border-light);}
+.q-quote-items .item-style{font-weight:600;color:var(--primary);}
+.q-quote-items .item-name{font-weight:500;color:var(--ink);}
+.q-quote-items .item-desc{font-size:9px;color:var(--muted);margin-top:2px;}
+
+.q-quote-totals{display:flex;justify-content:flex-end;margin-bottom:20px;}
+.q-quote-totals-table{width:280px;border-collapse:collapse;}
+.q-quote-totals-table td{padding:5px 10px;font-size:11px;}
+.q-quote-totals-table .label{color:var(--ink-secondary);text-align:right;}
+.q-quote-totals-table .value{text-align:right;font-family:'Consolas',monospace;font-weight:500;}
+.q-quote-totals-table .grand-row{border-top:2px solid var(--primary);}
+.q-quote-totals-table .grand-row .label{font-weight:700;color:var(--primary);font-size:13px;padding-top:8px;}
+.q-quote-totals-table .grand-row .value{font-weight:700;color:var(--primary);font-size:14px;padding-top:8px;}
+
+.q-quote-terms{display:flex;gap:24px;margin-bottom:20px;}
+.q-quote-term{flex:1;}
+.q-quote-term .term-label{font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.q-quote-term .term-value{font-size:11px;color:var(--ink-secondary);}
+
+.q-quote-notes{background:var(--border-light);border-left:3px solid var(--primary);padding:12px 16px;margin-bottom:20px;border-radius:0 3px 3px 0;}
+.q-quote-notes .notes-label{font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.q-quote-notes .notes-content{font-size:10px;color:var(--ink-secondary);line-height:1.7;}
+
+.q-quote-signature{display:flex;justify-content:space-between;margin-top:36px;}
+.q-quote-sig-block{text-align:center;width:200px;}
+.q-quote-sig-block .sig-line{border-top:1px solid var(--muted);padding-top:5px;margin-top:30px;}
+.q-quote-sig-block .sig-label{font-size:10px;color:var(--muted);}
+
+.q-quote-footer{margin-top:30px;padding-top:12px;border-top:1px solid var(--border);text-align:center;font-size:9px;color:var(--muted);}
+
+.q-print-footer,.q-print-user{display:none;}
+
+/* ===== Print styles for Quotation ===== */
+@media print{
+  @page{size:A4;margin:12mm 10mm 18mm 10mm;}
+  /* Hide everything when printing a quotation */
+  body > *{visibility:hidden;}
+  .q-preview-overlay, .q-preview-overlay *{visibility:visible;}
+  .q-preview-overlay{position:static!important;background:none!important;display:block!important;overflow:visible!important;}
+  .q-preview-container{max-width:none!important;margin:0!important;border-radius:0!important;box-shadow:none!important;}
+  .q-preview-toolbar{display:none!important;}
+  .q-quotation-doc{padding:0!important;min-height:auto!important;}
+  .q-quote-header{page-break-inside:avoid;}
+  .q-quote-items thead{display:table-header-group;}
+  .q-quote-items tr{page-break-inside:avoid;}
+  .q-quote-parties,.q-quote-terms,.q-quote-notes,.q-quote-signature,.q-quote-totals{page-break-inside:avoid;}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff;}
+  .q-print-footer{display:block!important;position:fixed;bottom:6mm;left:0;right:0;text-align:center;font-size:9px;color:#9ca3af;}
+  .q-print-footer .page-num:after{content:"Page " counter(page) " of " counter(pages);}
+  .q-print-user{display:block!important;position:fixed;bottom:6mm;right:10mm;font-size:9px;color:#9ca3af;}
+}
 </style>
 </head>
 <body>
@@ -31,8 +179,8 @@
       <!-- 标签页 -->
       <div class="tabs" id="orderTabs" style="margin-bottom:0;">
         <div class="tab-item active" data-tab="orders" onclick="switchOrderTab('orders')">订单列表</div>
-        <div class="tab-item" data-tab="materials" onclick="switchOrderTab('materials')">耗料登记</div>
         <div class="tab-item" data-tab="sizes" onclick="switchOrderTab('sizes')">尺寸表</div>
+        <div class="tab-item" data-tab="quotation" onclick="switchOrderTab('quotation')">Quotation</div>
       </div>
 
       <!-- 订单列表 -->
@@ -72,40 +220,6 @@
         </div>
       </div>
 
-      <!-- 耗料登记及状态 -->
-      <div id="materialsTab" style="display:none;">
-        <div class="table-wrap">
-          <div class="filter-bar">
-            <div class="search-input">
-              <input type="text" id="matSearchInput" class="form-input" placeholder="搜索PO/款号/名称/供应商" oninput="renderMaterials()">
-            </div>
-            <select id="matCategoryFilter" class="form-select" onchange="renderMaterials()">
-              <option value="">全部类别</option>
-              <option value="面料">面料</option>
-              <option value="里料">里料</option>
-              <option value="衬">衬</option>
-              <option value="填充料">填充料</option>
-              <option value="辅料">辅料</option>
-              <option value="水洗">水洗</option>
-            </select>
-            <select id="matOrderFilter" class="form-select" onchange="renderMaterials()">
-              <option value="">全部订单</option>
-            </select>
-          </div>
-          <div class="table-toolbar">
-            <div class="table-toolbar-left">
-              <span class="card-title">耗料登记</span>
-              <span class="text-muted" id="matCountLabel" style="font-size:12px;"></span>
-            </div>
-            <div class="table-toolbar-right">
-              <button class="btn btn-sm" onclick="syncMaterialsToModules()" title="同步当前数据到各模块">🔄 同步到模块</button>
-              <button class="btn btn-primary" onclick="openMaterialModal()" title="新增登记">➕</button>
-            </div>
-          </div>
-          <div id="materialsTable"></div>
-        </div>
-      </div>
-
       <!-- 尺寸表 -->
       <div id="sizesTab" style="display:none;">
         <div class="table-wrap">
@@ -139,6 +253,48 @@
         </div>
       </div>
 
+      <!-- Quotation -->
+      <div id="quotationTab" style="display:none;">
+        <!-- Sub nav -->
+        <div class="q-subnav" id="qSubnav">
+          <a href="#" onclick="q_showList();return false;" id="qnav-list" class="active"><span>📋</span> Quotation List</a>
+          <a href="#" onclick="q_newQuotationNav();return false;" id="qnav-new"><span>➕</span> New Quotation</a>
+          <a href="#" onclick="q_showSettingsNav();return false;" id="qnav-settings"><span>⚙️</span> Settings</a>
+        </div>
+        <div id="qAppContent"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Quotation Preview Overlay (print target) -->
+<div class="q-preview-overlay" id="qPreviewOverlay">
+  <div class="q-preview-container">
+    <div class="q-preview-toolbar no-print">
+      <span class="title">Quotation Preview</span>
+      <div class="actions">
+        <button class="btn btn-sm btn-secondary" onclick="window.print()">🖨️</button>
+        <button class="btn btn-sm btn-secondary" onclick="q_closePreview()">✕</button>
+      </div>
+    </div>
+    <div id="qPreviewContent"></div>
+    <div class="q-print-footer"><span class="page-num"></span></div>
+    <div class="q-print-user" id="qPrintUser"></div>
+  </div>
+</div>
+
+<!-- Quotation Confirm Modal -->
+<div class="modal-overlay" id="qConfirmModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <span class="modal-title" id="qModalTitle">Confirm</span>
+      <button class="modal-close" onclick="q_closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="qModalBody">Are you sure?</div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-secondary" onclick="q_closeModal()">Cancel</button>
+      <button class="btn btn-sm btn-danger" id="qModalConfirmBtn">Confirm</button>
     </div>
   </div>
 </div>
@@ -2397,10 +2553,10 @@ function switchOrderTab(tab) {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
   document.getElementById('ordersTab').style.display = tab === 'orders' ? '' : 'none';
-  document.getElementById('materialsTab').style.display = tab === 'materials' ? '' : 'none';
   document.getElementById('sizesTab').style.display = tab === 'sizes' ? '' : 'none';
-  if (tab === 'materials') { renderMaterialOrderFilter(); renderMaterials(); }
+  document.getElementById('quotationTab').style.display = tab === 'quotation' ? '' : 'none';
   if (tab === 'sizes') renderSizeSheets();
+  if (tab === 'quotation') q_initIfNeeded();
 }
 
 // 尺寸表数据管理
@@ -2756,691 +2912,755 @@ function parseSizeSheetRows(rows) {
   return result;
 }
 
-// ===== 耗料登记及状态标签页 =====
-let _matEditingId = null;
+// ===== Quotation 标签页 =====
+// (整合自 quotation.html；所有函数加 q_ 前缀，所有表单字段加 qf_ 前缀以避免与订单表单冲突)
+var Q_STORAGE_KEY = 'fashion_quotations';
+var Q_SETTINGS_KEY = 'fashion_quotation_settings';
+var q_initialized = false;
+var q_currentView = 'list';
+var q_editingId = null;
+var q_currentFilter = 'all';
 
-// 耗料登记及状态分类映射：对应面里衬类型 / 辅料 / 水洗
-const MAT_CATEGORIES = [
-  { key: '面料', target: 'fabric', fabricType: '面料', cls: 'tag-teal' },
-  { key: '里料', target: 'fabric', fabricType: '里料', cls: 'tag-blue' },
-  { key: '衬', target: 'fabric', fabricType: '衬', cls: 'tag-purple' },
-  { key: '填充料', target: 'fabric', fabricType: '填充料', cls: 'tag-orange' },
-  { key: '辅料', target: 'accessory', cls: 'tag-green' },
-  { key: '水洗', target: 'wash', cls: 'tag-red' },
-];
-MAT_CATEGORIES._map = Object.fromEntries(MAT_CATEGORIES.map(c => [c.key, c]));
-
-function getOrderMaterials() {
-  return App.store.get('orderMaterials', []);
-}
-function saveOrderMaterials(list) {
-  App.store.set('orderMaterials', list);
-}
-
-// 通用：根据款号找订单号（优先取第一个匹配的订单）
-function getOrderNoByStyleNo(styleNo) {
-  if (!styleNo) return '';
-  const orders = App.store.get('orders', []);
-  const o = orders.find(x => x.styleNo === styleNo);
-  return o ? o.orderNo : '';
+function q_initIfNeeded() {
+  // 确保设置存在
+  var s = q_getSettings();
+  if (!s.companyName || s.companyName === 'AA Fashion Trading Co., Ltd.') {
+    q_saveSettings(q_defaultSettings);
+  } else if (!s.custCompany) {
+    q_saveSettings(Object.assign({}, q_defaultSettings, s));
+  }
+  if (!q_initialized) {
+    q_initialized = true;
+  }
+  if (!q_currentView || q_currentView === 'list') {
+    q_renderList();
+    q_setNavActive('qnav-list');
+  }
 }
 
-// 渲染订单下拉筛选
-function renderMaterialOrderFilter() {
-  const sel = document.getElementById('matOrderFilter');
-  if (!sel) return;
-  const orders = App.store.get('orders', []);
-  const cur = sel.value;
-  const opts = ['<option value="">全部订单</option>'];
-  orders
-    .slice()
-    .sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''))
-    .forEach(o => opts.push(`<option value="${o.orderNo}" ${o.orderNo === cur ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`));
-  sel.innerHTML = opts.join('');
+function q_getData() {
+  try { return JSON.parse(localStorage.getItem(Q_STORAGE_KEY)) || []; } catch (e) { return []; }
+}
+function q_saveData(arr) {
+  localStorage.setItem(Q_STORAGE_KEY, JSON.stringify(arr));
+}
+function q_getSettings() {
+  try { return JSON.parse(localStorage.getItem(Q_SETTINGS_KEY)) || {}; } catch (e) { return {}; }
+}
+function q_saveSettings(obj) {
+  localStorage.setItem(Q_SETTINGS_KEY, JSON.stringify(obj));
 }
 
-// 获取筛选后的耗料登记及状态列表
-function getFilteredMaterials() {
-  const list = getOrderMaterials();
-  const search = (document.getElementById('matSearchInput')?.value || '').trim().toLowerCase();
-  const cat = document.getElementById('matCategoryFilter')?.value || '';
-  const order = document.getElementById('matOrderFilter')?.value || '';
+var q_defaultSettings = {
+  companyName: 'JIANGSU SAINTY HANTANG TRADING CO LTD',
+  companyAddress: '',
+  companyPhone: '+86-510-82734291',
+  companyEmail: 'adamstig@163.com',
+  companyTaxId: '',
+  userName: 'Adam',
+  custCompany: 'Castro Model LTD.',
+  custContact: 'Yaara Bar',
+  custAddress: '31 Ort Israel St. Bat Yam 59590 Israel',
+  custPhone: '052-8593287',
+  custEmail: 'yaara.b@castro.co.il',
+  defaultCurrency: 'USD',
+  defaultPaymentTerms: '30% deposit, 70% before shipment',
+  defaultDeliveryTerms: 'FOB Shanghai',
+  defaultLeadTime: '45-60 days after order confirmation',
+  defaultValidity: '30 days',
+  defaultHangerCost: 1.10,
+  defaultDiscount: 0,
+  defaultNotes: '1. Sample lead time: 7-10 working days.\n2. All prices include standard poly bag and carton packing; hanger packing available upon request.\n3. Color matching is subject to fabric mill confirmation; slight variation may occur between lots.\n4. Size charts and tech packs available upon request.\n5. Prices are valid for 30 days from quotation date and subject to final confirmation.\n6. Compliance with REACH and OEKO-TEX standards; test reports available upon request.'
+};
 
-  return list.filter(m => {
-    if (cat && m.category !== cat) return false;
-    if (order && m.orderNo !== order) return false;
-    if (search) {
-      const str = [m.orderNo, m.styleNo, m.name, m.supplier, m.spec, m.remark, m.washMethod, m.usagePart].join(' ').toLowerCase();
-      if (!str.includes(search)) return false;
-    }
-    return true;
-  });
+function q_uid() { return 'qt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+function q_todayStr() { return new Date().toISOString().split('T')[0]; }
+function q_addDays(dateStr, days) {
+  var d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+function q_formatMoney(n) {
+  n = Number(n) || 0;
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function q_generateQuoteNo() {
+  var now = new Date();
+  var ym = String(now.getFullYear()) + String(now.getMonth() + 1).padStart(2, '0');
+  var rnd = Math.floor(1000 + Math.random() * 9000);
+  return 'QTSTIG' + ym + rnd;
+}
+function q_showToast(msg, type) {
+  if (typeof App !== 'undefined' && App.toast) { App.toast(msg, type || 'info'); return; }
+  // Fallback toast
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1f2937;color:#fff;padding:8px 16px;border-radius:4px;font-size:12px;z-index:3000;box-shadow:0 4px 12px rgba(0,0,0,.2);';
+  if (type === 'success') t.style.background = '#2d9d5f';
+  if (type === 'error') t.style.background = '#d44848';
+  document.body.appendChild(t);
+  setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 2200);
+}
+function q_escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// 渲染耗料登记及状态表格
-function renderMaterials() {
-  const list = App.utils.sortByDateDesc(getFilteredMaterials(), ['createDate', 'updateDate']);
-  const el = document.getElementById('materialsTable');
-  const labelEl = document.getElementById('matCountLabel');
-  if (labelEl) labelEl.textContent = list.length ? ` 共 ${list.length} 条` : '';
-  if (!el) return;
+// ===== Render: List View =====
+function q_renderList() {
+  var data = q_getData();
+  var filtered = data;
+  if (q_currentFilter !== 'all') {
+    filtered = data.filter(function (q) { return q.status === q_currentFilter; });
+  }
+  filtered.sort(function (a, b) { return (b.quoteDate || '').localeCompare(a.quoteDate || ''); });
 
-  const tagCls = (key) => (MAT_CATEGORIES._map[key]?.cls || '');
-  const thead = `<thead><tr>
-    <th style="width:50px;">类别</th>
-    <th style="width:120px;">PO</th>
-    <th style="width:100px;">款号</th>
-    <th>名称</th>
-    <th style="width:90px;">使用部位</th>
-    <th style="width:120px;">规格/颜色/成</th>
-    <th style="width:120px;">供应商/水洗厂</th>
-    <th style="width:70px;">数量</th>
-    <th style="width:70px;">单价</th>
-    <th style="width:110px;">日期</th>
-    <th style="width:90px;">同步状态</th>
-    <th style="width:70px;white-space:nowrap;">操作</th>
-  </tr></thead>`;
+  var statusOptions = ['all', 'draft', 'sent', 'accepted', 'rejected', 'expired'];
+  var statusLabels = { all: 'All', draft: 'Draft', sent: 'Sent', accepted: 'Accepted', rejected: 'Rejected', expired: 'Expired' };
 
-  let tbody;
-  if (list.length === 0) {
-    tbody = `<tbody><tr><td colspan="12" style="text-align:center;padding:24px;color:#999;">暂无数据，点击右上角「➕」登记面料/里料/衬/辅料/水洗信息</td></tr></tbody>`;
+  var html = '<div class="q-card">' +
+    '<div class="q-card-header">' +
+      '<span class="q-card-title">Quotation Records</span>' +
+      '<button class="btn btn-sm btn-primary" onclick="q_newQuotationNav()">➕</button>' +
+    '</div>' +
+    '<div class="q-toolbar">' +
+      '<div class="q-search-box"><span class="search-icon">🔍</span><input type="text" id="qSearchInput" placeholder="Search by quote no, customer, style..." oninput="q_filterTable(this.value)"></div>' +
+      '<select class="q-filter-select" onchange="q_setFilter(this.value)">' +
+        statusOptions.map(function (s) { return '<option value="' + s + '" ' + (q_currentFilter === s ? 'selected' : '') + '>' + statusLabels[s] + '</option>'; }).join('') +
+      '</select>' +
+      '<span style="font-size:11px;color:var(--muted);margin-left:auto;">Total: ' + filtered.length + ' quotations</span>' +
+    '</div>';
+
+  if (filtered.length === 0) {
+    html += '<div class="q-empty"><div style="font-size:32px;margin-bottom:6px;opacity:.4;">📋</div><div>No quotations found. Click ➕ to create one.</div></div>';
   } else {
-    tbody = '<tbody>' + list.map(m => {
-      const cat = MAT_CATEGORIES._map[m.category];
-      const synced = m.syncedToModule ? `<span class="tag tag-green">已同步</span>` : `<span class="tag tag-warning">待同步</span>`;
-      const dateStr = m.date || m.createDate || '-';
-      const specParts = [
-        m.category === '水洗' ? (m.washMethod || '') : (m.spec || ''),
-        m.color || '',
-        m.fabricComposition ? (typeof m.fabricComposition === 'string' ? m.fabricComposition : '') : ''
-      ].filter(Boolean).join(' / ') || '-';
-      return `<tr>
-        <td>${cat ? `<span class="tag ${cat.cls}">${m.category}</span>` : m.category}</td>
-        <td>${App.utils.escapeHtml(m.orderNo || '-')}</td>
-        <td>${App.utils.escapeHtml(m.styleNo || '-')}</td>
-        <td>${App.utils.escapeHtml(m.name || '-')}</td>
-        <td>${App.utils.escapeHtml(m.usagePart || '-')}</td>
-        <td>${App.utils.escapeHtml(specParts)}</td>
-        <td>${App.utils.escapeHtml(m.supplier || '-')}</td>
-        <td>${m.qtyOrdered ? Number(m.qtyOrdered).toLocaleString() + (m.unit || '') : '-'}</td>
-        <td>${m.unitPrice ? App.utils.formatMoney(m.unitPrice) : '-'}</td>
-        <td>${App.utils.escapeHtml(dateStr)}</td>
-        <td>${synced}</td>
-        <td style="white-space:nowrap;">
-          <button class="btn btn-text btn-sm" onclick="openMaterialModal('${m.id}')" title="编辑">✏️</button>
-          <button class="btn btn-text btn-sm" onclick="syncOneMaterial('${m.id}')" title="同步到对应模块">🔄</button>
-          <button class="btn btn-text btn-sm" onclick="deleteMaterial('${m.id}')" title="删除">🗑️</button>
-        </td>
-      </tr>`;
-    }).join('') + '</tbody>';
+    html += '<table class="q-data-table" id="qQuoteTable">' +
+      '<thead><tr>' +
+        '<th>Quote No.</th>' +
+        '<th>Date</th>' +
+        '<th>Valid Until</th>' +
+        '<th>Customer</th>' +
+        '<th>Season</th>' +
+        '<th>Currency</th>' +
+        '<th>Total</th>' +
+        '<th>Status</th>' +
+        '<th>Actions</th>' +
+      '</tr></thead><tbody>';
+    filtered.forEach(function (q) {
+      html += '<tr data-search="' + q_escapeHtml((q.quoteNo + ' ' + q.customerName + ' ' + (q.items || []).map(function (i) { return i.styleNo; }).join(' ')).toLowerCase()) + '">' +
+        '<td class="quote-no">' + q_escapeHtml(q.quoteNo) + '</td>' +
+        '<td>' + q_escapeHtml(q.quoteDate) + '</td>' +
+        '<td>' + q_escapeHtml(q.validUntil) + '</td>' +
+        '<td>' + q_escapeHtml(q.customerName) + '</td>' +
+        '<td>' + q_escapeHtml(q.season || '') + '</td>' +
+        '<td>' + q_escapeHtml(q.currency || 'USD') + '</td>' +
+        '<td class="amount">' + q_escapeHtml(q.currency || 'USD') + ' ' + q_formatMoney(q.grandTotal) + '</td>' +
+        '<td><span class="q-badge q-badge-' + q_escapeHtml(q.status || 'draft') + '">' + q_escapeHtml((q.status || 'draft')) + '</span></td>' +
+        '<td class="actions">' +
+          '<button class="btn btn-icon btn-sm" onclick="q_editQuotation(\'' + q.id + '\')" title="Edit">✏️</button>' +
+          '<button class="btn btn-icon btn-sm" onclick="q_previewQuotation(\'' + q.id + '\')" title="Preview/Print">🖨️</button>' +
+          '<button class="btn btn-icon btn-sm" onclick="q_duplicateQuotation(\'' + q.id + '\')" title="Duplicate">📋</button>' +
+          '<button class="btn btn-icon btn-sm" onclick="q_deleteQuotation(\'' + q.id + '\')" title="Delete">🗑️</button>' +
+        '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
   }
+  html += '</div>';
 
-  el.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+  document.getElementById('qAppContent').innerHTML = html;
+  q_currentView = 'list';
 }
 
-// 生成水洗单号（WS-XXXX）
-function _matGenWashNo() {
-  const washes = App.store.get('washes', []);
-  let maxNum = 0;
-  washes.forEach(w => {
-    const m = w.washNo && w.washNo.match(/WS-(\d+)/);
-    if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+function q_filterTable(val) {
+  val = (val || '').toLowerCase();
+  var rows = document.querySelectorAll('#qQuoteTable tbody tr');
+  rows.forEach(function (r) {
+    var s = r.getAttribute('data-search') || '';
+    r.style.display = s.indexOf(val) >= 0 ? '' : 'none';
   });
-  return `WS-${String(maxNum + 1).padStart(4, '0')}`;
+}
+function q_setFilter(val) {
+  q_currentFilter = val;
+  q_renderList();
 }
 
-// 生成面里衬 / 辅料编号：STIG + YYYYMM + 4位随机
-function _matGenCode(prefix) {
-  const d = new Date();
-  const ym = d.getFullYear().toString() + String(d.getMonth() + 1).padStart(2, '0');
-  const r = String(Math.floor(Math.random() * 9000) + 1000);
-  return `${prefix || 'STIG'}${ym}${r}`;
+// ===== Editor View =====
+function q_newQuotation() {
+  q_editingId = null;
+  var settings = Object.assign({}, q_defaultSettings, q_getSettings());
+  var q = {
+    quoteNo: q_generateQuoteNo(),
+    quoteDate: q_todayStr(),
+    validUntil: q_addDays(q_todayStr(), 30),
+    customerName: settings.custContact || '',
+    customerCompany: settings.custCompany || '',
+    customerAddress: settings.custAddress || '',
+    customerContact: settings.custContact || '',
+    customerEmail: settings.custEmail || '',
+    customerPhone: settings.custPhone || '',
+    season: '',
+    currency: settings.defaultCurrency || 'USD',
+    items: [{ styleNo: '', productName: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: 0, total: 0 }],
+    discount: settings.defaultDiscount || 0,
+    discountType: 'percentage',
+    hangerCost: settings.defaultHangerCost || 0,
+    paymentTerms: settings.defaultPaymentTerms || '',
+    deliveryTerms: settings.defaultDeliveryTerms || '',
+    leadTime: settings.defaultLeadTime || '',
+    notes: settings.defaultNotes || '',
+    status: 'draft'
+  };
+  q_renderEditor(q);
 }
 
-// 打开新增/编辑物料弹窗
-function openMaterialModal(id) {
-  _matEditingId = id || null;
-  const list = getOrderMaterials();
-  const m = id ? { ...(list.find(x => x.id === id) || {}) } : {};
-  const orders = App.store.get('orders', []);
-  const today = App.utils.today();
-
-  // 订单选项
-  const orderOpts = orders.map(o => `<option value="${o.orderNo}" data-style="${App.utils.escapeHtml(o.styleNo || '')}" ${m.orderNo === o.orderNo ? 'selected' : ''}>${o.orderNo}${o.styleNo ? ' · ' + o.styleNo : ''}</option>`).join('');
-  // 类别选项
-  const catOpts = MAT_CATEGORIES.map(c => `<option value="${c.key}" ${m.category === c.key ? 'selected' : ''}>${c.key}</option>`).join('');
-  // 面里衬厂/辅料供应商/水洗厂选项
-  const contacts = App.store.get('contacts', []);
-  const fabricSuppliers = contacts.filter(c => c.type === '面里衬厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const accessorySuppliers = contacts.filter(c => c.type === '辅料厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const washFactories = contacts.filter(c => c.type === '水洗厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const garmentFactories = contacts.filter(c => c.type === '服装厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.shipFactory === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-
-  const defCat = m.category || '面料';
-  const cat = MAT_CATEGORIES._map[defCat] || MAT_CATEGORIES[0];
-  const isFabric = cat.target === 'fabric';
-  const isAccessory = cat.target === 'accessory';
-  const isWash = cat.target === 'wash';
-  const defaultStyle = m.styleNo || '';
-  const defaultOrder = m.orderNo || '';
-
-  // 不同类别下的供应商下拉
-  const supplierSelect = (placeholder, innerHtml) => `
-    <select class="form-select" id="m_supplier" style="width:100%;">
-      <option value="">${placeholder}</option>
-      ${innerHtml}
-    </select>`;
-
-  const body = `
-  <div class="form-grid" style="grid-template-columns:repeat(4,1fr);gap:10px 14px;">
-    <div class="form-group">
-      <label class="form-label">PO 订单号</label>
-      <select class="form-select" id="m_orderNo" onchange="_matOnOrderChange(this)">
-        <option value="">请选择</option>
-        ${orderOpts}
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">款号 Style No.</label>
-      <input type="text" class="form-input" id="m_styleNo" value="${App.utils.escapeHtml(defaultStyle)}" placeholder="款号" list="_matStyleNoList">
-      <datalist id="_matStyleNoList">${[...new Set(orders.map(o => o.styleNo).filter(Boolean))].map(s => `<option value="${App.utils.escapeHtml(s)}">`).join('')}</datalist>
-    </div>
-    <div class="form-group">
-      <label class="form-label">类别<span class="required">*</span></label>
-      <select class="form-select" id="m_category" onchange="_matOnCategoryChange(this.value)">${catOpts}</select>
-    </div>
-    <div class="form-group" id="group_usagePart">
-      <label class="form-label">使用部位</label>
-      <input type="text" class="form-input" id="m_usagePart" value="${App.utils.escapeHtml(m.usagePart || '')}" placeholder="如：大身、领、门襟">
-    </div>
-
-    <div class="form-group" style="grid-column:span 2;">
-      <label class="form-label" id="label_name">名称<span class="required">*</span></label>
-      <input type="text" class="form-input" id="m_name" value="${App.utils.escapeHtml(m.name || '')}" placeholder="面料/辅料名称或水洗目标名称">
-    </div>
-    <div class="form-group" style="grid-column:span 2;">
-      <label class="form-label" id="label_supplier">供应商 / 工厂</label>
-      <div id="wrap_supplier">${supplierSelect('选择面里衬厂', fabricSuppliers)}</div>
-    </div>
-
-    <div class="form-group" id="group_spec">
-      <label class="form-label">规格</label>
-      <input type="text" class="form-input" id="m_spec" value="${App.utils.escapeHtml(m.spec || '')}" placeholder="规格">
-    </div>
-    <div class="form-group" id="group_color">
-      <label class="form-label">颜色</label>
-      <input type="text" class="form-input" id="m_color" value="${App.utils.escapeHtml(m.color || '')}" placeholder="颜色">
-    </div>
-    <div class="form-group" id="group_composition">
-      <label class="form-label">成分</label>
-      <input type="text" class="form-input" id="m_composition" value="${App.utils.escapeHtml(m.fabricComposition || '')}" placeholder="如：65%COT 35%P">
-    </div>
-    <div class="form-group" id="group_washMethod" style="display:none;">
-      <label class="form-label">水洗工艺</label>
-      <input type="text" class="form-input" id="m_washMethod" value="${App.utils.escapeHtml(m.washMethod || '')}" placeholder="如：石磨+酵素">
-    </div>
-
-    <div class="form-group" id="group_washCategory" style="display:none;">
-      <label class="form-label">水洗类型</label>
-      <select class="form-select" id="m_washCategory">
-        ${['面料水洗', '成衣水洗'].map(t => `<option value="${t}" ${(m.washCategory || '面料水洗') === t ? 'selected' : ''}>${t}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group" id="group_qty">
-      <label class="form-label">数量</label>
-      <input type="number" class="form-input no-spinner" id="m_qty" value="${m.qtyOrdered || ''}" placeholder="0">
-    </div>
-    <div class="form-group" id="group_unit">
-      <label class="form-label">单位</label>
-      <select class="form-select" id="m_unit">
-        ${['米','码','千克','个','打','套','件','米2'].map(u => `<option value="${u}" ${(m.unit || '米') === u ? 'selected' : ''}>${u}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group" id="group_price">
-      <label class="form-label">单价</label>
-      <input type="number" class="form-input no-spinner" step="0.01" id="m_price" value="${m.unitPrice || ''}" placeholder="0.00">
-    </div>
-
-    <div class="form-group" id="group_shipFactory">
-      <label class="form-label">发货工厂</label>
-      <select class="form-select" id="m_shipFactory">
-        <option value="">请选择</option>
-        <optgroup label="服装厂">${garmentFactories}</optgroup>
-        <optgroup label="水洗厂">${washFactories}</optgroup>
-      </select>
-    </div>
-    <div class="form-group" id="group_date1">
-      <label class="form-label">主日期</label>
-      <input type="date" class="form-input" id="m_date1" value="${m.date || today}">
-    </div>
-    <div class="form-group" id="group_date2">
-      <label class="form-label">合同日期</label>
-      <input type="date" class="form-input" id="m_date2" value="${m.contractDate || ''}">
-    </div>
-    <div class="form-group" id="group_date3">
-      <label class="form-label">确认日期</label>
-      <input type="date" class="form-input" id="m_date3" value="${m.confirmedDate || ''}">
-    </div>
-
-    <div class="form-group" id="group_shipDate" style="grid-column:span 2;">
-      <label class="form-label">发货日期 → 到货日期</label>
-      <div style="display:flex;gap:6px;">
-        <input type="date" class="form-input" id="m_shipDate" value="${m.shipDate || ''}">
-        <input type="date" class="form-input" id="m_arrivalDate" value="${m.arrivalDate || ''}">
-      </div>
-    </div>
-    <div class="form-group" style="grid-column:span 2;">
-      <label class="form-label">备注</label>
-      <input type="text" class="form-input" id="m_remark" value="${App.utils.escapeHtml(m.remark || '')}" placeholder="备注">
-    </div>
-  </div>`;
-
-  const footer = `
-    <button class="btn" onclick="App.modal.close()">取消</button>
-    <button class="btn btn-primary" onclick="saveMaterial()">💾 保存并同步</button>`;
-
-  App.modal.open({ title: id ? '编辑耗料登记' : '新增耗料登记', body, footer, size: 'lg' });
-
-  // 初始化当前类别下的字段可见性
-  _matOnCategoryChange(defCat);
-
-  // 将值回填到 select
-  if (isFabric) document.getElementById('m_supplier').value = m.supplier || '';
-  // 如果类别是辅料 / 水洗，重新渲染对应的供应商选项（因为 _matOnCategoryChange 会重绘）
-  // 但我们下面手动触发时再处理
+function q_editQuotation(id) {
+  var data = q_getData();
+  var q = data.find(function (x) { return x.id === id; });
+  if (!q) { q_showToast('Quotation not found', 'error'); return; }
+  q_editingId = id;
+  q_renderEditor(q);
 }
 
-// 类别切换时切换字段显示与供应商选项
-function _matOnCategoryChange(val) {
-  const cat = MAT_CATEGORIES._map[val] || MAT_CATEGORIES[0];
-  const contacts = App.store.get('contacts', []);
-  const list = getOrderMaterials();
-  const m = _matEditingId ? (list.find(x => x.id === _matEditingId) || {}) : {};
-  const fabricSuppliers = contacts.filter(c => c.type === '面里衬厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const accessorySuppliers = contacts.filter(c => c.type === '辅料厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-  const washFactories = contacts.filter(c => c.type === '水洗厂').map(c => `<option value="${App.utils.escapeHtml(c.name)}" ${m.supplier === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
-
-  const isFabric = cat.target === 'fabric';
-  const isAccessory = cat.target === 'accessory';
-  const isWash = cat.target === 'wash';
-
-  const labelName = document.getElementById('label_name');
-  const labelSupplier = document.getElementById('label_supplier');
-  if (labelName) labelName.textContent = (isWash ? (document.getElementById('m_washCategory')?.value === '成衣水洗' ? '成衣名称' : '面料名称') : '名称') + '*';
-  if (labelSupplier) labelSupplier.textContent = isWash ? '水洗厂' : (isAccessory ? '辅料供应商' : '面里衬厂');
-
-  const wrapSupplier = document.getElementById('wrap_supplier');
-  if (wrapSupplier) {
-    const ph = isWash ? '选择水洗厂' : (isAccessory ? '选择辅料供应商' : '选择面里衬厂');
-    const inner = isFabric ? fabricSuppliers : (isAccessory ? accessorySuppliers : washFactories);
-    wrapSupplier.innerHTML = `<select class="form-select" id="m_supplier" style="width:100%;"><option value="">${ph}</option>${inner}</select>`;
-  }
-
-  const show = (id, bool) => { const el = document.getElementById(id); if (el) el.style.display = bool ? '' : 'none'; };
-  show('group_usagePart', !isWash);
-  show('group_spec', !isWash);
-  show('group_color', !isWash);
-  show('group_composition', isFabric);
-  show('group_washMethod', isWash);
-  show('group_washCategory', isWash);
-  show('group_qty', !isWash);
-  show('group_unit', !isWash);
-  show('group_price', !isWash);
-  show('group_shipFactory', !isWash);
-  show('group_date1', true);
-  show('group_date2', !isWash);
-  show('group_date3', !isWash);
-  show('group_shipDate', !isWash);
-
-  // 如果类别切换到水洗，把主日期字段标签改为"水洗日期"
-  const d1 = document.getElementById('m_date1');
-  if (d1) {
-    const lbl = d1.previousElementSibling;
-    if (lbl && lbl.classList.contains('form-label')) lbl.textContent = isWash ? '水洗日期' : (isFabric ? '寄样日期' : '寄样日期');
-  }
-
-  // 切换水洗类型时同步名称标签
-  const wc = document.getElementById('m_washCategory');
-  if (wc) {
-    wc.onchange = () => {
-      const lblName = document.getElementById('label_name');
-      if (lblName) lblName.textContent = (wc.value === '成衣水洗' ? '成衣名称' : '面料名称') + '*';
-    };
-  }
+function q_duplicateQuotation(id) {
+  var data = q_getData();
+  var q = data.find(function (x) { return x.id === id; });
+  if (!q) return;
+  var copy = JSON.parse(JSON.stringify(q));
+  copy.id = q_uid();
+  copy.quoteNo = q_generateQuoteNo();
+  copy.quoteDate = q_todayStr();
+  copy.validUntil = q_addDays(q_todayStr(), 30);
+  copy.status = 'draft';
+  copy.createdAt = new Date().toISOString();
+  copy.updatedAt = new Date().toISOString();
+  data.push(copy);
+  q_saveData(data);
+  q_showToast('Quotation duplicated', 'success');
+  q_renderList();
 }
 
-// 选择订单号时自动回填款号
-function _matOnOrderChange(sel) {
-  const styleNo = sel.selectedOptions[0]?.dataset.style || '';
-  if (styleNo) {
-    const el = document.getElementById('m_styleNo');
-    if (el && !el.value) el.value = styleNo;
-  }
+function q_renderEditor(q) {
+  var html = '<div class="q-card">' +
+    '<div class="q-card-header">' +
+      '<span class="q-card-title">' + (q_editingId ? 'Edit Quotation' : 'New Quotation') + '</span>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-sm btn-secondary" onclick="q_showList()">←</button>' +
+        '<button class="btn btn-sm btn-secondary" onclick="q_saveQuotation(false)">💾</button>' +
+        '<button class="btn btn-sm btn-primary" onclick="q_saveQuotation(true)">💾 ▶</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="q-card-body">' +
+      '<form id="qQuoteForm" onsubmit="return false">' +
+
+      '<div class="q-form-section">' +
+        '<div class="q-form-section-title"><span>📌 Quotation Information</span></div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Quotation No.</label><input type="text" id="qf_quoteNo" value="' + q_escapeHtml(q.quoteNo) + '" readonly style="font-weight:600;color:var(--primary);background:var(--border-light);cursor:default;"></div>' +
+          '<div class="q-form-group"><label>Quotation Date</label><input type="date" id="qf_quoteDate" value="' + q_escapeHtml(q.quoteDate) + '"></div>' +
+          '<div class="q-form-group"><label>Valid Until</label><input type="date" id="qf_validUntil" value="' + q_escapeHtml(q.validUntil) + '"></div>' +
+          '<div class="q-form-group"><label>Season</label><input type="text" id="qf_season" value="' + q_escapeHtml(q.season) + '" placeholder="e.g. SS2026, FW2026"></div>' +
+          '<div class="q-form-group"><label>Status</label>' +
+            '<select id="qf_status">' +
+              ['draft', 'sent', 'accepted', 'rejected', 'expired'].map(function (st) {
+                return '<option value="' + st + '" ' + (q.status === st ? 'selected' : '') + '>' + st.charAt(0).toUpperCase() + st.slice(1) + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="q-form-section">' +
+        '<div class="q-form-section-title"><span>👤 Customer (Bill To)</span></div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Company Name</label><input type="text" id="qf_customerCompany" value="' + q_escapeHtml(q.customerCompany) + '"></div>' +
+          '<div class="q-form-group"><label>Contact Person</label><input type="text" id="qf_customerName" value="' + q_escapeHtml(q.customerName) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Email</label><input type="email" id="qf_customerEmail" value="' + q_escapeHtml(q.customerEmail) + '"></div>' +
+          '<div class="q-form-group"><label>Phone</label><input type="text" id="qf_customerPhone" value="' + q_escapeHtml(q.customerPhone) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Address</label><textarea id="qf_customerAddress" rows="2">' + q_escapeHtml(q.customerAddress) + '</textarea></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="q-form-section">' +
+        '<div class="q-form-section-title"><span>👗 Line Items</span>' +
+          '<button class="btn btn-sm btn-secondary" onclick="q_addItemRow();return false;">➕ Add Row</button>' +
+        '</div>' +
+        '<div style="overflow-x:auto;">' +
+        '<table class="q-items-table" id="qf_itemsTable">' +
+          '<thead><tr>' +
+            '<th>#</th>' +
+            '<th class="col-style">Style No.</th>' +
+            '<th>Product Name</th>' +
+            '<th>Description</th>' +
+            '<th>Fabric / Composition</th>' +
+            '<th>Colors</th>' +
+            '<th>Sizes</th>' +
+            '<th>MOQ</th>' +
+            '<th class="col-price">Unit Price</th>' +
+            '<th class="col-total">Total</th>' +
+            '<th class="col-del"></th>' +
+          '</tr></thead>' +
+          '<tbody id="qf_itemsBody"></tbody>' +
+        '</table>' +
+        '</div>' +
+
+        '<div class="q-totals-section">' +
+          '<table class="q-totals-table">' +
+            '<tr><td class="label">Subtotal</td><td class="value" id="qf_calc_subtotal">' + q.currency + ' 0.00</td></tr>' +
+            '<tr><td class="label">Discount ' +
+              '<select id="qf_discountType" style="font-size:10px;padding:1px 4px;border:1px solid var(--border);border-radius:3px;margin-left:4px;" onchange="q_recalc()">' +
+                '<option value="percentage" ' + (q.discountType === 'percentage' ? 'selected' : '') + '>%</option>' +
+                '<option value="amount" ' + (q.discountType === 'amount' ? 'selected' : '') + '>Amt</option>' +
+              '</select>' +
+              ': <input type="number" id="qf_discount" value="' + (q.discount || 0) + '" style="width:60px;font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;" oninput="q_recalc()"></td>' +
+              '<td class="value" id="qf_calc_discount">- 0.00</td></tr>' +
+            '<tr><td class="label">Hanger Cost /pc: <input type="number" step="0.01" id="qf_hangerCost" value="' + (q.hangerCost || 0) + '" style="width:60px;font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;" oninput="q_recalc()"></td><td class="value" id="qf_calc_hanger">0.00</td></tr>' +
+            '<tr class="grand-total"><td class="label">Grand Total</td><td class="value" id="qf_calc_grand">0.00</td></tr>' +
+          '</table>' +
+        '</div>' +
+        '<input type="hidden" id="qf_currency" value="' + q_escapeHtml(q.currency) + '">' +
+      '</div>' +
+
+      '<div class="q-form-section">' +
+        '<div class="q-form-section-title"><span>📋 Terms & Conditions</span></div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Currency</label>' +
+            '<select id="qf_currencySelect" onchange="document.getElementById(\'qf_currency\').value=this.value;q_recalc()">' +
+              ['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'AUD', 'CAD', 'HKD'].map(function (c) {
+                return '<option value="' + c + '" ' + (q.currency === c ? 'selected' : '') + '>' + c + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div class="q-form-group"><label>Payment Terms</label><input type="text" id="qf_paymentTerms" value="' + q_escapeHtml(q.paymentTerms) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Delivery Terms (Incoterms)</label><input type="text" id="qf_deliveryTerms" value="' + q_escapeHtml(q.deliveryTerms) + '"></div>' +
+          '<div class="q-form-group"><label>Lead Time</label><input type="text" id="qf_leadTime" value="' + q_escapeHtml(q.leadTime) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Notes / Remarks</label><textarea id="qf_notes" rows="3" placeholder="Additional notes, special requirements, sampling policy, etc.">' + q_escapeHtml(q.notes) + '</textarea></div>' +
+        '</div>' +
+      '</div>' +
+
+      '</form>' +
+    '</div>' +
+  '</div>';
+
+  document.getElementById('qAppContent').innerHTML = html;
+  q_currentView = 'editor';
+
+  var itemsBody = document.getElementById('qf_itemsBody');
+  q.items.forEach(function (item, idx) {
+    q_addItemRow(item, idx);
+  });
+  q_recalc();
 }
 
-// 保存耗料登记及状态并自动同步到对应模块
-function saveMaterial() {
-  const category = document.getElementById('m_category').value;
-  const cat = MAT_CATEGORIES._map[category];
-  const orderNo = document.getElementById('m_orderNo').value.trim();
-  const styleNo = document.getElementById('m_styleNo').value.trim();
-  const name = document.getElementById('m_name').value.trim();
-  if (!category || !name) { App.toast('请填写类别和名称', 'warning'); return; }
+function q_addItemRow(data, idx) {
+  var body = document.getElementById('qf_itemsBody');
+  if (!body) return;
+  var i = idx !== undefined ? idx : body.children.length;
+  data = data || { styleNo: '', productName: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: 0, quantity: 0, total: 0 };
 
-  const data = {
-    orderNo,
-    styleNo,
-    category,
-    name,
-    usagePart: document.getElementById('m_usagePart').value.trim(),
-    supplier: document.getElementById('m_supplier').value,
-    spec: document.getElementById('m_spec').value.trim(),
-    color: document.getElementById('m_color').value.trim(),
-    fabricComposition: document.getElementById('m_composition').value.trim(),
-    washMethod: document.getElementById('m_washMethod')?.value?.trim() || '',
-    washCategory: document.getElementById('m_washCategory')?.value || '面料水洗',
-    qtyOrdered: Number(document.getElementById('m_qty').value) || 0,
-    unit: document.getElementById('m_unit').value,
-    unitPrice: Number(document.getElementById('m_price').value) || 0,
-    shipFactory: document.getElementById('m_shipFactory').value,
-    date: document.getElementById('m_date1').value,
-    contractDate: document.getElementById('m_date2').value,
-    confirmedDate: document.getElementById('m_date3').value,
-    shipDate: document.getElementById('m_shipDate').value,
-    arrivalDate: document.getElementById('m_arrivalDate').value,
-    remark: document.getElementById('m_remark').value.trim(),
-    updateDate: App.utils.today(),
+  var tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td class="row-num" style="text-align:center;color:var(--muted);font-size:10px;">' + (i + 1) + '</td>' +
+    '<td><input type="text" class="col-style" value="' + q_escapeHtml(data.styleNo) + '" placeholder="ST-001" oninput="q_recalc()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.productName) + '" placeholder="Cotton Blouse" oninput="q_recalc()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.description) + '" placeholder="Brief description" oninput="q_recalc()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.fabric) + '" placeholder="100% Cotton" oninput="q_recalc()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.colors) + '" placeholder="White, Black" oninput="q_recalc()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.sizes) + '" placeholder="S, M, L, XL" oninput="q_recalc()"></td>' +
+    '<td><input type="number" value="' + (data.moq || 0) + '" placeholder="500" oninput="q_recalc()" style="text-align:right;" min="0"></td>' +
+    '<td><input type="number" class="col-price" value="' + (data.unitPrice || 0) + '" placeholder="0.00" oninput="q_recalc()" style="text-align:right;" step="0.01"></td>' +
+    '<td class="col-total-cell">0.00</td>' +
+    '<td class="col-del"><button class="btn btn-icon btn-sm" onclick="q_removeRow(this)" title="Remove" style="color:var(--error);">✕</button></td>';
+  body.appendChild(tr);
+  q_recalc();
+}
+
+function q_removeRow(btn) {
+  var body = document.getElementById('qf_itemsBody');
+  if (body.children.length <= 1) { q_showToast('At least one row required', 'error'); return; }
+  var tr = btn.closest('tr');
+  tr.remove();
+  var rows = body.querySelectorAll('tr');
+  rows.forEach(function (r, i) {
+    var cell = r.querySelector('.row-num');
+    if (cell) cell.textContent = (i + 1);
+  });
+  q_recalc();
+}
+
+function q_recalc() {
+  var body = document.getElementById('qf_itemsBody');
+  if (!body) return;
+  var currency = (document.getElementById('qf_currency') || {}).value || 'USD';
+  var subtotal = 0;
+  var rows = body.querySelectorAll('tr');
+  rows.forEach(function (r) {
+    var inputs = r.querySelectorAll('input');
+    var moq = parseFloat(inputs[6].value) || 0;
+    var price = parseFloat(inputs[7].value) || 0;
+    var total = moq * price;
+    r.querySelector('.col-total-cell').textContent = q_formatMoney(total);
+    subtotal += total;
+  });
+
+  var discountVal = parseFloat(document.getElementById('qf_discount').value) || 0;
+  var discountType = document.getElementById('qf_discountType').value;
+  var discountAmount = discountType === 'percentage' ? subtotal * discountVal / 100 : discountVal;
+  if (discountAmount > subtotal) discountAmount = subtotal;
+
+  var hangerCost = parseFloat(document.getElementById('qf_hangerCost').value) || 0;
+  var totalMOQ = 0;
+  rows.forEach(function (r) {
+    var inputs = r.querySelectorAll('input');
+    totalMOQ += parseFloat(inputs[6].value) || 0;
+  });
+  var hangerAmount = totalMOQ * hangerCost;
+  var grand = subtotal - discountAmount + hangerAmount;
+
+  document.getElementById('qf_calc_subtotal').textContent = currency + ' ' + q_formatMoney(subtotal);
+  document.getElementById('qf_calc_discount').textContent = '- ' + q_formatMoney(discountAmount);
+  document.getElementById('qf_calc_hanger').textContent = q_formatMoney(hangerAmount);
+  document.getElementById('qf_calc_grand').textContent = currency + ' ' + q_formatMoney(grand);
+}
+
+function q_saveQuotation(preview) {
+  var items = [];
+  var rows = document.querySelectorAll('#qf_itemsBody tr');
+  rows.forEach(function (r) {
+    var inputs = r.querySelectorAll('input');
+    items.push({
+      styleNo: inputs[0].value.trim(),
+      productName: inputs[1].value.trim(),
+      description: inputs[2].value.trim(),
+      fabric: inputs[3].value.trim(),
+      colors: inputs[4].value.trim(),
+      sizes: inputs[5].value.trim(),
+      moq: parseFloat(inputs[6].value) || 0,
+      unitPrice: parseFloat(inputs[7].value) || 0,
+      total: (parseFloat(inputs[6].value) || 0) * (parseFloat(inputs[7].value) || 0)
+    });
+  });
+
+  var subtotal = items.reduce(function (s, i) { return s + i.total; }, 0);
+  var discountVal = parseFloat(document.getElementById('qf_discount').value) || 0;
+  var discountType = document.getElementById('qf_discountType').value;
+  var discountAmount = discountType === 'percentage' ? subtotal * discountVal / 100 : discountVal;
+  if (discountAmount > subtotal) discountAmount = subtotal;
+  var hangerCost = parseFloat(document.getElementById('qf_hangerCost').value) || 0;
+  var totalMOQ = items.reduce(function (s, i) { return s + (parseFloat(i.moq) || 0); }, 0);
+  var hangerAmount = totalMOQ * hangerCost;
+  var grandTotal = subtotal - discountAmount + hangerAmount;
+
+  var q = {
+    id: q_editingId || q_uid(),
+    quoteNo: document.getElementById('qf_quoteNo').value.trim(),
+    quoteDate: document.getElementById('qf_quoteDate').value,
+    validUntil: document.getElementById('qf_validUntil').value,
+    customerName: document.getElementById('qf_customerName').value.trim(),
+    customerCompany: document.getElementById('qf_customerCompany').value.trim(),
+    customerAddress: document.getElementById('qf_customerAddress').value.trim(),
+    customerContact: document.getElementById('qf_customerName').value.trim(),
+    customerEmail: document.getElementById('qf_customerEmail').value.trim(),
+    customerPhone: document.getElementById('qf_customerPhone').value.trim(),
+    season: document.getElementById('qf_season').value.trim(),
+    currency: document.getElementById('qf_currency').value,
+    items: items,
+    subtotal: subtotal,
+    discount: discountVal,
+    discountType: discountType,
+    discountAmount: discountAmount,
+    hangerCost: hangerCost,
+    hangerAmount: hangerAmount,
+    grandTotal: grandTotal,
+    paymentTerms: document.getElementById('qf_paymentTerms').value.trim(),
+    deliveryTerms: document.getElementById('qf_deliveryTerms').value.trim(),
+    leadTime: document.getElementById('qf_leadTime').value.trim(),
+    notes: document.getElementById('qf_notes').value.trim(),
+    status: document.getElementById('qf_status').value,
+    preparedBy: (q_getSettings().userName || 'User'),
+    createdAt: q_editingId ? (q_getData().find(function (x) { return x.id === q_editingId; }) || {}).createdAt || new Date().toISOString() : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 
-  const list = getOrderMaterials();
-  let syncedTargetId = null;
-  if (_matEditingId) {
-    const idx = list.findIndex(x => x.id === _matEditingId);
-    if (idx !== -1) {
-      syncedTargetId = list[idx].syncedTargetId || null;
-      list[idx] = { ...list[idx], ...data, syncedToModule: false };
-    }
+  var data = q_getData();
+  if (q_editingId) {
+    var idx = data.findIndex(function (x) { return x.id === q_editingId; });
+    if (idx >= 0) data[idx] = q; else data.push(q);
   } else {
-    data.id = App.utils.genId('OM');
-    data.createDate = App.utils.today();
-    data.syncedToModule = false;
-    list.push(data);
+    data.push(q);
+    q_editingId = q.id;
   }
+  q_saveData(data);
+  q_showToast('Quotation saved successfully', 'success');
 
-  // 先保存登记
-  saveOrderMaterials(list);
-
-  // 同步到对应模块
-  try {
-    const targetInfo = syncOneMaterialToModules({ ...data, syncedTargetId }, true);
-    // 回写同步状态和目标ID
-    const idx = list.findIndex(x => x.id === data.id || x.id === _matEditingId);
-    if (idx !== -1 && targetInfo) {
-      list[idx].syncedToModule = true;
-      list[idx].syncedTargetId = targetInfo.id;
-      list[idx].syncedTargetTable = targetInfo.table;
-      saveOrderMaterials(list);
-    }
-    App.toast('已保存并同步到' + (cat.target === 'fabric' ? '面里衬采购' : cat.target === 'accessory' ? '辅料采购' : '水洗管理'), 'success');
-  } catch (e) {
-    console.error(e);
-    App.toast('保存成功，但同步失败：' + (e.message || e), 'error');
-  }
-
-  App.modal.close();
-  renderMaterials();
-}
-
-// 单条同步（从列表按钮触发）
-function syncOneMaterial(id) {
-  const list = getOrderMaterials();
-  const idx = list.findIndex(x => x.id === id);
-  if (idx === -1) return;
-  const m = list[idx];
-  try {
-    const info = syncOneMaterialToModules(m, true);
-    if (info) {
-      list[idx].syncedToModule = true;
-      list[idx].syncedTargetId = info.id;
-      list[idx].syncedTargetTable = info.table;
-      saveOrderMaterials(list);
-      App.toast('同步成功 → ' + (info.table === 'fabrics' ? '面里衬采购' : info.table === 'accessories' ? '辅料采购' : '水洗管理'), 'success');
-      renderMaterials();
-    }
-  } catch (e) {
-    console.error(e);
-    App.toast('同步失败：' + (e.message || e), 'error');
+  if (preview) {
+    q_previewQuotation(q.id);
+  } else {
+    q_renderList();
   }
 }
 
-// 批量同步所有未同步的数据
-function syncMaterialsToModules() {
-  const list = getOrderMaterials();
-  let updated = 0;
-  list.forEach((m, idx) => {
-    try {
-      const info = syncOneMaterialToModules(m, false);
-      if (info) {
-        list[idx].syncedToModule = true;
-        list[idx].syncedTargetId = info.id;
-        list[idx].syncedTargetTable = info.table;
-        updated++;
-      }
-    } catch (e) {
-      console.error('同步失败:', m.id, e);
-    }
-  });
-  saveOrderMaterials(list);
-  App.toast(`已同步 ${updated} 条记录到各模块`, updated ? 'success' : 'info');
-  renderMaterials();
-}
-
-// 核心：将一条耗料登记及状态记录同步到 fabric / accessory / wash 模块
-// 若记录已带 syncedTargetId，则更新该条，否则新增
-// forceDuplicate=false 时若已存在 styleNo+name+category 的相同记录，则跳过，返回 { id, table }
-function syncOneMaterialToModules(m, forceDuplicate = false) {
-  const cat = MAT_CATEGORIES._map[m.category];
-  if (!cat) throw new Error('未知类别');
-
-  const today = App.utils.today();
-
-  if (cat.target === 'fabric') {
-    const fabrics = App.store.get('fabrics', []);
-    const sampleSentDate = m.date || '';
-    const base = {
-      styleNo: m.styleNo || '',
-      fabricType: cat.fabricType || m.category,
-      fabricName: m.name,
-      usagePart: m.usagePart || '',
-      supplier: m.supplier || '',
-      composition: m.fabricComposition || '',
-      color: m.color || '',
-      colorCard: '',
-      weightGsm: 0,
-      width: '',
-      sampleRounds: 1,
-      sampleSentDate,
-      customerFeedback: '',
-      confirmedDate: m.confirmedDate || '',
-      contractNo: '',
-      contractDate: m.contractDate || '',
-      unitPrice: m.unitPrice || 0,
-      qtyOrdered: m.qtyOrdered || 0,
-      unit: m.unit || '米',
-      shipFactory: m.shipFactory || '',
-      shipDate: m.shipDate || '',
-      arrivalDate: m.arrivalDate || '',
-      remark: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
-    };
-
-    // 根据日期自动推进状态
-    let status = '待打样';
-    const STATUS_FLOW = ['待打样', '寄样中', '已确认', '采购合同', '发货中', '已到货'];
-    if (base.arrivalDate) status = '已到货';
-    else if (base.shipDate) status = '发货中';
-    else if (base.contractDate) status = '采购合同';
-    else if (base.confirmedDate) status = '已确认';
-    else if (base.sampleSentDate) status = '寄样中';
-    base.status = status;
-
-    // 编号：有则保留，无则生成
-    let targetIdx = -1;
-    if (m.syncedTargetId) targetIdx = fabrics.findIndex(f => f.id === m.syncedTargetId);
-    if (targetIdx === -1 && !forceDuplicate) {
-      targetIdx = fabrics.findIndex(f =>
-        (f.styleNo || '') === (m.styleNo || '') &&
-        (f.fabricName || '') === (m.name || '') &&
-        (f.fabricType || '') === (cat.fabricType || m.category)
-      );
-    }
-
-    if (targetIdx !== -1) {
-      const f = fabrics[targetIdx];
-      fabrics[targetIdx] = { ...f, ...base, fabricCode: f.fabricCode || _matGenCode('STIG'), id: f.id };
-    } else {
-      base.id = App.utils.genId('F');
-      base.fabricCode = _matGenCode('STIG');
-      fabrics.push(base);
-    }
-    App.store.set('fabrics', fabrics);
-    return { id: base.id || fabrics[targetIdx].id, table: 'fabrics' };
-  }
-
-  if (cat.target === 'accessory') {
-    const accessories = App.store.get('accessories', []);
-    const sampleSentDate = m.date || '';
-    const base = {
-      styleNo: m.styleNo || '',
-      accessoryName: m.name,
-      usagePart: m.usagePart || '',
-      supplier: m.supplier || '',
-      spec: m.spec || '',
-      color: m.color || '',
-      sampleRounds: 1,
-      sampleSentDate,
-      customerFeedback: '',
-      confirmedDate: m.confirmedDate || '',
-      contractNo: '',
-      contractDate: m.contractDate || '',
-      unitPrice: m.unitPrice || 0,
-      qtyOrdered: m.qtyOrdered || 0,
-      unit: m.unit || '个',
-      shipFactory: m.shipFactory || '',
-      shipDate: m.shipDate || '',
-      arrivalDate: m.arrivalDate || '',
-      remark: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
-    };
-
-    let status = '待打样';
-    const STATUS_FLOW = ['待打样', '寄样中', '已确认', '采购合同', '发货中', '已到货'];
-    if (base.arrivalDate) status = '已到货';
-    else if (base.shipDate) status = '发货中';
-    else if (base.contractDate) status = '采购合同';
-    else if (base.confirmedDate) status = '已确认';
-    else if (base.sampleSentDate) status = '寄样中';
-    base.status = status;
-
-    let targetIdx = -1;
-    if (m.syncedTargetId) targetIdx = accessories.findIndex(a => a.id === m.syncedTargetId);
-    if (targetIdx === -1 && !forceDuplicate) {
-      targetIdx = accessories.findIndex(a =>
-        (a.styleNo || '') === (m.styleNo || '') &&
-        (a.accessoryName || '') === (m.name || '') &&
-        (a.color || '') === (m.color || '')
-      );
-    }
-
-    if (targetIdx !== -1) {
-      const a = accessories[targetIdx];
-      accessories[targetIdx] = { ...a, ...base, accessoryCode: a.accessoryCode || _matGenCode('STIG'), id: a.id };
-    } else {
-      base.id = App.utils.genId('A');
-      base.accessoryCode = _matGenCode('STIG');
-      accessories.push(base);
-    }
-    App.store.set('accessories', accessories);
-    return { id: base.id || accessories[targetIdx].id, table: 'accessories' };
-  }
-
-  if (cat.target === 'wash') {
-    const washes = App.store.get('washes', []);
-    const washCategory = m.washCategory || '面料水洗';
-    const washDate = m.date || today;
-    const factory = m.supplier || '';
-    const rounds = [{
-      round: 1,
-      washDate,
-      factory,
-      washResult: m.washMethod || '',
-      status: '寄样中',
-      customerFeedback: '',
-      confirmedDate: m.confirmedDate || '',
-    }];
-    const base = {
-      washNo: '',
-      washCategory,
-      styleNo: m.styleNo || '',
-      itemName: m.name,
-      washMethod: m.washMethod || '',
-      targetColor: m.color || '',
-      techNotes: (m.remark ? m.remark + '  ' : '') + (m.orderNo ? '[PO: ' + m.orderNo + ']' : ''),
-      factory,
-      rounds,
-      status: '寄样中',
-      remark: m.orderNo ? ('[PO: ' + m.orderNo + ']') : '',
-      createDate: today,
-    };
-    // 已确认就推进状态
-    if (m.confirmedDate) base.status = '已确认';
-
-    let targetIdx = -1;
-    if (m.syncedTargetId) targetIdx = washes.findIndex(w => w.id === m.syncedTargetId);
-    if (targetIdx === -1 && !forceDuplicate) {
-      targetIdx = washes.findIndex(w =>
-        (w.styleNo || '') === (m.styleNo || '') &&
-        (w.itemName || '') === (m.name || '') &&
-        (w.washCategory || '') === washCategory
-      );
-    }
-
-    if (targetIdx !== -1) {
-      const w = washes[targetIdx];
-      // 已有水洗记录：追加一轮
-      const existingRounds = w.rounds && w.rounds.length ? w.rounds.slice() : [];
-      const nextRound = existingRounds.length + 1;
-      existingRounds.push({ ...rounds[0], round: nextRound, status: m.confirmedDate ? '已确认' : '寄样中', confirmedDate: m.confirmedDate || '' });
-      washes[targetIdx] = {
-        ...w,
-        washMethod: base.washMethod || w.washMethod,
-        targetColor: base.targetColor || w.targetColor,
-        techNotes: base.techNotes || w.techNotes,
-        factory: base.factory || w.factory,
-        rounds: existingRounds,
-        status: m.confirmedDate ? '已确认' : w.status,
-      };
-    } else {
-      base.id = App.utils.genId('WS');
-      base.washNo = _matGenWashNo();
-      washes.push(base);
-    }
-    App.store.set('washes', washes);
-    return { id: base.id || washes[targetIdx].id, table: 'washes' };
-  }
-
-  throw new Error('未知目标模块');
-}
-
-// 删除耗料登记及状态
-function deleteMaterial(id) {
-  App.confirm('删除这条耗料登记记录？（不会删除已同步到各模块的数据）', () => {
-    const list = getOrderMaterials().filter(x => x.id !== id);
-    saveOrderMaterials(list);
-    App.toast('已删除', 'success');
-    renderMaterials();
+function q_deleteQuotation(id) {
+  q_showConfirm('Delete Quotation', 'Are you sure you want to delete this quotation? This action cannot be undone.', function () {
+    var data = q_getData();
+    data = data.filter(function (q) { return q.id !== id; });
+    q_saveData(data);
+    q_showToast('Quotation deleted', 'success');
+    q_renderList();
   });
 }
 
-// ===== 页面初始化 =====
+function q_showConfirm(title, body, callback) {
+  document.getElementById('qModalTitle').textContent = title;
+  document.getElementById('qModalBody').textContent = body;
+  document.getElementById('qConfirmModal').classList.add('show');
+  document.getElementById('qModalConfirmBtn').onclick = function () {
+    callback();
+    q_closeModal();
+  };
+}
+function q_closeModal() {
+  document.getElementById('qConfirmModal').classList.remove('show');
+}
+
+// ===== Preview / Print =====
+function q_previewQuotation(id) {
+  var data = q_getData();
+  var q = data.find(function (x) { return x.id === id; });
+  if (!q) { q_showToast('Not found', 'error'); return; }
+  q_renderPreview(q);
+}
+
+function q_renderPreview(q) {
+  var s = Object.assign({}, q_defaultSettings, q_getSettings());
+  var userName = s.userName || 'User';
+
+  var itemsHtml = q.items.map(function (item, i) {
+    return '<tr>' +
+      '<td style="text-align:center;">' + (i + 1) + '</td>' +
+      '<td class="item-style">' + q_escapeHtml(item.styleNo) + '</td>' +
+      '<td><div class="item-name">' + q_escapeHtml(item.productName) + '</div>' +
+        (item.description ? '<div class="item-desc">' + q_escapeHtml(item.description) + '</div>' : '') +
+        (item.fabric ? '<div class="item-desc">Fabric: ' + q_escapeHtml(item.fabric) + '</div>' : '') +
+      '</td>' +
+      '<td>' + q_escapeHtml(item.colors || '—') + '</td>' +
+      '<td style="text-align:center;">' + q_escapeHtml(item.sizes || '—') + '</td>' +
+      '<td style="text-align:center;">' + q_escapeHtml(item.moq || '—') + '</td>' +
+      '<td class="right">' + q_formatMoney(item.unitPrice) + '</td>' +
+      '<td class="right">' + q_formatMoney(item.total) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var partiesHtml = '<div class="q-quote-parties">' +
+    '<div class="q-quote-party">' +
+      '<div class="party-label">From (Seller)</div>' +
+      '<div class="party-name">' + q_escapeHtml(s.companyName) + '</div>' +
+      '<div class="party-detail">' +
+        q_escapeHtml(s.companyAddress) + '<br>' +
+        (s.companyPhone ? 'Tel: ' + q_escapeHtml(s.companyPhone) + '<br>' : '') +
+        (s.companyEmail ? 'Email: ' + q_escapeHtml(s.companyEmail) + '<br>' : '') +
+        (s.companyTaxId ? 'Tax ID: ' + q_escapeHtml(s.companyTaxId) : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="q-quote-party">' +
+      '<div class="party-label">To (Customer)</div>' +
+      '<div class="party-name">' + q_escapeHtml(q.customerCompany || q.customerName || '—') + '</div>' +
+      '<div class="party-detail">' +
+        (q.customerName ? 'Attn: ' + q_escapeHtml(q.customerName) + '<br>' : '') +
+        (q.customerAddress ? q_escapeHtml(q.customerAddress) + '<br>' : '') +
+        (q.customerPhone ? 'Tel: ' + q_escapeHtml(q.customerPhone) + '<br>' : '') +
+        (q.customerEmail ? 'Email: ' + q_escapeHtml(q.customerEmail) : '') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  var termsHtml = '<div class="q-quote-terms">' +
+    '<div class="q-quote-term"><div class="term-label">Payment Terms</div><div class="term-value">' + q_escapeHtml(q.paymentTerms || '—') + '</div></div>' +
+    '<div class="q-quote-term"><div class="term-label">Delivery Terms</div><div class="term-value">' + q_escapeHtml(q.deliveryTerms || '—') + '</div></div>' +
+    '<div class="q-quote-term"><div class="term-label">Lead Time</div><div class="term-value">' + q_escapeHtml(q.leadTime || '—') + '</div></div>' +
+    '<div class="q-quote-term"><div class="term-label">Currency</div><div class="term-value">' + q_escapeHtml(q.currency) + '</div></div>' +
+    '<div class="q-quote-term"><div class="term-label">Season</div><div class="term-value">' + q_escapeHtml(q.season || '—') + '</div></div>' +
+  '</div>';
+
+  var notesHtml = q.notes ? '<div class="q-quote-notes"><div class="notes-label">Notes & Remarks</div><div class="notes-content">' + q_escapeHtml(q.notes).replace(/\n/g, '<br>') + '</div></div>' : '';
+
+  var totalsHtml = '<div class="q-quote-totals"><table class="q-quote-totals-table">' +
+    '<tr><td class="label">Subtotal</td><td class="value">' + q_formatMoney(q.subtotal) + '</td></tr>' +
+    (q.discountAmount > 0 ? '<tr><td class="label">Discount' + (q.discountType === 'percentage' ? ' (' + q.discount + '%)' : '') + '</td><td class="value">- ' + q_formatMoney(q.discountAmount) + '</td></tr>' : '') +
+    (q.hangerAmount > 0 ? '<tr><td class="label">Hanger Cost (' + q.hangerCost + '/pc)</td><td class="value">' + q_formatMoney(q.hangerAmount) + '</td></tr>' : '') +
+    '<tr class="grand-row"><td class="label">Grand Total (' + q_escapeHtml(q.currency) + ')</td><td class="value">' + q_escapeHtml(q.currency) + ' ' + q_formatMoney(q.grandTotal) + '</td></tr>' +
+  '</table></div>';
+
+  var signatureHtml = '<div class="q-quote-signature">' +
+    '<div class="q-quote-sig-block"><div class="sig-line"></div><div class="sig-label">Customer Signature & Date</div></div>' +
+    '<div class="q-quote-sig-block"><div class="sig-line"></div><div class="sig-label">Authorized by ' + q_escapeHtml(s.companyName) + '</div></div>' +
+  '</div>';
+
+  var footerHtml = '<div class="q-quote-footer">' +
+    'This quotation is valid until ' + q_escapeHtml(q.validUntil) + '. Prices are subject to change without prior notice after the validity date.<br>' +
+    'Printed by: ' + q_escapeHtml(userName) + ' | ' + q_escapeHtml(new Date().toLocaleDateString('en-US')) +
+  '</div>';
+
+  var doc = '<div class="q-quotation-doc">' +
+    '<div class="q-quote-header">' +
+      '<div class="q-quote-header-left">' +
+        '<div class="company-name">' + q_escapeHtml(s.companyName) + '</div>' +
+        '<div class="company-info">' +
+          q_escapeHtml(s.companyAddress) + '<br>' +
+          (s.companyPhone ? 'Tel: ' + q_escapeHtml(s.companyPhone) + ' | ' : '') +
+          (s.companyEmail ? q_escapeHtml(s.companyEmail) : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="q-quote-header-right">' +
+        '<div class="quote-title">Quotation</div>' +
+        '<div class="quote-meta">' +
+          '<strong>Quote No.:</strong> <span class="q-quote-no-badge">' + q_escapeHtml(q.quoteNo) + '</span><br>' +
+          '<strong>Date:</strong> ' + q_escapeHtml(q.quoteDate) + '<br>' +
+          '<strong>Valid Until:</strong> ' + q_escapeHtml(q.validUntil) + '<br>' +
+          '<strong>Status:</strong> <span class="q-badge q-badge-' + q_escapeHtml(q.status) + '">' + q_escapeHtml(q.status) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    partiesHtml +
+    '<table class="q-quote-items">' +
+      '<thead><tr>' +
+        '<th style="width:30px;">#</th>' +
+        '<th style="width:90px;">Style No.</th>' +
+        '<th>Product Description</th>' +
+        '<th style="width:100px;">Colors</th>' +
+        '<th style="width:80px;">Sizes</th>' +
+        '<th style="width:70px;">MOQ</th>' +
+        '<th class="right" style="width:90px;">Unit Price</th>' +
+        '<th class="right" style="width:100px;">Total</th>' +
+      '</tr></thead>' +
+      '<tbody>' + itemsHtml + '</tbody>' +
+    '</table>' +
+    totalsHtml +
+    termsHtml +
+    notesHtml +
+    signatureHtml +
+    footerHtml +
+  '</div>';
+
+  document.getElementById('qPreviewContent').innerHTML = doc;
+  document.getElementById('qPrintUser').textContent = 'Printed by: ' + userName;
+  document.getElementById('qPreviewOverlay').classList.add('show');
+}
+
+function q_closePreview() {
+  document.getElementById('qPreviewOverlay').classList.remove('show');
+}
+
+// ===== Settings =====
+function q_showSettings() {
+  var s = Object.assign({}, q_defaultSettings, q_getSettings());
+  var html = '<div class="q-card">' +
+    '<div class="q-card-header"><span class="q-card-title">Settings</span>' +
+      '<button class="btn btn-sm btn-secondary" onclick="q_showList()">←</button>' +
+    '</div>' +
+    '<div class="q-card-body">' +
+      '<form id="qSettingsForm" onsubmit="return false">' +
+      '<div class="q-form-section"><div class="q-form-section-title"><span>🏢 Company Information</span></div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Company Name</label><input type="text" id="qs_companyName" value="' + q_escapeHtml(s.companyName) + '"></div>' +
+          '<div class="q-form-group"><label>User Name (Printed By)</label><input type="text" id="qs_userName" value="' + q_escapeHtml(s.userName || '') + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Address</label><input type="text" id="qs_companyAddress" value="' + q_escapeHtml(s.companyAddress) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Phone</label><input type="text" id="qs_companyPhone" value="' + q_escapeHtml(s.companyPhone) + '"></div>' +
+          '<div class="q-form-group"><label>Email</label><input type="text" id="qs_companyEmail" value="' + q_escapeHtml(s.companyEmail) + '"></div>' +
+          '<div class="q-form-group"><label>Tax ID</label><input type="text" id="qs_companyTaxId" value="' + q_escapeHtml(s.companyTaxId) + '"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="q-form-section"><div class="q-form-section-title"><span>👤 Default Customer (Bill To)</span></div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Customer Company</label><input type="text" id="qs_custCompany" value="' + q_escapeHtml(s.custCompany) + '"></div>' +
+          '<div class="q-form-group"><label>Contact Person</label><input type="text" id="qs_custContact" value="' + q_escapeHtml(s.custContact) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Address</label><input type="text" id="qs_custAddress" value="' + q_escapeHtml(s.custAddress) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Phone</label><input type="text" id="qs_custPhone" value="' + q_escapeHtml(s.custPhone) + '"></div>' +
+          '<div class="q-form-group"><label>Email</label><input type="text" id="qs_custEmail" value="' + q_escapeHtml(s.custEmail) + '"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="q-form-section"><div class="q-form-section-title"><span>⚙️ Defaults</span></div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Default Currency</label><input type="text" id="qs_defaultCurrency" value="' + q_escapeHtml(s.defaultCurrency) + '"></div>' +
+          '<div class="q-form-group"><label>Default Hanger Cost (per pc)</label><input type="number" step="0.01" id="qs_defaultHangerCost" value="' + q_escapeHtml(s.defaultHangerCost) + '"></div>' +
+          '<div class="q-form-group"><label>Default Discount</label><input type="number" id="qs_defaultDiscount" value="' + q_escapeHtml(s.defaultDiscount) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Payment Terms</label><input type="text" id="qs_defaultPaymentTerms" value="' + q_escapeHtml(s.defaultPaymentTerms) + '"></div>' +
+          '<div class="q-form-group"><label>Delivery Terms</label><input type="text" id="qs_defaultDeliveryTerms" value="' + q_escapeHtml(s.defaultDeliveryTerms) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Lead Time</label><input type="text" id="qs_defaultLeadTime" value="' + q_escapeHtml(s.defaultLeadTime) + '"></div>' +
+          '<div class="q-form-group"><label>Validity Period (days)</label><input type="number" id="qs_defaultValidity" value="' + q_escapeHtml(s.defaultValidity) + '"></div>' +
+        '</div>' +
+        '<div class="q-form-row">' +
+          '<div class="q-form-group"><label>Notes / Remarks (default for new quotations)</label><textarea id="qs_defaultNotes" rows="6" style="font-size:11px;line-height:1.6;">' + q_escapeHtml(s.defaultNotes) + '</textarea></div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;margin-top:12px;">' +
+        '<button class="btn btn-sm btn-primary" onclick="q_saveSettingsForm()">💾 Save Settings</button>' +
+      '</div>' +
+      '</form>' +
+    '</div>' +
+  '</div>';
+  document.getElementById('qAppContent').innerHTML = html;
+  q_currentView = 'settings';
+}
+
+function q_saveSettingsForm() {
+  var fields = ['companyName', 'userName', 'companyAddress', 'companyPhone', 'companyEmail', 'companyTaxId', 'custCompany', 'custContact', 'custAddress', 'custPhone', 'custEmail', 'defaultCurrency', 'defaultHangerCost', 'defaultDiscount', 'defaultPaymentTerms', 'defaultDeliveryTerms', 'defaultLeadTime', 'defaultValidity', 'defaultNotes'];
+  var obj = {};
+  fields.forEach(function (f) {
+    var el = document.getElementById('qs_' + f);
+    if (el) obj[f] = el.value;
+  });
+  var existing = q_getSettings();
+  var merged = Object.assign({}, existing, obj);
+  q_saveSettings(merged);
+  q_showToast('Settings saved', 'success');
+  q_showList();
+}
+
+// ===== Navigation =====
+function q_setNavActive(id) {
+  var links = document.querySelectorAll('#qSubnav a');
+  for (var i = 0; i < links.length; i++) links[i].classList.remove('active');
+  var el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function q_showList() {
+  q_renderList();
+  q_setNavActive('qnav-list');
+}
+
+function q_newQuotationNav() {
+  q_newQuotation();
+  q_setNavActive('qnav-new');
+}
+
+function q_showSettingsNav() {
+  q_showSettings();
+  q_setNavActive('qnav-settings');
+}
+
+// ===== Page init =====
 renderStats();
 renderCustomerFilter();
 renderTable();

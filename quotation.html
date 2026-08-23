@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotation Management - Fashion Trade System</title>
+<style>
+/* ===== Reset & Base ===== */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --primary:#004D6D;
+  --primary-light:#e8f1f5;
+  --primary-dark:#003a52;
+  --accent:#2d9d5f;
+  --warning:#d9883a;
+  --danger:#d44848;
+  --purple:#6d28d9;
+  --teal:#0d9488;
+  --gray-50:#f9fafb;
+  --gray-100:#f3f4f6;
+  --gray-200:#e5e7eb;
+  --gray-300:#d1d5db;
+  --gray-400:#9ca3af;
+  --gray-500:#6b7280;
+  --gray-600:#4b5563;
+  --gray-700:#374151;
+  --gray-800:#1f2937;
+  --gray-900:#111827;
+  --white:#fff;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+  --radius:8px;
+  --radius-sm:6px;
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'Consolas','Courier New',monospace;
+}
+body{font-family:var(--font);background:var(--gray-100);color:var(--gray-800);font-size:14px;line-height:1.5;}
+button{cursor:pointer;font-family:inherit;border:none;background:none;color:inherit;}
+input,select,textarea{font-family:inherit;font-size:14px;outline:none;}
+a{text-decoration:none;color:inherit;}
+
+/* ===== Layout ===== */
+.app-layout{display:flex;flex-direction:column;min-height:100vh;}
+
+/* ===== Top Nav Bar ===== */
+.top-nav{background:linear-gradient(90deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;height:48px;display:flex;align-items:center;padding:0 24px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-md);}
+.top-nav-brand{font-size:16px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:8px;margin-right:32px;}
+.top-nav-brand span{font-size:20px;}
+.top-nav-links{display:flex;align-items:center;gap:4px;}
+.top-nav-links a{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-sm);color:rgba(255,255,255,.85);font-size:13px;transition:all .15s;}
+.top-nav-links a:hover{background:rgba(255,255,255,.12);color:#fff;}
+.top-nav-links a.active{background:rgba(255,255,255,.2);color:#fff;font-weight:600;}
+.top-nav-user{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.9);}
+.top-nav-user .user-avatar{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;}
+
+/* ===== Main Area ===== */
+.main-area{flex:1;display:flex;flex-direction:column;min-height:calc(100vh - 48px);}
+.app-header{background:#fff;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;box-shadow:var(--shadow-sm);}
+.header-title{font-size:15px;font-weight:600;color:var(--gray-800);}
+
+/* ===== Buttons ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;transition:all .15s;border:1px solid transparent;white-space:nowrap;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-secondary{background:#fff;border-color:var(--gray-300);color:var(--gray-700);}
+.btn-secondary:hover{background:var(--gray-50);border-color:var(--gray-400);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{background:#b53b3b;}
+.btn-success{background:var(--accent);color:#fff;}
+.btn-success:hover{background:#248a52;}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-icon{padding:6px 8px;font-size:15px;border-radius:4px;}
+.btn-icon:hover{background:var(--gray-100);}
+
+/* ===== Content ===== */
+.app-content{flex:1;padding:24px;}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:15px;font-weight:600;color:var(--gray-800);}
+.card-body{padding:20px;}
+
+/* ===== Toolbar ===== */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.search-box{position:relative;flex:1;max-width:320px;}
+.search-box input{width:100%;padding:8px 12px 8px 36px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);font-size:13px;transition:border-color .15s;}
+.search-box input:focus{border-color:var(--primary);}
+.search-box .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray-400);}
+.filter-select{padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);font-size:13px;background:#fff;cursor:pointer;}
+
+/* ===== Table ===== */
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{text-align:left;padding:10px 12px;font-weight:600;color:var(--gray-600);border-bottom:2px solid var(--gray-200);background:var(--gray-50);white-space:nowrap;}
+.data-table td{padding:10px 12px;border-bottom:1px solid var(--gray-200);color:var(--gray-700);}
+.data-table tbody tr:hover{background:var(--gray-50);}
+.data-table .quote-no{font-weight:600;color:var(--primary);}
+.data-table .amount{font-family:var(--mono);font-weight:500;}
+.data-table .actions{display:flex;gap:4px;}
+
+/* ===== Status Badges ===== */
+.badge{display:inline-flex;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+.badge-draft{background:var(--gray-100);color:var(--gray-600);}
+.badge-sent{background:#dbeafe;color:#1e40af;}
+.badge-accepted{background:#d1fae5;color:#065f46;}
+.badge-rejected{background:#fee2e2;color:#991b1b;}
+.badge-expired{background:#fef3c7;color:#92400e;}
+
+/* ===== Form ===== */
+.form-section{margin-bottom:24px;}
+.form-section-title{font-size:13px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--primary-light);display:flex;align-items:center;gap:8px;}
+.form-row{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;}
+.form-group{flex:1;min-width:200px;}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);font-size:13px;transition:border-color .15s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,77,109,.08);}
+.form-group textarea{resize:vertical;min-height:60px;}
+.form-group .hint{font-size:11px;color:var(--gray-400);margin-top:4px;}
+.form-row-2{display:flex;gap:16px;align-items:flex-start;}
+.form-row-2 .form-group{flex:1;}
+
+/* ===== Items Table (Editor) ===== */
+.items-table{width:100%;border-collapse:collapse;font-size:12px;}
+.items-table th{text-align:left;padding:8px 6px;font-weight:600;color:var(--gray-600);background:var(--gray-50);border:1px solid var(--gray-200);white-space:nowrap;font-size:11px;text-transform:uppercase;}
+.items-table td{padding:4px 6px;border:1px solid var(--gray-200);}
+.items-table input{width:100%;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:4px;font-size:12px;transition:all .15s;}
+.items-table input:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 2px rgba(0,77,109,.06);}
+.items-table .col-del{width:36px;text-align:center;}
+.items-table .col-style{width:100px;}
+.items-table .col-qty{width:80px;}
+.items-table .col-price{width:90px;}
+.items-table .col-total{width:100px;text-align:right;font-family:var(--mono);font-weight:600;}
+.items-table .col-total-cell{text-align:right;font-family:var(--mono);font-weight:600;color:var(--primary);}
+
+/* ===== Totals ===== */
+.totals-section{display:flex;justify-content:flex-end;margin-top:16px;}
+.totals-table{width:320px;border-collapse:collapse;}
+.totals-table td{padding:6px 12px;font-size:13px;}
+.totals-table .label{color:var(--gray-600);text-align:right;}
+.totals-table .value{text-align:right;font-family:var(--mono);font-weight:500;width:120px;}
+.totals-table .grand-total{border-top:2px solid var(--primary);padding-top:10px;margin-top:6px;}
+.totals-table .grand-total .label{font-weight:700;color:var(--primary);font-size:14px;}
+.totals-table .grand-total .value{font-weight:700;color:var(--primary);font-size:16px;}
+
+/* ===== Preview/Print Layout ===== */
+.preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;overflow-y:auto;}
+.preview-overlay.show{display:block;}
+.preview-container{max-width:800px;margin:20px auto;background:#fff;border-radius:8px;box-shadow:var(--shadow-lg);overflow:hidden;}
+.preview-toolbar{padding:12px 20px;background:var(--gray-800);display:flex;justify-content:space-between;align-items:center;}
+.preview-toolbar .title{color:#fff;font-size:14px;font-weight:600;}
+.preview-toolbar .actions{display:flex;gap:8px;}
+
+.quotation-doc{padding:48px 56px;min-height:1000px;}
+
+/* Quotation Header */
+.quote-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid var(--primary);}
+.quote-header-left .company-name{font-size:16px;font-weight:700;color:var(--primary);letter-spacing:.3px;white-space:nowrap;}
+.quote-header-left .company-info{font-size:11px;color:var(--gray-500);margin-top:8px;line-height:1.6;}
+.quote-header-right{text-align:right;}
+.quote-header-right .quote-title{font-size:32px;font-weight:800;color:var(--gray-800);letter-spacing:2px;text-transform:uppercase;}
+.quote-header-right .quote-meta{font-size:12px;color:var(--gray-600);margin-top:8px;line-height:1.8;}
+.quote-header-right .quote-meta strong{color:var(--gray-800);}
+.quote-no-badge{display:inline-block;background:#d32f2f;color:#fff;font-weight:700;font-size:13px;padding:2px 10px;border-radius:4px;letter-spacing:.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+/* Parties */
+.quote-parties{display:flex;gap:32px;margin-bottom:28px;}
+.quote-party{flex:1;}
+.quote-party .party-label{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--primary-light);}
+.quote-party .party-name{font-size:14px;font-weight:600;color:var(--gray-800);margin-bottom:4px;}
+.quote-party .party-detail{font-size:11px;color:var(--gray-500);line-height:1.6;}
+
+/* Items Table (Print) */
+.quote-items{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:12px;}
+.quote-items th{background:var(--primary);color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;}
+.quote-items th.right{text-align:right;}
+.quote-items th.center{text-align:center;}
+.quote-items td{padding:8px 10px;border-bottom:1px solid var(--gray-200);color:var(--gray-700);}
+.quote-items td.right{text-align:right;font-family:var(--mono);}
+.quote-items td.center{text-align:center;}
+.quote-items tbody tr:nth-child(even){background:var(--gray-50);}
+.quote-items .item-style{font-weight:600;color:var(--primary);}
+.quote-items .item-name{font-weight:500;color:var(--gray-800);}
+.quote-items .item-desc{font-size:10px;color:var(--gray-400);margin-top:2px;}
+
+/* Quote Totals (Print) */
+.quote-totals{display:flex;justify-content:flex-end;margin-bottom:28px;}
+.quote-totals-table{width:300px;border-collapse:collapse;}
+.quote-totals-table td{padding:6px 12px;font-size:12px;}
+.quote-totals-table .label{color:var(--gray-600);text-align:right;}
+.quote-totals-table .value{text-align:right;font-family:var(--mono);font-weight:500;}
+.quote-totals-table .grand-row{border-top:2px solid var(--primary);}
+.quote-totals-table .grand-row .label{font-weight:700;color:var(--primary);font-size:14px;padding-top:10px;}
+.quote-totals-table .grand-row .value{font-weight:700;color:var(--primary);font-size:15px;padding-top:10px;}
+
+/* Terms */
+.quote-terms{display:flex;gap:32px;margin-bottom:32px;}
+.quote-term{flex:1;}
+.quote-term .term-label{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.quote-term .term-value{font-size:12px;color:var(--gray-700);}
+
+/* Notes */
+.quote-notes{background:var(--gray-50);border-left:3px solid var(--primary);padding:16px 20px;margin-bottom:32px;border-radius:0 4px 4px 0;}
+.quote-notes .notes-label{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.quote-notes .notes-content{font-size:11px;color:var(--gray-600);line-height:1.7;}
+
+/* Signature */
+.quote-signature{display:flex;justify-content:space-between;margin-top:48px;}
+.quote-sig-block{text-align:center;width:200px;}
+.quote-sig-block .sig-line{border-top:1px solid var(--gray-400);padding-top:6px;margin-top:40px;}
+.quote-sig-block .sig-label{font-size:11px;color:var(--gray-500);}
+
+/* Footer */
+.quote-footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--gray-200);text-align:center;font-size:10px;color:var(--gray-400);}
+
+/* Empty State */
+.empty-state{text-align:center;padding:48px 20px;color:var(--gray-400);}
+.empty-state .empty-icon{font-size:48px;margin-bottom:12px;}
+.empty-state .empty-text{font-size:14px;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:none;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-lg);width:400px;max-width:90vw;overflow:hidden;}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--gray-200);font-size:15px;font-weight:600;}
+.modal-body{padding:20px;font-size:13px;color:var(--gray-600);}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:8px;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--gray-800);color:#fff;padding:10px 20px;border-radius:var(--radius-sm);font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transform:translateY(10px);transition:all .2s;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.success{background:var(--accent);}
+.toast.error{background:var(--danger);}
+
+/* Screen: hide print-only elements */
+.print-footer,.print-user{display:none;}
+
+/* ===== Print Styles ===== */
+@media print{
+  @page{size:A4;margin:12mm 10mm 18mm 10mm;}
+  /* Hide the entire app layout (sidebar + list view) when printing */
+  .app-layout,.preview-toolbar,.modal-overlay,.toast,.btn{display:none!important;}
+  /* Only show the preview overlay content */
+  .preview-overlay{position:static!important;background:none!important;display:block!important;overflow:visible!important;}
+  .preview-container{max-width:none!important;margin:0!important;border-radius:0!important;box-shadow:none!important;}
+  .quotation-doc{padding:0!important;min-height:auto!important;}
+  .quote-header{page-break-inside:avoid;}
+  .quote-items thead{display:table-header-group;}
+  .quote-items tr{page-break-inside:avoid;}
+  .quote-parties,.quote-terms,.quote-notes,.quote-signature,.quote-totals{page-break-inside:avoid;}
+  .quote-header-left .company-name{color:#004D6D!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .quote-items th{background:#004D6D!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .quote-items tbody tr:nth-child(even){background:#f9fafb!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .quote-notes{background:#f9fafb!important;border-left-color:#004D6D!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .quote-party .party-label,.quote-term .term-label,.quote-notes .notes-label{color:#004D6D!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .quote-totals-table .grand-row{border-top-color:#004D6D!important;}
+  .quote-totals-table .grand-row .label,.quote-totals-table .grand-row .value{color:#004D6D!important;}
+  .quote-items .item-style{color:#004D6D!important;}
+  .badge-draft,.badge-sent,.badge-accepted,.badge-rejected,.badge-expired{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .badge-draft{background:#f3f4f6!important;color:#4b5563!important;}
+  .badge-sent{background:#dbeafe!important;color:#1e40af!important;}
+  .badge-accepted{background:#d1fae5!important;color:#065f46!important;}
+  .badge-rejected{background:#fee2e2!important;color:#991b1b!important;}
+  .badge-expired{background:#fef3c7!important;color:#92400e!important;}
+  /* Page number footer */
+  .print-footer{display:block!important;position:fixed;bottom:6mm;left:0;right:0;text-align:center;font-size:9px;color:#9ca3af;}
+  .print-footer .page-num:after{content:"Page " counter(page) " of " counter(pages);}
+  .print-user{display:block!important;position:fixed;bottom:6mm;right:10mm;font-size:9px;color:#9ca3af;}
+}
+
+/* Responsive */
+@media(max-width:768px){
+  .top-nav-brand{font-size:13px;margin-right:16px;}
+  .top-nav-links a{padding:6px 8px;font-size:12px;}
+  .quote-parties,.quote-terms,.quote-signature{flex-direction:column;gap:16px;}
+  .quotation-doc{padding:24px;}
+}
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- Top Nav Bar -->
+  <div class="top-nav">
+    <nav class="top-nav-links" id="navLinks">
+      <a href="#" onclick="showList();return false;" id="nav-list"><span>📋</span> Quotation List</a>
+      <a href="#" onclick="newQuotationNav();return false;" id="nav-new"><span>➕</span> New Quotation</a>
+      <a href="#" onclick="showSettingsNav();return false;" id="nav-settings"><span>⚙️</span> Settings</a>
+    </nav>
+  </div>
+
+  <!-- Main Area -->
+  <div class="main-area">
+    <div class="app-header">
+      <span class="header-title" id="pageTitle">Quotation Management</span>
+    </div>
+
+    <div class="app-content" id="appContent">
+      <!-- Content rendered here -->
+    </div>
+  </div>
+</div>
+
+<!-- Preview Overlay -->
+<div class="preview-overlay" id="previewOverlay">
+  <div class="preview-container">
+    <div class="preview-toolbar">
+      <span class="title">Quotation Preview</span>
+      <div class="actions">
+        <button class="btn btn-sm btn-secondary" onclick="window.print()">🖨️</button>
+        <button class="btn btn-sm btn-secondary" onclick="closePreview()">✕</button>
+      </div>
+    </div>
+    <div id="previewContent"></div>
+    <div class="print-footer"><span class="page-num"></span></div>
+    <div class="print-user" id="printUser"></div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-header" id="modalTitle">Confirm</div>
+    <div class="modal-body" id="modalBody">Are you sure?</div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-sm btn-danger" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Storage =====
+var STORAGE_KEY = 'fashion_quotations';
+var SETTINGS_KEY = 'fashion_quotation_settings';
+
+function getData(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; }
+}
+function saveData(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function getSettings(){
+  try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveSettings(obj){
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj));
+}
+
+// ===== Default Settings =====
+var defaultSettings = {
+  companyName: 'JIANGSU SAINTY HANTANG TRADING CO LTD',
+  companyAddress: '',
+  companyPhone: '+86-510-82734291',
+  companyEmail: 'adamstig@163.com',
+  companyTaxId: '',
+  userName: 'Adam',
+  custCompany: 'Castro Model LTD.',
+  custContact: 'Yaara Bar',
+  custAddress: '31 Ort Israel St. Bat Yam 59590 Israel',
+  custPhone: '052-8593287',
+  custEmail: 'yaara.b@castro.co.il',
+  defaultCurrency: 'USD',
+  defaultPaymentTerms: '30% deposit, 70% before shipment',
+  defaultDeliveryTerms: 'FOB Shanghai',
+  defaultLeadTime: '45-60 days after order confirmation',
+  defaultValidity: '30 days',
+  defaultHangerCost: 1.10,
+  defaultDiscount: 0,
+  defaultNotes: '1. Sample lead time: 7-10 working days.\n2. All prices include standard poly bag and carton packing; hanger packing available upon request.\n3. Color matching is subject to fabric mill confirmation; slight variation may occur between lots.\n4. Size charts and tech packs available upon request.\n5. Prices are valid for 30 days from quotation date and subject to final confirmation.\n6. Compliance with REACH and OEKO-TEX standards; test reports available upon request.'
+};
+
+// ===== Utilities =====
+function uid(){ return 'qt_' + Date.now() + '_' + Math.random().toString(36).substr(2,6); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function addDays(dateStr, days){
+  var d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+function formatMoney(n){
+  n = Number(n) || 0;
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function generateQuoteNo(){
+  var now = new Date();
+  var ym = String(now.getFullYear()) + String(now.getMonth()+1).padStart(2,'0');
+  var rnd = Math.floor(1000 + Math.random()*9000);
+  return 'QTSTIG' + ym + rnd;
+}
+function showToast(msg, type){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type||'') + ' show';
+  setTimeout(function(){ t.className = 'toast ' + (type||''); }, 2200);
+}
+function escapeHtml(s){
+  if(!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== Current State =====
+var currentView = 'list';
+var editingId = null;
+var currentFilter = 'all';
+
+// ===== Render: List View =====
+function renderList(){
+  var data = getData();
+  var settings = getSettings();
+  var filtered = data;
+  if(currentFilter !== 'all'){
+    filtered = data.filter(function(q){ return q.status === currentFilter; });
+  }
+  // sort by date desc
+  filtered.sort(function(a,b){ return (b.quoteDate||'').localeCompare(a.quoteDate||''); });
+
+  var statusOptions = ['all','draft','sent','accepted','rejected','expired'];
+  var statusLabels = {all:'All',draft:'Draft',sent:'Sent',accepted:'Accepted',rejected:'Rejected',expired:'Expired'};
+
+  var html = '<div class="card">' +
+    '<div class="card-header">' +
+      '<span class="card-title">Quotation Records</span>' +
+      '<button class="btn btn-sm btn-primary" onclick="newQuotationNav()">➕ New Quotation</button>' +
+    '</div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+      '<div class="search-box"><span class="search-icon">🔍</span><input type="text" id="searchInput" placeholder="Search by quote no, customer, style..." oninput="filterTable(this.value)"></div>' +
+      '<select class="filter-select" onchange="setFilter(this.value)">' +
+        statusOptions.map(function(s){ return '<option value="'+s+'" '+(currentFilter===s?'selected':'')+'>'+statusLabels[s]+'</option>'; }).join('') +
+      '</select>' +
+      '<span style="font-size:12px;color:var(--gray-400);margin-left:auto;">Total: '+filtered.length+' quotations</span>' +
+    '</div>';
+
+  if(filtered.length === 0){
+    html += '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No quotations found. Click "New Quotation" to create one.</div></div>';
+  } else {
+    html += '<table class="data-table" id="quoteTable">' +
+      '<thead><tr>' +
+        '<th>Quote No.</th>' +
+        '<th>Date</th>' +
+        '<th>Valid Until</th>' +
+        '<th>Customer</th>' +
+        '<th>Season</th>' +
+        '<th>Currency</th>' +
+        '<th>Total</th>' +
+        '<th>Status</th>' +
+        '<th>Actions</th>' +
+      '</tr></thead><tbody>';
+    filtered.forEach(function(q){
+      html += '<tr data-search="' + escapeHtml((q.quoteNo+' '+q.customerName+' '+(q.items||[]).map(function(i){return i.styleNo;}).join(' ')).toLowerCase()) + '">' +
+        '<td class="quote-no">' + escapeHtml(q.quoteNo) + '</td>' +
+        '<td>' + escapeHtml(q.quoteDate) + '</td>' +
+        '<td>' + escapeHtml(q.validUntil) + '</td>' +
+        '<td>' + escapeHtml(q.customerName) + '</td>' +
+        '<td>' + escapeHtml(q.season||'') + '</td>' +
+        '<td>' + escapeHtml(q.currency||'USD') + '</td>' +
+        '<td class="amount">' + escapeHtml(q.currency||'USD') + ' ' + formatMoney(q.grandTotal) + '</td>' +
+        '<td><span class="badge badge-'+escapeHtml(q.status||'draft')+'">'+escapeHtml((q.status||'draft'))+'</span></td>' +
+        '<td class="actions">' +
+          '<button class="btn btn-icon" onclick="editQuotation(\''+q.id+'\')" title="Edit">✏️</button>' +
+          '<button class="btn btn-icon" onclick="previewQuotation(\''+q.id+'\')" title="Preview/Print">🖨️</button>' +
+          '<button class="btn btn-icon" onclick="duplicateQuotation(\''+q.id+'\')" title="Duplicate">📋</button>' +
+          '<button class="btn btn-icon" onclick="deleteQuotation(\''+q.id+'\')" title="Delete">🗑️</button>' +
+        '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  document.getElementById('appContent').innerHTML = html;
+  document.getElementById('pageTitle').textContent = 'Quotation Management';
+  currentView = 'list';
+}
+
+function filterTable(val){
+  val = (val||'').toLowerCase();
+  var rows = document.querySelectorAll('#quoteTable tbody tr');
+  rows.forEach(function(r){
+    var s = r.getAttribute('data-search') || '';
+    r.style.display = s.indexOf(val) >= 0 ? '' : 'none';
+  });
+}
+function setFilter(val){
+  currentFilter = val;
+  renderList();
+}
+
+// ===== Render: Editor View =====
+function newQuotation(){
+  editingId = null;
+  var settings = Object.assign({}, defaultSettings, getSettings());
+  var q = {
+    quoteNo: generateQuoteNo(),
+    quoteDate: todayStr(),
+    validUntil: addDays(todayStr(), 30),
+    customerName: settings.custContact || '',
+    customerCompany: settings.custCompany || '',
+    customerAddress: settings.custAddress || '',
+    customerContact: settings.custContact || '',
+    customerEmail: settings.custEmail || '',
+    customerPhone: settings.custPhone || '',
+    season: '',
+    currency: settings.defaultCurrency || 'USD',
+    items: [{styleNo:'',productName:'',description:'',fabric:'',colors:'',sizes:'',moq:'',unitPrice:0,total:0}],
+    discount: settings.defaultDiscount || 0,
+    discountType: 'percentage',
+    hangerCost: settings.defaultHangerCost || 0,
+    paymentTerms: settings.defaultPaymentTerms || '',
+    deliveryTerms: settings.defaultDeliveryTerms || '',
+    leadTime: settings.defaultLeadTime || '',
+    notes: settings.defaultNotes || '',
+    status: 'draft'
+  };
+  renderEditor(q);
+}
+
+function editQuotation(id){
+  var data = getData();
+  var q = data.find(function(x){ return x.id === id; });
+  if(!q){ showToast('Quotation not found','error'); return; }
+  editingId = id;
+  renderEditor(q);
+}
+
+function duplicateQuotation(id){
+  var data = getData();
+  var q = data.find(function(x){ return x.id === id; });
+  if(!q){ return; }
+  var copy = JSON.parse(JSON.stringify(q));
+  copy.id = uid();
+  copy.quoteNo = generateQuoteNo();
+  copy.quoteDate = todayStr();
+  copy.validUntil = addDays(todayStr(), 30);
+  copy.status = 'draft';
+  copy.createdAt = new Date().toISOString();
+  copy.updatedAt = new Date().toISOString();
+  data.push(copy);
+  saveData(data);
+  showToast('Quotation duplicated');
+  renderList();
+}
+
+function renderEditor(q){
+  var settings = getSettings();
+  var s = Object.assign({}, defaultSettings, settings);
+
+  var html = '<div class="card">' +
+    '<div class="card-header">' +
+      '<span class="card-title">' + (editingId ? 'Edit Quotation' : 'New Quotation') + '</span>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button class="btn btn-sm btn-secondary" onclick="showList()">← Back</button>' +
+        '<button class="btn btn-sm btn-secondary" onclick="saveQuotation(false)">💾 Save</button>' +
+        '<button class="btn btn-sm btn-primary" onclick="saveQuotation(true)">💾 Save & Preview</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<form id="quoteForm" onsubmit="return false">' +
+
+      // Section: Quotation Info
+      '<div class="form-section">' +
+        '<div class="form-section-title">📌 Quotation Information</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Quotation No.</label><input type="text" id="f_quoteNo" value="'+escapeHtml(q.quoteNo)+'" readonly style="font-weight:600;color:var(--primary);background:var(--gray-50);cursor:default;"></div>' +
+          '<div class="form-group"><label>Quotation Date</label><input type="date" id="f_quoteDate" value="'+escapeHtml(q.quoteDate)+'"></div>' +
+          '<div class="form-group"><label>Valid Until</label><input type="date" id="f_validUntil" value="'+escapeHtml(q.validUntil)+'"></div>' +
+          '<div class="form-group"><label>Season</label><input type="text" id="f_season" value="'+escapeHtml(q.season)+'" placeholder="e.g. SS2026, FW2026"></div>' +
+          '<div class="form-group"><label>Status</label>' +
+            '<select id="f_status">' +
+              ['draft','sent','accepted','rejected','expired'].map(function(st){
+                return '<option value="'+st+'" '+(q.status===st?'selected':'')+'>'+st.charAt(0).toUpperCase()+st.slice(1)+'</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Section: Customer
+      '<div class="form-section">' +
+        '<div class="form-section-title">👤 Customer (Bill To)</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Company Name</label><input type="text" id="f_customerCompany" value="'+escapeHtml(q.customerCompany)+'"></div>' +
+          '<div class="form-group"><label>Contact Person</label><input type="text" id="f_customerName" value="'+escapeHtml(q.customerName)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Email</label><input type="email" id="f_customerEmail" value="'+escapeHtml(q.customerEmail)+'"></div>' +
+          '<div class="form-group"><label>Phone</label><input type="text" id="f_customerPhone" value="'+escapeHtml(q.customerPhone)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Address</label><textarea id="f_customerAddress" rows="2">'+escapeHtml(q.customerAddress)+'</textarea></div>' +
+        '</div>' +
+      '</div>' +
+
+      // Section: Items
+      '<div class="form-section">' +
+        '<div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span>👗 Line Items</span>' +
+          '<button class="btn btn-sm btn-secondary" onclick="addItemRow();return false;">➕ Add Row</button>' +
+        '</div>' +
+        '<div style="overflow-x:auto;">' +
+        '<table class="items-table" id="itemsTable">' +
+          '<thead><tr>' +
+            '<th>#</th>' +
+            '<th class="col-style">Style No.</th>' +
+            '<th>Product Name</th>' +
+            '<th>Description</th>' +
+            '<th>Fabric / Composition</th>' +
+            '<th>Colors</th>' +
+            '<th>Sizes</th>' +
+            '<th>MOQ</th>' +
+            '<th class="col-price">Unit Price</th>' +
+            '<th class="col-total">Total</th>' +
+            '<th class="col-del"></th>' +
+          '</tr></thead>' +
+          '<tbody id="itemsBody"></tbody>' +
+        '</table>' +
+        '</div>' +
+
+        // Totals
+        '<div class="totals-section">' +
+          '<table class="totals-table">' +
+            '<tr><td class="label">Subtotal</td><td class="value" id="calc_subtotal">'+q.currency+' 0.00</td></tr>' +
+            '<tr><td class="label">Discount '+
+              '<select id="f_discountType" style="font-size:11px;padding:1px 4px;border:1px solid var(--gray-300);border-radius:3px;margin-left:4px;" onchange="recalc()">'+
+                '<option value="percentage" '+(q.discountType==='percentage'?'selected':'')+'>%</option>'+
+                '<option value="amount" '+(q.discountType==='amount'?'selected':'')+'>Amt</option>'+
+              '</select>'+
+              ': <input type="number" id="f_discount" value="'+(q.discount||0)+'" style="width:60px;font-size:12px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;" oninput="recalc()"></td>'+
+              '<td class="value" id="calc_discount">- 0.00</td></tr>' +
+            '<tr><td class="label">Hanger Cost /pc: <input type="number" step="0.01" id="f_hangerCost" value="'+(q.hangerCost||0)+'" style="width:60px;font-size:12px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;" oninput="recalc()"></td><td class="value" id="calc_hanger">0.00</td></tr>' +
+            '<tr class="grand-total"><td class="label">Grand Total</td><td class="value" id="calc_grand">0.00</td></tr>' +
+          '</table>' +
+        '</div>' +
+        '<input type="hidden" id="f_currency" value="'+escapeHtml(q.currency)+'">' +
+      '</div>' +
+
+      // Section: Terms
+      '<div class="form-section">' +
+        '<div class="form-section-title">📋 Terms & Conditions</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Currency</label>' +
+            '<select id="f_currencySelect" onchange="document.getElementById(\'f_currency\').value=this.value;recalc()">' +
+              ['USD','EUR','GBP','CNY','JPY','AUD','CAD','HKD'].map(function(c){
+                return '<option value="'+c+'" '+(q.currency===c?'selected':'')+'>'+c+'</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div class="form-group"><label>Payment Terms</label><input type="text" id="f_paymentTerms" value="'+escapeHtml(q.paymentTerms)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Delivery Terms (Incoterms)</label><input type="text" id="f_deliveryTerms" value="'+escapeHtml(q.deliveryTerms)+'"></div>' +
+          '<div class="form-group"><label>Lead Time</label><input type="text" id="f_leadTime" value="'+escapeHtml(q.leadTime)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Notes / Remarks</label><textarea id="f_notes" rows="3" placeholder="Additional notes, special requirements, sampling policy, etc.">'+escapeHtml(q.notes)+'</textarea></div>' +
+        '</div>' +
+      '</div>' +
+
+      '</form>' +
+    '</div>' +
+  '</div>';
+
+  document.getElementById('appContent').innerHTML = html;
+  document.getElementById('pageTitle').textContent = editingId ? 'Edit Quotation' : 'New Quotation';
+  currentView = 'editor';
+
+  // render items
+  var itemsBody = document.getElementById('itemsBody');
+  q.items.forEach(function(item, idx){
+    addItemRow(item, idx);
+  });
+  recalc();
+}
+
+// ===== Item Rows =====
+function addItemRow(data, idx){
+  var body = document.getElementById('itemsBody');
+  if(!body) return;
+  var i = idx !== undefined ? idx : body.children.length;
+  data = data || {styleNo:'',productName:'',description:'',fabric:'',colors:'',sizes:'',moq:'',unitPrice:0,quantity:0,total:0};
+
+  var tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td class="row-num" style="text-align:center;color:var(--gray-400);font-size:11px;">'+(i+1)+'</td>' +
+    '<td><input type="text" class="col-style" value="'+escapeHtml(data.styleNo)+'" placeholder="ST-001" oninput="recalc()"></td>' +
+    '<td><input type="text" value="'+escapeHtml(data.productName)+'" placeholder="Cotton Blouse" oninput="recalc()"></td>' +
+    '<td><input type="text" value="'+escapeHtml(data.description)+'" placeholder="Brief description" oninput="recalc()"></td>' +
+    '<td><input type="text" value="'+escapeHtml(data.fabric)+'" placeholder="100% Cotton" oninput="recalc()"></td>' +
+    '<td><input type="text" value="'+escapeHtml(data.colors)+'" placeholder="White, Black" oninput="recalc()"></td>' +
+    '<td><input type="text" value="'+escapeHtml(data.sizes)+'" placeholder="S, M, L, XL" oninput="recalc()"></td>' +
+    '<td><input type="number" value="'+(data.moq||0)+'" placeholder="500" oninput="recalc()" style="text-align:right;" min="0"></td>' +
+    '<td><input type="number" class="col-price" value="'+(data.unitPrice||0)+'" placeholder="0.00" oninput="recalc()" style="text-align:right;" step="0.01"></td>' +
+    '<td class="col-total-cell">0.00</td>' +
+    '<td class="col-del"><button class="btn btn-icon" onclick="removeRow(this)" title="Remove" style="color:var(--danger);">✕</button></td>';
+  body.appendChild(tr);
+  recalc();
+}
+
+function removeRow(btn){
+  var body = document.getElementById('itemsBody');
+  if(body.children.length <= 1){ showToast('At least one row required','error'); return; }
+  var tr = btn.closest('tr');
+  tr.remove();
+  // renumber
+  var rows = body.querySelectorAll('tr');
+  rows.forEach(function(r, i){
+    var cell = r.querySelector('.row-num');
+    if(cell) cell.textContent = (i+1);
+  });
+  recalc();
+}
+
+// ===== Calculate =====
+function recalc(){
+  var body = document.getElementById('itemsBody');
+  if(!body) return;
+  var currency = (document.getElementById('f_currency')||{}).value || 'USD';
+  var subtotal = 0;
+  var rows = body.querySelectorAll('tr');
+  rows.forEach(function(r){
+    var inputs = r.querySelectorAll('input');
+    var moq = parseFloat(inputs[6].value) || 0; // MOQ
+    var price = parseFloat(inputs[7].value) || 0; // unit price
+    var total = moq * price;
+    r.querySelector('.col-total-cell').textContent = formatMoney(total);
+    subtotal += total;
+  });
+
+  var discountVal = parseFloat(document.getElementById('f_discount').value) || 0;
+  var discountType = document.getElementById('f_discountType').value;
+  var discountAmount = discountType === 'percentage' ? subtotal * discountVal / 100 : discountVal;
+  if(discountAmount > subtotal) discountAmount = subtotal;
+
+  var hangerCost = parseFloat(document.getElementById('f_hangerCost').value) || 0;
+  var totalMOQ = 0;
+  rows.forEach(function(r){
+    var inputs = r.querySelectorAll('input');
+    totalMOQ += parseFloat(inputs[6].value) || 0;
+  });
+  var hangerAmount = totalMOQ * hangerCost;
+  var grand = subtotal - discountAmount + hangerAmount;
+
+  document.getElementById('calc_subtotal').textContent = currency + ' ' + formatMoney(subtotal);
+  document.getElementById('calc_discount').textContent = '- ' + formatMoney(discountAmount);
+  document.getElementById('calc_hanger').textContent = formatMoney(hangerAmount);
+  document.getElementById('calc_grand').textContent = currency + ' ' + formatMoney(grand);
+}
+
+// ===== Save =====
+function saveQuotation(preview){
+  var items = [];
+  var rows = document.querySelectorAll('#itemsBody tr');
+  rows.forEach(function(r){
+    var inputs = r.querySelectorAll('input');
+    items.push({
+      styleNo: inputs[0].value.trim(),
+      productName: inputs[1].value.trim(),
+      description: inputs[2].value.trim(),
+      fabric: inputs[3].value.trim(),
+      colors: inputs[4].value.trim(),
+      sizes: inputs[5].value.trim(),
+      moq: parseFloat(inputs[6].value) || 0,
+      unitPrice: parseFloat(inputs[7].value) || 0,
+      total: (parseFloat(inputs[6].value)||0) * (parseFloat(inputs[7].value)||0)
+    });
+  });
+
+  var subtotal = items.reduce(function(s,i){ return s + i.total; }, 0);
+  var discountVal = parseFloat(document.getElementById('f_discount').value) || 0;
+  var discountType = document.getElementById('f_discountType').value;
+  var discountAmount = discountType === 'percentage' ? subtotal * discountVal / 100 : discountVal;
+  if(discountAmount > subtotal) discountAmount = subtotal;
+  var hangerCost = parseFloat(document.getElementById('f_hangerCost').value) || 0;
+  var totalMOQ = items.reduce(function(s,i){ return s + (parseFloat(i.moq)||0); }, 0);
+  var hangerAmount = totalMOQ * hangerCost;
+  var grandTotal = subtotal - discountAmount + hangerAmount;
+
+  var q = {
+    id: editingId || uid(),
+    quoteNo: document.getElementById('f_quoteNo').value.trim(),
+    quoteDate: document.getElementById('f_quoteDate').value,
+    validUntil: document.getElementById('f_validUntil').value,
+    customerName: document.getElementById('f_customerName').value.trim(),
+    customerCompany: document.getElementById('f_customerCompany').value.trim(),
+    customerAddress: document.getElementById('f_customerAddress').value.trim(),
+    customerContact: document.getElementById('f_customerContact') ? document.getElementById('f_customerContact').value.trim() : '',
+    customerEmail: document.getElementById('f_customerEmail').value.trim(),
+    customerPhone: document.getElementById('f_customerPhone').value.trim(),
+    season: document.getElementById('f_season').value.trim(),
+    currency: document.getElementById('f_currency').value,
+    items: items,
+    subtotal: subtotal,
+    discount: discountVal,
+    discountType: discountType,
+    discountAmount: discountAmount,
+    hangerCost: hangerCost,
+    hangerAmount: hangerAmount,
+    grandTotal: grandTotal,
+    paymentTerms: document.getElementById('f_paymentTerms').value.trim(),
+    deliveryTerms: document.getElementById('f_deliveryTerms').value.trim(),
+    leadTime: document.getElementById('f_leadTime').value.trim(),
+    notes: document.getElementById('f_notes').value.trim(),
+    status: document.getElementById('f_status').value,
+    preparedBy: (getSettings().userName || 'User'),
+    createdAt: editingId ? (getData().find(function(x){return x.id===editingId;})||{}).createdAt || new Date().toISOString() : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  var data = getData();
+  if(editingId){
+    var idx = data.findIndex(function(x){ return x.id === editingId; });
+    if(idx >= 0) data[idx] = q; else data.push(q);
+  } else {
+    data.push(q);
+    editingId = q.id;
+  }
+  saveData(data);
+  showToast('Quotation saved successfully','success');
+
+  if(preview){
+    previewQuotation(q.id);
+  } else {
+    renderList();
+  }
+}
+
+// ===== Delete =====
+function deleteQuotation(id){
+  showConfirm('Delete Quotation','Are you sure you want to delete this quotation? This action cannot be undone.', function(){
+    var data = getData();
+    data = data.filter(function(q){ return q.id !== id; });
+    saveData(data);
+    showToast('Quotation deleted');
+    renderList();
+  });
+}
+
+function showConfirm(title, body, callback){
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  document.getElementById('confirmModal').classList.add('show');
+  document.getElementById('modalConfirmBtn').onclick = function(){
+    callback();
+    closeModal();
+  };
+}
+function closeModal(){
+  document.getElementById('confirmModal').classList.remove('show');
+}
+
+// ===== Preview / Print =====
+function previewQuotation(id){
+  var data = getData();
+  var q = data.find(function(x){ return x.id === id; });
+  if(!q){ showToast('Not found','error'); return; }
+  renderPreview(q);
+}
+
+function renderPreview(q){
+  var s = Object.assign({}, defaultSettings, getSettings());
+  var userName = s.userName || 'User';
+
+  var itemsHtml = q.items.map(function(item, i){
+    return '<tr>' +
+      '<td style="text-align:center;">'+(i+1)+'</td>' +
+      '<td class="item-style">'+escapeHtml(item.styleNo)+'</td>' +
+      '<td><div class="item-name">'+escapeHtml(item.productName)+'</div>' +
+        (item.description ? '<div class="item-desc">'+escapeHtml(item.description)+'</div>' : '') +
+        (item.fabric ? '<div class="item-desc">Fabric: '+escapeHtml(item.fabric)+'</div>' : '') +
+      '</td>' +
+      '<td>'+escapeHtml(item.colors||'—')+'</td>' +
+      '<td style="text-align:center;">'+escapeHtml(item.sizes||'—')+'</td>' +
+      '<td style="text-align:center;">'+escapeHtml(item.moq||'—')+'</td>' +
+      '<td class="right">'+formatMoney(item.unitPrice)+'</td>' +
+      '<td class="right">'+formatMoney(item.total)+'</td>' +
+    '</tr>';
+  }).join('');
+
+  var partiesHtml = '<div class="quote-parties">' +
+    '<div class="quote-party">' +
+      '<div class="party-label">From (Seller)</div>' +
+      '<div class="party-name">'+escapeHtml(s.companyName)+'</div>' +
+      '<div class="party-detail">'+
+        escapeHtml(s.companyAddress)+'<br>'+
+        (s.companyPhone?'Tel: '+escapeHtml(s.companyPhone)+'<br>':'')+
+        (s.companyEmail?'Email: '+escapeHtml(s.companyEmail)+'<br>':'')+
+        (s.companyTaxId?'Tax ID: '+escapeHtml(s.companyTaxId):'')+
+      '</div>' +
+    '</div>' +
+    '<div class="quote-party">' +
+      '<div class="party-label">To (Customer)</div>' +
+      '<div class="party-name">'+escapeHtml(q.customerCompany||q.customerName||'—')+'</div>' +
+      '<div class="party-detail">'+
+        (q.customerName?'Attn: '+escapeHtml(q.customerName)+'<br>':'')+
+        (q.customerAddress?escapeHtml(q.customerAddress)+'<br>':'')+
+        (q.customerPhone?'Tel: '+escapeHtml(q.customerPhone)+'<br>':'')+
+        (q.customerEmail?'Email: '+escapeHtml(q.customerEmail):'')+
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  var termsHtml = '<div class="quote-terms">' +
+    '<div class="quote-term"><div class="term-label">Payment Terms</div><div class="term-value">'+escapeHtml(q.paymentTerms||'—')+'</div></div>' +
+    '<div class="quote-term"><div class="term-label">Delivery Terms</div><div class="term-value">'+escapeHtml(q.deliveryTerms||'—')+'</div></div>' +
+    '<div class="quote-term"><div class="term-label">Lead Time</div><div class="term-value">'+escapeHtml(q.leadTime||'—')+'</div></div>' +
+    '<div class="quote-term"><div class="term-label">Currency</div><div class="term-value">'+escapeHtml(q.currency)+'</div></div>' +
+    '<div class="quote-term"><div class="term-label">Season</div><div class="term-value">'+escapeHtml(q.season||'—')+'</div></div>' +
+  '</div>';
+
+  var notesHtml = q.notes ? '<div class="quote-notes"><div class="notes-label">Notes & Remarks</div><div class="notes-content">'+escapeHtml(q.notes).replace(/\n/g,'<br>')+'</div></div>' : '';
+
+  var totalsHtml = '<div class="quote-totals"><table class="quote-totals-table">' +
+    '<tr><td class="label">Subtotal</td><td class="value">'+formatMoney(q.subtotal)+'</td></tr>' +
+    (q.discountAmount > 0 ? '<tr><td class="label">Discount'+(q.discountType==='percentage'?' ('+q.discount+'%)':'')+'</td><td class="value">- '+formatMoney(q.discountAmount)+'</td></tr>' : '') +
+    (q.hangerAmount > 0 ? '<tr><td class="label">Hanger Cost ('+q.hangerCost+'/pc)</td><td class="value">'+formatMoney(q.hangerAmount)+'</td></tr>' : '') +
+    '<tr class="grand-row"><td class="label">Grand Total ('+escapeHtml(q.currency)+')</td><td class="value">'+escapeHtml(q.currency)+' '+formatMoney(q.grandTotal)+'</td></tr>' +
+  '</table></div>';
+
+  var signatureHtml = '<div class="quote-signature">' +
+    '<div class="quote-sig-block"><div class="sig-line"></div><div class="sig-label">Customer Signature & Date</div></div>' +
+    '<div class="quote-sig-block"><div class="sig-line"></div><div class="sig-label">Authorized by '+escapeHtml(s.companyName)+'</div></div>' +
+  '</div>';
+
+  var footerHtml = '<div class="quote-footer">' +
+    'This quotation is valid until '+escapeHtml(q.validUntil)+'. Prices are subject to change without prior notice after the validity date.<br>' +
+    'Printed by: '+escapeHtml(userName)+' | '+escapeHtml(new Date().toLocaleDateString('en-US'))+
+  '</div>';
+
+  var doc = '<div class="quotation-doc">' +
+    // Header
+    '<div class="quote-header">' +
+      '<div class="quote-header-left">' +
+        '<div class="company-name">'+escapeHtml(s.companyName)+'</div>' +
+        '<div class="company-info">'+
+          escapeHtml(s.companyAddress)+'<br>'+
+          (s.companyPhone?'Tel: '+escapeHtml(s.companyPhone)+' | ':'')+
+          (s.companyEmail?escapeHtml(s.companyEmail):'')+
+        '</div>' +
+      '</div>' +
+      '<div class="quote-header-right">' +
+        '<div class="quote-title">Quotation</div>' +
+        '<div class="quote-meta">'+
+          '<strong>Quote No.:</strong> <span style="display:inline-block;background:#d32f2f;color:#fff;font-weight:700;font-size:13px;padding:2px 10px;border-radius:4px;letter-spacing:.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+escapeHtml(q.quoteNo)+'</span><br>'+
+          '<strong>Date:</strong> '+escapeHtml(q.quoteDate)+'<br>'+
+          '<strong>Valid Until:</strong> '+escapeHtml(q.validUntil)+'<br>'+
+          '<strong>Status:</strong> <span class="badge badge-'+escapeHtml(q.status)+'">'+escapeHtml(q.status)+'</span>'+
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Parties
+    partiesHtml +
+
+    // Items
+    '<table class="quote-items">' +
+      '<thead><tr>' +
+        '<th style="width:30px;">#</th>' +
+        '<th style="width:90px;">Style No.</th>' +
+        '<th>Product Description</th>' +
+        '<th style="width:100px;">Colors</th>' +
+        '<th style="width:80px;">Sizes</th>' +
+        '<th style="width:70px;">MOQ</th>' +
+        '<th class="right" style="width:90px;">Unit Price</th>' +
+        '<th class="right" style="width:100px;">Total</th>' +
+      '</tr></thead>' +
+      '<tbody>'+itemsHtml+'</tbody>' +
+    '</table>' +
+
+    // Totals
+    totalsHtml +
+
+    // Terms
+    termsHtml +
+
+    // Notes
+    notesHtml +
+
+    // Signature
+    signatureHtml +
+
+    // Footer
+    footerHtml +
+  '</div>';
+
+  document.getElementById('previewContent').innerHTML = doc;
+  document.getElementById('printUser').textContent = 'Printed by: ' + userName;
+  document.getElementById('previewOverlay').classList.add('show');
+}
+
+function closePreview(){
+  document.getElementById('previewOverlay').classList.remove('show');
+}
+
+// ===== Search =====
+function searchQuotations(){
+  currentFilter = 'all';
+  renderList();
+  setTimeout(function(){
+    var input = document.getElementById('searchInput');
+    if(input){ input.focus(); }
+  }, 100);
+}
+
+// ===== Archive =====
+function showArchive(){
+  currentFilter = 'expired';
+  renderList();
+}
+
+// ===== Export =====
+function exportData(){
+  var data = getData();
+  var json = JSON.stringify(data, null, 2);
+  var blob = new Blob([json], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'quotations_export_' + todayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data exported');
+}
+
+// ===== Settings (inline simple) =====
+function showSettings(){
+  var s = Object.assign({}, defaultSettings, getSettings());
+  var html = '<div class="card">' +
+    '<div class="card-header"><span class="card-title">Settings</span>' +
+      '<button class="btn btn-sm btn-secondary" onclick="showList()">← Back</button>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<form id="settingsForm" onsubmit="return false">' +
+      '<div class="form-section"><div class="form-section-title">🏢 Company Information</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Company Name</label><input type="text" id="s_companyName" value="'+escapeHtml(s.companyName)+'"></div>' +
+          '<div class="form-group"><label>User Name (Printed By)</label><input type="text" id="s_userName" value="'+escapeHtml(s.userName||'')+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Address</label><input type="text" id="s_companyAddress" value="'+escapeHtml(s.companyAddress)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Phone</label><input type="text" id="s_companyPhone" value="'+escapeHtml(s.companyPhone)+'"></div>' +
+          '<div class="form-group"><label>Email</label><input type="text" id="s_companyEmail" value="'+escapeHtml(s.companyEmail)+'"></div>' +
+          '<div class="form-group"><label>Tax ID</label><input type="text" id="s_companyTaxId" value="'+escapeHtml(s.companyTaxId)+'"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="form-section"><div class="form-section-title">👤 Default Customer (Bill To)</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Customer Company</label><input type="text" id="s_custCompany" value="'+escapeHtml(s.custCompany)+'"></div>' +
+          '<div class="form-group"><label>Contact Person</label><input type="text" id="s_custContact" value="'+escapeHtml(s.custContact)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Address</label><input type="text" id="s_custAddress" value="'+escapeHtml(s.custAddress)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Phone</label><input type="text" id="s_custPhone" value="'+escapeHtml(s.custPhone)+'"></div>' +
+          '<div class="form-group"><label>Email</label><input type="text" id="s_custEmail" value="'+escapeHtml(s.custEmail)+'"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="form-section"><div class="form-section-title">⚙️ Defaults</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Default Currency</label><input type="text" id="s_defaultCurrency" value="'+escapeHtml(s.defaultCurrency)+'"></div>' +
+          '<div class="form-group"><label>Default Hanger Cost (per pc)</label><input type="number" step="0.01" id="s_defaultHangerCost" value="'+escapeHtml(s.defaultHangerCost)+'"></div>' +
+          '<div class="form-group"><label>Default Discount</label><input type="number" id="s_defaultDiscount" value="'+escapeHtml(s.defaultDiscount)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Payment Terms</label><input type="text" id="s_defaultPaymentTerms" value="'+escapeHtml(s.defaultPaymentTerms)+'"></div>' +
+          '<div class="form-group"><label>Delivery Terms</label><input type="text" id="s_defaultDeliveryTerms" value="'+escapeHtml(s.defaultDeliveryTerms)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Lead Time</label><input type="text" id="s_defaultLeadTime" value="'+escapeHtml(s.defaultLeadTime)+'"></div>' +
+          '<div class="form-group"><label>Validity Period (days)</label><input type="number" id="s_defaultValidity" value="'+escapeHtml(s.defaultValidity)+'"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label>Notes / Remarks (default for new quotations)</label><textarea id="s_defaultNotes" rows="6" style="font-size:12px;line-height:1.6;">'+escapeHtml(s.defaultNotes)+'</textarea></div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;margin-top:16px;">' +
+        '<button class="btn btn-sm btn-primary" onclick="saveSettingsForm()">💾 Save Settings</button>' +
+      '</div>' +
+      '</form>' +
+    '</div>' +
+  '</div>';
+  document.getElementById('appContent').innerHTML = html;
+  document.getElementById('pageTitle').textContent = 'Settings';
+  currentView = 'settings';
+}
+
+function saveSettingsForm(){
+  var fields = ['companyName','userName','companyAddress','companyPhone','companyEmail','companyTaxId','custCompany','custContact','custAddress','custPhone','custEmail','defaultCurrency','defaultHangerCost','defaultDiscount','defaultPaymentTerms','defaultDeliveryTerms','defaultLeadTime','defaultValidity','defaultNotes'];
+  var obj = {};
+  fields.forEach(function(f){
+    var el = document.getElementById('s_'+f);
+    if(el) obj[f] = el.value;
+  });
+  // merge with existing
+  var existing = getSettings();
+  var merged = Object.assign({}, existing, obj);
+  saveSettings(merged);
+  showToast('Settings saved','success');
+  showList();
+}
+
+// ===== Navigation =====
+function setNavActive(id){
+  document.querySelectorAll('.top-nav-links a').forEach(function(a){ a.classList.remove('active'); });
+  var el = document.getElementById(id);
+  if(el) el.classList.add('active');
+}
+
+function showList(){
+  renderList();
+  setNavActive('nav-list');
+}
+
+function newQuotationNav(){
+  newQuotation();
+  setNavActive('nav-new');
+}
+
+function showSettingsNav(){
+  showSettings();
+  setNavActive('nav-settings');
+}
+
+// ===== Sample Data =====
+function createSampleQuotation(){
+  var items = [
+    {
+      styleNo: 'ST-FW2601',
+      productName: "Women's Wool Blend Coat",
+      description: 'Double-breasted, notch lapel, fully lined',
+      fabric: '60% Wool, 35% Polyester, 5% Elastane',
+      colors: 'Camel, Charcoal, Navy',
+      sizes: 'XS, S, M, L, XL',
+      moq: 500,
+      unitPrice: 48.50,
+      total: 500 * 48.50
+    },
+    {
+      styleNo: 'ST-FW2602',
+      productName: "Men's Cotton Flannel Shirt",
+      description: 'Brushed flannel, button-down collar, curved hem',
+      fabric: '100% Cotton, 160gsm',
+      colors: 'Red/Black, Blue/Green',
+      sizes: 'S, M, L, XL, XXL',
+      moq: 800,
+      unitPrice: 15.80,
+      total: 800 * 15.80
+    },
+    {
+      styleNo: 'ST-FW2603',
+      productName: "Kids' Puffer Vest",
+      description: 'Sleeveless, front zip, two welt pockets',
+      fabric: 'Shell: 100% Nylon; Lining: 100% Polyester; Fill: 90% Down 10% Feather',
+      colors: 'Pink, Blue, Yellow',
+      sizes: '100, 110, 120, 130, 140',
+      moq: 300,
+      unitPrice: 22.00,
+      total: 300 * 22.00
+    }
+  ];
+  var subtotal = items.reduce(function(s,i){ return s + i.total; }, 0);
+  var discountVal = 5;
+  var discountType = 'percentage';
+  var discountAmount = subtotal * discountVal / 100;
+  var hangerCost = 1.10;
+  var totalMOQ = items.reduce(function(s,i){ return s + i.moq; }, 0);
+  var hangerAmount = totalMOQ * hangerCost;
+  var grandTotal = subtotal - discountAmount + hangerAmount;
+
+  return {
+    id: uid(),
+    quoteNo: 'QTSTIG2026081001',
+    quoteDate: todayStr(),
+    validUntil: addDays(todayStr(), 30),
+    customerName: 'Yaara Bar',
+    customerCompany: 'Castro Model LTD.',
+    customerAddress: '31 Ort Israel St. Bat Yam 59590 Israel',
+    customerContact: 'Yaara Bar',
+    customerEmail: 'yaara.b@castro.co.il',
+    customerPhone: '052-8593287',
+    season: 'FW2026',
+    currency: 'USD',
+    items: items,
+    subtotal: subtotal,
+    discount: discountVal,
+    discountType: discountType,
+    discountAmount: discountAmount,
+    hangerCost: hangerCost,
+    hangerAmount: hangerAmount,
+    grandTotal: grandTotal,
+    paymentTerms: '30% deposit by T/T, 70% balance before shipment',
+    deliveryTerms: 'FOB Shanghai',
+    leadTime: '45-60 days after order confirmation and deposit received',
+    notes: '1. Sample lead time: 7-10 working days.\n2. All prices include standard poly bag and carton packing; hanger packing available upon request.\n3. Color matching is subject to fabric mill confirmation; slight variation may occur between lots.\n4. Size charts and tech packs available upon request.\n5. Prices are valid for 30 days from quotation date and subject to final confirmation.\n6. Compliance with REACH and OEKO-TEX standards; test reports available upon request.',
+    status: 'draft',
+    preparedBy: (getSettings().userName || 'User'),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function loadSampleData(){
+  var data = getData();
+  // Check if sample already exists
+  var existing = data.find(function(q){ return q.quoteNo === 'QTSTIG2026081001' || q.quoteNo === 'QT-202608-1001' || q.quoteNo === 'QT-2026-0001'; });
+  if(existing){
+    showToast('Sample quotation already loaded');
+    previewQuotation(existing.id);
+    return;
+  }
+  var sample = createSampleQuotation();
+  data.push(sample);
+  saveData(data);
+  showToast('Sample quotation loaded','success');
+  previewQuotation(sample.id);
+}
+
+// ===== Init =====
+(function init(){
+  // ensure settings exist, or migrate from old defaults
+  var s = getSettings();
+  if(!s.companyName || s.companyName === 'AA Fashion Trading Co., Ltd.'){
+    saveSettings(defaultSettings);
+  } else if(!s.custCompany){
+    // Migrate old settings to add customer defaults
+    var merged = Object.assign({}, defaultSettings, s);
+    saveSettings(merged);
+  }
+
+  // render list
+  renderList();
+  // set default nav active
+  setNavActive('nav-list');
+})();
+</script>
+</body>
+</html>
