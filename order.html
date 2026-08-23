@@ -456,6 +456,126 @@ function getFilteredOrders() {
   return App.utils.sortByDateDesc(filtered, ['orderDate', 'etd']);
 }
 
+// ===== OrderImg forward 存根（解决 renderTable 先于 const OrderImg 执行导致水合全丢的竞态） =====
+// 页面 <script> 里 renderTable() 在 L460，const OrderImg = {...} 才在 L993，差了 530 行。
+// 这里把 window.OrderImg 先挂上 stubs：
+//   · 存根内立刻做能做的（用 StyleImgCache 直接 resolve Img src、用 getStyleImagesForStyleNo backfill）
+//   · 做不了的（openRowFullscreen / navTableRow 等）塞 _orderImgPendingQueue，等真 OrderImg 注册后 flush。
+(function(){
+  if (window.OrderImg) return;
+  var pendingQueue = [];
+  function fireWhenReady() {
+    // 真 OrderImg 注册之后调用
+    var real = window.__OrderImgReal;
+    if (!real) return;
+    while (pendingQueue.length) {
+      var item = pendingQueue.shift();
+      try {
+        if (item.type === 'hydrate' && typeof real.hydrateTableImages === 'function') real.hydrateTableImages();
+        else if (item.type === 'backfill' && typeof real.backfillTableImages === 'function') real.backfillTableImages();
+        else if (item.type === 'openRow' && typeof real.openRowFullscreen === 'function') real.openRowFullscreen(item.id);
+        else if (item.type === 'openRowByStyleNo' && typeof real.openRowFullscreenByStyleNo === 'function') real.openRowFullscreenByStyleNo(item.id, item.styleNo);
+        else if (item.type === 'nav' && typeof real.navTableRow === 'function') real.navTableRow(item.ev, item.id, item.dir);
+      } catch(e) { console.warn('[OrderImg.stub] flush pending 抛异常:', item.type, e && e.message ? e.message : e); }
+    }
+  }
+
+  // hydrate 内联：直接给 <img data-order-img="orderId"> 的 src 赋值（等价 OrderImg.hydrateTableImages）
+  function stubHydrate() {
+    var list = document.querySelectorAll('img[data-order-img]');
+    list.forEach(function(img){
+      try {
+        var orderId = img.getAttribute('data-order-img');
+        var orders = (App && App.store && typeof App.store.get === 'function') ? (App.store.get('orders') || []) : [];
+        var order = orders.find(function(o){ return o.id === orderId; });
+        if (!order) return;
+        var idx = parseInt(order._thumbIdx || '0', 10);
+        var p = (idx === 1 && order.fullImg_path) ? order.fullImg_path : (order.styleImg_path || order.fullImg_path);
+        if (!p || p.startsWith('data:image')) {
+          if (p) img.src = p;
+          return;
+        }
+        (async function(){
+          var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : null;
+          if (src) img.src = src;
+          else if (window.OrderImg && typeof window.OrderImg._directUrl === 'function') img.src = window.OrderImg._directUrl(p);
+        })();
+      } catch(_) {}
+    });
+  }
+
+  // backfill 内联：给 <img data-order-img-backfill> 按款号找图并填 src（等价 OrderImg.backfillTableImages）
+  async function stubBackfill() {
+    if (!window.getStyleImagesForStyleNo) return;
+    var nodes = document.querySelectorAll('img[data-order-img-backfill]');
+    if (nodes.length === 0) return;
+    var groups = {};
+    nodes.forEach(function(img){
+      var sn = (img.getAttribute('data-style-no') || '').trim();
+      if (sn) (groups[sn] = groups[sn] || []).push(img);
+    });
+    var sns = Object.keys(groups);
+    for (var i = 0; i < sns.length; i++) {
+      var sn = sns[i];
+      var items = groups[sn];
+      try {
+        var r = await getStyleImagesForStyleNo(sn);
+        if (!r) {
+          items.forEach(function(img){
+            var cell = img.parentElement;
+            if (cell) {
+              var sp = cell.querySelector('span');
+              if (sp) sp.textContent = '无';
+            }
+          });
+          continue;
+        }
+        var signed = r.styleImg_signed || null;
+        if (!signed && r.styleImg_path && window.resolveImageUrl) signed = await resolveImageUrl(r.styleImg_path, { hintStyleNo: sn });
+        if (!signed && r.fullImg_path && window.resolveImageUrl)  signed = await resolveImageUrl(r.fullImg_path,  { hintStyleNo: sn });
+        items.forEach(function(img){
+          var cell = img.parentElement;
+          if (signed) {
+            img.src = signed;
+            img.style.display = 'block';
+            if (cell) {
+              var sp = cell.querySelector('span');
+              if (sp) sp.style.display = 'none';
+            }
+          } else {
+            if (cell) {
+              var sp2 = cell.querySelector('span');
+              if (sp2) sp2.textContent = '无';
+            }
+          }
+        });
+      } catch(e) { console.warn('[OrderImg.stubBackfill] 款号=' + sn + ' 抛异常:', e && e.message ? e.message : e); }
+    }
+  }
+
+  window.OrderImg = {
+    __stub: true,
+    hydrateTableImages: function(){ try { stubHydrate(); } catch(e){ console.warn(e && e.message); } if (!window.__OrderImgReal) pendingQueue.push({type:'hydrate'}); else fireWhenReady(); },
+    backfillTableImages: function(){ try { stubBackfill(); } catch(e){ console.warn(e && e.message); } if (!window.__OrderImgReal) pendingQueue.push({type:'backfill'}); else fireWhenReady(); },
+    openRowFullscreen: function(id){ pendingQueue.push({type:'openRow', id: id}); },
+    openRowFullscreenByStyleNo: function(id, styleNo){ pendingQueue.push({type:'openRowByStyleNo', id: id, styleNo: styleNo}); },
+    navTableRow: function(ev, id, dir){ pendingQueue.push({type:'nav', ev: ev, id: id, dir: dir}); },
+    _flush: fireWhenReady
+  };
+  // 暴露一个"真 OrderImg 注册完成"的 hook：在 const OrderImg = {...} 末尾调用 OrderImg._registerAsReal()
+  window.__orderImgSetReal = function(real) {
+    window.__OrderImgReal = real;
+    // 把 real 上的方法挂回到 window.OrderImg 上（后续代码拿到的是完全体，不再走 stub）
+    Object.keys(real).forEach(function(k){
+      if (typeof real[k] === 'function') window.OrderImg[k] = real[k].bind(real);
+      else window.OrderImg[k] = real[k];
+    });
+    window.OrderImg.__stub = false;
+    window.OrderImg.__real = real;
+    fireWhenReady();
+  };
+})();
+
 // ===== 渲染表格 =====
 function renderTable() {
   const data = getFilteredOrders();
@@ -499,9 +619,38 @@ function renderTable() {
           var currentImg = imgs[idx] || imgs[0];
           var dots = imgs.length > 1 ? imgs.map(function(_, i){ return '<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:' + (i===idx?'var(--primary)':'var(--border)') + ';margin:0 1px;"></span>'; }).join('') : '';
           var navBtns = imgs.length > 1 ? '<button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',-1)" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">‹</button><button onclick="OrderImg.navTableRow(event,\'' + row.id + '\',1)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;">›</button>' : '';
-          var imgSrc = currentImg && currentImg.startsWith('data:image') ? currentImg : '';
+          var imgSrc = '';
+          if (currentImg) {
+            if (currentImg.startsWith('data:image')) {
+              imgSrc = currentImg;
+            } else {
+              // ========== 关键修复：列 render 就启动一次 resolve，不依赖 OrderImg.hydrateTableImages（哪怕 OrderImg 还没定义） ==========
+              // 用 setTimeout(0) 微任务发起，避免 App.renderTable 同步阶段卡 long task。
+              // 生成的数据属性带原始路径，hydrate 还能重复做一次兜底。
+              var safePath = currentImg.replace(/"/g,'&quot;');
+              try {
+                if (window.resolveImageUrl) {
+                  (async function(pathToResolve, orderIdForLog){
+                    try {
+                      var signed = await resolveImageUrl(pathToResolve);
+                      if (!signed) return;
+                      // 到了异步回调里，DOM 已挂树；按 orderId 找到 <img data-order-img> 填 src
+                      var targetImg = document.querySelector('img[data-order-img="' + orderIdForLog + '"]');
+                      if (targetImg) { targetImg.src = signed; targetImg.style.display = 'block'; }
+                      // 顺带把同 row 其他 backfill 节点也填上
+                      var siblings = document.querySelectorAll('img[data-order-img][data-row-not-used]');
+                      void siblings;
+                    } catch(_rerr) {
+                      console.warn('[renderTable styleImg column] resolveImageUrl 异常: path=' + pathToResolve, _rerr && _rerr.message ? _rerr.message : _rerr);
+                    }
+                  })(currentImg, row.id);
+                }
+              } catch(_ee) {}
+            }
+          }
+          var dataAttr = currentImg ? (' data-raw-path="' + currentImg.replace(/"/g,'&quot;') + '"') : '';
           return '<div style="position:relative;display:flex;flex-direction:column;align-items:center;">' +
-            '<img data-order-img="' + row.id + '" src="' + (imgSrc || '') + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="OrderImg.openRowFullscreen(\'' + row.id + '\')">' +
+            '<img data-order-img="' + row.id + '" src="' + (imgSrc || '') + '"' + dataAttr + ' style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;' + (imgSrc ? '' : 'display:none;') + '" onclick="OrderImg.openRowFullscreen(\'' + row.id + '\')">' +
             dots + navBtns + '</div>';
         }
         // backfill 占位：渲染带查找标记的 img，后续 hydrate 填入
@@ -542,14 +691,15 @@ function renderTable() {
   });
   // 水合图片缩略图：try/catch 单条包，任何异常都不能短路掉 backfill（这是为什么之前款图不显示的头号原因）
   if (window.OrderImg) {
+    var __stubNote = window.OrderImg.__stub ? '(forward-stub模式)' : '(完全体)';
     try {
       if (OrderImg.hydrateTableImages) OrderImg.hydrateTableImages();
-      console.log('[renderTable] ✅ hydrateTableImages 同步段完成');
+      console.log('[renderTable] ✅ hydrateTableImages 同步段完成 ' + __stubNote);
     } catch(eH) {
       console.warn('[renderTable] ⚠️ hydrateTableImages 抛异常（不影响 backfill 继续）:', eH && eH.message ? eH.message : eH);
     }
     if (OrderImg.backfillTableImages && window.getStyleImagesForStyleNo) {
-      // 150ms 先试一次（大多数 App.renderTable 同步 DOM），不行 800ms 再来一次（异步渲染/React 风格的兜底）
+      // 150ms 先试一次（大多数 App.renderTable 同步 DOM），不行 900ms 再来一次（异步渲染/React 风格的兜底）
       var backfillRetries = [120, 900];
       backfillRetries.forEach(function(delay){
         setTimeout(function(){
@@ -562,7 +712,24 @@ function renderTable() {
         '  getStyleImagesForStyleNo=' + !!window.getStyleImagesForStyleNo);
     }
   } else {
-    console.log('[renderTable] ⚠️ window.OrderImg 尚未定义，跳过图片水合');
+    // 理论上走不到（renderTable() 上面已经挂了 forward stub），真走到了就再补一次 stub + 1500ms 轮询。
+    console.log('[renderTable] ⚠️ window.OrderImg 尚未定义，启动 1500ms 轮询等待定义');
+    var __waitT0 = Date.now();
+    var __waitPoll = setInterval(function(){
+      if (window.OrderImg) {
+        clearInterval(__waitPoll);
+        try { if (window.OrderImg.hydrateTableImages) window.OrderImg.hydrateTableImages(); } catch(_){}
+        if (window.OrderImg.backfillTableImages && window.getStyleImagesForStyleNo) {
+          try { window.OrderImg.backfillTableImages(); } catch(_){}
+          setTimeout(function(){ try { window.OrderImg.backfillTableImages(); } catch(_){} }, 900);
+        }
+        return;
+      }
+      if (Date.now() - __waitT0 > 1500) {
+        clearInterval(__waitPoll);
+        console.warn('[renderTable] 等待 window.OrderImg 超时 1.5s，放弃水合');
+      }
+    }, 60);
   }
 }
 
@@ -1493,6 +1660,17 @@ const OrderImg = {
     }
   }
 };
+
+// ===== forward stub 激活：把完全体 OrderImg 覆盖到 window.OrderImg，flush 之前 stub 收集的点击/回调 =====
+// （页面 L459 已经先挂了 window.OrderImg stub，用来接住 renderTable 前 3 次调用；
+//   到这里 const OrderImg 已经定义完整，就把它替换回去，避免后续按钮还在走 stub。）
+if (typeof window.__orderImgSetReal === 'function') {
+  try { window.__orderImgSetReal(OrderImg); console.log('[OrderImg] ✅ 已切换为完全体，stub 队列已 flush'); }
+  catch(_act) { console.warn('[OrderImg] __orderImgSetReal 激活失败:', _act && _act.message ? _act.message : _act); }
+} else {
+  // 极端兜底：stub IIFE 没有跑到时，强行把 const OrderImg 暴露到 window（onclick="OrderImg.xxx" 需要全局引用）
+  try { window.OrderImg = OrderImg; } catch(_) {}
+}
 
 // 根据客户加载对应人员（Planner/Designer/P.Manager）
 function loadCustomerPersonnel(customerId, existingOrder) {
