@@ -635,7 +635,15 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); border-right: none; }
+  .sidebar {
+    transform: translateX(-100%);
+    border-right: none;
+    transition: transform 0.25s ease;
+    z-index: 100;
+    width: 78%;                   /* 移动端展开占 78% 屏宽,露出一点内容暗示可点外关闭 */
+    max-width: 300px;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.12);
+  }
   .sidebar.mobile-show { transform: translateX(0); border-right: 1px solid var(--border); }
   .main-area { margin-left: 0 !important; }
   .app-content { padding: 10px; }

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -2054,15 +2054,16 @@ var Cons = {
   },
   hydratePrintPreviewImages: async function(style) {
     var self = this;
-    var bucket = window.STORAGE_BUCKET || 'app-photos';
+    var sn = style.styleNo || '';
     // 替换 styleImg
     if (style.styleImg_path) {
       var sUrl;
       if (style.styleImg_path.startsWith('data:image')) {
         sUrl = style.styleImg_path;
+      } else if (window.resolveImageUrl) {
+        sUrl = await resolveImageUrl(style.styleImg_path, { hintStyleNo: sn });
       } else {
         sUrl = await self.getSignedUrl(style.styleImg_path);
-        if (!sUrl) sUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.styleImg_path);
       }
       if (sUrl) {
         var els = document.querySelectorAll('#c_printScroll .print-style-img img');
@@ -2073,9 +2074,10 @@ var Cons = {
       var fUrl;
       if (style.fullImg_path.startsWith('data:image')) {
         fUrl = style.fullImg_path;
+      } else if (window.resolveImageUrl) {
+        fUrl = await resolveImageUrl(style.fullImg_path, { hintStyleNo: sn });
       } else {
         fUrl = await self.getSignedUrl(style.fullImg_path);
-        if (!fUrl) fUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(style.fullImg_path);
       }
       if (fUrl) {
         var els2 = document.querySelectorAll('#c_printScroll .print-full-img-page img');
@@ -2087,13 +2089,7 @@ var Cons = {
     var style = window._consPrintStyle;
     if (!style) return;
     var self = this;
-    var bucket = window.STORAGE_BUCKET || 'app-photos';
-
-    function directUrl(p) {
-      if (!p) return '';
-      if (p.startsWith('data:image')) return p;
-      return (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
-    }
+    var sn = style.styleNo || '';
 
     // 开新窗口打印
     var today = new Date();
@@ -2106,15 +2102,19 @@ var Cons = {
       if (style.styleImg_path) {
         if (style.styleImg_path.startsWith('data:image')) {
           styleSrc = style.styleImg_path;
+        } else if (window.resolveImageUrl) {
+          styleSrc = await resolveImageUrl(style.styleImg_path, { hintStyleNo: sn });
         } else {
-          styleSrc = (await self.getSignedUrl(style.styleImg_path)) || directUrl(style.styleImg_path);
+          styleSrc = await self.getSignedUrl(style.styleImg_path);
         }
       }
       if (style.fullImg_path) {
         if (style.fullImg_path.startsWith('data:image')) {
           fullSrc = style.fullImg_path;
+        } else if (window.resolveImageUrl) {
+          fullSrc = await resolveImageUrl(style.fullImg_path, { hintStyleNo: sn });
         } else {
-          fullSrc = (await self.getSignedUrl(style.fullImg_path)) || directUrl(style.fullImg_path);
+          fullSrc = await self.getSignedUrl(style.fullImg_path);
         }
       }
       var printStyleForWindow = JSON.parse(JSON.stringify(style));
