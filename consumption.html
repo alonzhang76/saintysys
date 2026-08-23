@@ -675,6 +675,7 @@
               <select id="filterName" class="form-input" onchange="renderList()" style="min-width:130px;"><option value="">全部品名</option></select>
               <select id="filterYear" class="form-input" onchange="renderList()" style="min-width:90px;"><option value="">全部年份</option></select>
               <div style="flex:1"></div>
+              <button class="btn btn-sm" onclick="forceSyncCloud()" title="立即从云端下载、并将本地数据强制上传到 Supabase（跨电脑同步失败时点此）">☁️ 同步云端</button>
               <button class="btn btn-primary" onclick="Cons.openEditor()" title="新增款号" id="btnAddStyle">➕</button>
               <button class="btn" onclick="Cons.clearStyles()" title="清空本地列表，仅保留云端数据" style="margin-left:6px;">清空</button>
             </div>
@@ -777,12 +778,13 @@ setTimeout(function() {
   console.log('  SUPABASE_ANON_KEY:', window.SUPABASE_ANON_KEY ? '(已设置)' : '(未设置)');
   console.log('  window.supabase:', !!window.supabase);
   console.log('  window.SupabaseSubmit:', !!window.SupabaseSubmit);
+  console.log('  window.SupabaseStore:', !!window.SupabaseStore, '_isInitialized:',
+    window.SupabaseStore && window.SupabaseStore._isInitialized ? window.SupabaseStore._isInitialized() : 'N/A');
   console.log('  SupabaseSubmit.uploadPicture:', !!(window.SupabaseSubmit && typeof SupabaseSubmit.uploadPicture === 'function'));
   if (window.supabase && window.supabase.storage) {
     window.supabase.storage.from(bucket).list('consumption', { limit: 1 }).then(function(res) {
       if (res.error) {
-        console.error('[consumption] Storage list 失败:', res.error.message);
-        console.error('  → 可能原因：1) Bucket "' + bucket + '" 不存在 2) RLS 策略未授权 3) 网络问题');
+        console.error('[consumption] Storage list 失败:', res.error.message, '（请检查 RLS Storage SELECT 策略是否允许 authenticated 角色 SELECT app-photos 下 consumption/ 路径）');
       } else {
         console.log('[consumption] Storage 连接正常，当前 consumption/ 下有 ' + ((res.data && res.data.length) || 0) + ' 个文件');
       }
@@ -791,6 +793,75 @@ setTimeout(function() {
     });
   }
 }, 1500);
+
+/**
+ * 手动强制云端同步（与 order.html 的 forceSyncCloud 相同，避免重复代码）
+ * 如果全局已有此函数则复用，没有则自己定义一次
+ */
+if (!window.forceSyncCloud) {
+  window.forceSyncCloud = function forceSyncCloud() {
+    if (App && App.toast) App.toast('☁️ 正在同步云端…（最多 10 秒）', 'info', 4000);
+    console.log('[forceSyncCloud] 开始执行手动云同步...');
+    var stepsDone = 0;
+    var totalSteps = 4;
+    function next() {
+      stepsDone++;
+      if (stepsDone >= totalSteps) {
+        try { if (typeof renderList === 'function') renderList(); else if (typeof Cons.renderList === 'function') Cons.renderList(); } catch(_) {}
+        try { if (App && App.toast) App.toast('✅ 同步完成，列表已刷新', 'success', 2000); } catch(_) {}
+        console.log('[forceSyncCloud] 同步完成');
+      }
+    }
+    try {
+      var store = window.SupabaseStore;
+      if (store) {
+        var fn = store.forceRefreshFromCloud || store.refreshFromCloud || store.refreshViaREST;
+        if (fn) Promise.resolve(fn.call(store)).then(function(){ next(); }).catch(function(){ next(); });
+        else next();
+      } else next();
+    } catch(_e) { next(); }
+
+    try {
+      if (typeof window.independentPoll === 'function') {
+        Promise.resolve(window.independentPoll()).then(function(){ next(); }).catch(function(){ next(); });
+      } else next();
+    } catch(_) { next(); }
+
+    setTimeout(function(){
+      try {
+        var ALL_KEYS = [
+          'styles', 'orders', 'fabrics', 'accessories', 'samples',
+          'feedbacks', 'productions', 'invoices', 'payments', 'collections',
+          'consumptions', 'consumption_categories',
+          'contacts', 'customers', 'suppliers', 'favoriteContacts',
+          'washes', 'shippings', 'users', 'permissions',
+          'maintFabrics', 'maintAccessories',
+          'express_delivery_data_v2', 'pl_records_v1', 'pl_draft_v1',
+          'sht_sample_data_v2', 'sht_size_tables_v2', 'sizeSheets', 'styleImages'
+        ];
+        var origLS = window._origLocalStorage || window.localStorage;
+        var needBackup = 0;
+        ALL_KEYS.forEach(function(k){
+          try {
+            var raw = origLS.getItem(k);
+            if (raw && raw !== '[]' && raw !== 'null') {
+              window.dispatchEvent(new CustomEvent('cloud-write-request', {
+                detail: { key: k, value: JSON.parse(raw), ts: Date.now(), force: 1 }
+              }));
+              needBackup++;
+            }
+          } catch(_) {}
+        });
+        console.log('[forceSyncCloud] 本地备份入队 ' + needBackup + ' 个键');
+      } finally { next(); }
+    }, 800);
+
+    setTimeout(function(){
+      try { if (typeof renderList === 'function') renderList(); else if (typeof Cons.renderList === 'function') Cons.renderList(); } catch(_) {}
+      next();
+    }, 2000);
+  };
+}
 
 // ======================================================
 // ===== 用料及纸板 - 主模块

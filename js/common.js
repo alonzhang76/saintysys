@@ -1166,7 +1166,7 @@ window.StyleImgCache = StyleImgCache;
 
 /**
  * 跨模块通用：把 Supabase Storage 存储路径解析为可跨浏览器显示的 URL
- * 策略：1) data:image 直出；2) 优先 signed URL；3) 兜底 object/public URL（RLS 公开读可用）
+ * 策略：1) data:image 直出；2) JS client signed URL；3) REST API sign；4) public 直读路径（带随机参数绕过 Safari 缓存）
  * @param {string} path  存储路径（如 {userId}/consumption/uuid-GW27-003.png），也接受已完整 URL
  * @param {Object} [opts]
  * @param {number} [opts.ttlSec=7200] signed URL 有效期（秒）
@@ -1181,40 +1181,84 @@ window.resolveImageUrl = async function resolveImageUrl(path, opts) {
 
   var bucket = window.STORAGE_BUCKET || 'app-photos';
   var sb = window.supabase;
-  var sbUrl = window.SUPABASE_URL || '';
+  var sbUrl = (window.SUPABASE_URL || '').replace(/\/$/, '');
   var anon = window.SUPABASE_ANON_KEY || '';
+  var cb = '_t=' + Date.now() + '-' + Math.floor(Math.random() * 1e6); // Safari 强缓存绕过
+  var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent || '');
 
   // 1) 优先走 JS client：取 signed URL
   if (sb && sb.storage && sb.storage.from) {
     try {
       var r = await sb.storage.from(bucket).createSignedUrl(path, ttl);
-      if (r && !r.error && r.data && r.data.signedUrl) return r.data.signedUrl;
-    } catch(_e) { /* 继续兜底 */ }
+      if (r && !r.error && r.data && r.data.signedUrl) {
+        var u = r.data.signedUrl;
+        // 给 signed URL 加 cache-bust 参数（Safari 对同名 signed URL 会缓存失败结果）
+        u += (u.indexOf('?') >= 0 ? '&' : '?') + cb;
+        console.log('[resolveImageUrl] JS client signed URL ok:', path.substring(0, 50), '→', u.substring(0, 80));
+        return u;
+      } else if (r && r.error) {
+        console.warn('[resolveImageUrl] JS client createSignedUrl fail:', path, r.error && r.error.message ? r.error.message : r.error);
+      }
+    } catch(_e) {
+      console.warn('[resolveImageUrl] JS client createSignedUrl exception:', path, _e && _e.message ? _e.message : _e);
+    }
   }
 
-  // 2) 尝试 REST API sign 兜底
+  // 2) 尝试 REST API sign 兜底（对 Safari 很关键：因为 supabase-js 有时在 Safari 拿不到 auth session）
   if (sbUrl && anon) {
     try {
+      // 获取 Authorization header：优先真实用户 access_token（对 RLS=user_id 的 bucket 有权限），否则 Bearer anon
+      var auth = 'Bearer ' + anon;
+      try {
+        if (sb && sb.auth && typeof sb.auth.getSession === 'function') {
+          var { data } = await sb.auth.getSession();
+          if (data && data.session && data.session.access_token) auth = 'Bearer ' + data.session.access_token;
+        }
+      } catch(_) {}
+      // localStorage 兜底
+      if (auth === 'Bearer ' + anon) {
+        try {
+          var keys = Object.keys(localStorage);
+          for (var i = 0; i < keys.length; i++) {
+            if (keys[i].indexOf('sb-') === 0 && keys[i].indexOf('-auth-token') >= 0) {
+              var raw = localStorage.getItem(keys[i]);
+              if (raw) { var parsed = JSON.parse(raw); if (parsed && parsed.access_token) { auth = 'Bearer ' + parsed.access_token; break; } }
+            }
+          }
+        } catch(_) {}
+      }
+
       var signUrl = sbUrl + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path);
       var resp = await fetch(signUrl, {
         method: 'POST',
         headers: {
           'apikey': anon,
-          'Authorization': 'Bearer ' + anon,
+          'Authorization': auth,
           'Content-Type': 'application/json'
         },
-        body: '{}'
+        body: JSON.stringify({ expiresIn: ttl })
       });
       if (resp.ok) {
         var j = await resp.json();
-        if (j && j.signedUrl) return j.signedUrl;
+        var signed = null;
+        if (j && j.signedURL) signed = sbUrl + j.signedURL;
+        else if (j && j.signedUrl) signed = (j.signedUrl.indexOf('http') === 0) ? j.signedUrl : (sbUrl + j.signedUrl);
+        if (signed) {
+          signed += (signed.indexOf('?') >= 0 ? '&' : '?') + cb;
+          console.log('[resolveImageUrl] REST sign ok:', path.substring(0, 50), (isSafari?'(Safari)':''));
+          return signed;
+        }
+      } else {
+        console.warn('[resolveImageUrl] REST sign HTTP ' + resp.status + ' for path=' + path);
       }
-    } catch(_e2) {}
+    } catch(_e2) { console.warn('[resolveImageUrl] REST sign exception:', path, _e2); }
   }
 
-  // 3) 终极兜底：如果 bucket 是 public 或 RLS 允许匿名 SELECT，则直出 public 路径
+  // 3) 终极兜底：public 直读路径 + 随机参数
   if (sbUrl) {
-    return sbUrl + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path);
+    var fallback = sbUrl + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(path) + '?' + cb;
+    console.warn('[resolveImageUrl] 全部 signed URL 失败，回退到 public 直读（可能因 RLS 非公开返回 400/401）:' + path.substring(0, 50));
+    return fallback;
   }
   return '';
 };

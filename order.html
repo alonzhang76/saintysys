@@ -64,6 +64,7 @@
               <span class="card-title">订单列表</span>
             </div>
             <div class="table-toolbar-right">
+              <button class="btn btn-sm" onclick="forceSyncCloud()" title="立即从云端下载、并将本地数据强制上传到 Supabase（跨电脑同步失败时点此）">☁️ 同步云端</button>
               <button class="btn btn-primary" onclick="openForm()">➕</button>
             </div>
           </div>
@@ -195,18 +196,95 @@ setTimeout(function() {
   console.log('  SUPABASE_ANON_KEY:', window.SUPABASE_ANON_KEY ? '(已设置)' : '(未设置)');
   console.log('  window.supabase:', !!window.supabase);
   console.log('  window.SupabaseSubmit:', !!window.SupabaseSubmit);
+  console.log('  window.SupabaseStore:', !!window.SupabaseStore, '_isInitialized:',
+    window.SupabaseStore && window.SupabaseStore._isInitialized ? window.SupabaseStore._isInitialized() : 'N/A');
   if (window.supabase && window.supabase.storage) {
     window.supabase.storage.from(bucket).list('order', { limit: 1 }).then(function(res) {
       if (res.error) {
-        console.error('[order] Storage list 失败:', res.error.message);
+        console.error('[order] Storage list 失败:', res.error.message, '（请检查 RLS Storage SELECT 策略是否允许 authenticated 角色 SELECT app-photos 下 order/ 路径）');
       } else {
-        console.log('[order] Storage 连接正常');
+        console.log('[order] Storage 连接正常, order/ 文件数:', res.data ? res.data.length : 0);
       }
     }).catch(function(err) {
       console.error('[order] Storage 连接异常:', err && err.message);
     });
   }
 }, 1500);
+
+/**
+ * 手动强制云端同步：
+ * 1) 先触发一次 refreshFromCloud / independentPoll（拉取其它电脑写入的数据）
+ * 2) 再触发 runAutoBackup（把本地所有 key 写回云端，防止本地数据有漏网的）
+ * 3) 完成后重新渲染整页
+ */
+window.forceSyncCloud = function forceSyncCloud() {
+  if (App && App.toast) App.toast('☁️ 正在同步云端…（最多 10 秒）', 'info', 4000);
+  console.log('[forceSyncCloud] 开始执行手动云同步...');
+  var stepsDone = 0;
+  var totalSteps = 4;
+  function next() {
+    stepsDone++;
+    if (stepsDone >= totalSteps) {
+      try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(_) {}
+      try { if (App && App.toast) App.toast('✅ 同步完成，列表已刷新', 'success', 2000); } catch(_) {}
+      console.log('[forceSyncCloud] 同步完成');
+    }
+  }
+
+  // Step 1: SupabaseStore.refreshFromCloud
+  try {
+    var store = window.SupabaseStore;
+    if (store) {
+      var fn = store.forceRefreshFromCloud || store.refreshFromCloud || store.refreshViaREST;
+      if (fn) {
+        Promise.resolve(fn.call(store)).then(function(){ next(); }).catch(function(){ next(); });
+      } else next();
+    } else next();
+  } catch(_e) { next(); }
+
+  // Step 2: independentPoll（独立 REST 兜底轮询，即使 store 不可用也生效）
+  try {
+    if (typeof window.independentPoll === 'function') {
+      Promise.resolve(window.independentPoll()).then(function(){ next(); }).catch(function(){ next(); });
+    } else next();
+  } catch(_) { next(); }
+
+  // Step 3: runAutoBackup（把本地 key 强制重新走 cloud-write-request 上传）
+  setTimeout(function(){
+    try {
+      var ALL_KEYS = [
+        'styles', 'orders', 'fabrics', 'accessories', 'samples',
+        'feedbacks', 'productions', 'invoices', 'payments', 'collections',
+        'consumptions', 'consumption_categories',
+        'contacts', 'customers', 'suppliers', 'favoriteContacts',
+        'washes', 'shippings', 'users', 'permissions',
+        'maintFabrics', 'maintAccessories',
+        'express_delivery_data_v2', 'pl_records_v1', 'pl_draft_v1',
+        'sht_sample_data_v2', 'sht_size_tables_v2', 'sizeSheets', 'styleImages'
+      ];
+      var origLS = window._origLocalStorage || window.localStorage;
+      var needBackup = 0;
+      ALL_KEYS.forEach(function(k){
+        try {
+          var raw = origLS.getItem(k);
+          if (raw && raw !== '[]' && raw !== 'null') {
+            window.dispatchEvent(new CustomEvent('cloud-write-request', {
+              detail: { key: k, value: JSON.parse(raw), ts: Date.now(), force: 1 }
+            }));
+            needBackup++;
+          }
+        } catch(_e) {}
+      });
+      console.log('[forceSyncCloud] 本地备份入队 ' + needBackup + ' 个键');
+    } finally { next(); }
+  }, 800);
+
+  // Step 4: 最后再等 independent write queue 有时间刷新一次 + 重渲染
+  setTimeout(function(){
+    try { if (typeof window.renderAll === 'function') window.renderAll(); } catch(_) {}
+    next();
+  }, 2000);
+};
 
 // ===== 工具函数 =====
 

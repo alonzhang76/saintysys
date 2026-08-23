@@ -729,6 +729,26 @@ const SupabaseSubmit = {
   },
 
   /**
+   * 只读获取当前用户，失败/未登录绝不跳转登录页（用于存储搜索/解签这类只读场景）
+   */
+  async _peekCurrentUser() {
+    if (!window.supabase) return null;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data && data.user) return data.user;
+    } catch(_e) {}
+    // 兜底：读本地 localStorage session
+    try {
+      var raw = localStorage.getItem('sb-' + (window.SUPABASE_REF || '') + '-auth-token');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.user) return parsed.user;
+      }
+    } catch(_e2) {}
+    return null;
+  },
+
+  /**
    * 按款号在 Supabase 中搜索图片，同时返回“款式图”和“大图”的最佳匹配
    * @param {string} styleNo 款号
    * @returns {Promise<{styleImg_path:string|null, fullImg_path:string|null, styleImg_signed:string|null, fullImg_signed:string|null, styleImg_name:string, fullImg_name:string}|null>}
@@ -736,60 +756,84 @@ const SupabaseSubmit = {
   async findStyleImages(styleNo) {
     if (!styleNo) return null;
     const sn = String(styleNo).trim();
-    // 要搜索的子目录：order / consumption / sample 是已知模块，但任何用户/任何目录下只要文件名含款号都可能是匹配
-    const subFolders = ["order", "consumption", "sample", "uploads", "wash", "fabric", "accessory", ""];
+    const bucket = window.STORAGE_BUCKET || 'app-photos';
     const self = this;
+    console.log('[SupabaseSubmit] findStyleImages start: styleNo=' + sn + ', bucket=' + bucket);
 
-    // 结果池：收集所有命中，按分数排序
+    // 所有子目录都要搜索（去掉之前的 break bug）
+    const searchTargets = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
     const allHits = [];
-    for (const subFolder of subFolders) {
+    const user = await self._peekCurrentUser(); // 绝不跳转登录页
+
+    // 1) 对每个 subFolder 使用 findPictureByStyleNo（内部含跨用户策略 + 缓存）
+    for (let i = 0; i < searchTargets.length; i++) {
+      const sf = searchTargets[i];
       try {
-        // 对每个 subFolder 调用 findPictureByStyleNo 会重复搜索 root，效率低
-        // 改为直接在所有用户/所有目录中搜索一次，按文件名匹配度排序
-        const searchTargets = subFolder ? [subFolder] : ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
-        for (const sf of searchTargets) {
-          // 先查当前用户
-          try {
-            const user = await getCurrentUserOrRedirect();
-            if (user) {
-              const r1 = await self.findPictureByStyleNo(sn, sf, null);
-              if (r1) {
-                allHits.push({ path: r1.path, signedUrl: r1.signedUrl, score: r1.score, folder: sf, isFull: self._isFull(r1.path, sf, sn) });
-              }
-            }
-          } catch(_e) {}
+        const r1 = await self.findPictureByStyleNo(sn, sf, null);
+        if (r1) {
+          console.log('[SupabaseSubmit] findStyleImages hit via findPictureByStyleNo subFolder=' + sf + ', path=' + r1.path + ', score=' + r1.score);
+          allHits.push({ path: r1.path, signedUrl: r1.signedUrl, score: r1.score, folder: sf, isFull: self._isFull(r1.path, sf, sn) });
         }
-        // 已经通过 findPictureByStyleNo 完成跨用户搜索，不需要再重复
-        break;
-      } catch(_e) {}
+      } catch(_e) {
+        console.warn('[SupabaseSubmit] findPictureByStyleNo subFolder=' + sf + ' error:', _e);
+      }
+      // 避免瞬间并发请求过多
+      if (i < searchTargets.length - 1) await new Promise(function(r){ setTimeout(r, 20); });
     }
 
-    // 如上面无结果，做一次根目录广泛扫描（策略：所有用户/所有子目录，按文件名含款号匹配）
+    // 2) 如果 JS client 的 findPictureByStyleNo 完全没命中（Safari CORS / RLS / Storage 报错常见）
+    //    用纯 REST list 接口兜底：GET /storage/v1/object/list/{bucket}/{prefixPath}
+    //    这样即使 supabase-js 出问题，我们也能列出所有文件
+    if (allHits.length === 0 && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+      try {
+        console.log('[SupabaseSubmit] findStyleImages falling back to REST list...');
+        const restHits = await self._restListStyleImages(sn, bucket, user ? user.id : null);
+        if (restHits && restHits.length) {
+          console.log('[SupabaseSubmit] findStyleImages REST fallback hits:', restHits.length);
+          allHits.push.apply(allHits, restHits);
+        }
+      } catch(_err) {
+        console.warn('[SupabaseSubmit] REST fallback error:', _err);
+      }
+    }
+
+    // 3) 最后走根目录广泛扫描（兜底）
     if (allHits.length === 0) {
       try {
         const broadResults = await self._searchAllFoldersForStyleNo(sn);
-        if (broadResults && broadResults.length) allHits.push(...broadResults);
-      } catch(_e2) {}
+        if (broadResults && broadResults.length) {
+          console.log('[SupabaseSubmit] findStyleImages broad scan hits:', broadResults.length);
+          allHits.push(...broadResults);
+        }
+      } catch(_e2) { console.warn('[SupabaseSubmit] broad scan error:', _e2); }
     }
 
-    if (allHits.length === 0) return null;
+    if (allHits.length === 0) {
+      console.log('[SupabaseSubmit] findStyleImages result: 未找到款号 ' + sn + ' 的任何图片');
+      return null;
+    }
+
+    // 去重（按 path）
+    var seen = {};
+    var unique = [];
+    for (var i = 0; i < allHits.length; i++) {
+      if (!seen[allHits[i].path]) { seen[allHits[i].path] = 1; unique.push(allHits[i]); }
+    }
+    allHits.length = 0; allHits.push.apply(allHits, unique);
 
     // 分款式图/大图：含 full、big、large、大图 关键词的判为大图
-    // 其余按分数：最高分 = 款式图，次高分且包含 full/big = 大图
-    var sorted = allHits.slice().sort(function(a, b){ return b.score - a.score; });
+    var sorted = allHits.slice().sort(function(a, b){ return (b.score || 0) - (a.score || 0); });
     var styleHit = null;
     var fullHit = null;
 
-    // 先把标记为大图的挑出来
     var fullCandidates = sorted.filter(function(h){ return h.isFull; });
     var styleCandidates = sorted.filter(function(h){ return !h.isFull; });
 
     if (styleCandidates.length > 0) styleHit = styleCandidates[0];
-    else if (sorted.length > 0) styleHit = sorted[0]; // 无明确区分时第一个当款式图
+    else if (sorted.length > 0) styleHit = sorted[0];
 
     if (fullCandidates.length > 0) fullHit = fullCandidates[0];
     else if (sorted.length >= 2 && styleHit) {
-      // 找第二个不同路径的
       var second = sorted.find(function(h){ return h.path !== styleHit.path; });
       if (second) fullHit = second;
     }
@@ -801,21 +845,186 @@ const SupabaseSubmit = {
     };
     if (styleHit) {
       result.styleImg_path = styleHit.path;
-      result.styleImg_signed = styleHit.signedUrl;
+      result.styleImg_signed = styleHit.signedUrl || null;
       result.styleImg_name = styleHit.path.split('/').pop() || '';
     }
     if (fullHit) {
       result.fullImg_path = fullHit.path;
-      result.fullImg_signed = fullHit.signedUrl;
+      result.fullImg_signed = fullHit.signedUrl || null;
       result.fullImg_name = fullHit.path.split('/').pop() || '';
     }
+    console.log('[SupabaseSubmit] findStyleImages result for ' + sn + ':', JSON.stringify(result));
     return (result.styleImg_path || result.fullImg_path) ? result : null;
+  },
+
+  /**
+   * 纯 REST 列目录：用 fetch 直连 Supabase Storage，绕开 supabase-js 客户端的 RLS / CORS 兼容问题（典型于 Safari）
+   * 遍历：[当前用户ID/] + subFolder 下的所有文件，按文件名含款号匹配
+   */
+  async _restListStyleImages(styleNo, bucket, userId) {
+    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return [];
+    const self = this;
+    const base = window.SUPABASE_URL.replace(/\/$/, '');
+    const anon = window.SUPABASE_ANON_KEY;
+    const sn = String(styleNo).toLowerCase();
+    const subFolders = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
+    const results = [];
+    const auth = await self._restAuthHeader(); // 优先带登录用户的 JWT（有 RLS 权限），不行就只用 anon key
+
+    async function listDir(prefixPath) {
+      try {
+        var url = base + '/storage/v1/object/list/' + encodeURIComponent(bucket);
+        var resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'apikey': anon,
+            'Authorization': auth,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prefix: prefixPath, limit: 500, offset: 0 })
+        });
+        if (!resp.ok) {
+          console.warn('[REST list] prefix=' + prefixPath + ' HTTP ' + resp.status);
+          return [];
+        }
+        var j = await resp.json();
+        if (!j || !Array.isArray(j)) return [];
+        return j;
+      } catch(e) {
+        console.warn('[REST list] fail prefix=' + prefixPath, e);
+        return [];
+      }
+    }
+
+    function scoreName(name, folderHint) {
+      var lower = String(name).toLowerCase();
+      var nameNoExt = lower.replace(/\.[^.]+$/, '');
+      var s = 0;
+      if (nameNoExt === sn) s = 100;
+      else if (nameNoExt.indexOf(sn) === 0) s = 85;
+      else if (nameNoExt.indexOf(sn) >= 0) s = 70;
+      else {
+        // xxx-{款号}.jpg 这类：{uuid}-{styleNo}.jpg
+        if (lower.indexOf('-' + sn + '.') >= 0) s = 80;
+        else if (lower.indexOf('_' + sn + '.') >= 0) s = 78;
+      }
+      return s;
+    }
+
+    const prefixesToTry = [];
+    // 当前用户 + 各个 subFolder（最高优先级）
+    if (userId) subFolders.forEach(function(sf){ prefixesToTry.push(userId + '/' + sf + '/'); });
+    // 直接 subFolder/ 前缀（兼容旧数据）
+    subFolders.forEach(function(sf){ prefixesToTry.push(sf + '/'); });
+    // 如果没有 userId，至少先列根目录看一层
+    if (!userId) prefixesToTry.push('');
+
+    for (var i = 0; i < prefixesToTry.length; i++) {
+      var prefix = prefixesToTry[i];
+      var items = await listDir(prefix);
+      if (!items || items.length === 0) continue;
+
+      // 若 prefix 是根目录 '' 则 items 可能是用户 ID 文件夹，需要再深入
+      if (prefix === '') {
+        for (var k = 0; k < items.length; k++) {
+          var entry = items[k];
+          if (entry && entry.type === 'folder' && /^[0-9a-f]{8}-/i.test(entry.name)) {
+            for (var m = 0; m < subFolders.length; m++) {
+              var subPath = entry.name + '/' + subFolders[m] + '/';
+              var more = await listDir(subPath);
+              for (var n = 0; n < more.length; n++) (function(item, sf){
+                var sc = scoreName(item.name);
+                if (sc > 0) {
+                  var fullPath = subPath.substring(0, subPath.length - 1) + '/' + item.name;
+                  results.push({
+                    path: fullPath,
+                    signedUrl: null,
+                    score: sc,
+                    folder: sf,
+                    isFull: (String(item.name).toLowerCase().indexOf('full') >= 0 || String(item.name).toLowerCase().indexOf('big') >= 0 || String(item.name).toLowerCase().indexOf('large') >= 0)
+                  });
+                }
+              })(more[n], subFolders[m]);
+            }
+          }
+        }
+      } else {
+        // 非空前缀：是具体的 {userId}/sf/ 或 sf/ 目录，里面就是文件
+        var sfHint = prefix;
+        for (var x = 0; x < items.length; x++) {
+          var it = items[x];
+          if (!it || it.type === 'folder') continue;
+          var sc2 = scoreName(it.name);
+          if (sc2 === 0) continue;
+          var fullP = (prefix.endsWith('/') ? prefix.substring(0, prefix.length - 1) : prefix) + '/' + it.name;
+          results.push({
+            path: fullP,
+            signedUrl: null,
+            score: sc2,
+            folder: sfHint,
+            isFull: (String(it.name).toLowerCase().indexOf('full') >= 0 || String(it.name).toLowerCase().indexOf('big') >= 0 || String(it.name).toLowerCase().indexOf('large') >= 0)
+          });
+        }
+      }
+    }
+
+    // 对找到的每条路径，生成 signed URL（REST 版）
+    for (var w = 0; w < results.length; w++) {
+      try {
+        var signUrl = base + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(results[w].path);
+        var signResp = await fetch(signUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': anon,
+            'Authorization': auth,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ expiresIn: 7200 })
+        });
+        if (signResp.ok) {
+          var sj = await signResp.json();
+          if (sj && sj.signedURL) results[w].signedUrl = base + sj.signedURL;
+          else if (sj && sj.signedUrl) results[w].signedUrl = (sj.signedUrl.indexOf('http') === 0) ? sj.signedUrl : (base + sj.signedUrl);
+        }
+      } catch(_e) {}
+    }
+    return results;
+  },
+
+  /**
+   * 生成 REST 调用的 Authorization 头：优先用户 session 的 access_token(JWT)，没有则 Bearer anon key
+   */
+  async _restAuthHeader() {
+    // 1) 从 supabase-js 的 session 里拿 access_token
+    try {
+      if (window.supabase) {
+        var { data } = await supabase.auth.getSession();
+        if (data && data.session && data.session.access_token) {
+          return 'Bearer ' + data.session.access_token;
+        }
+      }
+    } catch(_e) {}
+    // 2) 从 localStorage 直接拿 sb-xxx-auth-token
+    try {
+      var prefix = 'sb-' + (window.SUPABASE_REF ? window.SUPABASE_REF + '-' : '');
+      var keys = Object.keys(localStorage);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].indexOf('sb-') === 0 && keys[i].indexOf('-auth-token') >= 0) {
+          var raw = localStorage.getItem(keys[i]);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed && parsed.access_token) return 'Bearer ' + parsed.access_token;
+          }
+        }
+      }
+    } catch(_e) {}
+    // 3) 兜底：用 anon key（只绕过 bucket 为 public 的情况）
+    return 'Bearer ' + (window.SUPABASE_ANON_KEY || '');
   },
 
   _isFull: function(path, folder, styleNo) {
     if (!path) return false;
     var p = path.toLowerCase();
-    // 文件名或目录里含 full/big/large/大图
     if (p.indexOf('full') >= 0) return true;
     if (p.indexOf('big') >= 0) return true;
     if (p.indexOf('large') >= 0) return true;
@@ -829,7 +1038,8 @@ const SupabaseSubmit = {
     const bucket = window.STORAGE_BUCKET || 'app-photos';
     const results = [];
     try {
-      const { data: rootData } = await supabase.storage.from(bucket).list('', { limit: 400 });
+      const { data: rootData, error: rootErr } = await supabase.storage.from(bucket).list('', { limit: 400 });
+      if (rootErr) { console.warn('[broadScan] root list error:', rootErr); }
       if (!rootData || !Array.isArray(rootData)) return results;
 
       const subFolders = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
@@ -838,7 +1048,8 @@ const SupabaseSubmit = {
         for (const sf of subFolders) {
           const folderPath = entry.name + "/" + sf;
           try {
-            const { data } = await supabase.storage.from(bucket).list(folderPath, { limit: 400 });
+            const { data, error } = await supabase.storage.from(bucket).list(folderPath, { limit: 400 });
+            if (error) { console.warn('[broadScan] list ' + folderPath + ' error:', error); continue; }
             if (!data) continue;
             for (const item of data) {
               const lower = item.name.toLowerCase();
@@ -848,12 +1059,14 @@ const SupabaseSubmit = {
               if (nameNoExt === sn) score = 100;
               else if (nameNoExt.indexOf(sn) === 0) score = 85;
               else if (nameNoExt.indexOf(sn) >= 0) score = 70;
+              // UUID-款号.jpg
+              if (score === 0 && (lower.indexOf('-' + sn + '.') >= 0 || lower.indexOf('_' + sn + '.') >= 0)) score = 75;
               if (score === 0) continue;
               const fullPath = folderPath + "/" + item.name;
               var signed = null;
               try {
                 const r = await supabase.storage.from(bucket).createSignedUrl(fullPath, 3600);
-                if (r && r.data && r.data.signedUrl) signed = r.data.signedUrl;
+                if (r && !r.error && r.data && r.data.signedUrl) signed = r.data.signedUrl;
               } catch(_e) {}
               results.push({
                 path: fullPath,
@@ -866,7 +1079,7 @@ const SupabaseSubmit = {
           } catch(_e) {}
         }
       }
-    } catch(_e) {}
+    } catch(_e) { console.warn('[broadScan] root error:', _e); }
     return results;
   },
 };
