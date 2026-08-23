@@ -77,6 +77,13 @@
 
 #quotationTab .q-empty{text-align:center;padding:30px 14px;color:var(--muted);font-size:12px;}
 
+/* 待填写的输入框（淡黄色背景提醒） */
+#quotationTab .q-form-group input.q-fill,
+#quotationTab .q-form-group select.q-fill,
+#quotationTab .q-form-group textarea.q-fill,
+#quotationTab .q-items-table input.q-fill{background:#fffbe6!important;border-color:#f0d674!important;}
+#quotationTab .q-items-table input.q-fill{background:#fffbe6;}
+
 /* ===== Quotation Preview Overlay (modal-like) ===== */
 .q-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1500;display:none;overflow-y:auto;}
 .q-preview-overlay.show{display:block;}
@@ -144,21 +151,25 @@
 /* ===== Print styles for Quotation ===== */
 @media print{
   @page{size:A4;margin:12mm 10mm 18mm 10mm;}
-  /* Hide everything when printing a quotation */
-  body > *{visibility:hidden;}
-  .q-preview-overlay, .q-preview-overlay *{visibility:visible;}
-  .q-preview-overlay{position:static!important;background:none!important;display:block!important;overflow:visible!important;}
-  .q-preview-container{max-width:none!important;margin:0!important;border-radius:0!important;box-shadow:none!important;}
-  .q-preview-toolbar{display:none!important;}
-  .q-quotation-doc{padding:0!important;min-height:auto!important;}
-  .q-quote-header{page-break-inside:avoid;}
-  .q-quote-items thead{display:table-header-group;}
-  .q-quote-items tr{page-break-inside:avoid;}
-  .q-quote-parties,.q-quote-terms,.q-quote-notes,.q-quote-signature,.q-quote-totals{page-break-inside:avoid;}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff;}
-  .q-print-footer{display:block!important;position:fixed;bottom:6mm;left:0;right:0;text-align:center;font-size:9px;color:#9ca3af;}
-  .q-print-footer .page-num:after{content:"Page " counter(page) " of " counter(pages);}
-  .q-print-user{display:block!important;position:fixed;bottom:6mm;right:10mm;font-size:9px;color:#9ca3af;}
+
+  /* 仅在 Quotation 预览打开时启用打印布局；不影响其他场景的 Ctrl+P 打印 */
+  body:has(.q-preview-overlay.show) > *:not(.q-preview-overlay){display:none!important;}
+  body:has(.q-preview-overlay.show) .q-preview-overlay{position:static!important;background:none!important;display:block!important;overflow:visible!important;}
+  body:has(.q-preview-overlay.show) .q-preview-container{max-width:none!important;margin:0!important;border-radius:0!important;box-shadow:none!important;}
+  body:has(.q-preview-overlay.show) .q-preview-toolbar{display:none!important;}
+  body:has(.q-preview-overlay.show) .q-quotation-doc{padding:0!important;min-height:auto!important;}
+  body:has(.q-preview-overlay.show) .q-quote-header{page-break-inside:avoid;}
+  body:has(.q-preview-overlay.show) .q-quote-items thead{display:table-header-group;}
+  body:has(.q-preview-overlay.show) .q-quote-items tr{page-break-inside:avoid;}
+  body:has(.q-preview-overlay.show) .q-quote-parties,
+  body:has(.q-preview-overlay.show) .q-quote-terms,
+  body:has(.q-preview-overlay.show) .q-quote-notes,
+  body:has(.q-preview-overlay.show) .q-quote-signature,
+  body:has(.q-preview-overlay.show) .q-quote-totals{page-break-inside:avoid;}
+  body:has(.q-preview-overlay.show) .q-print-footer{display:block!important;position:fixed;bottom:6mm;left:0;right:0;text-align:center;font-size:9px;color:#9ca3af;}
+  body:has(.q-preview-overlay.show) .q-print-footer .page-num:after{content:"Page " counter(page) " of " counter(pages);}
+  body:has(.q-preview-overlay.show) .q-print-user{display:block!important;position:fixed;bottom:6mm;right:10mm;font-size:9px;color:#9ca3af;}
 }
 </style>
 </head>
@@ -3258,29 +3269,39 @@ function q_renderEditor(q) {
     q_addItemRow(item, idx);
   });
   q_recalc();
+
+  // 监听表单输入/变化，动态刷新淡黄色"待填写"高亮
+  var form = document.getElementById('qQuoteForm');
+  if (form && !form._qHighlightBound) {
+    form._qHighlightBound = true;
+    form.addEventListener('input', q_highlightEmpty);
+    form.addEventListener('change', q_highlightEmpty);
+  }
+  q_highlightEmpty();
 }
 
 function q_addItemRow(data, idx) {
   var body = document.getElementById('qf_itemsBody');
   if (!body) return;
   var i = idx !== undefined ? idx : body.children.length;
-  data = data || { styleNo: '', productName: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: 0, quantity: 0, total: 0 };
+  data = data || { styleNo: '', productName: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: '', quantity: 0, total: 0 };
 
   var tr = document.createElement('tr');
   tr.innerHTML =
     '<td class="row-num" style="text-align:center;color:var(--muted);font-size:10px;">' + (i + 1) + '</td>' +
-    '<td><input type="text" class="col-style" value="' + q_escapeHtml(data.styleNo) + '" placeholder="ST-001" oninput="q_recalc()"></td>' +
-    '<td><input type="text" value="' + q_escapeHtml(data.productName) + '" placeholder="Cotton Blouse" oninput="q_recalc()"></td>' +
-    '<td><input type="text" value="' + q_escapeHtml(data.description) + '" placeholder="Brief description" oninput="q_recalc()"></td>' +
-    '<td><input type="text" value="' + q_escapeHtml(data.fabric) + '" placeholder="100% Cotton" oninput="q_recalc()"></td>' +
-    '<td><input type="text" value="' + q_escapeHtml(data.colors) + '" placeholder="White, Black" oninput="q_recalc()"></td>' +
-    '<td><input type="text" value="' + q_escapeHtml(data.sizes) + '" placeholder="S, M, L, XL" oninput="q_recalc()"></td>' +
-    '<td><input type="number" value="' + (data.moq || 0) + '" placeholder="500" oninput="q_recalc()" style="text-align:right;" min="0"></td>' +
-    '<td><input type="number" class="col-price" value="' + (data.unitPrice || 0) + '" placeholder="0.00" oninput="q_recalc()" style="text-align:right;" step="0.01"></td>' +
+    '<td><input type="text" class="col-style" value="' + q_escapeHtml(data.styleNo) + '" placeholder="ST-001" oninput="q_recalc();q_highlightEmpty()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.productName) + '" placeholder="Cotton Blouse" oninput="q_recalc();q_highlightEmpty()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.description) + '" placeholder="Brief description" oninput="q_recalc();q_highlightEmpty()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.fabric) + '" placeholder="100% Cotton" oninput="q_recalc();q_highlightEmpty()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.colors) + '" placeholder="White, Black" oninput="q_recalc();q_highlightEmpty()"></td>' +
+    '<td><input type="text" value="' + q_escapeHtml(data.sizes) + '" placeholder="S, M, L, XL" oninput="q_recalc();q_highlightEmpty()"></td>' +
+    '<td><input type="number" value="' + (data.moq || '') + '" placeholder="500" oninput="q_recalc();q_highlightEmpty()" style="text-align:right;" min="0"></td>' +
+    '<td><input type="number" class="col-price" value="' + (data.unitPrice || '') + '" placeholder="0.00" oninput="q_recalc();q_highlightEmpty()" style="text-align:right;" step="0.01"></td>' +
     '<td class="col-total-cell">0.00</td>' +
     '<td class="col-del"><button class="btn btn-icon btn-sm" onclick="q_removeRow(this)" title="Remove" style="color:var(--error);">✕</button></td>';
   body.appendChild(tr);
   q_recalc();
+  q_highlightEmpty();
 }
 
 function q_removeRow(btn) {
@@ -3294,6 +3315,27 @@ function q_removeRow(btn) {
     if (cell) cell.textContent = (i + 1);
   });
   q_recalc();
+  q_highlightEmpty();
+}
+
+// 高亮未填写的输入框（淡黄色背景提醒）
+function q_highlightEmpty() {
+  var form = document.getElementById('qQuoteForm');
+  if (!form) return;
+  var fields = form.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, textarea');
+  fields.forEach(function (f) {
+    var v = (f.value || '').toString().trim();
+    var inItemsTable = f.closest('#qf_itemsTable');
+    // 行项目表中的数字框（MOQ、Unit Price）：0 或空视为未填写
+    // discount/hangerCost 等表单数字框：0 是有效值（不视为未填写）
+    if (f.type === 'number' && inItemsTable && (v === '0' || v === '')) {
+      f.classList.add('q-fill');
+    } else if (!v) {
+      f.classList.add('q-fill');
+    } else {
+      f.classList.remove('q-fill');
+    }
+  });
 }
 
 function q_recalc() {
