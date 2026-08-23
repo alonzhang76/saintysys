@@ -734,7 +734,7 @@ function renderTable() {
 }
 
 // ===== 尺码矩阵状态 =====
-let _sizeMatrix = { sizeGroupId: null, sizes: [], rows: [] };
+let _sizeMatrix = { sizeGroupId: null, allSizes: [], sizes: [], rows: [] };
 
 // ===== 表格选中状态 =====
 let _selectedOrderIds = new Set();
@@ -796,6 +796,7 @@ const OrderModule = {
     if (!g) return;
     _sizeMatrix = {
       sizeGroupId: g.id,
+      allSizes: [...(g.sizes || [])],
       sizes: [...(g.sizes || [])],
       rows: [{ packageId: '', assType: '', colorCode: '', colorName: '', noOfCartons: '', quantities: {} }]
     };
@@ -803,21 +804,55 @@ const OrderModule = {
   }
 };
 
+// 移除某个尺码列
+function removeMatrixSize(sizeName) {
+  if (!_sizeMatrix.allSizes) return;
+  _sizeMatrix.sizes = _sizeMatrix.sizes.filter(s => s !== sizeName);
+  // 同时清除各行中该尺码的数量数据
+  _sizeMatrix.rows.forEach(row => {
+    if (row.quantities && row.quantities[sizeName] !== undefined) {
+      delete row.quantities[sizeName];
+    }
+  });
+  renderSizeMatrix();
+}
+
+// 添加回已移除的尺码
+function addMatrixSize(sizeName) {
+  if (!_sizeMatrix.allSizes) return;
+  if (_sizeMatrix.sizes.includes(sizeName)) return;
+  _sizeMatrix.sizes.push(sizeName);
+  // 保持原始排序
+  _sizeMatrix.sizes.sort((a, b) => {
+    const ia = _sizeMatrix.allSizes.indexOf(a);
+    const ib = _sizeMatrix.allSizes.indexOf(b);
+    return ia - ib;
+  });
+  renderSizeMatrix();
+}
+
 function renderSizeMatrix() {
   const container = document.getElementById('sizeMatrixContainer');
   if (!container) return;
 
   if (!_sizeMatrix.sizes.length) {
+    const removedSizes = (_sizeMatrix.allSizes || []).filter(s => !_sizeMatrix.sizes.includes(s));
+    const removedOpts = removedSizes.map(s => `<option value="${App.utils.escapeHtml(s)}">${App.utils.escapeHtml(s)}</option>`).join('');
     container.innerHTML = `
       <div style="text-align:center;padding:20px;border:2px dashed var(--border);border-radius:var(--radius);">
-        <p style="color:var(--muted);margin-bottom:10px;">尚未选择尺码组</p>
+        <p style="color:var(--muted);margin-bottom:10px;">尚未选择尺码</p>
         <button class="btn btn-primary" onclick="loadSizeGroup()">📏 从尺码表选择</button>
+        ${removedSizes.length ? `
+          <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;align-items:center;">
+            <select id="addSizeSel" class="form-select sm" style="width:70px;">${removedOpts}</select>
+            <button class="btn btn-sm btn-primary" onclick="addMatrixSize(document.getElementById('addSizeSel').value)" style="padding:4px 10px;">➕ 添加尺码</button>
+          </div>` : ''}
       </div>`;
     return;
   }
 
   const sizes = _sizeMatrix.sizes;
-  const sizeCols = sizes.map(s => `<th style="width:50px;text-align:center;">${App.utils.escapeHtml(s)}</th>`).join('');
+  const sizeCols = sizes.map(s => `<th style="width:50px;text-align:center;position:relative;">${App.utils.escapeHtml(s)}<span onclick="removeMatrixSize('${App.utils.escapeHtml(s)}')" style="cursor:pointer;margin-left:3px;color:#e74c3c;font-size:11px;font-weight:bold;" title="移除该尺码">✕</span></th>`).join('');
 
   let rowsHtml = '';
   let totalQty = 0;
@@ -859,12 +894,22 @@ function renderSizeMatrix() {
     return `<td style="text-align:center;font-weight:600;color:var(--primary);" id="colTotal-${si}">${colSum}</td>`;
   }).join('');
 
+  // 构建"添加尺码"下拉（显示已移除的尺码）
+  const removedSizes = (_sizeMatrix.allSizes || []).filter(s => !_sizeMatrix.sizes.includes(s));
+  let addSizeHtml = '';
+  if (removedSizes.length) {
+    const removedOpts = removedSizes.map(s => `<option value="${App.utils.escapeHtml(s)}">${App.utils.escapeHtml(s)}</option>`).join('');
+    addSizeHtml = `<select id="addSizeSel" class="form-select sm" style="width:65px;padding:2px 6px;font-size:12px;">${removedOpts}</select>
+      <button class="btn btn-sm btn-primary" onclick="addMatrixSize(document.getElementById('addSizeSel').value)" style="padding:2px 8px;">➕ 添加尺码</button>`;
+  }
+
   container.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
       <span class="text-muted font-sm">尺码组：</span>
       <span class="size-badge-muted">${App.utils.escapeHtml(_sizeMatrix.sizes.join(' · '))}</span>
       <button class="btn btn-sm" onclick="loadSizeGroup()" style="padding:2px 8px;">🔄 更换</button>
       <button class="btn btn-sm btn-primary" onclick="addMatrixRow()" style="padding:2px 8px;">➕ 添加行</button>
+      ${addSizeHtml}
       <span style="flex:1;"></span>
       <span class="font-sm">合计数量：<strong style="color:var(--primary);font-size:14px;" id="matrixTotal">${totalQty}</strong></span>
     </div>
@@ -996,8 +1041,10 @@ function openForm(id) {
   // 初始化尺码矩阵
   if (isEdit && order.sizeMatrix) {
     _sizeMatrix = JSON.parse(JSON.stringify(order.sizeMatrix));
+    // 向后兼容：旧数据没有 allSizes 字段
+    if (!_sizeMatrix.allSizes) _sizeMatrix.allSizes = [...(_sizeMatrix.sizes || [])];
   } else {
-    _sizeMatrix = { sizeGroupId: null, sizes: [], rows: [] };
+    _sizeMatrix = { sizeGroupId: null, allSizes: [], sizes: [], rows: [] };
   }
 
   const body = `
