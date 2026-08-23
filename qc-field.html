@@ -917,8 +917,8 @@ window._qcOpenThumb = function(prefix, i){
 // 异步加载单张缩略图（不破坏已有 base64 预览）
 function loadIssueThumbImage(prefix, idx, path, name){
   var img = document.getElementById(prefix + 'ThumbImg' + idx);
-  // 如果该缩略图通过 _qcOpenThumb 方式绑定（data-fullsrc=1），跳过
-  var fallback = document.querySelector('#' + prefix + 'Gallery').children[idx];
+  var gallery = document.getElementById(prefix + 'Gallery');
+  var fallback = gallery ? gallery.children[idx] : null;
   var imgEl = img || (fallback && fallback.querySelector('img'));
   if(!imgEl) return;
   if(typeof path === 'string' && path.indexOf('data:image') === 0){
@@ -928,19 +928,43 @@ function loadIssueThumbImage(prefix, idx, path, name){
   }
   imgEl.onclick = function(e){ e.stopPropagation(); openImageFullscreenByPath(path); };
   imgEl.style.cursor = 'zoom-in';
+  // 兜底：如果 path 恰好也在某个记录的 styleImage（或共享缓存）里，取其 signedURL
+  try{
+    var imgs = (gallery ? Array.from(gallery.querySelectorAll('img')) : []);
+    if(window.StyleImgCache){
+      // 不做款号推断；仅当本地已存过相同 path 的 signed URL 就填充
+      var snap = JSON.parse(localStorage.getItem('styleImages') || '{}');
+      if(snap && typeof snap === 'object'){
+        for(var _k in snap){
+          var en = snap[_k];
+          if(en && (en.styleImg_path === path || en.fullImg_path === path)){
+            var _s = en.styleImg_signed || en.fullImg_signed;
+            if(_s){ imgEl.src = _s; return; }
+          }
+        }
+      }
+    }
+  }catch(_){}
   var tryResolve = function(submit){
     if(submit && typeof submit.getSignedUrl === 'function'){
-      submit.getSignedUrl(path).then(function(url){ if(url) imgEl.src = url; }).catch(function(){});
+      submit.getSignedUrl(path).then(function(url){
+        if(url){ imgEl.src = url; imgEl.alt = ''; }
+        else imgEl.alt = (name || '加载失败');
+      }).catch(function(){ imgEl.alt = (name || '加载失败'); });
       return true;
     }
     if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-      App.utils.getSignedUrl(path).then(function(url){ if(url) imgEl.src = url; }).catch(function(){});
+      App.utils.getSignedUrl(path).then(function(url){
+        if(url){ imgEl.src = url; imgEl.alt = ''; }
+        else imgEl.alt = (name || '加载失败');
+      }).catch(function(){ imgEl.alt = (name || '加载失败'); });
       return true;
     }
     return false;
   };
   if(!tryResolve(window.SupabaseSubmit)){
-    waitForSupabaseSubmit(10000).then(function(submit){ tryResolve(submit); });
+    // 最长 20s 等待（较稳妥）
+    waitForSupabaseSubmit(20000).then(function(submit){ tryResolve(submit); });
   }
 }
 
@@ -1303,14 +1327,42 @@ function openImageFullscreen(dataUrl){
 function openImageFullscreenByPath(path){
   if(!path) return;
   if(typeof path === 'string' && path.indexOf('data:image') === 0){ openImageFullscreen(path); return; }
-  if(window.SupabaseSubmit && typeof SupabaseSubmit.getSignedUrl === 'function'){
-    SupabaseSubmit.getSignedUrl(path).then(function(url){
-      if(url) openImageFullscreen(url);
-    }).catch(function(){});
-  } else if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
-    App.utils.getSignedUrl(path).then(function(url){
-      if(url) openImageFullscreen(url);
-    }).catch(function(){});
+  // 先尝试本地缓存的 signed URL（StyleImgCache 或 localStorage.styleImages）
+  try{
+    var snap = JSON.parse(localStorage.getItem('styleImages') || '{}');
+    if(snap && typeof snap === 'object'){
+      for(var _k in snap){
+        var en = snap[_k];
+        if(en && (en.styleImg_path===path || en.fullImg_path===path)){
+          var u = en.styleImg_signed || en.fullImg_signed;
+          if(u){ openImageFullscreen(u); return; }
+        }
+      }
+    }
+  }catch(_){}
+  var tryResolve = function(submit){
+    if(submit && typeof submit.getSignedUrl === 'function'){
+      submit.getSignedUrl(path).then(function(url){
+        if(url) openImageFullscreen(url);
+        else try { if(App && App.toast) App.toast('图片加载失败', 'warning'); } catch(_e) {}
+      }).catch(function(){ try { if(App && App.toast) App.toast('图片加载失败', 'error'); } catch(_e) {} });
+      return true;
+    }
+    if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+      App.utils.getSignedUrl(path).then(function(url){
+        if(url) openImageFullscreen(url);
+        else try { if(App && App.toast) App.toast('图片加载失败', 'warning'); } catch(_e) {}
+      }).catch(function(){ try { if(App && App.toast) App.toast('图片加载失败', 'error'); } catch(_e) {} });
+      return true;
+    }
+    return false;
+  };
+  if(!tryResolve(window.SupabaseSubmit)){
+    try { if(App && App.toast) App.toast('正在等待云端模块加载，请稍候...', 'info', 2000); } catch(_e) {}
+    waitForSupabaseSubmit(20000).then(function(submit){
+      if(submit) tryResolve(submit);
+      else try { if(App && App.toast) App.toast('云端模块未就绪，图片暂时无法打开', 'warning'); } catch(_e) {}
+    });
   }
 }
 
@@ -1896,7 +1948,7 @@ function renderQueryTable(){
     return;
   }
   var html = '<table class="qc-data-table"><thead><tr>'+
-    '<th>服装厂</th><th>QC</th><th>订单号</th><th>款号</th><th>交期</th><th>尺寸/数量</th><th>状态</th><th>进度</th><th>问题</th><th style="width:90px;">操作</th>'+
+    '<th>服装厂</th><th>QC</th><th>订单号</th><th style="width:80px;">款式图</th><th>款号</th><th>交期</th><th>尺寸/数量</th><th>状态</th><th>进度</th><th>问题</th><th style="width:90px;">操作</th>'+
   '</tr></thead><tbody>';
   filtered.forEach(r=>{
     var status = getOverallStatus(r);
@@ -1905,10 +1957,45 @@ function renderQueryTable(){
     var sizeStr = formatSizeSnapshot(r.sizeSnapshot || r.sizes);
     var statusMap = {done:['已完成','qc-status-done'],progress:['进行中','qc-status-progress'],issue:['有问题','qc-status-issue'],overdue:['已逾期','qc-status-overdue'],pending:['未开始','qc-status-pending']};
     var pair = statusMap[status]||['未知','qc-status-pending'];
+    // 款式图缩略图：base64/http 直接 src；否则置空 + data-img-path 异步填 signed URL
+    var styleImgCell = '<div style="width:56px;height:70px;margin:0 auto;background:#f8f9fa;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#adb5bd;font-size:11px;border:1px solid var(--qc-border);">暂无</div>';
+    if(r.styleImage){
+      var _si = String(r.styleImage);
+      if(_si.indexOf('data:image')===0 || _si.indexOf('http')===0){
+        styleImgCell = '<img src="'+escAttr(_si)+'" style="display:block;width:56px;height:70px;object-fit:cover;margin:0 auto;border-radius:4px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="event.stopPropagation();openImageFullscreen(\''+escAttr(_si).replace(/'/g,'&#39;')+'\')">';
+      } else {
+        // 先尝试 StyleImgCache 快速回显 signed URL；不行就 data-img-path 后置解析
+        var snapUrl = '';
+        try{
+          if(window.StyleImgCache){
+            var ent = StyleImgCache.resolve(r.styleNo);
+            if(ent && (ent.styleImg_path===_si || ent.fullImg_path===_si)){ snapUrl = ent.styleImg_signed || ent.fullImg_signed || ''; }
+          }
+          if(!snapUrl){
+            var _cs = JSON.parse(localStorage.getItem('styleImages')||'{}');
+            if(_cs && typeof _cs === 'object'){
+              for(var _k in _cs){
+                var en2 = _cs[_k];
+                if(en2 && (en2.styleImg_path===_si || en2.fullImg_path===_si)){
+                  snapUrl = en2.styleImg_signed || en2.fullImg_signed || '';
+                  if(snapUrl) break;
+                }
+              }
+            }
+          }
+        }catch(_){}
+        if(snapUrl){
+          styleImgCell = '<img src="'+escAttr(snapUrl)+'" style="display:block;width:56px;height:70px;object-fit:cover;margin:0 auto;border-radius:4px;border:1px solid var(--qc-border);cursor:zoom-in;" onclick="event.stopPropagation();openImageFullscreenByPath(\''+escAttr(_si)+'\')">';
+        } else {
+          styleImgCell = '<img data-img-path="'+escAttr(_si)+'" src="" alt="..." style="display:block;width:56px;height:70px;object-fit:cover;margin:0 auto;border-radius:4px;border:1px solid var(--qc-border);cursor:zoom-in;background:#f8f9fa;" onclick="event.stopPropagation();openImageFullscreenByPath(\''+escAttr(_si)+'\')">';
+        }
+      }
+    }
     html += '<tr>'+
       '<td>'+esc(r.factory)+'</td>'+
       '<td>'+esc(r.qcName)+'</td>'+
       '<td>'+esc(r.orderNo)+'</td>'+
+      '<td>'+styleImgCell+'</td>'+
       '<td>'+esc(r.styleNo)+'</td>'+
       '<td>'+(r.deliveryDate||'-')+'</td>'+
       '<td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+escAttr(sizeStr)+'">'+(esc(sizeStr)||'-')+'</td>'+
@@ -1924,6 +2011,38 @@ function renderQueryTable(){
   });
   html += '</tbody></table>';
   container.innerHTML = html;
+  // 后置：把列表中所有 data-img-path 转成 signed URL
+  resolveQueryTableImages();
+}
+// 列表视图：异步解析所有 [data-img-path] 款式图缩略图为 signed URL
+function resolveQueryTableImages(){
+  var imgs = document.querySelectorAll('#queryTableContainer img[data-img-path]');
+  if(imgs.length === 0) return;
+  imgs.forEach(function(img){
+    var path = img.getAttribute('data-img-path');
+    if(!path) return;
+    img.onclick = function(){ openImageFullscreenByPath(path); };
+    var tryResolve = function(submit){
+      if(submit && typeof submit.getSignedUrl === 'function'){
+        submit.getSignedUrl(path).then(function(url){
+          if(url){ img.src = url; img.alt = ''; }
+          else img.alt = '无图';
+        }).catch(function(){ img.alt = '无图'; });
+        return true;
+      }
+      if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
+        App.utils.getSignedUrl(path).then(function(url){
+          if(url){ img.src = url; img.alt = ''; }
+          else img.alt = '无图';
+        }).catch(function(){ img.alt = '无图'; });
+        return true;
+      }
+      return false;
+    };
+    if(!tryResolve(window.SupabaseSubmit)){
+      waitForSupabaseSubmit(20000).then(function(submit){ tryResolve(submit); });
+    }
+  });
 }
 
 function editRecord(id){
@@ -2196,7 +2315,14 @@ function showDetailModal(r){
   html += '</div></div>';
 
   if(r.styleImage){
-    html += '<div class="qc-detail-section"><h3>📷 款式图</h3><img src="'+r.styleImage+'" style="max-width:200px;max-height:280px;border-radius:6px;border:1px solid var(--qc-border);"></div>';
+    // r.styleImage 可能是 base64 data URL / 绝对 URL / Supabase path
+    var si = String(r.styleImage || '');
+    if(si.indexOf('data:image')===0 || si.indexOf('http')===0){
+      html += '<div class="qc-detail-section"><h3>📷 款式图</h3><img src="'+escAttr(si)+'" onclick="openImageFullscreen(\''+escAttr(si)+'\')" style="cursor:zoom-in;max-width:200px;max-height:280px;border-radius:6px;border:1px solid var(--qc-border);"></div>';
+    } else {
+      // Supabase Storage path → 交给 resolveModalImages 异步加载
+      html += '<div class="qc-detail-section"><h3>📷 款式图</h3><img data-img-path="'+escAttr(si)+'" src="" style="max-width:200px;min-width:160px;min-height:220px;max-height:280px;border-radius:6px;border:1px solid var(--qc-border);cursor:zoom-in;background:#f8f9fa;" alt="加载中..."></div>';
+    }
   }
 
   // 尺寸数量表（兼容旧 sizes 格式与新 sizeSnapshot 格式）
@@ -2355,22 +2481,53 @@ function detailIssueImageCell(imgData){
 // 详情弹窗渲染后：解析所有 [data-img-path] 为 signed URL
 function resolveModalImages(){
   var imgs = document.querySelectorAll('#modalBody img[data-img-path]');
+  if(imgs.length === 0) return;
   imgs.forEach(function(img){
     var path = img.getAttribute('data-img-path');
     if(!path) return;
-    // 点击全屏
+    // 点击全屏（无论是 base64 还是 path，都走 openImageFullscreenByPath）
     img.onclick = function(){ openImageFullscreenByPath(path); };
+    img.style.cursor = 'zoom-in';
+    // 先尝试 StyleImgCache signed URL 兜底（款号 → 款式图快速回显）
+    try{
+      var sn = '';
+      var modalTitle = document.getElementById('modalTitle');
+      if(modalTitle){
+        var parts = modalTitle.textContent.split(/\s*-\s*/);
+        if(parts.length >= 2) sn = (parts[parts.length-1] || '').trim();
+      }
+      if(window.StyleImgCache && sn){
+        var ent = StyleImgCache.resolve(sn);
+        if(ent && (ent.styleImg_path === path || ent.fullImg_path === path)){
+          var signedUrl = ent.styleImg_signed || ent.fullImg_signed;
+          if(signedUrl){ img.src = signedUrl; return; }
+        }
+      }
+    }catch(_){}
+    // 本地存储款号 styleImages 缓存：若 path 对应有 signed url，直接填
+    try{
+      var cache = JSON.parse(localStorage.getItem('styleImages') || '{}');
+      if(cache && typeof cache === 'object'){
+        for(var _k in cache){
+          var en = cache[_k];
+          if(en && (en.styleImg_path === path || en.fullImg_path === path)){
+            var _s = en.styleImg_signed || en.fullImg_signed;
+            if(_s){ img.src = _s; break; }
+          }
+        }
+      }
+    }catch(_){}
     var tryResolve = function(submit){
       if(submit && typeof submit.getSignedUrl === 'function'){
         submit.getSignedUrl(path).then(function(url){
-          if(url) img.src = url;
+          if(url){ img.src = url; img.alt = ''; }
           else img.alt = '加载失败';
         }).catch(function(){ img.alt = '加载失败'; });
         return true;
       }
       if(App && App.utils && typeof App.utils.getSignedUrl === 'function'){
         App.utils.getSignedUrl(path).then(function(url){
-          if(url) img.src = url;
+          if(url){ img.src = url; img.alt = ''; }
           else img.alt = '加载失败';
         }).catch(function(){ img.alt = '加载失败'; });
         return true;
@@ -2378,7 +2535,10 @@ function resolveModalImages(){
       return false;
     };
     if(!tryResolve(window.SupabaseSubmit)){
-      waitForSupabaseSubmit(8000).then(function(submit){ tryResolve(submit); });
+      // 延长等待到 20s；若仍超时放弃不报错，保持现有 src
+      waitForSupabaseSubmit(20000).then(function(submit){
+        tryResolve(submit);
+      });
     }
   });
 }
