@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>样衣安排及意见</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --primary:#1a56db;--primary-dark:#1e40af;--bg:#f0f4f8;--card-bg:#fff;
+  --border:#cbd5e1;--text:#1e293b;--text-light:#64748b;
+  --danger:#dc2626;--warning:#d97706;--success:#16a34a;
+  --cat-design:#3b82f6;--cat-dim:#10b981;--cat-work:#f59e0b;
+  --cat-fabric:#8b5cf6;--cat-acc:#78350f;--cat-pack:#475569;--cat-wash:#0891b2;--cat-test:#db2777;--cat-other:#9ca3af;
+}
+body{font-family:Arial,sans-serif;font-size:13px;background:var(--bg);color:var(--text);}
+/* Tab Bar */
+.tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.tab-btn{flex:1;padding:10px 16px;border:none;background:#f1f5f9;font-size:13px;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tab-btn:hover{background:#e2e8f0;color:var(--text);}
+.tab-btn.active{color:#1a3a6b;border-bottom-color:#c9a84c;background:#fff;font-weight:700;}
+.tab-content{display:none;padding:16px 24px;min-height:calc(100vh - 48px);}
+.tab-content.active{display:block;}
+/* Header */
+.report-header{background:#fff;border-radius:8px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.report-header h1{font-size:20px;font-weight:700;margin-bottom:12px;color:var(--primary);}
+.header-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
+.header-grid.header-row{grid-template-columns:1.1fr 1fr 1.1fr 1fr 1.2fr 0.9fr 0.6fr 0.7fr 1.4fr;gap:8px;}
+@media(max-width:1200px){.header-grid.header-row{grid-template-columns:repeat(4,1fr);}}
+.header-field{display:flex;flex-direction:column;gap:3px;}
+.header-field label{font-size:11px;font-weight:600;color:var(--text-light);}
+.header-field input,.header-field select{padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;}
+.header-field input:focus{outline:none;border-color:var(--primary);}
+/* Toolbar */
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.btn{padding:6px 14px;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px;font-family:inherit;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{background:#15803d;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{background:#b91c1c;}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{background:#f8fafc;border-color:var(--primary);}
+.btn-sm{padding:3px 8px;font-size:11px;}
+/* Section */
+.section{background:var(--card-bg);border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.section-title{font-size:14px;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;}
+/* Material Table */
+.mat-table{width:100%;border-collapse:collapse;font-size:12px;}
+.mat-table th{background:#f1f5f9;padding:5px 8px;border:1px solid var(--border);text-align:center;font-weight:600;white-space:nowrap;}
+.mat-table td{padding:2px;border:1px solid var(--border);}
+.mat-table td input,.mat-table td select{width:100%;border:1px solid transparent;font-size:12px;padding:4px 5px;background:transparent;font-family:inherit;}
+.mat-table td input:focus{outline:none;border-color:var(--primary);background:#fff;}
+.mat-del{background:var(--danger);color:#fff;border:none;border-radius:3px;width:24px;height:24px;font-size:14px;cursor:pointer;line-height:1;}
+/* Category Tabs */
+.cat-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;}
+.cat-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border:2px solid transparent;background:#fff;color:var(--text-light);}
+.cat-tab:hover{background:#f8fafc;}
+.cat-tab.active{color:#fff;border-color:transparent;}
+.cat-tab[data-cat="design"].active{background:var(--cat-design);}
+.cat-tab[data-cat="dim"].active{background:var(--cat-dim);}
+.cat-tab[data-cat="work"].active{background:var(--cat-work);}
+.cat-tab[data-cat="fabric"].active{background:var(--cat-fabric);}
+.cat-tab[data-cat="acc"].active{background:var(--cat-acc);}
+.cat-tab[data-cat="pack"].active{background:var(--cat-pack);}
+.cat-tab[data-cat="wash"].active{background:var(--cat-wash);}
+.cat-tab[data-cat="test"].active{background:var(--cat-test);}
+.cat-tab[data-cat="other"].active{background:var(--cat-other);}
+.cat-tab[data-cat="all"].active{background:var(--danger);color:#fff;border-color:transparent;}
+/* Comment Card */
+.comment-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;position:relative;transition:box-shadow .2s;}
+.comment-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.comment-card .cat-badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;margin-bottom:8px;}
+.cat-badge[data-cat="design"]{background:var(--cat-design);}
+.cat-badge[data-cat="dim"]{background:var(--cat-dim);}
+.cat-badge[data-cat="work"]{background:var(--cat-work);}
+.cat-badge[data-cat="fabric"]{background:var(--cat-fabric);}
+.cat-badge[data-cat="acc"]{background:var(--cat-acc);}
+.cat-badge[data-cat="pack"]{background:var(--cat-pack);}
+.cat-badge[data-cat="wash"]{background:var(--cat-wash);}
+.cat-badge[data-cat="test"]{background:var(--cat-test);}
+.cat-badge[data-cat="other"]{background:var(--cat-other);}
+.comment-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.comment-field{display:flex;flex-direction:column;gap:3px;}
+.comment-field label{font-size:10px;font-weight:600;color:var(--text-light);}
+.comment-field input,.comment-field select,.comment-field textarea{padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;}
+.comment-field textarea{resize:vertical;min-height:40px;}
+.comment-field input:focus,.comment-field textarea:focus,.comment-field select:focus{outline:none;border-color:var(--primary);}
+.comment-field.full{grid-column:1/-1;}
+.severity-high{color:var(--danger);font-weight:700;}
+.severity-medium{color:var(--warning);font-weight:700;}
+.severity-low{color:var(--success);font-weight:700;}
+.comment-images{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.comment-img-wrap{position:relative;width:120px;border:1px solid var(--border);border-radius:4px;overflow:visible;background:#fff;}
+.comment-img-wrap img{width:100%;height:120px;object-fit:cover;cursor:pointer;display:block;border-radius:4px 4px 0 0;}
+.comment-img-wrap .img-del{position:absolute;top:2px;right:2px;background:rgba(220,38,38,.9);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;z-index:2;}
+.comment-img-wrap .img-edit{position:absolute;bottom:24px;right:2px;background:rgba(37,99,235,.9);color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;z-index:2;}
+.comment-img-wrap .img-print-size{display:block;width:100%;border:none;border-top:1px solid var(--border);font-size:10px;padding:2px 4px;cursor:pointer;background:#f8fafc;color:#1a3a6b;border-radius:0 0 4px 4px;outline:none;}
+.comment-actions{display:flex;gap:6px;margin-top:8px;}
+/* Image Annotation Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.annot-modal{background:#fff;border-radius:0;padding:12px 16px;width:100%;height:100%;overflow:hidden;box-shadow:none;display:flex;flex-direction:column;}
+.annot-modal h3{font-size:15px;margin-bottom:10px;}
+.annot-toolbar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+.annot-tool{padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;background:#fff;font-family:inherit;}
+.annot-tool.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.annot-tool:hover:not(.active){background:#f8fafc;}
+.annot-color{width:28px;height:28px;border:2px solid var(--border);border-radius:4px;cursor:pointer;padding:0;}
+.annot-canvas-wrap{border:2px dashed var(--border);border-radius:4px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:auto;flex:1;position:relative;}
+.annot-canvas-wrap canvas{max-width:100%;cursor:crosshair;}
+.annot-upload-prompt{text-align:center;color:var(--text-light);padding:40px;}
+/* Size Table (imported) */
+.size-info-bar{display:flex;gap:20px;padding:10px 16px;background:#f1f5f9;border-radius:6px;margin-bottom:10px;font-size:12px;flex-wrap:wrap;}
+.size-info-bar b{color:var(--text);}
+.size-table{width:100%;border-collapse:collapse;font-size:11px;}
+.size-table th{background:#f1f5f9;padding:5px 8px;border:1px solid var(--border);text-align:center;font-weight:600;white-space:nowrap;}
+.size-table td{padding:4px 6px;border:1px solid var(--border);text-align:center;}
+.size-table td:first-child{text-align:left;}
+/* Search Bar */
+.search-bar{margin-bottom:12px;}
+.search-bar input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;}
+.search-bar input:focus{outline:none;border-color:var(--primary);}
+/* Record Card */
+.record-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;transition:box-shadow .2s;}
+.record-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.record-card .rec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.record-card .rec-title{font-size:14px;font-weight:700;}
+.record-card .rec-date{font-size:11px;color:var(--text-light);}
+.record-card .rec-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;font-size:11px;}
+.record-card .rec-info span{color:var(--text-light);}
+.record-card .rec-info b{color:var(--text);}
+.record-card .rec-footer{margin-top:8px;font-size:11px;color:var(--text-light);display:flex;justify-content:space-between;align-items:center;}
+/* Print Area */
+#printArea{display:none;}
+@media print{
+  .tab-bar,.tab-content,.toolbar,.modal-overlay{display:none!important;}
+  #printArea{display:block!important;max-width:180mm;overflow:hidden;padding:0;margin:0;}
+  body{background:#fff;font-size:11px;margin:0;padding:0;}
+  html{margin:15mm 15mm 18mm 15mm;}
+  .page-break{page-break-after:always;}
+  .print-comment-img{width:100%;height:auto;page-break-inside:avoid;display:block;}
+  .print-lh .lh-en{letter-spacing:3px!important;}
+  .print-lh .lh-cn{letter-spacing:8px!important;}
+  /* Letterhead */
+  .print-lh{width:100%;border-collapse:collapse;margin-bottom:4mm;padding-bottom:3mm;position:relative;}
+  .print-lh td{vertical-align:middle;padding:0;}
+  .print-lh .lh-cn{font-size:22pt;font-weight:700;color:#1a3a6b;letter-spacing:12px;text-align:center;white-space:nowrap;}
+  .print-lh .lh-en{font-size:10pt;color:#c9a84c;letter-spacing:5px;text-align:center;margin-top:4px;white-space:nowrap;font-weight:600;}
+  .print-lh .lh-side{width:30mm;}
+  .lh-double-line{width:100%;height:4px;margin-bottom:3mm;}
+  .lh-double-line .lh-line-blue{height:2px;background:#1a3a6b;}
+  .lh-double-line .lh-line-gold{height:1.5px;background:#c9a84c;margin-top:1px;}
+  /* Report title */
+  .print-report-title{text-align:center;font-size:16pt;font-weight:700;color:#1a3a6b;margin:4mm 0 3mm;letter-spacing:6px;}
+  .print-title-deco{display:flex;align-items:center;justify-content:center;gap:10px;margin:4mm 0 3mm;}
+  .print-title-deco .deco-line{flex:1;max-width:80px;height:1.5px;background:linear-gradient(90deg,transparent,#c9a84c);}
+  .print-title-deco .deco-line-r{flex:1;max-width:80px;height:1.5px;background:linear-gradient(90deg,#c9a84c,transparent);}
+  .print-title-deco .deco-diamond{width:6px;height:6px;background:#c9a84c;transform:rotate(45deg);}
+  /* Meta info */
+  .print-meta{text-align:center;font-size:10pt;color:#333;margin-bottom:5mm;line-height:1.8;}
+  /* Section header */
+  .print-section-header{display:flex;align-items:center;gap:8px;margin:5mm 0 3mm;page-break-after:avoid;}
+  .print-section-header .sh-bar{width:5px;height:22px;background:linear-gradient(180deg,#1a3a6b,#c9a84c);border-radius:2px;}
+  .print-section-header .sh-title{font-size:13pt;font-weight:700;color:#1a3a6b;letter-spacing:2px;}
+  .print-section-header .sh-line{flex:1;height:1px;background:linear-gradient(90deg,#c9a84c,transparent);}
+}
+/* Scrollbar */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:#f1f5f9;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+/* Toast */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:6px;font-size:13px;color:#fff;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;}
+#toast.show{opacity:1;}
+#toast.success{background:var(--success);}
+#toast.error{background:var(--danger);}
+#toast.info{background:var(--primary);}
+/* App Banner */
+.app-banner{background:linear-gradient(135deg,#0f2950 0%,#1a3a6b 50%,#2a4a7a 100%);padding:14px 24px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-bottom:3px solid #c9a84c;}
+.app-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);}
+.app-banner::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.4),transparent);}
+.banner-content{display:flex;align-items:center;gap:14px;position:relative;z-index:1;}
+.banner-icon{font-size:28px;color:#c9a84c;text-shadow:0 0 10px rgba(201,168,76,.5);line-height:1;}
+.banner-text{text-align:center;}
+.banner-title-cn{font-size:20px;font-weight:700;color:#fff;letter-spacing:4px;text-shadow:0 1px 2px rgba(0,0,0,.3);}
+.banner-title-en{font-size:9px;color:#c9a84c;letter-spacing:3px;margin-top:2px;opacity:.85;}
+.banner-deco-left,.banner-deco-right{width:60px;height:2px;background:linear-gradient(90deg,transparent,#c9a84c);}
+.banner-deco-right{background:linear-gradient(90deg,#c9a84c,transparent);}
+@media print{.app-banner{display:none;}}
+</style>
+</head>
+<body>
+
+<!-- App Banner -->
+<div class="app-banner">
+  <div class="banner-deco-left"></div>
+  <div class="banner-content">
+    <div class="banner-icon">✂</div>
+    <div class="banner-text">
+      <div class="banner-title-cn">样衣意见制作程序</div>
+      <div class="banner-title-en">SAMPLE REVIEW & COMMENT SYSTEM</div>
+    </div>
+    <div class="banner-deco-right"></div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('entry')">✏ 信息录入</button>
+  <button class="tab-btn" onclick="switchTab('size')">📏 尺寸表</button>
+  <button class="tab-btn" onclick="switchTab('info')">📋 样衣记录</button>
+</div>
+
+<!-- Tab 1: 信息录入 -->
+<div id="tab-entry" class="tab-content active">
+  <div class="report-header">
+    <h1>样衣安排及意见</h1>
+    <div class="header-grid" style="grid-template-columns:1fr;margin-bottom:8px;">
+      <div class="header-field"><label>服装厂</label><input id="h-factory" style="border:none;font-size:18px;font-weight:600;background:#fef3c7;padding:4px 8px;border-radius:4px;"></div>
+    </div>
+    <div class="header-grid header-row" style="grid-template-columns:auto auto;margin-bottom:8px;gap:24px;">
+      <div class="header-field"><label>寄样日期</label><input id="h-date" type="date" style="width:auto;min-width:150px;"></div>
+      <div class="header-field"><label>要求收到样衣日期</label><input id="h-deadline" type="date" style="width:auto;min-width:150px;"></div>
+    </div>
+    <div class="header-grid header-row" style="grid-template-columns:0.8fr 1fr 1.1fr 1fr 1fr 0.7fr 0.8fr;">
+      <div class="header-field"><label>样衣类型</label><select id="h-type"><option value="">请选择</option><option value="头样">头样</option><option value="尺码样">尺码样</option><option value="产前样">产前样</option><option value="船期">船期</option><option value="照片样">照片样</option><option value="封样">封样</option></select></div>
+      <div class="header-field"><label>款号</label><input id="h-style"></div>
+      <div class="header-field"><label>订单号</label><input id="h-order"></div>
+      <div class="header-field"><label>品名</label><input id="h-product"></div>
+      <div class="header-field"><label>尺码</label><input id="h-size"></div>
+      <div class="header-field"><label>样衣数量</label><input id="h-qty" type="number"></div>
+    </div>
+  </div>
+
+  <!-- 材料清单 -->
+  <div class="section">
+    <div class="section-title">📦 材料清单</div>
+    <div style="overflow-x:auto;">
+      <table class="mat-table">
+        <thead><tr>
+          <th>材料</th><th style="width:55px;">大货标准</th><th>规格</th><th>颜色</th><th>单耗</th><th>数量</th><th>备用数</th><th style="min-width:160px;">备注</th><th style="width:40px;">操作</th>
+        </tr></thead>
+        <tbody id="matBody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addMatRow()">＋ 插入行</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="addComment()">＋ 新增意见</button>
+    <button class="btn btn-success" onclick="saveRecord()">💾 保存</button>
+    <button class="btn btn-primary" onclick="printReport()">🖨 打印PDF</button>
+  </div>
+
+  <!-- Category tabs (no 全部) -->
+  <div class="cat-tabs" id="catTabs">
+    <div class="cat-tab active" data-cat="all" onclick="filterCategory('all',this)">全部</div>
+    <div class="cat-tab" data-cat="design" onclick="filterCategory('design',this)">设计</div>
+    <div class="cat-tab" data-cat="dim" onclick="filterCategory('dim',this)">尺寸</div>
+    <div class="cat-tab" data-cat="work" onclick="filterCategory('work',this)">做工</div>
+    <div class="cat-tab" data-cat="fabric" onclick="filterCategory('fabric',this)">面料</div>
+    <div class="cat-tab" data-cat="acc" onclick="filterCategory('acc',this)">辅料</div>
+    <div class="cat-tab" data-cat="pack" onclick="filterCategory('pack',this)">包装</div>
+    <div class="cat-tab" data-cat="wash" onclick="filterCategory('wash',this)">水洗</div>
+    <div class="cat-tab" data-cat="test" onclick="filterCategory('test',this)">测试要求</div>
+    <div class="cat-tab" data-cat="other" onclick="filterCategory('other',this)">其他</div>
+  </div>
+
+  <div id="commentList"></div>
+</div>
+
+<!-- Tab 2: 尺寸表 (Excel import) -->
+<div id="tab-size" class="tab-content">
+  <div class="section">
+    <div class="section-title">📏 尺寸表</div>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="document.getElementById('sizeFile').click()">📁 导入Excel</button>
+      <input type="file" id="sizeFile" accept=".xlsx,.csv" style="display:none" onchange="importSizeExcel(event)">
+      <span style="font-size:11px;color:var(--text-light);">支持 .xlsx 和 .csv 格式</span>
+    </div>
+    <div id="sizeTableContainer">
+      <div style="text-align:center;padding:40px;color:var(--text-light);">
+        <div style="font-size:36px;margin-bottom:8px;">📊</div>
+        <p>请导入Excel文件以显示尺寸表</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 3: 样衣信息 (records with search) -->
+<div id="tab-info" class="tab-content">
+  <div class="section">
+    <div class="section-title">📋 样衣记录</div>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="搜索款号、订单号、品名、服装厂..." oninput="renderRecords()">
+    </div>
+    <div id="recordList"></div>
+  </div>
+</div>
+
+<!-- Print Area -->
+<div id="printArea"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Image Annotation Modal -->
+<div class="modal-overlay" id="annotModal">
+  <div class="annot-modal">
+    <h3>图片标注</h3>
+    <div class="annot-toolbar">
+      <button class="annot-tool" onclick="document.getElementById('annotFile').click()">📁 上传图片</button>
+      <input type="file" id="annotFile" accept="image/*" multiple style="display:none" onchange="loadAnnotImage(event)">
+      <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
+      <button class="annot-tool active" data-tool="arrow" onclick="setAnnotTool('arrow',this)">➤ 箭头</button>
+      <button class="annot-tool" data-tool="dashSingle" onclick="setAnnotTool('dashSingle',this)">┄ 单虚线</button>
+      <button class="annot-tool" data-tool="curveDashed" onclick="setAnnotTool('curveDashed',this)">∿ 弯曲虚线</button>
+      <button class="annot-tool" data-tool="curveSolid" onclick="setAnnotTool('curveSolid',this)">〜 弯曲实线</button>
+      <button class="annot-tool" data-tool="dashDouble" onclick="setAnnotTool('dashDouble',this)">═ 双虚线</button>
+      <button class="annot-tool" data-tool="doubleSolid" onclick="setAnnotTool('doubleSolid',this)">≡ 双实线</button>
+      <button class="annot-tool" data-tool="solidLine" onclick="setAnnotTool('solidLine',this)">─ 单实线</button>
+      <button class="annot-tool" data-tool="xLine" onclick="setAnnotTool('xLine',this)">✕ X实线</button>
+      <button class="annot-tool" data-tool="fillRect" onclick="setAnnotTool('fillRect',this)">▣ 实心框</button>
+      <button class="annot-tool" data-tool="dashRect" onclick="setAnnotTool('dashRect',this)">▭ 虚线框</button>
+      <button class="annot-tool" data-tool="curve" onclick="setAnnotTool('curve',this)">〜 弧长</button>
+      <button class="annot-tool" data-tool="dimLine" onclick="setAnnotTool('dimLine',this)">↔ 直线长</button>
+      <button class="annot-tool" data-tool="text" onclick="setAnnotTool('text',this)">📝 文字</button>
+      <button class="annot-tool" data-tool="strikeText" onclick="setAnnotTool('strikeText',this)">S̶ 划线文字</button>
+      <button class="annot-tool" data-tool="textBox" onclick="setAnnotTool('textBox',this)">▭ 文本框</button>
+      <button class="annot-tool" data-tool="callout" onclick="setAnnotTool('callout',this)">💬 标注气泡</button>
+      <button class="annot-tool" data-tool="rect" onclick="setAnnotTool('rect',this)">⬜ 矩形</button>
+      <button class="annot-tool" data-tool="circle" onclick="setAnnotTool('circle',this)">⭕ 圆形</button>
+      <button class="annot-tool" data-tool="mosaic" onclick="setAnnotTool('mosaic',this)">🔳 马赛克</button>
+      <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
+      <button class="annot-tool" onclick="rotateSelected(-15)" title="逆时针旋转15度">↺ -15°</button>
+      <button class="annot-tool" onclick="rotateSelected(15)" title="顺时针旋转15度">↻ +15°</button>
+      <button class="annot-tool" onclick="document.getElementById('insertImgFile').click()">🖼 插入图片</button>
+      <input type="file" id="insertImgFile" accept="image/*" style="display:none" onchange="insertImage(event)">
+      <input type="color" class="annot-color" id="annotColor" value="#ff0000" title="标注颜色">
+      <input type="range" id="annotLineWidth" min="1" max="6" value="3" style="width:60px;" title="线宽">
+    </div>
+    <div class="annot-toolbar">
+      <button class="annot-tool" data-tool="move" onclick="setAnnotTool('move',this)">✥ 移动</button>
+      <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
+      <button class="annot-tool" onclick="undoAnnot()">↶ 撤销</button>
+      <button class="annot-tool" onclick="clearAnnot()">🗑 清除</button>
+    </div>
+    <div class="annot-canvas-wrap" id="annotCanvasWrap">
+      <div class="annot-upload-prompt">请先上传图片，然后在图片上添加标注</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button class="btn btn-outline" onclick="closeAnnotModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveAnnotImage()">保存标注图片</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== Safe Storage (works under file:// protocol) ====================
+const safeStorage = (() => {
+  let mem = {};
+  try { const t = '__test__'; localStorage.setItem(t, '1'); localStorage.removeItem(t); return localStorage; }
+  catch(e) { return { getItem: k => mem[k] || null, setItem: (k,v) => { mem[k] = v; }, removeItem: k => { delete mem[k]; } }; }
+})();
+
+// ==================== State ====================
+let records = [];
+let comments = [];
+let materials = [];
+let currentFilter = 'all';
+let commentCounter = 0;
+let editingRecordId = null;
+let sizeTableData = null;
+
+const CAT_NAMES = {
+  design:'设计', dim:'尺寸', work:'做工', fabric:'面料',
+  acc:'辅料', pack:'包装', wash:'水洗', test:'测试要求', other:'其他'
+};
+const CAT_COLORS = {design:'#3b82f6',dim:'#10b981',work:'#f59e0b',fabric:'#8b5cf6',acc:'#78350f',pack:'#475569',wash:'#0891b2',test:'#db2777',other:'#9ca3af'};
+const CAT_LOC_LABELS = {pack:'内包装/外包装',wash:'面料/成衣'};
+function getLocLabel(cat) { return CAT_LOC_LABELS[cat] || '部位/位置'; }
+
+// ==================== Tab Switching ====================
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', i === ['entry','size','info'].indexOf(name));
+  });
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'info') renderRecords();
+}
+
+// ==================== Material Table ====================
+function renderMatTable() {
+  const tbody = document.getElementById('matBody');
+  tbody.innerHTML = materials.map((m, i) => `
+    <tr>
+      <td><input value="${esc(m['材料']||'')}" oninput="updateMat(${i},'材料',this.value)"></td>
+      <td><select onchange="updateMat(${i},'大货标准',this.value)"><option value=""${!m['大货标准']?' selected':''}></option><option value="大货标准"${m['大货标准']==='大货标准'?' selected':''}>大货标准</option><option value="代用"${m['大货标准']==='代用'?' selected':''}>代用</option></select></td>
+      <td><input value="${esc(m['规格']||'')}" oninput="updateMat(${i},'规格',this.value)"></td>
+      <td><input value="${esc(m['颜色']||'')}" oninput="updateMat(${i},'颜色',this.value)"></td>
+      <td><input value="${esc(m['单耗']||'')}" oninput="updateMat(${i},'单耗',this.value)"></td>
+      <td><input value="${esc(m['数量']||'')}" oninput="updateMat(${i},'数量',this.value)"></td>
+      <td><input value="${esc(m['备用数']||'')}" oninput="updateMat(${i},'备用数',this.value)"></td>
+      <td><input value="${esc(m['备注']||'')}" oninput="updateMat(${i},'备注',this.value)"></td>
+      <td style="text-align:center;"><button class="mat-del" onclick="deleteMatRow(${i})">×</button></td>
+    </tr>
+  `).join('');
+}
+
+function addMatRow() {
+  materials.push({'材料':'','大货标准':'','规格':'','颜色':'','单耗':'','数量':'','备用数':'','备注':''});
+  renderMatTable();
+}
+
+function deleteMatRow(idx) {
+  materials.splice(idx, 1);
+  renderMatTable();
+}
+
+function updateMat(idx, field, val) {
+  if (materials[idx]) materials[idx][field] = val;
+}
+
+function collectMaterials() {
+  return materials.filter(m => Object.values(m).some(v => v && v.trim()));
+}
+
+// ==================== Comments ====================
+function addComment() {
+  const c = {
+    id: 'c' + (++commentCounter),
+    category: currentFilter !== 'all' ? currentFilter : 'work',
+    location: '',
+    severity: 'medium',
+    description: '',
+    suggestion: '',
+    images: []
+  };
+  comments.unshift(c);
+  renderComments();
+}
+
+function deleteComment(id) {
+  comments = comments.filter(c => c.id !== id);
+  renderComments();
+}
+
+function updateComment(id, field, val) {
+  const c = comments.find(c => c.id === id);
+  if (c) c[field] = val;
+}
+
+function deleteImage(cid, idx) {
+  const c = comments.find(c => c.id === cid);
+  if (c) { c.images.splice(idx, 1); renderComments(); }
+}
+
+function imgSrc(img) { return typeof img === 'string' ? img : img.src; }
+function imgPrintSize(img) { return typeof img === 'object' && img.printSize ? img.printSize : 'full'; }
+function setImagePrintSize(cid, idx, size) {
+  const c = comments.find(c => c.id === cid);
+  if (!c || !c.images[idx]) return;
+  const img = c.images[idx];
+  if (typeof img === 'string') c.images[idx] = { src: img, printSize: size };
+  else img.printSize = size;
+}
+
+function filterCategory(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderComments();
+}
+
+function renderComments() {
+  const list = document.getElementById('commentList');
+  const filtered = currentFilter === 'all' ? comments : comments.filter(c => c.category === currentFilter);
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:36px;margin-bottom:8px;">📝</div><p>暂无意见，点击"新增意见"添加</p></div>';
+    return;
+  }
+  list.innerHTML = filtered.map(c => {
+    const isSimple = (c.category === 'test' || c.category === 'other');
+    return `
+    <div class="comment-card" data-id="${c.id}">
+      <span class="cat-badge" data-cat="${c.category}">${CAT_NAMES[c.category]}</span>
+      <div class="comment-grid" style="${isSimple ? 'grid-template-columns:1fr;' : ''}">
+        ${isSimple ? '' : `
+        <div class="comment-field">
+          <label>${getLocLabel(c.category)}</label>
+          <input value="${esc(c.location)}" onchange="updateComment('${c.id}','location',this.value)">
+        </div>`}
+        <div class="comment-field">
+          <label>严重程度</label>
+          <select onchange="updateComment('${c.id}','severity',this.value)">
+            <option value="high" ${c.severity==='high'?'selected':''}>高 — 必须修改</option>
+            <option value="medium" ${c.severity==='medium'?'selected':''}>中 — 建议修改</option>
+            <option value="low" ${c.severity==='low'?'selected':''}>低 — 可选修改</option>
+          </select>
+        </div>
+        ${isSimple ? '' : `
+        <div class="comment-field full">
+          <label>问题描述</label>
+          <textarea onchange="updateComment('${c.id}','description',this.value)">${esc(c.description)}</textarea>
+        </div>`}
+        <div class="comment-field full">
+          <label>${isSimple ? '说明' : '意见'}</label>
+          <textarea onchange="updateComment('${c.id}','suggestion',this.value)">${esc(c.suggestion)}</textarea>
+        </div>
+      </div>
+      <div class="comment-images" id="imgs-${c.id}">
+        ${c.images.map((img,i) => {
+          const src = imgSrc(img);
+          const psize = imgPrintSize(img);
+          return `
+          <div class="comment-img-wrap">
+            <img src="${src}" onclick="openAnnotModal('${c.id}',${i})">
+            <button class="img-del" onclick="deleteImage('${c.id}',${i})">×</button>
+            <button class="img-edit" onclick="openAnnotModal('${c.id}',${i})">标注</button>
+            <select class="img-print-size" onchange="setImagePrintSize('${c.id}',${i},this.value)" title="打印尺寸">
+              <option value="full" ${psize==='full'?'selected':''}>铺满</option>
+              <option value="half" ${psize==='half'?'selected':''}>半宽</option>
+              <option value="third" ${psize==='third'?'selected':''}>三分之一</option>
+              <option value="quarter" ${psize==='quarter'?'selected':''}>四分之一</option>
+            </select>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="comment-actions">
+        <button class="btn btn-outline btn-sm" onclick="openAnnotModal('${c.id}',-1)">📷 添加图片</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteComment('${c.id}')">🗑 删除</button>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+function esc(s) { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escBR(s) { return esc(s).replace(/\n/g,'<br>'); }
+
+// ==================== Image Annotation ====================
+let annotState = {
+  tool: 'arrow', color: '#ff0000', lineWidth: 3, shapes: [],
+  isDrawing: false, startX: 0, startY: 0,
+  canvas: null, ctx: null, img: null,
+  editingCommentId: null, editingImageIdx: -1,
+  isMoving: false, movingShapeIdx: -1, moveLastX: 0, moveLastY: 0,
+  isAdjustingCurve: false, lastClickInfo: null
+};
+
+function openAnnotModal(cid, imgIdx) {
+  annotState.editingCommentId = cid;
+  annotState.editingImageIdx = imgIdx;
+  annotState.shapes = [];
+  annotState.img = null;
+  const wrap = document.getElementById('annotCanvasWrap');
+  wrap.innerHTML = '<div class="annot-upload-prompt">请先上传图片，然后在图片上添加标注</div>';
+  annotState.canvas = null;
+  annotState.ctx = null;
+  if (imgIdx >= 0) {
+    const c = comments.find(c => c.id === cid);
+    if (c && c.images[imgIdx]) {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = wrap.clientWidth;
+        const maxH = wrap.clientHeight;
+        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = Math.round(img.width * ratio), h = Math.round(img.height * ratio);
+        wrap.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.style.maxWidth = '100%';
+        wrap.appendChild(canvas);
+        annotState.canvas = canvas;
+        annotState.ctx = canvas.getContext('2d');
+        annotState.shapes = [{type:'image', img, x: 0, y: 0, w, h}];
+        drawCanvas();
+        canvas.onmousedown = onAnnotMouseDown;
+        canvas.onmousemove = onAnnotMouseMove;
+        canvas.onmouseup = onAnnotMouseUp;
+        canvas.onmouseleave = onAnnotMouseUp;
+        canvas.onwheel = onAnnotWheel;
+      };
+      img.src = imgSrc(c.images[imgIdx]);
+    }
+  }
+  document.getElementById('annotModal').classList.add('show');
+}
+
+function closeAnnotModal() {
+  document.getElementById('annotModal').classList.remove('show');
+}
+
+function setAnnotTool(tool, el) {
+  annotState.tool = tool;
+  annotState.movingShapeIdx = -1;
+  document.querySelectorAll('.annot-tool[data-tool]').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (annotState.canvas) annotState.canvas.style.cursor = tool === 'move' ? 'move' : 'crosshair';
+  drawCanvas();
+}
+
+function autoSwitchToMove() {
+  const moveBtn = document.querySelector('.annot-tool[data-tool="move"]');
+  if (moveBtn) setAnnotTool('move', moveBtn);
+}
+
+function loadAnnotImage(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  const wrap = document.getElementById('annotCanvasWrap');
+  const maxW = wrap.clientWidth;
+  const maxH = wrap.clientHeight;
+  const gap = 10;
+  const imgs = [];
+  let loaded = 0;
+  files.forEach((file, fi) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        imgs[fi] = img;
+        loaded++;
+        if (loaded === files.length) {
+          // All images loaded - calculate layout
+          const targetH = Math.min(maxH, ...imgs.map(im => im.height));
+          const scaled = imgs.map(im => {
+            const ratio = targetH / im.height;
+            return { img: im, w: Math.round(im.width * ratio), h: Math.round(targetH) };
+          });
+          let totalW = scaled.reduce((s, im) => s + im.w, 0) + gap * (scaled.length - 1);
+          // If too wide, scale down to fit
+          if (totalW > maxW && scaled.length > 1) {
+            const sf = maxW / totalW;
+            scaled.forEach(im => { im.w = Math.round(im.w * sf); im.h = Math.round(im.h * sf); });
+            totalW = scaled.reduce((s, im) => s + im.w, 0) + gap * (scaled.length - 1);
+          }
+          const cw = Math.max(totalW, scaled[0].w);
+          const ch = scaled[0].h;
+          // Create canvas
+          wrap.innerHTML = '';
+          const canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          canvas.style.maxWidth = '100%';
+          wrap.appendChild(canvas);
+          annotState.canvas = canvas;
+          annotState.ctx = canvas.getContext('2d');
+          annotState.img = null;
+          annotState.shapes = [];
+          // Add each image as a shape side by side
+          let xPos = 0;
+          scaled.forEach(im => {
+            annotState.shapes.push({type:'image', img: im.img, x: xPos, y: 0, w: im.w, h: im.h});
+            xPos += im.w + gap;
+          });
+          drawCanvas();
+          canvas.onmousedown = onAnnotMouseDown;
+          canvas.onmousemove = onAnnotMouseMove;
+          canvas.onmouseup = onAnnotMouseUp;
+          canvas.onmouseleave = onAnnotMouseUp;
+          canvas.onwheel = onAnnotWheel;
+          if (files.length > 1) {
+            showToast(`已加载 ${files.length} 张图片，可使用移动工具拖动换位`, 'success');
+          }
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  event.target.value = '';
+}
+
+function setupCanvas(img) {
+  const wrap = document.getElementById('annotCanvasWrap');
+  wrap.innerHTML = '';
+  const maxW = wrap.clientWidth;
+  const maxH = wrap.clientHeight;
+  let w = img.width, h = img.height;
+  const ratio = Math.min(maxW / w, maxH / h, 1);
+  w = Math.round(w * ratio); h = Math.round(h * ratio);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  wrap.appendChild(canvas);
+  annotState.canvas = canvas;
+  annotState.ctx = canvas.getContext('2d');
+  drawCanvas();
+  canvas.onmousedown = onAnnotMouseDown;
+  canvas.onmousemove = onAnnotMouseMove;
+  canvas.onmouseup = onAnnotMouseUp;
+  canvas.onmouseleave = onAnnotMouseUp;
+  canvas.onwheel = onAnnotWheel;
+  canvas.ondblclick = onAnnotDoubleClick;
+}
+
+function getCanvasPos(e) {
+  const rect = annotState.canvas.getBoundingClientRect();
+  const scaleX = annotState.canvas.width / rect.width;
+  const scaleY = annotState.canvas.height / rect.height;
+  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+}
+
+function hitTestShape(s, px, py) {
+  const tol = 8;
+  // Inverse-rotate point if shape has rotation
+  const rot = s.rotation || 0;
+  if (rot !== 0) {
+    const c = getShapeCenter(s);
+    const rad = -rot * Math.PI / 180;
+    const dx = px - c.x, dy = py - c.y;
+    px = c.x + dx * Math.cos(rad) - dy * Math.sin(rad);
+    py = c.y + dx * Math.sin(rad) + dy * Math.cos(rad);
+  }
+  if (['arrow','dashSingle','dashDouble','doubleSolid','solidLine','xLine','dimLine'].includes(s.type)) {
+    return distToSeg(px, py, s.x1, s.y1, s.x2, s.y2) < tol + (s.lineWidth || 2);
+  }
+  if (s.type === 'curve' || s.type === 'curveDashed' || s.type === 'curveSolid') {
+    // Sample points along the quadratic Bezier curve
+    const steps = 20;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const mt = 1 - t;
+      const bx = mt * mt * s.x1 + 2 * mt * t * s.cx + t * t * s.x2;
+      const by = mt * mt * s.y1 + 2 * mt * t * s.cy + t * t * s.y2;
+      if (Math.hypot(px - bx, py - by) < tol + (s.lineWidth || 2)) return true;
+    }
+    return false;
+  }
+  if (['rect','fillRect','dashRect','mosaic','image','textBox','text','strikeText','callout'].includes(s.type)) {
+    const x = Math.min(s.x, s.x + (s.w||0)), y = Math.min(s.y, s.y + (s.h||0));
+    const w = Math.abs(s.w||0), h = Math.abs(s.h||0);
+    return px >= x - tol && px <= x + w + tol && py >= y - tol && py <= y + h + tol;
+  }
+  if (s.type === 'circle') {
+    return Math.abs(Math.hypot(px - s.x, py - s.y) - s.r) < tol;
+  }
+  return false;
+}
+
+function distToSeg(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+function moveShape(s, dx, dy) {
+  if (s.x1 !== undefined) { s.x1 += dx; s.y1 += dy; s.x2 += dx; s.y2 += dy; }
+  if (s.cx !== undefined) { s.cx += dx; s.cy += dy; }
+  else if (s.x !== undefined && s.x1 === undefined) { s.x += dx; s.y += dy; }
+  if (s.tipX !== undefined) { s.tipX += dx; s.tipY += dy; }
+}
+
+function scaleShape(s, factor) {
+  if (s.x1 !== undefined) {
+    const cx = (s.x1 + s.x2) / 2, cy = (s.y1 + s.y2) / 2;
+    s.x1 = cx + (s.x1 - cx) * factor;
+    s.y1 = cy + (s.y1 - cy) * factor;
+    s.x2 = cx + (s.x2 - cx) * factor;
+    s.y2 = cy + (s.y2 - cy) * factor;
+    if (s.cx !== undefined) {
+      s.cx = cx + (s.cx - cx) * factor;
+      s.cy = cy + (s.cy - cy) * factor;
+    }
+  } else if (s.w !== undefined) {
+    const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+    s.w *= factor; s.h *= factor;
+    s.x = cx - s.w / 2; s.y = cy - s.h / 2;
+    if (s.tipX !== undefined) {
+      s.tipX = cx + (s.tipX - cx) * factor;
+      s.tipY = cy + (s.tipY - cy) * factor;
+    }
+  } else if (s.r !== undefined) {
+    s.r = Math.max(2, s.r * factor);
+  }
+  if (s.lineWidth !== undefined && s.type !== 'mosaic') {
+    s.lineWidth = Math.max(1, Math.min(20, s.lineWidth * factor));
+  }
+  // Scale font size for text-type shapes
+  if (s.fontSize !== undefined) {
+    s.fontSize = Math.max(8, Math.min(72, s.fontSize * factor));
+  }
+}
+
+function onAnnotWheel(e) {
+  if (annotState.tool !== 'move' || annotState.movingShapeIdx < 0) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  scaleShape(annotState.shapes[annotState.movingShapeIdx], factor);
+  drawCanvas();
+}
+
+function getShapeCenter(s) {
+  if (s.x1 !== undefined) return { x: (s.x1 + s.x2) / 2, y: (s.y1 + s.y2) / 2 };
+  if (s.w !== undefined) return { x: s.x + s.w / 2, y: s.y + s.h / 2 };
+  if (s.r !== undefined) return { x: s.x, y: s.y };
+  if (s.x !== undefined) return { x: s.x, y: s.y };
+  return { x: 0, y: 0 };
+}
+
+function rotateShape(s, deltaDeg) {
+  s.rotation = (s.rotation || 0) + deltaDeg;
+}
+
+function rotateSelected(deltaDeg) {
+  if (annotState.tool !== 'move' || annotState.movingShapeIdx < 0) {
+    showToast('请先用移动工具选中标注', 'info');
+    return;
+  }
+  const s = annotState.shapes[annotState.movingShapeIdx];
+  if (s.type === 'mosaic') {
+    showToast('马赛克不支持旋转', 'info');
+    return;
+  }
+  rotateShape(s, deltaDeg);
+  drawCanvas();
+  const deg = ((s.rotation % 360) + 360) % 360;
+  showToast(`已旋转至 ${Math.round(deg)}°`, 'success');
+}
+
+function insertImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const cw = annotState.canvas.width, ch = annotState.canvas.height;
+      let w = img.width, h = img.height;
+      const maxDim = Math.min(cw, ch) * 0.4;
+      const ratio = Math.min(maxDim / w, maxDim / h, 1);
+      w = Math.round(w * ratio); h = Math.round(h * ratio);
+      annotState.shapes.push({type:'image', img, x:(cw-w)/2, y:(ch-h)/2, w, h});
+      drawCanvas();
+      showToast('图片已插入，切换到移动工具后可拖动、滚轮缩放、方向键旋转', 'success');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function getShapeBounds(s) {
+  if (s.type === 'curve' || s.type === 'curveDashed' || s.type === 'curveSolid') {
+    const minX = Math.min(s.x1, s.x2, s.cx) - 4;
+    const minY = Math.min(s.y1, s.y2, s.cy) - 4;
+    const maxX = Math.max(s.x1, s.x2, s.cx) + 4;
+    const maxY = Math.max(s.y1, s.y2, s.cy) + 4;
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+  if (s.x1 !== undefined) {
+    return { x: Math.min(s.x1, s.x2) - 4, y: Math.min(s.y1, s.y2) - 4, w: Math.abs(s.x2 - s.x1) + 8, h: Math.abs(s.y2 - s.y1) + 8 };
+  }
+  if (s.w !== undefined) {
+    return { x: Math.min(s.x, s.x + s.w) - 4, y: Math.min(s.y, s.y + s.h) - 4, w: Math.abs(s.w) + 8, h: Math.abs(s.h) + 8 };
+  }
+  if (s.r !== undefined) {
+    return { x: s.x - s.r - 4, y: s.y - s.r - 4, w: s.r * 2 + 8, h: s.r * 2 + 8 };
+  }
+  return null;
+}
+
+function onAnnotMouseDown(e) {
+  if (!annotState.canvas) return;
+  const pos = getCanvasPos(e);
+  if (annotState.tool === 'move') {
+    // Check if clicking on a curve control point first
+    if (annotState.movingShapeIdx >= 0) {
+      const sel = annotState.shapes[annotState.movingShapeIdx];
+      if (sel && (sel.type === 'curve' || sel.type === 'curveDashed' || sel.type === 'curveSolid')) {
+        const d = Math.hypot(pos.x - sel.cx, pos.y - sel.cy);
+        if (d <= 10) {
+          annotState.isAdjustingCurve = true;
+          drawCanvas();
+          return;
+        }
+      }
+    }
+    // Find topmost shape under cursor
+    for (let i = annotState.shapes.length - 1; i >= 0; i--) {
+      if (hitTestShape(annotState.shapes[i], pos.x, pos.y)) {
+        const s = annotState.shapes[i];
+        // Manual double-click detection for text/textBox editing
+        if ((s.type === 'textBox' || s.type === 'text' || s.type === 'strikeText' || s.type === 'callout') && annotState.lastClickInfo) {
+          const info = annotState.lastClickInfo;
+          const now = Date.now();
+          if (info.idx === i && (now - info.time) < 400) {
+            // Double-click detected - enter edit mode
+            annotState.lastClickInfo = null;
+            annotState.movingShapeIdx = i;
+            annotState.isMoving = false;
+            startTextEdit(s);
+            return;
+          }
+        }
+        // Record this click for double-click detection
+        annotState.lastClickInfo = { idx: i, time: Date.now() };
+        annotState.movingShapeIdx = i;
+        annotState.isMoving = true;
+        annotState.moveLastX = pos.x;
+        annotState.moveLastY = pos.y;
+        drawCanvas();
+        return;
+      }
+    }
+    annotState.movingShapeIdx = -1;
+    annotState.lastClickInfo = null;
+    drawCanvas();
+    return;
+  }
+  if (annotState.tool === 'callout') {
+    annotState.isDrawing = true;
+    annotState.startX = pos.x;
+    annotState.startY = pos.y;
+    return;
+  }
+  annotState.isDrawing = true;
+  annotState.startX = pos.x;
+  annotState.startY = pos.y;
+}
+
+function startTextEdit(s) {
+  const wrap = document.getElementById('annotCanvasWrap');
+  const canvas = annotState.canvas;
+  const wrapRect = wrap.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const offsetX = canvasRect.left - wrapRect.left;
+  const offsetY = canvasRect.top - wrapRect.top;
+  const x = Math.min(s.x, s.x + s.w), y = Math.min(s.y, s.y + s.h);
+  const w = Math.abs(s.w), h = Math.abs(s.h);
+  // Remove any existing edit textarea
+  const oldTa = document.getElementById('annotEditText');
+  if (oldTa) oldTa.remove();
+  const ta = document.createElement('textarea');
+  ta.id = 'annotEditText';
+  ta.style.position = 'absolute';
+  ta.style.left = (offsetX + x) + 'px';
+  ta.style.top = (offsetY + y) + 'px';
+  ta.style.width = Math.max(w, 40) + 'px';
+  ta.style.height = Math.max(h, 24) + 'px';
+  ta.style.border = '2px solid #1a56db';
+  ta.style.background = '#fff';
+  ta.style.color = '#000';
+  ta.style.fontSize = '13px';
+  ta.style.textAlign = 'center';
+  ta.style.resize = 'none';
+  ta.style.padding = '4px';
+  ta.style.zIndex = '100';
+  ta.style.outline = 'none';
+  ta.style.boxSizing = 'border-box';
+  ta.style.cursor = 'text';
+  ta.value = s.text || '';
+  wrap.appendChild(ta);
+  // Focus after a short delay to ensure rendering
+  setTimeout(() => { ta.focus(); ta.select(); }, 50);
+  let closed = false;
+  const close = (save) => {
+    if (closed) return;
+    closed = true;
+    if (save) s.text = ta.value;
+    ta.remove();
+    drawCanvas();
+  };
+  // Delay blur attachment to avoid immediate trigger
+  setTimeout(() => {
+    if (!closed) ta.addEventListener('blur', () => close(true));
+  }, 150);
+  ta.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') { ev.preventDefault(); close(false); }
+    if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); close(true); }
+  });
+  ta.addEventListener('mousedown', (ev) => ev.stopPropagation());
+}
+
+function onAnnotDoubleClick(e) {
+  // Fallback: if browser dblclick fires, also try to edit
+  if (annotState.tool !== 'move') return;
+  // Check if textarea already exists (manual double-click already handled it)
+  if (document.getElementById('annotEditText')) return;
+  const pos = getCanvasPos(e);
+  for (let i = annotState.shapes.length - 1; i >= 0; i--) {
+    const s = annotState.shapes[i];
+    if ((s.type === 'textBox' || s.type === 'text' || s.type === 'strikeText' || s.type === 'callout') && hitTestShape(s, pos.x, pos.y)) {
+      annotState.movingShapeIdx = i;
+      annotState.isMoving = false;
+      startTextEdit(s);
+      return;
+    }
+  }
+}
+
+function onAnnotMouseMove(e) {
+  if (!annotState.canvas) return;
+  const pos = getCanvasPos(e);
+  if (annotState.tool === 'move' && annotState.isAdjustingCurve && annotState.movingShapeIdx >= 0) {
+    const s = annotState.shapes[annotState.movingShapeIdx];
+    s.cx = pos.x;
+    s.cy = pos.y;
+    drawCanvas();
+    return;
+  }
+  if (annotState.tool === 'move' && annotState.isMoving && annotState.movingShapeIdx >= 0) {
+    const dx = pos.x - annotState.moveLastX;
+    const dy = pos.y - annotState.moveLastY;
+    moveShape(annotState.shapes[annotState.movingShapeIdx], dx, dy);
+    annotState.moveLastX = pos.x;
+    annotState.moveLastY = pos.y;
+    drawCanvas();
+    return;
+  }
+  if (!annotState.isDrawing) return;
+  drawCanvas();
+  const ctx = annotState.ctx;
+  ctx.strokeStyle = annotState.color;
+  ctx.fillStyle = annotState.color;
+  ctx.lineWidth = annotState.lineWidth;
+  if (annotState.tool === 'arrow') drawArrow(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'dashSingle') drawDashedLine(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'dashDouble') drawDoubleDashedLine(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'doubleSolid') drawDoubleSolidLine(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'solidLine') drawSingleSolidLine(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'xLine') drawXLine(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'curve') {
+    const cp = getDefaultCurveCP(annotState.startX, annotState.startY, pos.x, pos.y);
+    drawCurveLine(ctx, annotState.startX, annotState.startY, cp.cx, cp.cy, pos.x, pos.y);
+  }
+  else if (annotState.tool === 'curveDashed') {
+    const cp = getDefaultCurveCP(annotState.startX, annotState.startY, pos.x, pos.y);
+    drawCurveSimple(ctx, annotState.startX, annotState.startY, cp.cx, cp.cy, pos.x, pos.y, true);
+  }
+  else if (annotState.tool === 'curveSolid') {
+    const cp = getDefaultCurveCP(annotState.startX, annotState.startY, pos.x, pos.y);
+    drawCurveSimple(ctx, annotState.startX, annotState.startY, cp.cx, cp.cy, pos.x, pos.y, false);
+  }
+  else if (annotState.tool === 'fillRect') drawFillRect(ctx, annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY, annotState.color, annotState.lineWidth);
+  else if (annotState.tool === 'dashRect') drawDashedRect(ctx, annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY);
+  else if (annotState.tool === 'dimLine') drawDimLine(ctx, annotState.startX, annotState.startY, pos.x, pos.y);
+  else if (annotState.tool === 'rect') ctx.strokeRect(annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY);
+  else if (annotState.tool === 'circle') {
+    const r = Math.hypot(pos.x - annotState.startX, pos.y - annotState.startY);
+    ctx.beginPath(); ctx.arc(annotState.startX, annotState.startY, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  else if (annotState.tool === 'mosaic') {
+    ctx.save(); ctx.strokeStyle = '#666'; ctx.setLineDash([5, 3]); ctx.lineWidth = 1;
+    ctx.strokeRect(annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY);
+    ctx.restore();
+  }
+  else if (annotState.tool === 'textBox') {
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = annotState.lineWidth;
+    ctx.strokeRect(annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY);
+    ctx.restore();
+  }
+  else if (annotState.tool === 'text' || annotState.tool === 'strikeText') {
+    ctx.save();
+    ctx.strokeStyle = '#999';
+    ctx.setLineDash([5, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(annotState.startX, annotState.startY, pos.x - annotState.startX, pos.y - annotState.startY);
+    ctx.restore();
+  }
+  else if (annotState.tool === 'callout') {
+    const bw = 120, bh = 50;
+    drawCallout(ctx, {
+      type: 'callout', tipX: annotState.startX, tipY: annotState.startY,
+      x: pos.x - bw / 2, y: pos.y - bh / 2, w: bw, h: bh,
+      text: '', color: annotState.color, lineWidth: annotState.lineWidth, fontSize: 13
+    });
+  }
+}
+
+function onAnnotMouseUp(e) {
+  if (annotState.tool === 'move') {
+    annotState.isMoving = false;
+    annotState.isAdjustingCurve = false;
+    return;
+  }
+  if (!annotState.isDrawing) return;
+  annotState.isDrawing = false;
+  const pos = getCanvasPos(e);
+  if (annotState.tool === 'arrow') {
+    annotState.shapes.push({type:'arrow', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'dashSingle') {
+    annotState.shapes.push({type:'dashSingle', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'dashDouble') {
+    annotState.shapes.push({type:'dashDouble', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'doubleSolid') {
+    annotState.shapes.push({type:'doubleSolid', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'solidLine') {
+    annotState.shapes.push({type:'solidLine', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'xLine') {
+    annotState.shapes.push({type:'xLine', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'curve') {
+    const cp = getDefaultCurveCP(annotState.startX, annotState.startY, pos.x, pos.y);
+    annotState.shapes.push({type:'curve', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, cx:cp.cx, cy:cp.cy, color:annotState.color, lineWidth:annotState.lineWidth});
+    showToast('弧长已绘制，拖动蓝色圆点可调整弧度', 'success');
+    autoSwitchToMove();
+  } else if (annotState.tool === 'curveDashed') {
+    const cp = getDefaultCurveCP(annotState.startX, annotState.startY, pos.x, pos.y);
+    annotState.shapes.push({type:'curveDashed', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, cx:cp.cx, cy:cp.cy, color:annotState.color, lineWidth:annotState.lineWidth});
+    showToast('弯曲虚线已绘制，拖动蓝色圆点可调整弧度', 'success');
+    autoSwitchToMove();
+  } else if (annotState.tool === 'curveSolid') {
+    const cp = getDefaultCurveCP(annotState.startX, annotState.startY, pos.x, pos.y);
+    annotState.shapes.push({type:'curveSolid', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, cx:cp.cx, cy:cp.cy, color:annotState.color, lineWidth:annotState.lineWidth});
+    showToast('弯曲实线已绘制，拖动蓝色圆点可调整弧度', 'success');
+    autoSwitchToMove();
+  } else if (annotState.tool === 'fillRect') {
+    annotState.shapes.push({type:'fillRect', x:annotState.startX, y:annotState.startY, w:pos.x-annotState.startX, h:pos.y-annotState.startY, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'dashRect') {
+    annotState.shapes.push({type:'dashRect', x:annotState.startX, y:annotState.startY, w:pos.x-annotState.startX, h:pos.y-annotState.startY, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'dimLine') {
+    annotState.shapes.push({type:'dimLine', x1:annotState.startX, y1:annotState.startY, x2:pos.x, y2:pos.y, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'rect') {
+    annotState.shapes.push({type:'rect', x:annotState.startX, y:annotState.startY, w:pos.x-annotState.startX, h:pos.y-annotState.startY, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'circle') {
+    const r = Math.hypot(pos.x - annotState.startX, pos.y - annotState.startY);
+    annotState.shapes.push({type:'circle', x:annotState.startX, y:annotState.startY, r, color:annotState.color, lineWidth:annotState.lineWidth});
+  } else if (annotState.tool === 'mosaic') {
+    const bs = Math.max(4, annotState.lineWidth * 3);
+    annotState.shapes.push({type:'mosaic', x:annotState.startX, y:annotState.startY, w:pos.x-annotState.startX, h:pos.y-annotState.startY, blockSize:bs});
+  } else if (annotState.tool === 'textBox') {
+    const w = pos.x - annotState.startX, h = pos.y - annotState.startY;
+    if (Math.abs(w) > 10 && Math.abs(h) > 10) {
+      annotState.shapes.push({type:'textBox', x:annotState.startX, y:annotState.startY, w, h, text:'', color:'#000', lineWidth:annotState.lineWidth, fontSize:13});
+      showToast('文本框已创建，已切换至移动工具，双击框内可输入文字', 'success');
+      autoSwitchToMove();
+    }
+  } else if (annotState.tool === 'text') {
+    const w = pos.x - annotState.startX, h = pos.y - annotState.startY;
+    if (Math.abs(w) > 10 && Math.abs(h) > 10) {
+      annotState.shapes.push({type:'text', x:annotState.startX, y:annotState.startY, w, h, text:'', color:annotState.color, lineWidth:annotState.lineWidth, fontSize:13});
+      showToast('文字框已创建，已切换至移动工具，双击框内可输入文字', 'success');
+      autoSwitchToMove();
+    }
+  } else if (annotState.tool === 'strikeText') {
+    const w = pos.x - annotState.startX, h = pos.y - annotState.startY;
+    if (Math.abs(w) > 10 && Math.abs(h) > 10) {
+      annotState.shapes.push({type:'strikeText', x:annotState.startX, y:annotState.startY, w, h, text:'', color:annotState.color, lineWidth:annotState.lineWidth, fontSize:13});
+      showToast('划线文字已创建，已切换至移动工具，双击框内可输入文字', 'success');
+      autoSwitchToMove();
+    }
+  } else if (annotState.tool === 'callout') {
+    const bw = 120, bh = 50;
+    annotState.shapes.push({
+      type: 'callout', tipX: annotState.startX, tipY: annotState.startY,
+      x: pos.x - bw / 2, y: pos.y - bh / 2, w: bw, h: bh,
+      text: '', color: annotState.color, lineWidth: annotState.lineWidth, fontSize: 13
+    });
+    showToast('标注气泡已创建，双击气泡内可输入文字', 'success');
+    autoSwitchToMove();
+  }
+  drawCanvas();
+}
+
+function drawArrow(ctx, x1, y1, x2, y2) {
+  const headLen = 12 + annotState.lineWidth * 2;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI/6), y2 - headLen * Math.sin(angle - Math.PI/6));
+  ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI/6), y2 - headLen * Math.sin(angle + Math.PI/6));
+  ctx.closePath(); ctx.fill();
+}
+
+function drawDashedLine(ctx, x1, y1, x2, y2) {
+  ctx.save();
+  ctx.setLineDash([8, 4]);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawDoubleDashedLine(ctx, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const offset = 2 + annotState.lineWidth * 0.5;
+  const nx = -dy / len * offset;
+  const ny = dx / len * offset;
+  ctx.save();
+  ctx.setLineDash([8, 4]);
+  ctx.beginPath(); ctx.moveTo(x1 + nx, y1 + ny); ctx.lineTo(x2 + nx, y2 + ny); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1 - nx, y1 - ny); ctx.lineTo(x2 - nx, y2 - ny); ctx.stroke();
+  ctx.restore();
+}
+
+function drawFillRect(ctx, x, y, w, h, color, lineWidth) {
+  const rx = Math.min(x, x + w), ry = Math.min(y, y + h);
+  const rw = Math.abs(w), rh = Math.abs(h);
+  ctx.save();
+  // Semi-transparent fill
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = color || '#000';
+  ctx.fillRect(rx, ry, rw, rh);
+  // Solid border
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = color || '#000';
+  ctx.lineWidth = lineWidth || 2;
+  ctx.strokeRect(rx, ry, rw, rh);
+  ctx.restore();
+}
+
+function drawCallout(ctx, s) {
+  const bx = Math.min(s.x, s.x + s.w), by = Math.min(s.y, s.y + s.h);
+  const bw = Math.abs(s.w), bh = Math.abs(s.h);
+  const r = Math.min(10, bw / 4, bh / 4);
+  const cx = bx + bw / 2, cy = by + bh / 2;
+  // Determine which edge the tip connects to
+  const dx = s.tipX - cx, dy = s.tipY - cy;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  let connX, connY, connSide;
+  if (adx > ady) {
+    if (dx > 0) { connX = bx + bw; connY = cy; connSide = 'right'; }
+    else { connX = bx; connY = cy; connSide = 'left'; }
+  } else {
+    if (dy > 0) { connX = cx; connY = by + bh; connSide = 'bottom'; }
+    else { connX = cx; connY = by; connSide = 'top'; }
+  }
+  const baseW = Math.min(20, bw * 0.3, bh * 0.3);
+  const col = s.color || '#ff0000';
+  ctx.save();
+  ctx.beginPath();
+  // Build rounded rect path, inserting triangle at connection side
+  ctx.moveTo(bx + r, by);
+  // Top edge
+  if (connSide === 'top') {
+    ctx.lineTo(connX - baseW / 2, by);
+    ctx.lineTo(s.tipX, s.tipY);
+    ctx.lineTo(connX + baseW / 2, by);
+  }
+  ctx.lineTo(bx + bw - r, by);
+  ctx.arcTo(bx + bw, by, bx + bw, by + r, r);
+  // Right edge
+  if (connSide === 'right') {
+    ctx.lineTo(bx + bw, connY - baseW / 2);
+    ctx.lineTo(s.tipX, s.tipY);
+    ctx.lineTo(bx + bw, connY + baseW / 2);
+  }
+  ctx.lineTo(bx + bw, by + bh - r);
+  ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
+  // Bottom edge (right to left)
+  if (connSide === 'bottom') {
+    ctx.lineTo(connX + baseW / 2, by + bh);
+    ctx.lineTo(s.tipX, s.tipY);
+    ctx.lineTo(connX - baseW / 2, by + bh);
+  }
+  ctx.lineTo(bx + r, by + bh);
+  ctx.arcTo(bx, by + bh, bx, by + bh - r, r);
+  // Left edge (bottom to top)
+  if (connSide === 'left') {
+    ctx.lineTo(bx, connY + baseW / 2);
+    ctx.lineTo(s.tipX, s.tipY);
+    ctx.lineTo(bx, connY - baseW / 2);
+  }
+  ctx.lineTo(bx, by + r);
+  ctx.arcTo(bx, by, bx + r, by, r);
+  ctx.closePath();
+  // White fill
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  // Colored border
+  ctx.strokeStyle = col;
+  ctx.lineWidth = s.lineWidth || 2;
+  ctx.stroke();
+  // Text
+  if (s.text) {
+    const fontSize = s.fontSize || 13;
+    ctx.font = `${fontSize}px Arial`;
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lines = s.text.split('\n');
+    const lineHeight = fontSize * 1.3;
+    const startY = cy - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((line, i) => { ctx.fillText(line, cx, startY + i * lineHeight); });
+  } else {
+    ctx.fillStyle = '#ccc';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('双击输入文字', cx, cy);
+  }
+  ctx.restore();
+}
+
+function drawCurveSimple(ctx, x1, y1, cx, cy, x2, y2, dashed) {
+  ctx.save();
+  if (dashed) ctx.setLineDash([8, 4]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cx, cy, x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawTextInBox(ctx, s) {
+  const x = Math.min(s.x, s.x + s.w), y = Math.min(s.y, s.y + s.h);
+  const w = Math.abs(s.w), h = Math.abs(s.h);
+  ctx.save();
+  if (s.text) {
+    const fontSize = s.fontSize || 13;
+    ctx.fillStyle = s.color || '#000';
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lines = s.text.split('\n');
+    const lineHeight = fontSize * 1.3;
+    const startY = y + h / 2 - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, x + w / 2, startY + i * lineHeight);
+    });
+  } else {
+    // Show faint dashed placeholder when empty
+    ctx.strokeStyle = '#ccc';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+  }
+  ctx.restore();
+}
+
+function drawTextBox(ctx, s) {
+  const x = Math.min(s.x, s.x + s.w), y = Math.min(s.y, s.y + s.h);
+  const w = Math.abs(s.w), h = Math.abs(s.h);
+  ctx.save();
+  // White fill
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, w, h);
+  // Black border
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = s.lineWidth || 2;
+  ctx.strokeRect(x, y, w, h);
+  // Text inside
+  if (s.text) {
+    const fontSize = s.fontSize || 13;
+    ctx.fillStyle = '#000000';
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Wrap text
+    const lines = s.text.split('\n');
+    const lineHeight = fontSize * 1.3;
+    const startY = y + h / 2 - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, x + w / 2, startY + i * lineHeight);
+    });
+  }
+  ctx.restore();
+}
+
+function drawDashedRect(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.setLineDash([8, 4]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+
+function drawDimLine(ctx, x1, y1, x2, y2) {
+  const headLen = 10 + annotState.lineWidth * 2;
+  const tickLen = 8 + annotState.lineWidth;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  // Main line
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  // Arrow at end (x2,y2) pointing outward
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI/6), y2 - headLen * Math.sin(angle - Math.PI/6));
+  ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI/6), y2 - headLen * Math.sin(angle + Math.PI/6));
+  ctx.closePath(); ctx.fill();
+  // Arrow at start (x1,y1) pointing outward (opposite direction)
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 + headLen * Math.cos(angle - Math.PI/6), y1 + headLen * Math.sin(angle - Math.PI/6));
+  ctx.lineTo(x1 + headLen * Math.cos(angle + Math.PI/6), y1 + headLen * Math.sin(angle + Math.PI/6));
+  ctx.closePath(); ctx.fill();
+  // Vertical tick marks at both ends (perpendicular)
+  const perpAngle = angle + Math.PI / 2;
+  const tx = Math.cos(perpAngle) * tickLen;
+  const ty = Math.sin(perpAngle) * tickLen;
+  ctx.beginPath();
+  ctx.moveTo(x1 - tx, y1 - ty); ctx.lineTo(x1 + tx, y1 + ty);
+  ctx.moveTo(x2 - tx, y2 - ty); ctx.lineTo(x2 + tx, y2 + ty);
+  ctx.stroke();
+}
+
+function drawDoubleSolidLine(ctx, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const offset = 2 + annotState.lineWidth * 0.5;
+  const nx = -dy / len * offset;
+  const ny = dx / len * offset;
+  ctx.beginPath(); ctx.moveTo(x1 + nx, y1 + ny); ctx.lineTo(x2 + nx, y2 + ny); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1 - nx, y1 - ny); ctx.lineTo(x2 - nx, y2 - ny); ctx.stroke();
+}
+
+function drawSingleSolidLine(ctx, x1, y1, x2, y2) {
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+function drawXLine(ctx, x1, y1, x2, y2) {
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  ctx.beginPath(); ctx.moveTo(minX, minY); ctx.lineTo(maxX, maxY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(minX, maxY); ctx.lineTo(maxX, minY); ctx.stroke();
+}
+
+function getDefaultCurveCP(x1, y1, x2, y2) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return { cx: mx, cy: my };
+  const offset = len * 0.25;
+  return { cx: mx - dy / len * offset, cy: my + dx / len * offset };
+}
+
+function drawCurveLine(ctx, x1, y1, cx, cy, x2, y2) {
+  const headLen = 10 + annotState.lineWidth * 2;
+  const tickLen = 8 + annotState.lineWidth;
+  // Curve
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cx, cy, x2, y2);
+  ctx.stroke();
+  // Tangent at start: direction from start toward control point (inward)
+  const ang1 = Math.atan2(cy - y1, cx - x1);
+  // Tangent at end: direction from end toward control point (inward)
+  const ang2 = Math.atan2(cy - y2, cx - x2);
+  // Arrow at start (pointing inward)
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 + headLen * Math.cos(ang1 - Math.PI/6), y1 + headLen * Math.sin(ang1 - Math.PI/6));
+  ctx.lineTo(x1 + headLen * Math.cos(ang1 + Math.PI/6), y1 + headLen * Math.sin(ang1 + Math.PI/6));
+  ctx.closePath(); ctx.fill();
+  // Arrow at end (pointing inward)
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 + headLen * Math.cos(ang2 - Math.PI/6), y2 + headLen * Math.sin(ang2 - Math.PI/6));
+  ctx.lineTo(x2 + headLen * Math.cos(ang2 + Math.PI/6), y2 + headLen * Math.sin(ang2 + Math.PI/6));
+  ctx.closePath(); ctx.fill();
+  // Vertical tick marks at both ends (perpendicular to tangent)
+  const perp1 = ang1 + Math.PI / 2;
+  const t1x = Math.cos(perp1) * tickLen, t1y = Math.sin(perp1) * tickLen;
+  ctx.beginPath();
+  ctx.moveTo(x1 - t1x, y1 - t1y); ctx.lineTo(x1 + t1x, y1 + t1y);
+  const perp2 = ang2 + Math.PI / 2;
+  const t2x = Math.cos(perp2) * tickLen, t2y = Math.sin(perp2) * tickLen;
+  ctx.moveTo(x2 - t2x, y2 - t2y); ctx.lineTo(x2 + t2x, y2 + t2y);
+  ctx.stroke();
+}
+
+function drawStrikeText(ctx, s) {
+  const x = Math.min(s.x, s.x + s.w), y = Math.min(s.y, s.y + s.h);
+  const w = Math.abs(s.w), h = Math.abs(s.h);
+  ctx.save();
+  if (s.text) {
+    const fontSize = s.fontSize || 13;
+    ctx.font = `${fontSize}px Arial`;
+    ctx.fillStyle = s.color || '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lines = s.text.split('\n');
+    const lineHeight = fontSize * 1.3;
+    const startY = y + h / 2 - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((line, i) => {
+      const ly = startY + i * lineHeight;
+      ctx.fillText(line, x + w / 2, ly);
+      // Strikethrough line through text center
+      const metrics = ctx.measureText(line);
+      ctx.strokeStyle = s.color || '#000';
+      ctx.lineWidth = Math.max(1, fontSize / 6);
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2 - metrics.width / 2, ly);
+      ctx.lineTo(x + w / 2 + metrics.width / 2, ly);
+      ctx.stroke();
+    });
+  } else {
+    ctx.strokeStyle = '#ccc';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+  }
+  ctx.restore();
+}
+
+function drawMosaic(ctx, x, y, w, h, blockSize) {
+  if (w < 0) { x += w; w = -w; }
+  if (h < 0) { y += h; h = -h; }
+  x = Math.max(0, Math.floor(x));
+  y = Math.max(0, Math.floor(y));
+  w = Math.min(annotState.canvas.width - x, Math.floor(w));
+  h = Math.min(annotState.canvas.height - y, Math.floor(h));
+  if (w <= 0 || h <= 0) return;
+  const bs = Math.max(2, blockSize);
+  for (let by = 0; by < h; by += bs) {
+    for (let bx = 0; bx < w; bx += bs) {
+      const bw = Math.min(bs, w - bx);
+      const bh = Math.min(bs, h - by);
+      const data = ctx.getImageData(x + bx, y + by, bw, bh).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; count++; }
+      ctx.fillStyle = `rgb(${Math.round(r/count)},${Math.round(g/count)},${Math.round(b/count)})`;
+      ctx.fillRect(x + bx, y + by, bw, bh);
+    }
+  }
+}
+
+function drawCanvas() {
+  if (!annotState.ctx || !annotState.canvas) return;
+  const ctx = annotState.ctx;
+  ctx.clearRect(0, 0, annotState.canvas.width, annotState.canvas.height);
+  // Fill white background
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, annotState.canvas.width, annotState.canvas.height);
+  annotState.shapes.forEach(s => {
+    ctx.save();
+    // Apply rotation if any
+    const rot = s.rotation || 0;
+    if (rot !== 0 && s.type !== 'mosaic') {
+      const c = getShapeCenter(s);
+      ctx.translate(c.x, c.y);
+      ctx.rotate(rot * Math.PI / 180);
+      ctx.translate(-c.x, -c.y);
+    }
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color; ctx.lineWidth = s.lineWidth;
+    if (s.type === 'arrow') drawArrow(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'dashSingle') drawDashedLine(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'dashDouble') drawDoubleDashedLine(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'doubleSolid') drawDoubleSolidLine(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'solidLine') drawSingleSolidLine(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'xLine') drawXLine(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'curve') drawCurveLine(ctx, s.x1, s.y1, s.cx, s.cy, s.x2, s.y2);
+    else if (s.type === 'curveDashed') drawCurveSimple(ctx, s.x1, s.y1, s.cx, s.cy, s.x2, s.y2, true);
+    else if (s.type === 'curveSolid') drawCurveSimple(ctx, s.x1, s.y1, s.cx, s.cy, s.x2, s.y2, false);
+    else if (s.type === 'fillRect') drawFillRect(ctx, s.x, s.y, s.w, s.h, s.color, s.lineWidth);
+    else if (s.type === 'dashRect') drawDashedRect(ctx, s.x, s.y, s.w, s.h);
+    else if (s.type === 'dimLine') drawDimLine(ctx, s.x1, s.y1, s.x2, s.y2);
+    else if (s.type === 'text') drawTextInBox(ctx, s);
+    else if (s.type === 'strikeText') drawStrikeText(ctx, s);
+    else if (s.type === 'textBox') drawTextBox(ctx, s);
+    else if (s.type === 'callout') drawCallout(ctx, s);
+    else if (s.type === 'rect') ctx.strokeRect(s.x, s.y, s.w, s.h);
+    else if (s.type === 'circle') { ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.stroke(); }
+    else if (s.type === 'mosaic') drawMosaic(ctx, s.x, s.y, s.w, s.h, s.blockSize);
+    else if (s.type === 'image' && s.img) ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
+    ctx.restore();
+  });
+  // Selection indicator for move tool
+  if (annotState.tool === 'move' && annotState.movingShapeIdx >= 0) {
+    const s = annotState.shapes[annotState.movingShapeIdx];
+    const b = getShapeBounds(s);
+    if (b) {
+      ctx.save();
+      // Apply same rotation as shape for selection box
+      const rot = s.rotation || 0;
+      if (rot !== 0 && s.type !== 'mosaic') {
+        const c = getShapeCenter(s);
+        ctx.translate(c.x, c.y);
+        ctx.rotate(rot * Math.PI / 180);
+        ctx.translate(-c.x, -c.y);
+      }
+      ctx.strokeStyle = '#1a56db';
+      ctx.setLineDash([5, 3]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.restore();
+      // Draw control point handle for curves
+      if (s.type === 'curve' || s.type === 'curveDashed' || s.type === 'curveSolid') {
+        ctx.save();
+        // Draw dashed line from midpoint to control point
+        const mx = (s.x1 + s.x2) / 2, my = (s.y1 + s.y2) / 2;
+        ctx.strokeStyle = '#1a56db';
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(s.cx, s.cy); ctx.stroke();
+        // Draw control point circle
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#1a56db';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(s.cx, s.cy, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+}
+
+function undoAnnot() {
+  if (annotState.shapes.length === 0) { showToast('没有可撤销的标注', 'info'); return; }
+  annotState.shapes.pop();
+  drawCanvas();
+  showToast('已撤销', 'info');
+}
+function clearAnnot() {
+  if (annotState.shapes.length === 0) { showToast('没有可清除的标注', 'info'); return; }
+  annotState.shapes = [];
+  drawCanvas();
+  showToast('已清除所有标注', 'info');
+}
+
+function saveAnnotImage() {
+  if (!annotState.canvas) { showToast('请先上传图片', 'error'); return; }
+  const dataUrl = annotState.canvas.toDataURL('image/png');
+  const cid = annotState.editingCommentId;
+  const idx = annotState.editingImageIdx;
+  const c = comments.find(c => c.id === cid);
+  if (c) {
+    if (idx >= 0) {
+      const existing = c.images[idx];
+      const psize = imgPrintSize(existing);
+      c.images[idx] = { src: dataUrl, printSize: psize };
+    } else {
+      c.images.push({ src: dataUrl, printSize: 'full' });
+    }
+    renderComments();
+  }
+  closeAnnotModal();
+  showToast('图片标注已保存', 'success');
+}
+
+document.getElementById('annotColor').addEventListener('input', (e) => { annotState.color = e.target.value; });
+document.getElementById('annotLineWidth').addEventListener('input', (e) => { annotState.lineWidth = parseInt(e.target.value); });
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('annotModal').classList.contains('show')) return;
+  // Don't interfere with textarea editing
+  if (document.getElementById('annotEditText')) return;
+  if (annotState.tool !== 'move' || annotState.movingShapeIdx < 0) return;
+  const sel = annotState.shapes[annotState.movingShapeIdx];
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    annotState.shapes.splice(annotState.movingShapeIdx, 1);
+    annotState.movingShapeIdx = -1;
+    drawCanvas();
+    showToast('已删除选中标注', 'success');
+  } else if (e.key === '+' || e.key === '=') {
+    e.preventDefault();
+    scaleShape(sel, 1.15);
+    drawCanvas();
+  } else if (e.key === '-' || e.key === '_') {
+    e.preventDefault();
+    scaleShape(sel, 0.85);
+    drawCanvas();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    rotateSelected(e.shiftKey ? -1 : -15);
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    rotateSelected(e.shiftKey ? 1 : 15);
+  } else if (e.key === '[' && sel.fontSize !== undefined) {
+    // Decrease font size only (text/textBox/strikeText)
+    e.preventDefault();
+    sel.fontSize = Math.max(8, sel.fontSize - 1);
+    drawCanvas();
+    showToast(`字号: ${sel.fontSize}px`, 'info');
+  } else if (e.key === ']' && sel.fontSize !== undefined) {
+    // Increase font size only (text/textBox/strikeText)
+    e.preventDefault();
+    sel.fontSize = Math.min(72, sel.fontSize + 1);
+    drawCanvas();
+    showToast(`字号: ${sel.fontSize}px`, 'info');
+  }
+});
+
+// ==================== Records (Save / Edit / Delete / Search) ====================
+function saveRecord() {
+  const isEditing = !!editingRecordId;
+  const record = {
+    id: editingRecordId || ('r' + Date.now()),
+    date: document.getElementById('h-date').value,
+    deadline: document.getElementById('h-deadline').value,
+    style: document.getElementById('h-style').value,
+    order: document.getElementById('h-order').value,
+    product: document.getElementById('h-product').value,
+    size: document.getElementById('h-size').value,
+    qty: document.getElementById('h-qty').value,
+    factory: document.getElementById('h-factory').value,
+    type: document.getElementById('h-type').value,
+    materials: collectMaterials(),
+    comments: JSON.parse(JSON.stringify(comments)),
+    sizeTable: sizeTableData ? JSON.parse(JSON.stringify(sizeTableData)) : null
+  };
+  if (isEditing) {
+    const idx = records.findIndex(r => r.id === editingRecordId);
+    if (idx >= 0) records[idx] = record;
+    editingRecordId = null;
+  } else {
+    records.push(record);
+  }
+  safeStorage.setItem('sampleReviewRecords', JSON.stringify(records));
+  clearForm();
+  switchTab('info');
+  showToast(isEditing ? '记录已更新' : '记录已保存', 'success');
+}
+
+function editRecord(id) {
+  const r = records.find(r => r.id === id);
+  if (!r) return;
+  editingRecordId = id;
+  document.getElementById('h-date').value = r.date || '';
+  document.getElementById('h-deadline').value = r.deadline || '';
+  document.getElementById('h-type').value = r.type || '';
+  document.getElementById('h-style').value = r.style || '';
+  document.getElementById('h-order').value = r.order || '';
+  document.getElementById('h-product').value = r.product || '';
+  document.getElementById('h-size').value = r.size || '';
+  document.getElementById('h-qty').value = r.qty || '';
+  document.getElementById('h-factory').value = r.factory || '';
+  materials = r.materials ? JSON.parse(JSON.stringify(r.materials)) : [];
+  if (materials.length === 0) addMatRow(); else renderMatTable();
+  comments = r.comments ? JSON.parse(JSON.stringify(r.comments)) : [];
+  commentCounter = comments.length;
+  sizeTableData = r.sizeTable ? JSON.parse(JSON.stringify(r.sizeTable)) : null;
+  if (sizeTableData) renderSizeTable(sizeTableData);
+  else {
+    const c = document.getElementById('sizeTableContainer');
+    if (c) c.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:36px;margin-bottom:8px;">📊</div><p>请导入Excel文件以显示尺寸表</p></div>';
+  }
+  currentFilter = 'all';
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.cat-tab[data-cat="all"]')?.classList.add('active');
+  renderComments();
+  switchTab('entry');
+  showToast('已加载记录，可编辑后保存', 'info');
+}
+
+function deleteRecord(id) {
+  if (!confirm('确认删除此记录？')) return;
+  records = records.filter(r => r.id !== id);
+  safeStorage.setItem('sampleReviewRecords', JSON.stringify(records));
+  renderRecords();
+  showToast('记录已删除', 'success');
+}
+
+function renderRecords() {
+  const list = document.getElementById('recordList');
+  const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  const filtered = searchTerm ? records.filter(r =>
+    [r.style, r.order, r.product, r.size, r.factory, r.date, r.type].some(v =>
+      (v || '').toLowerCase().includes(searchTerm)
+    )
+  ) : records;
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:36px;margin-bottom:8px;">📋</div><p>' + (searchTerm ? '未找到匹配的记录' : '暂无保存的记录') + '</p></div>';
+    return;
+  }
+  list.innerHTML = filtered.map(r => `
+    <div class="record-card" onclick="editRecord('${r.id}')">
+      <div class="rec-header">
+        <span class="rec-title">${esc(r.style)||'—'} | ${esc(r.product)||'—'}</span>
+        <span class="rec-date">${r.date||'—'}</span>
+      </div>
+      <div class="rec-info">
+        <span>款号: <b>${esc(r.style)||'—'}</b></span>
+        <span>品名: <b>${esc(r.product)||'—'}</b></span>
+        <span>类型: <b>${esc(r.type)||'—'}</b></span>
+        <span>订单号: <b>${esc(r.order)||'—'}</b></span>
+        <span>尺码: <b>${esc(r.size)||'—'}</b></span>
+        <span>样衣数量: <b>${esc(r.qty)||'—'}</b></span>
+        <span>服装厂: <b>${esc(r.factory)||'—'}</b></span>
+      </div>
+      <div class="rec-footer">
+        <span>材料: ${r.materials?.length||0}项 | 意见: ${r.comments?.length||0}条</span>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRecord('${r.id}')">删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearForm() {
+  document.getElementById('h-date').value = new Date().toISOString().split('T')[0];
+  ['h-style','h-order','h-product','h-size','h-qty','h-factory','h-type','h-deadline'].forEach(id => document.getElementById(id).value = '');
+  materials = [];
+  addMatRow();
+  comments = [];
+  commentCounter = 0;
+  sizeTableData = null;
+  const stc = document.getElementById('sizeTableContainer');
+  if (stc) stc.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:36px;margin-bottom:8px;">📊</div><p>请导入Excel文件以显示尺寸表</p></div>';
+  currentFilter = 'all';
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.cat-tab[data-cat="all"]')?.classList.add('active');
+  renderComments();
+}
+
+// ==================== Excel Import (Size Table) ====================
+// Round numeric values to 1 decimal place
+function roundNum(v) {
+  if (v === null || v === undefined || v === '') return v;
+  const s = v.toString().trim();
+  // Only round if it's a pure number (not text like "A", "B", "1/2 BUST...")
+  if (/^-?\d+\.?\d*$/.test(s) && s !== '-' && !isNaN(parseFloat(s))) {
+    return parseFloat(s).toFixed(1);
+  }
+  return v;
+}
+
+async function importSizeExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    let rows = [];
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      const text = await file.text();
+      rows = parseCSV(text);
+    } else if (file.name.toLowerCase().endsWith('.xlsx')) {
+      rows = await parseXLSX(file);
+    } else {
+      showToast('请使用 .xlsx 或 .csv 格式', 'error');
+      return;
+    }
+    if (rows.length === 0) { showToast('文件中未找到数据', 'error'); return; }
+    // Detect format: new format has key-value pairs in first rows (e.g. "款号" | value)
+    const firstCell = (rows[0][0] || '').toString().trim();
+    const isNewFormat = ['款号','日期','类型','PO号'].includes(firstCell);
+    if (isNewFormat) {
+      // Extract metadata from key-value rows
+      const meta = {};
+      let headerRowIdx = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const key = (rows[i][0] || '').toString().trim();
+        const val = (rows[i][1] || '').toString().trim();
+        if (['款号','日期','类型','PO号'].includes(key)) {
+          meta[key] = val;
+        } else if (key === '部位编号' || key === '部位' || (rows[i].length >= 4 && rows[i].slice(0,4).some(c => ['部位编号','测量部位','中文名称','公差'].includes((c||'').toString().trim())))) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+      // If not found, search for header row
+      if (headerRowIdx === -1) {
+        for (let i = 0; i < rows.length; i++) {
+          if ((rows[i][0] || '').toString().trim() === '部位编号') { headerRowIdx = i; break; }
+        }
+      }
+      if (headerRowIdx === -1) { showToast('未找到尺寸表表头（部位编号）', 'error'); return; }
+      const header = rows[headerRowIdx];
+      const dataRows = rows.slice(headerRowIdx + 1).filter(r => r.some(c => c && c.toString().trim())).map(r => r.map(c => roundNum(c)));
+      sizeTableData = { meta, header, dataRows };
+    } else {
+      // Old format: row[0] is header, row[1+] is data
+      sizeTableData = { meta: {}, header: rows[0], dataRows: rows.slice(1).filter(r => r.some(c => c && c.toString().trim())).map(r => r.map(c => roundNum(c))) };
+      // Try to extract metadata from old format
+      if (rows.length > 1) {
+        const header = rows[0];
+        const r0 = rows[1];
+        const colMap = {};
+        header.forEach((h, i) => { colMap[(h||'').toString().trim()] = i; });
+        if (colMap['款号'] !== undefined && r0[colMap['款号']]) sizeTableData.meta['款号'] = r0[colMap['款号']].trim();
+        if (colMap['日期'] !== undefined && r0[colMap['日期']]) sizeTableData.meta['日期'] = r0[colMap['日期']].trim();
+        if (colMap['类型'] !== undefined && r0[colMap['类型']]) sizeTableData.meta['类型'] = r0[colMap['类型']].trim();
+        if (colMap['PO号'] !== undefined && r0[colMap['PO号']]) sizeTableData.meta['PO号'] = r0[colMap['PO号']].trim();
+      }
+    }
+    renderSizeTable(sizeTableData);
+    // Auto-fill fields from metadata
+    const meta = sizeTableData.meta || {};
+    if (meta['款号']) document.getElementById('h-style').value = meta['款号'];
+    if (meta['PO号']) document.getElementById('h-order').value = meta['PO号'];
+    if (meta['日期']) {
+      let dateVal = meta['日期'].toString().trim();
+      // Check if it's an Excel date serial number (pure number, typically 30000-60000)
+      if (/^\d+$/.test(dateVal) && parseInt(dateVal) > 20000 && parseInt(dateVal) < 80000) {
+        const serial = parseInt(dateVal);
+        // Excel epoch: Dec 30, 1899 (accounting for 1900 leap year bug)
+        const dt = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+        const yyyy = dt.getUTCFullYear();
+        const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(dt.getUTCDate()).padStart(2, '0');
+        dateVal = `${yyyy}/${parseInt(mm)}/${parseInt(dd)}`;
+        meta['日期'] = dateVal;
+      }
+      // Parse date - handle formats like 2026/8/12 or 2026-08-12
+      const dateStr = dateVal.replace(/\//g, '-');
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const yyyy = parts[0].padStart(4, '0');
+        const mm = parts[1].padStart(2, '0');
+        const dd = parts[2].padStart(2, '0');
+        document.getElementById('h-date').value = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+    if (meta['类型']) {
+      const typeVal = meta['类型'].trim();
+      const sel = document.getElementById('h-type');
+      const opt = [...sel.options].find(o => o.value === typeVal);
+      if (opt) sel.value = typeVal;
+    }
+    showToast('尺寸表导入成功', 'success');
+  } catch(e) {
+    showToast('导入失败: ' + e.message, 'error');
+  }
+  event.target.value = '';
+}
+
+function parseCSV(text) {
+  // Remove BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i+1] === '"') { cell += '"'; i++; }
+        else inQ = false;
+      } else cell += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else if (ch === '\r') {}
+      else cell += ch;
+    }
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+
+async function parseXLSX(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  // Find EOCD
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('无效的XLSX文件');
+  const cdCount = view.getUint16(eocd + 10, true);
+  const cdOffset = view.getUint32(eocd + 16, true);
+  // Parse central directory
+  const files = {};
+  let off = cdOffset;
+  for (let i = 0; i < cdCount; i++) {
+    if (view.getUint32(off, true) !== 0x02014b50) break;
+    const method = view.getUint16(off + 10, true);
+    const compSize = view.getUint32(off + 20, true);
+    const nameLen = view.getUint16(off + 28, true);
+    const extraLen = view.getUint16(off + 30, true);
+    const commentLen = view.getUint16(off + 32, true);
+    const localOff = view.getUint32(off + 42, true);
+    const name = new TextDecoder().decode(bytes.slice(off + 46, off + 46 + nameLen));
+    files[name] = { method, compSize, localOff };
+    off += 46 + nameLen + extraLen + commentLen;
+  }
+  // Extract helper
+  async function extract(name) {
+    const f = files[name];
+    if (!f) return null;
+    const localNameLen = view.getUint16(f.localOff + 26, true);
+    const localExtraLen = view.getUint16(f.localOff + 28, true);
+    const dataOff = f.localOff + 30 + localNameLen + localExtraLen;
+    const compressed = bytes.slice(dataOff, dataOff + f.compSize);
+    if (f.method === 0) return compressed;
+    if (f.method === 8) {
+      if (typeof DecompressionStream === 'undefined') throw new Error('浏览器不支持XLSX解析，请使用CSV格式');
+      const ds = new DecompressionStream('deflate-raw');
+      const stream = new Blob([compressed]).stream().pipeThrough(ds);
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    return null;
+  }
+  // Shared strings
+  const sharedStrings = [];
+  const ssXml = await extract('xl/sharedStrings.xml');
+  if (ssXml) {
+    const ssText = new TextDecoder().decode(ssXml);
+    const re = /<si>([\s\S]*?)<\/si>/g;
+    let m;
+    while (m = re.exec(ssText)) {
+      const texts = [];
+      const tRe = /<t[^>]*>([\s\S]*?)<\/t>/g;
+      let tm;
+      while (tm = tRe.exec(m[1])) texts.push(tm[1]);
+      sharedStrings.push(texts.join(''));
+    }
+  }
+  // Find sheet file via rels
+  const relsXml = await extract('xl/_rels/workbook.xml.rels');
+  const relsMap = {};
+  if (relsXml) {
+    const relsText = new TextDecoder().decode(relsXml);
+    const relRe = /<Relationship[^>]*Id="([^"]*)"[^>]*Target="([^"]*)"/g;
+    let rm;
+    while (rm = relRe.exec(relsText)) relsMap[rm[1]] = rm[2];
+  }
+  const wbXml = await extract('xl/workbook.xml');
+  let sheetTarget = 'xl/worksheets/sheet1.xml';
+  if (wbXml) {
+    const wbText = new TextDecoder().decode(wbXml);
+    const sm = wbText.match(/<sheet[^>]*r:id="([^"]*)"/);
+    if (sm && relsMap[sm[1]]) {
+      const t = relsMap[sm[1]];
+      sheetTarget = t.startsWith('/') ? t.slice(1) : `xl/${t}`;
+    }
+  }
+  const sheetXml = await extract(sheetTarget);
+  if (!sheetXml) throw new Error('无法读取工作表');
+  const sheetText = new TextDecoder().decode(sheetXml);
+  const rows = [];
+  const rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g;
+  let rowMatch;
+  while (rowMatch = rowRe.exec(sheetText)) {
+    const cells = [];
+    // Match both <c ...>content</c> and self-closing <c .../>
+    const cellRe = /<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*?)\/>/g;
+    let cm;
+    while (cm = cellRe.exec(rowMatch[1])) {
+      const attrs = (cm[1] !== undefined ? cm[1] : cm[3] || '');
+      const content = cm[2] || '';
+      // Extract r attribute (cell reference like "A1")
+      const rMatch = attrs.match(/r="([A-Z]+)\d+"/);
+      if (!rMatch) continue;
+      const col = rMatch[1];
+      // Extract t attribute (cell type)
+      const tMatch = attrs.match(/t="(\w+)"/);
+      const type = tMatch ? tMatch[1] : '';
+      // Extract value or inline string
+      const vMatch = content.match(/<v>([\s\S]*?)<\/v>/);
+      const isMatch = content.match(/<is><t>([\s\S]*?)<\/t><\/is>/);
+      let cellVal = '';
+      if (isMatch) cellVal = isMatch[1];
+      else if (type === 's' && vMatch) cellVal = sharedStrings[parseInt(vMatch[1])] || '';
+      else if (type === 'str' && vMatch) cellVal = vMatch[1];
+      else if (vMatch) cellVal = vMatch[1];
+      cells.push({ col, val: cellVal });
+    }
+    if (cells.length > 0) {
+      const maxIdx = cells.reduce((mx, c) => Math.max(mx, colNameToIdx(c.col)), 0);
+      const rowArr = new Array(maxIdx + 1).fill('');
+      cells.forEach(c => { rowArr[colNameToIdx(c.col)] = c.val; });
+      rows.push(rowArr);
+    }
+  }
+  return rows;
+}
+
+function colNameToIdx(name) {
+  let idx = 0;
+  for (let i = 0; i < name.length; i++) idx = idx * 26 + (name.charCodeAt(i) - 64);
+  return idx - 1;
+}
+
+function renderSizeTable(data) {
+  const container = document.getElementById('sizeTableContainer');
+  if (!data) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:36px;margin-bottom:8px;">📊</div><p>请导入Excel文件以显示尺寸表</p></div>';
+    return;
+  }
+  // Handle both new format ({meta, header, dataRows}) and old format (array of arrays)
+  let meta, header, dataRows;
+  if (Array.isArray(data)) {
+    // Old format: array of arrays
+    header = data[0];
+    dataRows = data.slice(1);
+    meta = {};
+  } else {
+    meta = data.meta || {};
+    header = data.header || [];
+    dataRows = data.dataRows || [];
+  }
+  if (!header || header.length === 0 || dataRows.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:36px;margin-bottom:8px;">📊</div><p>请导入Excel文件以显示尺寸表</p></div>';
+    return;
+  }
+  // Build column index map
+  const colMap = {};
+  header.forEach((h, i) => { colMap[(h||'').toString().trim()] = i; });
+  // Support both "测量部位" and "英文名称" column names
+  const enCol = colMap['测量部位'] !== undefined ? colMap['测量部位'] : colMap['英文名称'];
+  // Size columns = everything not in known columns
+  const known = ['PO号','款号','类型','日期','部位编号','测量部位','英文名称','中文名称','公差'];
+  const sizeColIdx = [];
+  header.forEach((h, i) => { if (h && !known.includes(h.toString().trim())) sizeColIdx.push(i); });
+  // Info bar
+  let html = '<div class="size-info-bar">';
+  ['款号','日期','类型','PO号'].forEach(name => {
+    if (meta[name]) html += `<span><b>${name}：</b>${esc(meta[name])}</span>`;
+  });
+  if (html === '<div class="size-info-bar">') html += '<span style="color:var(--text-light);">无元数据</span>';
+  html += '</div>';
+  // Build table
+  html += '<div style="overflow-x:auto;"><table class="size-table"><thead><tr>';
+  html += '<th>部位编号</th><th style="min-width:120px;">测量部位</th><th>中文名称</th><th>公差</th>';
+  sizeColIdx.forEach(i => html += `<th>${esc(header[i])}</th>`);
+  html += '</tr></thead><tbody>';
+  dataRows.forEach(row => {
+    html += '<tr>';
+    html += `<td>${esc(row[colMap['部位编号']]||'')}</td>`;
+    html += `<td style="text-align:left;white-space:normal;">${esc(row[enCol]||'')}</td>`;
+    html += `<td style="text-align:left;">${esc(row[colMap['中文名称']]||'')}</td>`;
+    html += `<td>${esc(row[colMap['公差']]||'')}</td>`;
+    sizeColIdx.forEach(i => html += `<td>${esc(row[i]||'')}</td>`);
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+// ==================== Print / PDF ====================
+function printReport() {
+  const d = {
+    date: document.getElementById('h-date').value,
+    deadline: document.getElementById('h-deadline').value,
+    style: document.getElementById('h-style').value,
+    order: document.getElementById('h-order').value,
+    product: document.getElementById('h-product').value,
+    size: document.getElementById('h-size').value,
+    qty: document.getElementById('h-qty').value,
+    factory: document.getElementById('h-factory').value,
+    type: document.getElementById('h-type').value
+  };
+  const dateStr = d.date ? formatDate(d.date) : '';
+  const deadlineStr = d.deadline ? formatDate(d.deadline) : '';
+  const origTitle = document.title;
+  document.title = `${d.style}_样衣安排及意见_${(d.date||'').replace(/-/g,'')}`;
+  let html = '';
+  // Letterhead with double line (blue + gold)
+  html += `<table class="print-lh"><tr>
+    <td class="lh-side"></td>
+    <td style="text-align:center;">
+      <div class="lh-cn">江苏舜天汉唐贸易有限公司</div>
+      <div class="lh-en">JIANGSU SAINTY HANTANG TRADING CO., LTD</div>
+    </td>
+    <td class="lh-side"></td>
+  </tr></table>`;
+  html += `<div class="lh-double-line"><div class="lh-line-blue"></div><div class="lh-line-gold"></div></div>`;
+  // Report title with decorative gold lines and diamond
+  html += `<div class="print-title-deco">
+    <div class="deco-line"></div><div class="deco-diamond"></div>
+    <div class="print-report-title" style="margin:0;">样衣安排及意见</div>
+    <div class="deco-diamond"></div><div class="deco-line-r"></div>
+  </div>`;
+  // Factory field - gold accent bar on left, navy text on light gold bg
+  html += `<div style="margin-bottom:3mm;border-left:4px solid #c9a84c;background:linear-gradient(90deg,#fdf8ed,#fff);padding:6px 12px;border-radius:0 4px 4px 0;">
+    <div style="text-align:left;font-size:16pt;font-weight:700;color:#1a3a6b;">服装厂：${esc(d.factory)||'—'}</div>
+  </div>`;
+  // Row 1: dates + type (left-aligned)
+  const fieldSpan = (label, val) => `${label}：<span style="display:inline-block;border:1.5pt solid #1a3a6b;border-radius:4px;padding:2px 6px;min-width:24px;font-weight:600;color:#1a3a6b;background:#f8faff;">${esc(val)||'—'}</span>`;
+  html += `<table style="width:100%;border-collapse:collapse;margin-bottom:2mm;"><tr>`;
+  html += `<td style="text-align:left;font-size:10pt;padding:4px 8px;white-space:nowrap;">${fieldSpan('寄样日期', dateStr)}</td>`;
+  html += `<td style="text-align:left;font-size:10pt;padding:4px 8px;white-space:nowrap;">${fieldSpan('要求收到样衣日期', deadlineStr)}</td>`;
+  html += `<td style="text-align:left;font-size:10pt;padding:4px 8px;white-space:nowrap;">${fieldSpan('样衣类型', d.type)}</td>`;
+  html += `</tr></table>`;
+  // Row 2: spec fields (5 fields, left-aligned)
+  const otherFields = [
+    ['款号', d.style], ['订单号', d.order], ['品名', d.product], ['尺码', d.size], ['件数', d.qty]
+  ];
+  const fieldTd = ([label, val]) => `<td style="text-align:left;font-size:10pt;padding:4px 8px;white-space:nowrap;">${fieldSpan(label, val)}</td>`;
+  html += `<table style="width:100%;border-collapse:collapse;margin-bottom:5mm;"><tr>`;
+  html += otherFields.map(fieldTd).join('');
+  html += `</tr></table>`;
+  // Material list
+  const mats = collectMaterials();
+  if (mats.length > 0) {
+    html += `<div class="print-section-header"><div class="sh-bar"></div><div class="sh-title">材料清单</div><div class="sh-line"></div></div>`;
+    html += '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:4mm;">';
+    html += '<thead><tr style="background:#1a3a6b;color:#fff;">';
+    ['材料','大货标准','规格','颜色','单耗','数量','备用数','备注'].forEach(k => {
+      html += `<th style="border:1px solid #1a3a6b;padding:4px 3px;text-align:center;font-weight:600;">${k}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    mats.forEach((m, idx) => {
+      const rowBg = idx % 2 === 0 ? '#fff' : '#f5f7fb';
+      html += `<tr style="background:${rowBg};">` + ['材料','大货标准','规格','颜色','单耗','数量','备用数','备注'].map(k => `<td style="border:1px solid #c9a84c;padding:3px;">${esc(m[k]||'')}</td>`).join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  // Comments by category
+  const cats = ['design','dim','work','fabric','acc','pack','wash','test','other'];
+  let hasComments = false;
+  cats.forEach(cat => {
+    const catComments = comments.filter(c => c.category === cat);
+    if (catComments.length === 0) return;
+    hasComments = true;
+    const catColor = CAT_COLORS[cat];
+    // Wrap entire category section to prevent splitting across pages
+    html += `<div style="page-break-inside:avoid;">`;
+    // Premium category separator: gold bar + red label + gold gradient line
+    html += `<div style="margin:5mm 0 3mm;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:5px;height:24px;background:linear-gradient(180deg,#1a3a6b,#c9a84c);border-radius:2px;"></div>
+        <div style="background:#dc2626;color:#fff;padding:5px 18px;font-size:13pt;font-weight:700;border-radius:8px;letter-spacing:2px;">${CAT_NAMES[cat]}</div>
+        <div style="flex:1;height:1.5px;background:linear-gradient(90deg,#c9a84c,transparent);"></div>
+        <div style="font-size:11pt;color:#c9a84c;font-weight:700;white-space:nowrap;">${catComments.length} 条</div>
+      </div>
+    </div>`;
+    catComments.forEach((c, i) => {
+      const sevText = {high:'高',medium:'中',low:'低'}[c.severity] || '中';
+      const sevColor = {high:'#dc2626',medium:'#d97706',low:'#16a34a'}[c.severity] || '#d97706';
+      const isSimple = (cat === 'test' || cat === 'other');
+      html += `<div style="border-left:3px solid #c9a84c;border-top:1px solid #e8eef5;border-bottom:1px solid #e8eef5;background:linear-gradient(135deg,#fafbfd,#f5f7fb);border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:10px;page-break-inside:avoid;">
+        <div style="font-size:12pt;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#1a3a6b;"><b>${i+1}.</b>${isSimple ? '' : ` ${getLocLabel(cat)}：<b>${escBR(c.location)||'—'}</b>`}</span>
+          <span style="font-size:11pt;background:${sevColor};color:#fff;padding:2px 12px;border-radius:12px;font-weight:600;">严重程度：${sevText}</span>
+        </div>`;
+      if (!isSimple && c.description && c.description.trim()) {
+        html += `<div style="font-size:12pt;margin-bottom:6px;line-height:1.6;white-space:pre-wrap;"><b style="color:#1a3a6b;">问题描述：</b>${escBR(c.description)}</div>`;
+      }
+      if (c.suggestion && c.suggestion.trim()) {
+        html += `<div style="font-size:12pt;margin-bottom:6px;line-height:1.6;white-space:pre-wrap;"><b style="color:#1a3a6b;">${isSimple ? '说明' : '意见'}：</b>${escBR(c.suggestion)}</div>`;
+      }
+      if (c.images.length > 0) {
+        html += '<div style="margin-top:6px;">';
+        c.images.forEach(img => {
+          const psize = imgPrintSize(img);
+          const widths = {full:'100%',half:'50%',third:'33%',quarter:'25%'};
+          const w = widths[psize] || '100%';
+          const align = psize === 'full' ? 'center' : 'left';
+          html += `<img src="${imgSrc(img)}" class="print-comment-img" style="width:${w};height:auto;border:1px solid #c9a84c;border-radius:4px;margin-bottom:6px;display:block;${psize!=='full'?'margin-right:auto;':''}">`;
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += `</div>`;
+  });
+  if (!hasComments) html += '<div style="text-align:center;padding:20px;color:#64748b;">暂无修改意见</div>';
+  // Size chart (if imported, page break before)
+  if (sizeTableData) {
+    let stMeta, stHeader, stDataRows;
+    if (Array.isArray(sizeTableData)) {
+      stHeader = sizeTableData[0];
+      stDataRows = sizeTableData.slice(1);
+      stMeta = {};
+    } else {
+      stMeta = sizeTableData.meta || {};
+      stHeader = sizeTableData.header || [];
+      stDataRows = sizeTableData.dataRows || [];
+    }
+    if (stHeader && stHeader.length > 0 && stDataRows.length > 0) {
+    const colMap = {};
+    stHeader.forEach((h, i) => { colMap[(h||'').toString().trim()] = i; });
+    const enCol = colMap['测量部位'] !== undefined ? colMap['测量部位'] : colMap['英文名称'];
+    const known = ['PO号','款号','类型','日期','部位编号','测量部位','英文名称','中文名称','公差'];
+    const sizeColIdx = [];
+    stHeader.forEach((h, i) => { if (h && !known.includes(h.toString().trim())) sizeColIdx.push(i); });
+    html += '<div class="page-break"></div>';
+    html += `<div class="print-section-header"><div class="sh-bar"></div><div class="sh-title">尺寸表</div><div class="sh-line"></div></div>`;
+    // Info bar with gold accent
+    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:4mm;font-size:10pt;border-left:3px solid #c9a84c;background:#fdf8ed;"><tr>';
+    ['款号','日期','类型','PO号'].forEach(name => {
+      if (stMeta[name]) html += `<td style="padding:4px 10px;"><b style="color:#1a3a6b;">${name}：</b>${esc(stMeta[name])}</td>`;
+    });
+    html += '</tr></table>';
+    // Size table with navy header and gold borders
+    html += '<table style="width:100%;border-collapse:collapse;font-size:9px;">';
+    html += '<thead><tr style="background:#1a3a6b;color:#fff;">';
+    html += '<th style="border:1px solid #1a3a6b;padding:3px 3px;text-align:center;">部位编号</th>';
+    html += '<th style="border:1px solid #1a3a6b;padding:3px 3px;min-width:100px;text-align:center;">测量部位</th>';
+    html += '<th style="border:1px solid #1a3a6b;padding:3px 3px;text-align:center;">中文名称</th>';
+    html += '<th style="border:1px solid #1a3a6b;padding:3px 3px;text-align:center;">公差</th>';
+    sizeColIdx.forEach(i => html += `<th style="border:1px solid #1a3a6b;padding:3px 3px;text-align:center;">${esc(stHeader[i])}</th>`);
+    html += '</tr></thead><tbody>';
+    stDataRows.forEach((row, ri) => {
+      const rowBg = ri % 2 === 1 ? '#fff' : '#f5f7fb';
+      html += `<tr style="background:${rowBg};">`;
+      html += `<td style="border:1px solid #c9a84c;padding:2px 3px;text-align:center;">${esc(row[colMap['部位编号']]||'')}</td>`;
+      html += `<td style="border:1px solid #c9a84c;padding:2px 3px;text-align:left;">${esc(row[enCol]||'')}</td>`;
+      html += `<td style="border:1px solid #c9a84c;padding:2px 3px;text-align:left;">${esc(row[colMap['中文名称']]||'')}</td>`;
+      html += `<td style="border:1px solid #c9a84c;padding:2px 3px;text-align:center;">${esc(row[colMap['公差']]||'')}</td>`;
+      sizeColIdx.forEach(i => html += `<td style="border:1px solid #c9a84c;padding:2px 3px;text-align:center;">${esc(row[i]||'')}</td>`);
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    }
+  }
+  const printArea = document.getElementById('printArea');
+  // Add dynamic @page rule with footer (no size property to avoid PDF rotation)
+  const today = new Date();
+  const printDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  let dynStyle = document.getElementById('dynamicPrintStyle');
+  if (!dynStyle) { dynStyle = document.createElement('style'); dynStyle.id = 'dynamicPrintStyle'; document.head.appendChild(dynStyle); }
+  dynStyle.textContent = `@page{margin:15mm 15mm 18mm 15mm;@bottom-left{content:"打印日期：${printDate}";font-size:9pt;color:#1a3a6b;}@bottom-center{content:"第 " counter(page) " 页 / 共 " counter(pages) " 页";font-size:9pt;color:#1a3a6b;}@bottom-right{content:"联系人：陈娟";font-size:9pt;color:#c9a84c;font-weight:600;}}`;
+  printArea.innerHTML = html;
+  printArea.style.display = 'block';
+  // Hide toast and other UI elements before printing
+  const toastEl = document.getElementById('toast');
+  if (toastEl) toastEl.classList.remove('show');
+  // Use onafterprint to cleanup
+  const cleanup = () => {
+    dynStyle.remove();
+    document.title = origTitle;
+    printArea.style.display = 'none';
+    printArea.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+  // Fallback cleanup in case afterprint doesn't fire
+  setTimeout(cleanup, 1000);
+}
+
+function formatDate(d) {
+  try {
+    const dt = new Date(d);
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  } catch { return d; }
+}
+
+// ==================== Toast ====================
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = type || 'info';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ==================== Init ====================
+const savedRecords = safeStorage.getItem('sampleReviewRecords');
+if (savedRecords) { try { records = JSON.parse(savedRecords); } catch(e) { records = []; } }
+document.getElementById('h-date').value = new Date().toISOString().split('T')[0];
+addMatRow();
+renderComments();
+</script>
+</body>
+</html>
