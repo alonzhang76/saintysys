@@ -129,7 +129,11 @@ input[type="number"] { -moz-appearance: textfield; }
 .tl-milestone-label { color: var(--muted, #6b7280); }
 .tl-milestone-date { font-weight: 500; color: var(--ink, #1a1a1a); }
 .tl-milestone.done .tl-milestone-date { color: var(--success, #2d9d5f); }
-.tl-milestone.pending .tl-milestone-date { color: var(--muted, #9ca3af); }
+.tl-milestone.missing .tl-milestone-date {
+  background: var(--error, #d44848); color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;
+}
+.tl-milestone.missing .tl-milestone-label { color: var(--error, #d44848); }
+.tl-arrow { color: #cbd5e1; font-size: 14px; font-weight: 700; display: flex; align-items: center; }
 .tl-status-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 500; }
 .tl-status-badge.confirmed { background: #dcfce7; color: #15803d; }
 .tl-status-badge.unconfirmed { background: #fef3c7; color: #b45309; }
@@ -1418,7 +1422,6 @@ function renderStats() {
   var iconBox = function(cls, svg) { return '<div class="stat-icon ' + cls + '">' + svg + '</div>'; };
   document.getElementById('statCards').innerHTML = [
     { cls:'blue', svg:ic.list, val:total, label:'样衣总数' },
-    { cls:'teal', svg:ic.qty, val:qtySum, label:'数量合计' },
     { cls:'blue', svg:ic.tou, val:typeCounts['头样'], label:'头样' },
     { cls:'purple', svg:ic.chi, val:typeCounts['尺码样'], label:'尺码样' },
     { cls:'teal', svg:ic.chan, val:typeCounts['产前样'], label:'产前样' },
@@ -1594,8 +1597,19 @@ function renderTimeline() {
   try { var saved = localStorage.getItem('sht_sample_data_v2'); records = saved ? JSON.parse(saved) : []; } catch(e) { records = []; }
   var container = document.getElementById('timelineContainer');
   if (!container) return;
+  // 搜索框
+  var searchVal = (window._tlSearch || '').toLowerCase();
+  // 搜索过滤：对所有内容搜索
+  if (searchVal) {
+    records = records.filter(function(r) {
+      return Object.keys(r).some(function(k) {
+        var v = String(r[k] || '');
+        return v.toLowerCase().indexOf(searchVal) >= 0;
+      });
+    });
+  }
   if (records.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">暂无样衣数据</div>';
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">' + (searchVal ? '未找到匹配的样衣数据' : '暂无样衣数据') + '</div>';
     return;
   }
   // 按款号分组
@@ -1605,13 +1619,17 @@ function renderTimeline() {
     if (!groups[key]) groups[key] = [];
     groups[key].push(r);
   });
-  // 款号排序
   var styleNos = Object.keys(groups).sort();
   var typeIcon = { '头样': '头', '尺码样': '尺', '产前样': '产', '船样': '船', '照片样': '照' };
+  var arrow = '<span class="tl-arrow">→</span>';
   var html = '<div class="tl-wrap">';
+  // 搜索栏
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+  html += '<input type="text" class="form-input" id="tlSearchInput" placeholder="搜索款号、类型、工厂、日期、确认人…" value="' + App.utils.escapeHtml(window._tlSearch || '') + '" style="flex:1;max-width:400px;" oninput="window._tlSearch=this.value;renderTimeline();document.getElementById(\'tlSearchInput\').focus();">';
+  html += '<button class="btn btn-text" onclick="window._tlSearch=\'\';renderTimeline();" title="清除搜索">✖</button>';
+  html += '</div>';
   styleNos.forEach(function(sn) {
     var items = groups[sn];
-    // 按类型排序：头样→尺码样→产前样→船样→照片样，再按轮次
     var typeOrder = { '头样': 0, '尺码样': 1, '产前样': 2, '船样': 3, '照片样': 4 };
     items.sort(function(a, b) {
       var ta = typeOrder[a['样衣类型']] !== undefined ? typeOrder[a['样衣类型']] : 99;
@@ -1619,7 +1637,6 @@ function renderTimeline() {
       if (ta !== tb) return ta - tb;
       return (a['打样轮次'] || 1) - (b['打样轮次'] || 1);
     });
-    // 统计
     var totalCount = items.length;
     var confirmedCount = items.filter(function(r) { return r['确认日期'] && r['确认日期'].trim(); }).length;
     var sentCount = items.filter(function(r) { return r['寄样日期'] && r['寄样日期'].trim(); }).length;
@@ -1633,7 +1650,6 @@ function renderTimeline() {
       var type = r['样衣类型'] || '';
       var icon = typeIcon[type] || '?';
       var round = r['打样轮次'] || 1;
-      var hasSample = !!(r['寄样日期'] && r['寄样日期'].trim());
       var hasConfirmed = !!(r['确认日期'] && r['确认日期'].trim());
       var statusBadge = hasConfirmed
         ? '<span class="tl-status-badge confirmed">✅ 已确认</span>'
@@ -1647,20 +1663,22 @@ function renderTimeline() {
       if (r['样衣工厂']) html += '<span style="font-size:11px;color:#6b7280;">工厂：' + App.utils.escapeHtml(r['样衣工厂']) + '</span>';
       html += statusBadge;
       html += '</div>';
-      // 里程碑
+      // 里程碑（按用户要求排序：收妥→安排→要求→上手→落手→寄样→确认）
       var milestones = [
-        { label: '安排', date: r['安排日期'] },
-        { label: '寄样', date: r['寄样日期'] },
         { label: '收妥', date: r['收妥客寄样衣日期'] },
-        { label: '要求交期', date: r['要求交期'] },
+        { label: '安排', date: r['安排日期'] },
+        { label: '要求', date: r['要求交期'] },
         { label: '上手', date: r['上手时间'] },
         { label: '落手', date: r['落手时间'] },
+        { label: '寄样', date: r['寄样日期'] },
         { label: '确认', date: r['确认日期'] }
       ];
       html += '<div class="tl-milestones">';
-      milestones.forEach(function(m) {
-        var cls = m.date && m.date.trim() ? 'done' : 'pending';
-        var txt = m.date && m.date.trim() ? m.date : '—';
+      milestones.forEach(function(m, idx) {
+        var hasDate = m.date && m.date.trim();
+        var cls = hasDate ? 'done' : 'missing';
+        var txt = hasDate ? m.date : '未填';
+        if (idx > 0) html += arrow;
         html += '<div class="tl-milestone ' + cls + '"><span class="tl-milestone-label">' + m.label + '</span><span class="tl-milestone-date">' + txt + '</span></div>';
       });
       html += '</div>';
