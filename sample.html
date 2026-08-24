@@ -88,6 +88,53 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan { font-family: inherit; color: var(--ink, #1a1a1a); font-size: 13px; line-height: 1.45; }
 .sample-plan .sp-app { max-width: 100%; margin: 0 auto; padding: 0 0 14px; display: flex; flex-direction: column; gap: 12px; }
 
+/* ===== 时间轴样式 ===== */
+.tl-wrap { padding: 4px 0 20px; }
+.tl-style-card {
+  background: #fff; border: 1px solid var(--border, #e5e7eb); border-radius: 8px;
+  margin-bottom: 16px; overflow: hidden;
+}
+.tl-style-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: linear-gradient(135deg, #f0f7ff 0%, #e8f0fe 100%);
+  border-bottom: 1px solid var(--border-light, #f3f4f6); cursor: pointer;
+}
+.tl-style-no { font-size: 15px; font-weight: 700; color: var(--primary, #004D6D); }
+.tl-style-summary { font-size: 12px; color: var(--muted, #6b7280); display: flex; gap: 12px; }
+.tl-records { padding: 8px 0 12px; }
+.tl-record {
+  display: flex; align-items: stretch; position: relative;
+  padding: 8px 16px 8px 48px; border-left: 3px solid transparent;
+}
+.tl-record.tl-type-头样 { border-left-color: #004D6D; }
+.tl-record.tl-type-尺码样 { border-left-color: #5e52c6; }
+.tl-record.tl-type-产前样 { border-left-color: #0891b2; }
+.tl-record.tl-type-船样 { border-left-color: #2d9d5f; }
+.tl-record.tl-type-照片样 { border-left-color: #d9883a; }
+.tl-record-dot {
+  position: absolute; left: 12px; top: 14px;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.tl-record.tl-type-头样 .tl-record-dot { background: #004D6D; }
+.tl-record.tl-type-尺码样 .tl-record-dot { background: #5e52c6; }
+.tl-record.tl-type-产前样 .tl-record-dot { background: #0891b2; }
+.tl-record.tl-type-船样 .tl-record-dot { background: #2d9d5f; }
+.tl-record.tl-type-照片样 .tl-record-dot { background: #d9883a; }
+.tl-record-body { flex: 1; min-width: 0; }
+.tl-record-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tl-milestones { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.tl-milestone { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+.tl-milestone-label { color: var(--muted, #6b7280); }
+.tl-milestone-date { font-weight: 500; color: var(--ink, #1a1a1a); }
+.tl-milestone.done .tl-milestone-date { color: var(--success, #2d9d5f); }
+.tl-milestone.pending .tl-milestone-date { color: var(--muted, #9ca3af); }
+.tl-status-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 500; }
+.tl-status-badge.confirmed { background: #dcfce7; color: #15803d; }
+.tl-status-badge.unconfirmed { background: #fef3c7; color: #b45309; }
+.tl-records.collapsed { display: none; }
+
 /* 卡片、table-wrap：保持与 common.css .card/.table-wrap 一致（白底、1px --border、radius-lg 6px） */
 .sample-plan .glass {
   background: #fff;
@@ -1001,6 +1048,9 @@ input[type="number"] { -moz-appearance: textfield; }
       </div>
       <!-- end 样衣计划 -->
 
+      <!-- ===== 时间轴：按款号展示样衣进度 ===== -->
+      <div id="timelineContainer" style="display:none;"></div>
+
       <!-- ===== 样衣意见制作：独立模块容器 ===== -->
       <div id="sampleReviewContainer" style="display:none;"></div>
 
@@ -1085,8 +1135,8 @@ input[type="number"] { -moz-appearance: textfield; }
         </div>
       </div>
 
-      <div class="form-section-title">🏭 工厂与价格</div>
-      <div class="form-grid cols-4">
+      <div class="form-section-title">🏭 样衣信息</div>
+      <div class="form-grid cols-3">
         <div class="form-group">
           <label>样衣工厂</label>
           <input type="text" class="form-input" id="sp_f_factory" list="sp_factoryList" placeholder="默认样衣室">
@@ -1099,10 +1149,6 @@ input[type="number"] { -moz-appearance: textfield; }
         <div class="form-group">
           <label>数量</label>
           <input type="number" class="form-input" id="sp_f_qty" value="1" min="0">
-        </div>
-        <div class="form-group">
-          <label>单价</label>
-          <input type="number" step="0.01" class="form-input" id="sp_f_unitPrice" min="0" placeholder="0.00">
         </div>
       </div>
 
@@ -1294,6 +1340,7 @@ const TAB_STAGE_MAP = {
   '产前样': [2],
   '船样': [3],
   '照片样': [4],
+  '时间轴': 'timeline',
   '样衣意见制作': 'comments',
 };
 
@@ -1419,17 +1466,26 @@ function switchTab(tab) {
   const statCardsEl = document.getElementById('statCards');
   // 统计卡片在所有标签页都显示
   if (statCardsEl) statCardsEl.style.display = '';
+  const tlEl = document.getElementById('timelineContainer');
   if (tab === '样衣计划') {
     if (planEl) planEl.style.display = '';
     if (reviewEl) reviewEl.style.display = 'none';
+    if (tlEl) tlEl.style.display = 'none';
     if (origArea) origArea.style.display = 'none';
     if (!window._samplePlanInited) {
       window._samplePlanInited = true;
       SamplePlan.init();
     }
+  } else if (tab === '时间轴') {
+    if (planEl) planEl.style.display = 'none';
+    if (reviewEl) reviewEl.style.display = 'none';
+    if (tlEl) tlEl.style.display = '';
+    if (origArea) origArea.style.display = 'none';
+    renderTimeline();
   } else if (tab === '样衣意见制作') {
     if (planEl) planEl.style.display = 'none';
     if (reviewEl) reviewEl.style.display = '';
+    if (tlEl) tlEl.style.display = 'none';
     if (origArea) origArea.style.display = 'none';
     if (!window._sampleReviewInited) {
       window._sampleReviewInited = true;
@@ -1438,6 +1494,7 @@ function switchTab(tab) {
   } else {
     if (planEl) planEl.style.display = 'none';
     if (reviewEl) reviewEl.style.display = 'none';
+    if (tlEl) tlEl.style.display = 'none';
     if (origArea) origArea.style.display = '';
     renderSampleTable();
   }
@@ -1524,12 +1581,98 @@ function renderSampleTable() {
         <td>${App.utils.escapeHtml(r['确认日期'] || '-')}</td>
         <td style="white-space:nowrap;">
           <button class="btn btn-text btn-sm" onclick="viewSampleDetail('${r.id}')" title="查看详情">👁️</button>
-          <button class="btn btn-text btn-sm" onclick="deleteSample('${r.id}')" title="删除">🗑️</button>
         </td>
       </tr>`;
     }).join('') + '</tbody>';
   }
   container.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+}
+
+/* ===== 时间轴渲染 ===== */
+function renderTimeline() {
+  var records = [];
+  try { var saved = localStorage.getItem('sht_sample_data_v2'); records = saved ? JSON.parse(saved) : []; } catch(e) { records = []; }
+  var container = document.getElementById('timelineContainer');
+  if (!container) return;
+  if (records.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">暂无样衣数据</div>';
+    return;
+  }
+  // 按款号分组
+  var groups = {};
+  records.forEach(function(r) {
+    var key = r['款号'] || '(未填款号)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+  // 款号排序
+  var styleNos = Object.keys(groups).sort();
+  var typeIcon = { '头样': '头', '尺码样': '尺', '产前样': '产', '船样': '船', '照片样': '照' };
+  var html = '<div class="tl-wrap">';
+  styleNos.forEach(function(sn) {
+    var items = groups[sn];
+    // 按类型排序：头样→尺码样→产前样→船样→照片样，再按轮次
+    var typeOrder = { '头样': 0, '尺码样': 1, '产前样': 2, '船样': 3, '照片样': 4 };
+    items.sort(function(a, b) {
+      var ta = typeOrder[a['样衣类型']] !== undefined ? typeOrder[a['样衣类型']] : 99;
+      var tb = typeOrder[b['样衣类型']] !== undefined ? typeOrder[b['样衣类型']] : 99;
+      if (ta !== tb) return ta - tb;
+      return (a['打样轮次'] || 1) - (b['打样轮次'] || 1);
+    });
+    // 统计
+    var totalCount = items.length;
+    var confirmedCount = items.filter(function(r) { return r['确认日期'] && r['确认日期'].trim(); }).length;
+    var sentCount = items.filter(function(r) { return r['寄样日期'] && r['寄样日期'].trim(); }).length;
+    html += '<div class="tl-style-card">';
+    html += '<div class="tl-style-header" onclick="this.parentElement.querySelector(\'.tl-records\').classList.toggle(\'collapsed\')">';
+    html += '<div class="tl-style-no">款号：' + App.utils.escapeHtml(sn) + '</div>';
+    html += '<div class="tl-style-summary"><span>共 ' + totalCount + ' 条</span><span>已寄样 ' + sentCount + '</span><span>已确认 ' + confirmedCount + '</span></div>';
+    html += '</div>';
+    html += '<div class="tl-records">';
+    items.forEach(function(r) {
+      var type = r['样衣类型'] || '';
+      var icon = typeIcon[type] || '?';
+      var round = r['打样轮次'] || 1;
+      var hasSample = !!(r['寄样日期'] && r['寄样日期'].trim());
+      var hasConfirmed = !!(r['确认日期'] && r['确认日期'].trim());
+      var statusBadge = hasConfirmed
+        ? '<span class="tl-status-badge confirmed">✅ 已确认</span>'
+        : '<span class="tl-status-badge unconfirmed">⏳ 未确认</span>';
+      html += '<div class="tl-record tl-type-' + type + '">';
+      html += '<div class="tl-record-dot">' + icon + '</div>';
+      html += '<div class="tl-record-body">';
+      html += '<div class="tl-record-title">';
+      html += '<span>' + type + ' · 第' + round + '轮</span>';
+      if (r['尺码']) html += '<span style="font-size:11px;color:#6b7280;">尺码：' + App.utils.escapeHtml(r['尺码']) + '</span>';
+      if (r['样衣工厂']) html += '<span style="font-size:11px;color:#6b7280;">工厂：' + App.utils.escapeHtml(r['样衣工厂']) + '</span>';
+      html += statusBadge;
+      html += '</div>';
+      // 里程碑
+      var milestones = [
+        { label: '安排', date: r['安排日期'] },
+        { label: '寄样', date: r['寄样日期'] },
+        { label: '收妥', date: r['收妥客寄样衣日期'] },
+        { label: '要求交期', date: r['要求交期'] },
+        { label: '上手', date: r['上手时间'] },
+        { label: '落手', date: r['落手时间'] },
+        { label: '确认', date: r['确认日期'] }
+      ];
+      html += '<div class="tl-milestones">';
+      milestones.forEach(function(m) {
+        var cls = m.date && m.date.trim() ? 'done' : 'pending';
+        var txt = m.date && m.date.trim() ? m.date : '—';
+        html += '<div class="tl-milestone ' + cls + '"><span class="tl-milestone-label">' + m.label + '</span><span class="tl-milestone-date">' + txt + '</span></div>';
+      });
+      html += '</div>';
+      if (r['确认人']) {
+        html += '<div style="font-size:11px;color:#6b7280;margin-top:2px;">确认人：' + App.utils.escapeHtml(r['确认人']) + '</div>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 /* ===== 图片上传：通用辅助函数 ===== */
@@ -2931,7 +3074,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       document.getElementById('sp_f_factory').value = row['样衣工厂'] || '';
       document.getElementById('sp_f_size').value = row['尺码'] || '';
       document.getElementById('sp_f_qty').value = row['数量'] || 1;
-      document.getElementById('sp_f_unitPrice').value = row['单价'] || '';
+
       document.getElementById('sp_f_fabric').value = row['面料及克重'] || '';
       document.getElementById('sp_f_lining').value = row['里料及克重'] || '';
       document.getElementById('sp_f_fabricType').value = row['面里料'] || '大货';
@@ -2989,7 +3132,7 @@ window.addEventListener('cloud-data-updated', function(e) {
       样衣工厂: document.getElementById('sp_f_factory').value.trim(),
       尺码: document.getElementById('sp_f_size').value.trim(),
       数量: parseInt(document.getElementById('sp_f_qty').value) || 0,
-      单价: parseFloat(document.getElementById('sp_f_unitPrice').value) || 0,
+
       面料及克重: document.getElementById('sp_f_fabric').value.trim(),
       里料及克重: document.getElementById('sp_f_lining').value.trim(),
       面里料: document.getElementById('sp_f_fabricType').value,
