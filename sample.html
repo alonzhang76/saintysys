@@ -203,6 +203,11 @@ input[type="number"] { -moz-appearance: textfield; }
 .stat-icon.green  { background: #e4f6ec; color: var(--success, #2d9d5f); }
 .stat-icon.red    { background: #fdecec; color: var(--error, #d44848); }
 .stat-icon.gray   { background: #f3f4f6; color: #6b7280; }
+/* Badge：全局可用 */
+.badge { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 500; white-space: nowrap; line-height: 1.4; }
+.badge-success { background: var(--success, #2d9d5f); color: #fff; }
+.badge-warning { background: var(--warning, #d9883a); color: #fff; }
+.badge-secondary { background: #e5e7eb; color: #374151; }
 #statCards .stat-card svg { width: 14px; height: 14px; }
 #statCards .stat-icon { width: 28px; height: 28px; border-radius: var(--radius, 4px); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
 .sample-plan .stats-grid {
@@ -1451,69 +1456,75 @@ function renderFilterBar() {
   document.getElementById('statusFilter').value = filterState.status;
 }
 function getFilteredSamples() {
-  let samples = getSamples();
-  const { search, status } = filterState;
+  // 从样衣计划数据源读取（与SamplePlan同一数据源）
+  let records = [];
+  try { var saved = localStorage.getItem('sht_sample_data_v2'); records = saved ? JSON.parse(saved) : []; } catch(e) { records = []; }
+  // 按当前标签页的样衣类型过滤
   const stageKeys = TAB_STAGE_MAP[currentTab];
-  if (stageKeys && stageKeys !== 'plan' && stageKeys !== 'comments') { samples = samples.filter(s => stageKeys.includes(Number(s.stageKey))); }
-  else { samples = []; }
-  if (search) { const s = search.toLowerCase(); samples = samples.filter(x => (x.styleNo && x.styleNo.toLowerCase().includes(s))); }
-  if (status) { samples = samples.filter(x => getMainStatus(x) === status); }
-  return App.utils.sortByDateDesc(samples, s => {
-    const dates = [];
-    if (s.rounds && s.rounds.length) s.rounds.forEach(r => { if (r.sampleDate) dates.push(r.sampleDate); if (r.confirmedDate) dates.push(r.confirmedDate); });
-    if (s.sampleDate) dates.push(s.sampleDate);
-    if (s.confirmedDate) dates.push(s.confirmedDate);
-    return dates.sort().pop() || '';
+  if (stageKeys && stageKeys !== 'plan' && stageKeys !== 'comments') {
+    // 将stageKey数组映射为中文类型名
+    const typeNameMap = { 0: '头样', 1: '尺码样', 2: '产前样', 3: '船样', 4: '照片样' };
+    const typeNames = stageKeys.map(k => typeNameMap[k]);
+    records = records.filter(r => typeNames.includes(r['样衣类型']));
+  } else {
+    records = [];
+  }
+  // 搜索过滤
+  const { search } = filterState;
+  if (search) { const s = search.toLowerCase(); records = records.filter(r => (r['款号'] && r['款号'].toLowerCase().includes(s))); }
+  // 按寄样日期倒序
+  records.sort((a, b) => {
+    const da = a['寄样日期'] || ''; const db = b['寄样日期'] || '';
+    return db < da ? -1 : db > da ? 1 : 0;
   });
+  return records;
 }
 function toggleSelectAll(checked) { const data = getFilteredSamples(); if (checked) data.forEach(s => _selectedIds.add(s.id)); else data.forEach(s => _selectedIds.delete(s.id)); renderSampleTable(); }
 function toggleSelect(id, checked) { if (checked) _selectedIds.add(id); else _selectedIds.delete(id); renderSampleTable(); }
 
 function renderSampleTable() {
-  const samples = getFilteredSamples();
+  const records = getFilteredSamples();
   const container = document.getElementById('sampleTable');
-  const allChecked = samples.length > 0 && samples.every(s => _selectedIds.has(s.id));
+  const allChecked = records.length > 0 && records.every(s => _selectedIds.has(s.id));
   const selectAllChecked = allChecked ? 'checked' : '';
   const thead = `<thead><tr>
     <th style="width:40px;"><input type="checkbox" ${selectAllChecked} onchange="toggleSelectAll(this.checked)"></th>
-    <th style="width:100px;">款号</th><th style="width:180px;">阶段</th><th style="width:55px;">轮次</th>
+    <th style="width:80px;">寄样状态</th><th style="width:80px;">确认状态</th>
+    <th style="width:100px;">款号</th><th style="width:55px;">轮次</th>
     <th style="width:100px;">寄样日期</th><th style="width:110px;">收妥客寄样衣日期</th>
-    <th>样衣工厂</th><th style="width:90px;">尺码</th><th style="width:80px;">状态</th>
+    <th>样衣工厂</th><th style="width:90px;">尺码</th>
     <th style="width:90px;">确认人</th><th style="width:100px;">确认日期</th>
-    <th style="width:70px;white-space:nowrap;">操作</th></tr></thead>`;
+    <th style="width:50px;white-space:nowrap;">操作</th></tr></thead>`;
   let tbody;
-  if (samples.length === 0) {
+  if (records.length === 0) {
     tbody = `<tbody><tr><td colspan="12" style="text-align:center;padding:20px;color:#999;">暂无样衣记录</td></tr></tbody>`;
   } else {
-    tbody = '<tbody>' + samples.map(s => {
-      const def = STAGE_DEFS[Number(s.stageKey)] || { multiRound: false, english: '' };
-      const isMulti = def.multiRound && s.rounds && s.rounds.length > 0;
-      const cbChecked = _selectedIds.has(s.id) ? 'checked' : '';
-      const mainStatus = getMainStatus(s);
-      const mainDate = getMainDate(s);
-      const mainReceivedDate = isMulti ? (s.rounds[s.rounds.length - 1].receivedSampleDate || '') : (s.receivedSampleDate || '');
-      const mainFactory = getMainFactory(s);
-      const roundCount = getRoundsCount(s);
-      const mainSize = isMulti ? (s.rounds[s.rounds.length - 1].size || '-') : (s.size || '-');
-      const mainConfirmedBy = isMulti ? (s.rounds[s.rounds.length - 1].confirmedBy || '-') : (s.confirmedBy || '-');
-      const mainConfirmedDate = isMulti ? (s.rounds[s.rounds.length - 1].confirmedDate || '-') : (s.confirmedDate || '-');
+    tbody = '<tbody>' + records.map(r => {
+      const cbChecked = _selectedIds.has(r.id) ? 'checked' : '';
+      const hasSampleDate = !!(r['寄样日期'] && r['寄样日期'].trim());
+      const hasConfirmedDate = !!(r['确认日期'] && r['确认日期'].trim());
+      const sampleBadge = hasSampleDate
+        ? '<span class="badge badge-success" style="font-size:11px;">✅ 已寄样</span>'
+        : '<span class="badge badge-warning" style="font-size:11px;">⏳ 未寄样</span>';
+      const confirmBadge = hasConfirmedDate
+        ? '<span class="badge badge-success" style="font-size:11px;">✅ 已确认</span>'
+        : '<span class="badge badge-secondary" style="font-size:11px;">⏳ 未确认</span>';
       return `
       <tr>
-        <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${s.id}', this.checked)"></td>
-        <td>${App.utils.escapeHtml(s.styleNo || '-')}</td>
-        <td>${stageTag(s.stageKey)} <span class="text-muted" style="font-size:11px;">${def.english || ''}</span></td>
-        <td style="text-align:center;">${roundCount}${def.multiRound ? ' 轮' : ''}</td>
-        <td>${App.utils.escapeHtml(mainDate || '-')}</td>
-        <td>${App.utils.escapeHtml(mainReceivedDate || '-')}</td>
-        <td>${App.utils.escapeHtml(mainFactory || '-')}</td>
-        <td>${App.utils.escapeHtml(mainSize || '-')}</td>
-        <td>${App.statusTag(mainStatus)}</td>
-        <td>${App.utils.escapeHtml(mainConfirmedBy || '-')}</td>
-        <td>${App.utils.escapeHtml(mainConfirmedDate || '-')}</td>
+        <td><input type="checkbox" ${cbChecked} onchange="toggleSelect('${r.id}', this.checked)"></td>
+        <td style="text-align:center;">${sampleBadge}</td>
+        <td style="text-align:center;">${confirmBadge}</td>
+        <td>${App.utils.escapeHtml(r['款号'] || '-')}</td>
+        <td style="text-align:center;">${r['打样轮次'] || 1}</td>
+        <td>${App.utils.escapeHtml(r['寄样日期'] || '-')}</td>
+        <td>${App.utils.escapeHtml(r['收妥客寄样衣日期'] || '-')}</td>
+        <td>${App.utils.escapeHtml(r['样衣工厂'] || '-')}</td>
+        <td>${App.utils.escapeHtml(r['尺码'] || '-')}</td>
+        <td>${App.utils.escapeHtml(r['确认人'] || '-')}</td>
+        <td>${App.utils.escapeHtml(r['确认日期'] || '-')}</td>
         <td style="white-space:nowrap;">
-          <button class="btn btn-text btn-sm" onclick="viewSampleDetail('${s.id}')" title="查看详情">👁️</button>
-          <button class="btn btn-text btn-sm" onclick="openSampleModal('${s.id}')" title="编辑">✏️</button>
-          <button class="btn btn-text btn-sm" onclick="deleteSample('${s.id}')" title="删除">🗑️</button>
+          <button class="btn btn-text btn-sm" onclick="viewSampleDetail('${r.id}')" title="查看详情">👁️</button>
+          <button class="btn btn-text btn-sm" onclick="deleteSample('${r.id}')" title="删除">🗑️</button>
         </td>
       </tr>`;
     }).join('') + '</tbody>';
@@ -2080,37 +2091,46 @@ function saveSample() {
 }
 
 function viewSampleDetail(id) {
-  const s = getSamples().find(x => x.id === id);
-  if (!s) { App.toast('记录不存在', 'error'); return; }
-  const def = STAGE_DEFS[Number(s.stageKey)] || { multiRound: false, english: '' };
-  const styles = getStyles();
-  const style = styles.find(x => x.styleNo === s.styleNo);
-  const styleName = style ? style.styleName : '-';
+  // 从样衣计划数据源读取
+  var records = [];
+  try { var saved = localStorage.getItem('sht_sample_data_v2'); records = saved ? JSON.parse(saved) : []; } catch(e) { records = []; }
+  const r = records.find(x => x.id === id);
+  if (!r) { App.toast('记录不存在', 'error'); return; }
   const field = (label, val) => `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${val || '-'}</div></div>`;
+  const tagHTML = (val) => val ? `<span class="tag ${val === '大货' ? 'tag-green' : 'tag-orange'}">${val}</span>` : '';
+  const hasSampleDate = !!(r['寄样日期'] && r['寄样日期'].trim());
+  const hasConfirmedDate = !!(r['确认日期'] && r['确认日期'].trim());
   let body = `<div class="detail-grid">
-    ${field('款号', s.styleNo)}${field('款式名称', App.utils.escapeHtml(styleName))}
-    ${field('样衣阶段', stageTag(s.stageKey) + ' <span class=\"text-muted\" style=\"font-size:11px;\">' + (def.english || '') + '</span>')}
-    ${field('多轮寄样', def.multiRound ? '<span class=\"tag tag-blue\">支持</span>' : '单轮')}</div>`;
-  if (def.multiRound) {
-    body += `<div class=\"mt-16\" style=\"border-top:1px solid var(--border-light);padding-top:12px;\"><div class=\"detail-label mb-8\">✂️ 多轮寄样记录（共 ${s.rounds ? s.rounds.length : 0} 轮）</div>`;
-    if (!s.rounds || s.rounds.length === 0) body += `<div class=\"text-muted\" style=\"padding:12px;text-align:center;\">暂无轮次数据</div>`;
-    else body += s.rounds.map((r, i) => `
-      <div style="border:1px solid var(--border-light);border-radius:6px;padding:10px;margin-bottom:8px;background:${r.status === '已确认' ? '#f0fdf4' : (r.status === '不确认' ? '#fef2f2' : '#fafbfc')};">
-        <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:6px;">第 ${r.round || (i + 1)} 轮 · ${App.statusTag(r.status)}</div>
-        <div class="detail-grid">
-          ${field('安排日期', App.utils.formatDate(r.arrangeDate))}${field('寄样日期', App.utils.formatDate(r.sampleDate))}${field('收妥客寄样衣日期', App.utils.formatDate(r.receivedSampleDate))}${field('样衣工厂', App.utils.escapeHtml(r.factory))}${field('尺码', App.utils.escapeHtml(r.size))}${field('件数', r.qty ? r.qty + ' 件' : '')}${field('单价', r.unitPrice ? '¥' + Number(r.unitPrice).toFixed(2) : '')}${field('面料及克重', App.utils.escapeHtml(r.fabric))}${field('里料及克重', App.utils.escapeHtml(r.lining))}${field('面里料', r.fabricType ? '<span class=\"tag ' + (r.fabricType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.fabricType + '</span>' : '')}${field('颜色', r.colorType ? '<span class=\"tag ' + (r.colorType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.colorType + '</span>' : '')}${field('辅料', r.accessoryType ? '<span class=\"tag ' + (r.accessoryType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + r.accessoryType + '</span>' : '')}${field('确认人', App.utils.escapeHtml(r.confirmedBy))}${field('确认日期', App.utils.formatDate(r.confirmedDate))}
-        </div>
-        <div class="mt-8"><div class="detail-label mb-4">客人意见 / 备注</div><div style="background:#fff;border:1px solid var(--border-light);border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:32px;">${App.utils.escapeHtml(r.techNotes) || '<span class=\"text-muted\">暂无</span>'}</div></div>
-      </div>`).join('');
-    body += `</div>`;
-  } else {
-    body += `<div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;"><div class="detail-grid">
-      ${field('安排日期', App.utils.formatDate(s.arrangeDate))}${field('寄样日期', App.utils.formatDate(s.sampleDate))}${field('收妥客寄样衣日期', App.utils.formatDate(s.receivedSampleDate))}${field('样衣工厂', App.utils.escapeHtml(s.factory))}${field('尺码', App.utils.escapeHtml(s.size))}${field('件数', s.qty ? s.qty + ' 件' : '')}${field('单价', s.unitPrice ? '¥' + Number(s.unitPrice).toFixed(2) : '')}${field('面料及克重', App.utils.escapeHtml(s.fabric))}${field('里料及克重', App.utils.escapeHtml(s.lining))}${field('面里料', s.fabricType ? '<span class=\"tag ' + (s.fabricType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.fabricType + '</span>' : '')}${field('颜色', s.colorType ? '<span class=\"tag ' + (s.colorType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.colorType + '</span>' : '')}${field('辅料', s.accessoryType ? '<span class=\"tag ' + (s.accessoryType === '大货' ? 'tag-green' : 'tag-orange') + '\">' + s.accessoryType + '</span>' : '')}${field('状态', App.statusTag(s.status || '未确认'))}${field('确认人', App.utils.escapeHtml(s.confirmedBy))}${field('确认日期', App.utils.formatDate(s.confirmedDate))}
-    </div>
-    <div class="mt-8"><div class="detail-label mb-4">备注</div><div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:36px;">${App.utils.escapeHtml(s.techNotes) || '<span class=\"text-muted\">暂无备注</span>'}</div></div></div>`;
-  }
-  const styleNo = s.styleNo || '';
-  const picBoxId = 'v_pic_' + String(s.id || '').replace(/[^0-9a-zA-Z_]/g, '_');
+    ${field('款号', App.utils.escapeHtml(r['款号']))}
+    ${field('样衣类型', App.utils.escapeHtml(r['样衣类型']))}
+    ${field('打样轮次', r['打样轮次'] || 1)}
+    ${field('样衣工', App.utils.escapeHtml(r['样衣工']))}
+    ${field('样衣工厂', App.utils.escapeHtml(r['样衣工厂']))}
+    ${field('尺码', App.utils.escapeHtml(r['尺码']))}
+    ${field('数量', r['数量'] ? r['数量'] + ' 件' : '')}
+    ${field('单价', r['单价'] ? '¥' + Number(r['单价']).toFixed(2) : '')}
+    ${field('面料及克重', App.utils.escapeHtml(r['面料及克重']))}
+    ${field('里料及克重', App.utils.escapeHtml(r['里料及克重']))}
+    ${field('面里料', tagHTML(r['面里料']))}
+    ${field('颜色', tagHTML(r['颜色']))}
+    ${field('辅料', tagHTML(r['辅料']))}
+    ${field('面辅料准备情况', App.utils.escapeHtml(r['面辅料准备情况']))}
+    ${field('寄样状态', hasSampleDate ? '<span class="badge badge-success">✅ 已寄样</span>' : '<span class="badge badge-warning">⏳ 未寄样</span>')}
+    ${field('确认状态', hasConfirmedDate ? '<span class="badge badge-success">✅ 已确认</span>' : '<span class="badge badge-secondary">⏳ 未确认</span>')}
+  </div>
+  <div class="mt-16" style="border-top:1px solid var(--border-light);padding-top:12px;"><div class="detail-grid">
+    ${field('安排日期', App.utils.formatDate(r['安排日期']))}
+    ${field('寄样日期', App.utils.formatDate(r['寄样日期']))}
+    ${field('收妥客寄样衣日期', App.utils.formatDate(r['收妥客寄样衣日期']))}
+    ${field('要求交期', App.utils.formatDate(r['要求交期']))}
+    ${field('上手时间', App.utils.formatDate(r['上手时间']))}
+    ${field('落手时间', App.utils.formatDate(r['落手时间']))}
+    ${field('确认人', App.utils.escapeHtml(r['确认人']))}
+    ${field('确认日期', App.utils.formatDate(r['确认日期']))}
+  </div></div>
+  <div class="mt-8"><div class="detail-label mb-4">备注</div><div style="background:#f9fafb;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;min-height:36px;">${App.utils.escapeHtml(r['备注']) || '<span class="text-muted">暂无备注</span>'}</div></div>`;
+  const styleNo = r['款号'] || '';
+  const picBoxId = 'v_pic_' + String(r.id || '').replace(/[^0-9a-zA-Z_]/g, '_');
   const picBlock = `
     <div style="border:1px solid var(--border-light);border-radius:10px;padding:14px;margin-bottom:14px;background:linear-gradient(160deg,#f8fbff 0%,#eef5ff 100%);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -2121,19 +2141,18 @@ function viewSampleDetail(id) {
         <div style="text-align:center;color:#6ca6d8;padding:24px 12px;">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.35"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           <p style="margin:8px 0 2px;font-size:12px;color:#3a6b95;">正在加载图片...</p>
-          <p style="margin:0;font-size:11px;color:#6383a3;">如未上传，请在「编辑样衣」中上传款式图</p>
         </div>
       </div>
     </div>`;
   body = picBlock + body;
-  const footer = `<button class="btn" onclick="App.modal.close()">✖️</button><button class="btn btn-primary" onclick="App.modal.close(); openSampleModal('${s.id}')">✏️</button>`;
+  const footer = `<button class="btn" onclick="App.modal.close()">✖️</button>`;
   App.modal.open({ title: '样衣详情', body, footer, size: 'lg', closeOnOverlay: false });
-  // 异步加载并渲染图片（4级回退）：签名URL → findPictureByStyleNo(sample) → findPictureByStyleNo(uploads) → 本地 picture/
+  // 异步加载图片
   (async function loadDetailPic() {
     var host = document.getElementById(picBoxId);
     if (!host) return;
-    var picPath = s.picture_path || s['图片路径'] || '';
-    var picName = s.picture_name || s['图片文件名'] || '';
+    var picPath = r.picture_path || '';
+    var picName = r.picture_name || '';
     var origExt = null;
     if (picName && picName.indexOf('.') >= 0) origExt = picName.split('.').pop().toLowerCase();
     var formatsArr = ['jpg','jpeg','png','webp','gif'];
@@ -2207,18 +2226,18 @@ function viewSampleDetail(id) {
 }
 function deleteSample(id) {
   App.confirm('确定要删除这条样衣记录吗？', () => {
-    const allSamples = getSamples();
-    const target = allSamples.find(s => s.id === id);
-    const samples = allSamples.filter(s => s.id !== id);
-    App.store.set('samples', samples);
-    _selectedIds.delete(id);
-
-    // 关键修复：若此记录来自「样衣计划」同步（带 samplePlanId 标记），
-    // 必须同步删除 SamplePlan 源记录，否则下次 syncSamplePlanToTabs 会把它复活
-    if (target && target['samplePlanId'] && typeof SamplePlan !== 'undefined' && SamplePlan._deleteSourceRecord) {
-      try { SamplePlan._deleteSourceRecord(target['samplePlanId']); } catch(e) {}
+    // 从样衣计划数据源删除
+    var records = [];
+    try { var saved = localStorage.getItem('sht_sample_data_v2'); records = saved ? JSON.parse(saved) : []; } catch(e) { records = []; }
+    records = records.filter(r => r.id !== id);
+    localStorage.setItem('sht_sample_data_v2', JSON.stringify(records));
+    // 同步更新 SamplePlan 内部状态
+    if (typeof SamplePlan !== 'undefined' && SamplePlan.state) {
+      SamplePlan.state.data = records;
+      if (typeof SamplePlan.applyFilters === 'function') { SamplePlan.applyFilters(); }
+      else if (SamplePlan._renderAll) { SamplePlan._renderAll(); }
     }
-
+    _selectedIds.delete(id);
     App.toast('样衣记录已删除', 'success');
     renderStats();
     renderSampleTable();
