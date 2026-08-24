@@ -195,6 +195,16 @@ input[type="number"] { -moz-appearance: textfield; }
 .sample-plan .dropdown-divider { height: 1px; background: var(--border-light, #f3f4f6); margin: 4px 0; }
 
 /* ===== Stat Cards —— 系统 .stat-card 风格 ===== */
+/* 颜色类：全局可用（统计卡片移到标签页上方，所有标签页共用） */
+.stat-icon.blue   { background: var(--primary-light, #e8f1f5); color: var(--primary, #004D6D); }
+.stat-icon.purple { background: #f0edff; color: #5e52c6; }
+.stat-icon.teal   { background: #e0f2fe; color: #0369a1; }
+.stat-icon.orange { background: #fff4e5; color: var(--warning, #d9883a); }
+.stat-icon.green  { background: #e4f6ec; color: var(--success, #2d9d5f); }
+.stat-icon.red    { background: #fdecec; color: var(--error, #d44848); }
+.stat-icon.gray   { background: #f3f4f6; color: #6b7280; }
+#statCards .stat-card svg { width: 14px; height: 14px; }
+#statCards .stat-icon { width: 28px; height: 28px; border-radius: var(--radius, 4px); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
 .sample-plan .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -899,7 +909,6 @@ input[type="number"] { -moz-appearance: textfield; }
 
           <!-- ===== Tab: Sample Management ===== -->
           <div class="tab-content active" id="sp_tab-samples">
-            <div class="stats-grid" id="sp_statsGrid"></div>
             <div class="toolbar glass">
               <div class="search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1320,24 +1329,55 @@ function migrateSamples() {
 }
 
 function renderStats() {
-  const samples = getSamples();
-  const cards = STAGE_DEFS.map(def => {
-    const count = samples.filter(s => Number(s.stageKey) === def.key).length;
-    const iconMap = { 0: '🔍', 1: '📏', 2: '🏭', 3: '🚢', 4: '📷' };
-    const colorMap = { 0: '#004D6D', 1: '#5e52c6', 2: '#d9883a', 3: '#0369a1', 4: '#2d9d5f' };
-    const bgMap = { 0: '#e8f1f5', 1: '#f0edff', 2: '#fff4e5', 3: '#e0f2fe', 4: '#e4f6ec' };
-    return { icon: iconMap[def.key], bg: bgMap[def.key], color: colorMap[def.key], label: def.name, value: count, sub: def.english || '' };
-  });
-  document.getElementById('statCards').innerHTML = cards.map(c => `
-    <div class="stat-card">
-      <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
-      <div class="stat-info">
-        <div class="stat-label">${c.label}</div>
-        <div class="stat-value" style="color:${c.color};">${c.value}</div>
-        <div class="stat-sub">${c.sub}</div>
-      </div>
-    </div>
-  `).join('');
+  // 读取样衣计划数据（与SamplePlan同一数据源）
+  var data = [];
+  try { var saved = localStorage.getItem('sht_sample_data_v2'); data = saved ? JSON.parse(saved) : []; } catch(e) { data = []; }
+  // 应用当前筛选（与SamplePlan同步）
+  if (typeof SamplePlan !== 'undefined' && SamplePlan.state && SamplePlan.state.filteredData) {
+    data = SamplePlan.state.filteredData;
+  }
+  var total = data.length;
+  var qtySum = data.reduce(function(s, r) { return s + (parseInt(r['数量']) || 0); }, 0);
+  var typeCounts = { '头样':0, '尺码样':0, '产前样':0, '照片样':0, '船样':0 };
+  data.forEach(function(r) { if (typeCounts[r['样衣类型']] !== undefined) typeCounts[r['样衣类型']]++; });
+  var today = new Date().toISOString().split('T')[0];
+  var noEnd = data.filter(function(r) { return !r['落手时间']; });
+  var dueSoon = noEnd.filter(function(r) { return r['要求交期'] && r['要求交期'] >= today; }).length;
+  var overdue = noEnd.filter(function(r) { return r['要求交期'] && r['要求交期'] < today; }).length;
+  function spGetStatus(row) { if (row['落手时间']) return '已出样'; if (row['上手时间']) return '未出样'; return '未上手'; }
+  function countUnique(records) { return new Set(records.map(function(r) { return r['款号']; }).filter(Boolean)).size; }
+  var stNotStart = countUnique(data.filter(function(r) { return spGetStatus(r) === '未上手'; }));
+  var stInProgress = countUnique(data.filter(function(r) { return spGetStatus(r) === '未出样'; }));
+  var stDone = countUnique(data.filter(function(r) { return spGetStatus(r) === '已出样'; }));
+  var ic = {
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>',
+    qty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+    tou: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>',
+    chi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    chan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+    zhao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+    chuan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18l2-10h14l2 10"/><path d="M2 18h20v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>',
+    wait: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    run: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    due: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    over: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+  };
+  var iconBox = function(cls, svg) { return '<div class="stat-icon ' + cls + '">' + svg + '</div>'; };
+  document.getElementById('statCards').innerHTML = [
+    { cls:'blue', svg:ic.list, val:total, label:'样衣总数' },
+    { cls:'teal', svg:ic.qty, val:qtySum, label:'数量合计' },
+    { cls:'blue', svg:ic.tou, val:typeCounts['头样'], label:'头样' },
+    { cls:'purple', svg:ic.chi, val:typeCounts['尺码样'], label:'尺码样' },
+    { cls:'teal', svg:ic.chan, val:typeCounts['产前样'], label:'产前样' },
+    { cls:'orange', svg:ic.zhao, val:typeCounts['照片样'], label:'照片样' },
+    { cls:'green', svg:ic.chuan, val:typeCounts['船样'], label:'船样' },
+    { cls:'gray', svg:ic.wait, val:stNotStart, label:'未上手(款号)' },
+    { cls:'orange', svg:ic.run, val:stInProgress, label:'未出样(款号)' },
+    { cls:'green', svg:ic.done, val:stDone, label:'已出样(款号)' },
+    { cls:'orange', svg:ic.due, val:dueSoon, label:'即将到期' },
+    { cls:'red', svg:ic.over, val:overdue, label:'已逾期' }
+  ].map(function(c) { return '<div class="stat-card">' + iconBox(c.cls, c.svg) + '<div class="stat-info"><div class="stat-value">' + c.val + '</div><div class="stat-label">' + c.label + '</div></div></div>'; }).join('');
 }
 function getMainStatus(s) { const def = STAGE_DEFS[s.stageKey]; if (def && def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].status || '未确认'; return s.status || '未确认'; }
 function getMainDate(s) { const def = STAGE_DEFS[s.stageKey]; if (def && def.multiRound && s.rounds && s.rounds.length > 0) return s.rounds[s.rounds.length - 1].sampleDate || ''; return s.sampleDate || ''; }
@@ -1372,11 +1412,12 @@ function switchTab(tab) {
   const reviewEl = document.getElementById('sampleReviewContainer');
   const origArea = document.getElementById('originalSampleArea');
   const statCardsEl = document.getElementById('statCards');
+  // 统计卡片在所有标签页都显示
+  if (statCardsEl) statCardsEl.style.display = '';
   if (tab === '样衣计划') {
     if (planEl) planEl.style.display = '';
     if (reviewEl) reviewEl.style.display = 'none';
     if (origArea) origArea.style.display = 'none';
-    if (statCardsEl) statCardsEl.style.display = '';
     if (!window._samplePlanInited) {
       window._samplePlanInited = true;
       SamplePlan.init();
@@ -1385,7 +1426,6 @@ function switchTab(tab) {
     if (planEl) planEl.style.display = 'none';
     if (reviewEl) reviewEl.style.display = '';
     if (origArea) origArea.style.display = 'none';
-    if (statCardsEl) statCardsEl.style.display = 'none';
     if (!window._sampleReviewInited) {
       window._sampleReviewInited = true;
       SampleReview.init();
@@ -1394,7 +1434,6 @@ function switchTab(tab) {
     if (planEl) planEl.style.display = 'none';
     if (reviewEl) reviewEl.style.display = 'none';
     if (origArea) origArea.style.display = '';
-    if (statCardsEl) statCardsEl.style.display = '';
     renderSampleTable();
   }
 }
@@ -2526,47 +2565,10 @@ window.addEventListener('cloud-data-updated', function(e) {
 
   // ===== Stats Render =====
   function renderStats() {
-    const data = state.filteredData;
-    const total = data.length;
-    const qtySum = data.reduce((s, r) => s + (parseInt(r['数量']) || 0), 0);
-    const typeCounts = { '头样':0, '尺码样':0, '产前样':0, '照片样':0, '船样':0 };
-    data.forEach(r => { if (typeCounts[r['样衣类型']] !== undefined) typeCounts[r['样衣类型']]++; });
-    const today = new Date().toISOString().split('T')[0];
-    const noEnd = data.filter(r => !r['落手时间']);
-    const dueSoon = noEnd.filter(r => r['要求交期'] && r['要求交期'] >= today).length;
-    const overdue = noEnd.filter(r => r['要求交期'] && r['要求交期'] < today).length;
-    const stNotStart = countUniqueStyleNos(data.filter(r => getStatus(r) === '未上手'));
-    const stInProgress = countUniqueStyleNos(data.filter(r => getStatus(r) === '未出样'));
-    const stDone = countUniqueStyleNos(data.filter(r => getStatus(r) === '已出样'));
-    const ic = {
-      list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>',
-      qty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
-      tou: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>',
-      chi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
-      chan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
-      zhao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
-      chuan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18l2-10h14l2 10"/><path d="M2 18h20v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>',
-      wait: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-      run: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
-      done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-      due: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-      over: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-    };
-    const iconBox = (cls, svg) => `<div class="stat-icon ${cls}">${svg}</div>`;
-    document.getElementById('sp_statsGrid').innerHTML = [
-      { cls:'blue', svg:ic.list, val:total, label:'样衣总数' },
-      { cls:'teal', svg:ic.qty, val:qtySum, label:'数量合计' },
-      { cls:'blue', svg:ic.tou, val:typeCounts['头样'], label:'头样' },
-      { cls:'purple', svg:ic.chi, val:typeCounts['尺码样'], label:'尺码样' },
-      { cls:'teal', svg:ic.chan, val:typeCounts['产前样'], label:'产前样' },
-      { cls:'orange', svg:ic.zhao, val:typeCounts['照片样'], label:'照片样' },
-      { cls:'green', svg:ic.chuan, val:typeCounts['船样'], label:'船样' },
-      { cls:'gray', svg:ic.wait, val:stNotStart, label:'未上手(款号)' },
-      { cls:'orange', svg:ic.run, val:stInProgress, label:'未出样(款号)' },
-      { cls:'green', svg:ic.done, val:stDone, label:'已出样(款号)' },
-      { cls:'orange', svg:ic.due, val:dueSoon, label:'即将到期' },
-      { cls:'red', svg:ic.over, val:overdue, label:'已逾期' }
-    ].map(c => `<div class="stat-card glass">${iconBox(c.cls, c.svg)}<div class="stat-info"><div class="stat-value">${c.val}</div><div class="stat-label">${c.label}</div></div></div>`).join('');
+    // 统计卡片已移至标签页上方，由外部 renderStats() 统一渲染
+    if (typeof window.renderStats === 'function' && window.renderStats !== renderStats) {
+      window.renderStats();
+    }
   }
 
   // ===== Table =====
