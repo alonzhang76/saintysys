@@ -96,10 +96,19 @@
             if (!Array.isArray(rows)) return;
             var changedKeys = [];
             var origLS = window._origLocalStorage || localStorage;
+            var nowMs = Date.now();
+            var RECENT_WRITE_WINDOW = 10000;
             for (var i = 0; i < rows.length; i++) {
               var row = rows[i];
-              origLS.setItem(row.store_key, JSON.stringify(row.payload));
-              changedKeys.push(row.store_key);
+              var key = row.store_key;
+              // 关键修复：检查 _recentWrites，跳过本地刚写入的 key
+              var rwStore = window.SupabaseStore;
+              if (rwStore && rwStore._recentWrites) {
+                var lastWrite = rwStore._recentWrites[key] || 0;
+                if (lastWrite && (nowMs - lastWrite < RECENT_WRITE_WINDOW)) continue;
+              }
+              origLS.setItem(key, JSON.stringify(row.payload));
+              changedKeys.push(key);
             }
             console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key');
             if (changedKeys.length > 0) {

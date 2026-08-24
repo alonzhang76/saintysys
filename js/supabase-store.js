@@ -1101,10 +1101,17 @@ function _processRestRows(rows, source) {
   var changedKeys = [];
   var updatedCount = 0;
   var syncToLocal = []; // 需要同步到原始 localStorage 的 key
+  var now = Date.now();
+  var SKIP_WINDOW = 10000; // 10秒内本地刚写入的 key 跳过（与 refreshFromCloud 一致）
 
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var key = row.store_key;
+
+    // 关键修复：检查 _recentWrites，跳过本地刚写入的 key（防止云端旧数据覆盖本地新数据）
+    var lastWrite = _recentWrites[key] || 0;
+    if (now - lastWrite < SKIP_WINDOW) continue;
+
     var newVal = normalizePayload(row.payload);
 
     // 先对比再更新
