@@ -587,7 +587,7 @@ const App = {
     // ===== NAS 通用工具 =====
     getNasConfig() {
       const d = {
-        serverUrl: '', webdavPath: '/webdav', rootFolder: '/saintydoc',
+        serverUrl: 'https://100.75.76.59:44763', webdavPath: '/webdav', rootFolder: '/saintydoc',
         username: '', password: '', verifySsl: true, uploadMaxMb: 500, mode: 'lan'
       };
       try {

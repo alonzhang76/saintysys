@@ -710,7 +710,7 @@ function renderAdvanced() {
 // ===== 云盘 NAS 配置 =====
 function _defaultNasConfig() {
   return {
-    serverUrl: '',            // 如 http://192.168.1.50:9008 或 https://xxx.ugreen.link:9009
+    serverUrl: 'https://100.75.76.59:44763', // Tailscale 外网（NPM HTTPS 44763→443），内网可改 https://dxp4800plus-ring.local:44763
     webdavPath: '/webdav',    // 绿联 NAS WebDAV 默认路径通常是 /webdav，可按需改成 /dav 等
     rootFolder: '/saintydoc',   // 在 WebDAV 里的基础目录（所有用户共享该目录作为逻辑根）
     username: '',
@@ -816,7 +816,7 @@ function renderNas() {
       </div>
       <table class="form-table" style="width:100%;">
         <tr><td style="width:140px;padding:8px;">服务器地址 <span style="color:#d4380d;">*</span></td>
-            <td style="padding:8px;"><input type="text" id="nas_serverUrl" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.serverUrl)}" placeholder="例：https://yourname.ugreen.link:9009 或 http://192.168.1.50:9008"></td></tr>
+            <td style="padding:8px;"><input type="text" id="nas_serverUrl" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.serverUrl)}" placeholder="例：https://100.75.76.59:44763（Tailscale外网）或 https://dxp4800plus-ring.local:44763（内网）"></td></tr>
         <tr><td style="padding:8px;">WebDAV 路径</td>
             <td style="padding:8px;"><input type="text" id="nas_webdavPath" class="input" style="width:100%;" value="${App.utils.escapeHtml(cfg.webdavPath)}" placeholder="绿联默认：/webdav；其它品牌可能是 /dav"></td></tr>
         <tr><td style="padding:8px;">系统根目录</td>
