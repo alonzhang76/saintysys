@@ -14,6 +14,9 @@
 .modal.modal-lg { max-width: 1100px; }
 
 /* ===== Quotation UI (scoped to #quotationTab) ===== */
+/* 全局字体：Quotation 所有页面统一使用 Arial */
+#quotationTab, #quotationTab *,
+.q-preview-overlay, .q-preview-overlay *{font-family:Arial,Helvetica,sans-serif!important;}
 #quotationTab .q-subnav{display:flex;gap:4px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;}
 #quotationTab .q-subnav a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--radius);font-size:12px;color:var(--ink-secondary);background:transparent;cursor:pointer;}
 #quotationTab .q-subnav a:hover{background:var(--primary-light);}
@@ -2978,10 +2981,9 @@ var q_defaultSettings = {
   defaultPaymentTerms: '30% deposit, 70% before shipment',
   defaultDeliveryTerms: 'FOB Shanghai',
   defaultLeadTime: '45-60 days after order confirmation',
-  defaultValidity: '30 days',
   defaultHangerCost: 1.10,
   defaultDiscount: 0,
-  defaultNotes: '1. Sample lead time: 7-10 working days.\n2. All prices include standard poly bag and carton packing; hanger packing available upon request.\n3. Color matching is subject to fabric mill confirmation; slight variation may occur between lots.\n4. Size charts and tech packs available upon request.\n5. Prices are valid for 30 days from quotation date and subject to final confirmation.\n6. Compliance with REACH and OEKO-TEX standards; test reports available upon request.'
+  defaultNotes: '1. Sample lead time: 7-10 working days.\n2. All prices include standard poly bag and carton packing; hanger packing available upon request.\n3. Color matching is subject to fabric mill confirmation; slight variation may occur between lots.\n4. Size charts and tech packs available upon request.\n5. Compliance with REACH and OEKO-TEX standards; test reports available upon request.'
 };
 
 function q_uid() { return 'qt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
@@ -3049,7 +3051,6 @@ function q_renderList() {
       '<thead><tr>' +
         '<th>Quote No.</th>' +
         '<th>Date</th>' +
-        '<th>Valid Until</th>' +
         '<th>Customer</th>' +
         '<th>Season</th>' +
         '<th>Currency</th>' +
@@ -3061,7 +3062,6 @@ function q_renderList() {
       html += '<tr data-search="' + q_escapeHtml((q.quoteNo + ' ' + q.customerName + ' ' + (q.items || []).map(function (i) { return i.styleNo; }).join(' ')).toLowerCase()) + '">' +
         '<td class="quote-no">' + q_escapeHtml(q.quoteNo) + '</td>' +
         '<td>' + q_escapeHtml(q.quoteDate) + '</td>' +
-        '<td>' + q_escapeHtml(q.validUntil) + '</td>' +
         '<td>' + q_escapeHtml(q.customerName) + '</td>' +
         '<td>' + q_escapeHtml(q.season || '') + '</td>' +
         '<td>' + q_escapeHtml(q.currency || 'USD') + '</td>' +
@@ -3103,7 +3103,6 @@ function q_newQuotation() {
   var q = {
     quoteNo: q_generateQuoteNo(),
     quoteDate: q_todayStr(),
-    validUntil: q_addDays(q_todayStr(), 30),
     customerName: settings.custContact || '',
     customerCompany: settings.custCompany || '',
     customerAddress: settings.custAddress || '',
@@ -3112,7 +3111,7 @@ function q_newQuotation() {
     customerPhone: settings.custPhone || '',
     season: '',
     currency: settings.defaultCurrency || 'USD',
-    items: [{ styleNo: '', productName: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: 0, total: 0 }],
+    items: [{ styleNo: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: 0, total: 0 }],
     discount: settings.defaultDiscount || 0,
     discountType: 'percentage',
     hangerCost: settings.defaultHangerCost || 0,
@@ -3141,7 +3140,6 @@ function q_duplicateQuotation(id) {
   copy.id = q_uid();
   copy.quoteNo = q_generateQuoteNo();
   copy.quoteDate = q_todayStr();
-  copy.validUntil = q_addDays(q_todayStr(), 30);
   copy.status = 'draft';
   copy.createdAt = new Date().toISOString();
   copy.updatedAt = new Date().toISOString();
@@ -3169,7 +3167,6 @@ function q_renderEditor(q) {
         '<div class="q-form-row">' +
           '<div class="q-form-group"><label>Quotation No.</label><input type="text" id="qf_quoteNo" value="' + q_escapeHtml(q.quoteNo) + '" readonly style="font-weight:600;color:var(--primary);background:var(--border-light);cursor:default;"></div>' +
           '<div class="q-form-group"><label>Quotation Date</label><input type="date" id="qf_quoteDate" value="' + q_escapeHtml(q.quoteDate) + '"></div>' +
-          '<div class="q-form-group"><label>Valid Until</label><input type="date" id="qf_validUntil" value="' + q_escapeHtml(q.validUntil) + '"></div>' +
           '<div class="q-form-group"><label>Season</label><input type="text" id="qf_season" value="' + q_escapeHtml(q.season) + '" placeholder="e.g. SS2026, FW2026"></div>' +
           '<div class="q-form-group"><label>Status</label>' +
             '<select id="qf_status">' +
@@ -3205,7 +3202,6 @@ function q_renderEditor(q) {
           '<thead><tr>' +
             '<th>#</th>' +
             '<th class="col-style">Style No.</th>' +
-            '<th>Product Name</th>' +
             '<th>Description</th>' +
             '<th>Fabric / Composition</th>' +
             '<th>Colors</th>' +
@@ -3284,13 +3280,12 @@ function q_addItemRow(data, idx) {
   var body = document.getElementById('qf_itemsBody');
   if (!body) return;
   var i = idx !== undefined ? idx : body.children.length;
-  data = data || { styleNo: '', productName: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: '', quantity: 0, total: 0 };
+  data = data || { styleNo: '', description: '', fabric: '', colors: '', sizes: '', moq: '', unitPrice: '', quantity: 0, total: 0 };
 
   var tr = document.createElement('tr');
   tr.innerHTML =
     '<td class="row-num" style="text-align:center;color:var(--muted);font-size:10px;">' + (i + 1) + '</td>' +
     '<td><input type="text" class="col-style" value="' + q_escapeHtml(data.styleNo) + '" placeholder="ST-001" oninput="q_recalc();q_highlightEmpty()"></td>' +
-    '<td><input type="text" value="' + q_escapeHtml(data.productName) + '" placeholder="Cotton Blouse" oninput="q_recalc();q_highlightEmpty()"></td>' +
     '<td><input type="text" value="' + q_escapeHtml(data.description) + '" placeholder="Brief description" oninput="q_recalc();q_highlightEmpty()"></td>' +
     '<td><input type="text" value="' + q_escapeHtml(data.fabric) + '" placeholder="100% Cotton" oninput="q_recalc();q_highlightEmpty()"></td>' +
     '<td><input type="text" value="' + q_escapeHtml(data.colors) + '" placeholder="White, Black" oninput="q_recalc();q_highlightEmpty()"></td>' +
@@ -3346,8 +3341,8 @@ function q_recalc() {
   var rows = body.querySelectorAll('tr');
   rows.forEach(function (r) {
     var inputs = r.querySelectorAll('input');
-    var moq = parseFloat(inputs[6].value) || 0;
-    var price = parseFloat(inputs[7].value) || 0;
+    var moq = parseFloat(inputs[5].value) || 0;
+    var price = parseFloat(inputs[6].value) || 0;
     var total = moq * price;
     r.querySelector('.col-total-cell').textContent = q_formatMoney(total);
     subtotal += total;
@@ -3362,7 +3357,7 @@ function q_recalc() {
   var totalMOQ = 0;
   rows.forEach(function (r) {
     var inputs = r.querySelectorAll('input');
-    totalMOQ += parseFloat(inputs[6].value) || 0;
+    totalMOQ += parseFloat(inputs[5].value) || 0;
   });
   var hangerAmount = totalMOQ * hangerCost;
   var grand = subtotal - discountAmount + hangerAmount;
@@ -3380,14 +3375,13 @@ function q_saveQuotation(preview) {
     var inputs = r.querySelectorAll('input');
     items.push({
       styleNo: inputs[0].value.trim(),
-      productName: inputs[1].value.trim(),
-      description: inputs[2].value.trim(),
-      fabric: inputs[3].value.trim(),
-      colors: inputs[4].value.trim(),
-      sizes: inputs[5].value.trim(),
-      moq: parseFloat(inputs[6].value) || 0,
-      unitPrice: parseFloat(inputs[7].value) || 0,
-      total: (parseFloat(inputs[6].value) || 0) * (parseFloat(inputs[7].value) || 0)
+      description: inputs[1].value.trim(),
+      fabric: inputs[2].value.trim(),
+      colors: inputs[3].value.trim(),
+      sizes: inputs[4].value.trim(),
+      moq: parseFloat(inputs[5].value) || 0,
+      unitPrice: parseFloat(inputs[6].value) || 0,
+      total: (parseFloat(inputs[5].value) || 0) * (parseFloat(inputs[6].value) || 0)
     });
   });
 
@@ -3405,7 +3399,6 @@ function q_saveQuotation(preview) {
     id: q_editingId || q_uid(),
     quoteNo: document.getElementById('qf_quoteNo').value.trim(),
     quoteDate: document.getElementById('qf_quoteDate').value,
-    validUntil: document.getElementById('qf_validUntil').value,
     customerName: document.getElementById('qf_customerName').value.trim(),
     customerCompany: document.getElementById('qf_customerCompany').value.trim(),
     customerAddress: document.getElementById('qf_customerAddress').value.trim(),
@@ -3489,8 +3482,8 @@ function q_renderPreview(q) {
     return '<tr>' +
       '<td style="text-align:center;">' + (i + 1) + '</td>' +
       '<td class="item-style">' + q_escapeHtml(item.styleNo) + '</td>' +
-      '<td><div class="item-name">' + q_escapeHtml(item.productName) + '</div>' +
-        (item.description ? '<div class="item-desc">' + q_escapeHtml(item.description) + '</div>' : '') +
+      '<td>' +
+        (item.description ? '<div class="item-name">' + q_escapeHtml(item.description) + '</div>' : '') +
         (item.fabric ? '<div class="item-desc">Fabric: ' + q_escapeHtml(item.fabric) + '</div>' : '') +
       '</td>' +
       '<td>' + q_escapeHtml(item.colors || '—') + '</td>' +
@@ -3547,7 +3540,7 @@ function q_renderPreview(q) {
   '</div>';
 
   var footerHtml = '<div class="q-quote-footer">' +
-    'This quotation is valid until ' + q_escapeHtml(q.validUntil) + '. Prices are subject to change without prior notice after the validity date.<br>' +
+    'Prices are subject to change without prior notice.<br>' +
     'Printed by: ' + q_escapeHtml(userName) + ' | ' + q_escapeHtml(new Date().toLocaleDateString('en-US')) +
   '</div>';
 
@@ -3566,7 +3559,6 @@ function q_renderPreview(q) {
         '<div class="quote-meta">' +
           '<strong>Quote No.:</strong> <span class="q-quote-no-badge">' + q_escapeHtml(q.quoteNo) + '</span><br>' +
           '<strong>Date:</strong> ' + q_escapeHtml(q.quoteDate) + '<br>' +
-          '<strong>Valid Until:</strong> ' + q_escapeHtml(q.validUntil) + '<br>' +
           '<strong>Status:</strong> <span class="q-badge q-badge-' + q_escapeHtml(q.status) + '">' + q_escapeHtml(q.status) + '</span>' +
         '</div>' +
       '</div>' +
@@ -3649,7 +3641,6 @@ function q_showSettings() {
         '</div>' +
         '<div class="q-form-row">' +
           '<div class="q-form-group"><label>Lead Time</label><input type="text" id="qs_defaultLeadTime" value="' + q_escapeHtml(s.defaultLeadTime) + '"></div>' +
-          '<div class="q-form-group"><label>Validity Period (days)</label><input type="number" id="qs_defaultValidity" value="' + q_escapeHtml(s.defaultValidity) + '"></div>' +
         '</div>' +
         '<div class="q-form-row">' +
           '<div class="q-form-group"><label>Notes / Remarks (default for new quotations)</label><textarea id="qs_defaultNotes" rows="6" style="font-size:11px;line-height:1.6;">' + q_escapeHtml(s.defaultNotes) + '</textarea></div>' +
@@ -3666,7 +3657,7 @@ function q_showSettings() {
 }
 
 function q_saveSettingsForm() {
-  var fields = ['companyName', 'userName', 'companyAddress', 'companyPhone', 'companyEmail', 'companyTaxId', 'custCompany', 'custContact', 'custAddress', 'custPhone', 'custEmail', 'defaultCurrency', 'defaultHangerCost', 'defaultDiscount', 'defaultPaymentTerms', 'defaultDeliveryTerms', 'defaultLeadTime', 'defaultValidity', 'defaultNotes'];
+  var fields = ['companyName', 'userName', 'companyAddress', 'companyPhone', 'companyEmail', 'companyTaxId', 'custCompany', 'custContact', 'custAddress', 'custPhone', 'custEmail', 'defaultCurrency', 'defaultHangerCost', 'defaultDiscount', 'defaultPaymentTerms', 'defaultDeliveryTerms', 'defaultLeadTime', 'defaultNotes'];
   var obj = {};
   fields.forEach(function (f) {
     var el = document.getElementById('qs_' + f);
