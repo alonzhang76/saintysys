@@ -88,14 +88,18 @@ window.addEventListener('cloud-data-updated', function(e) {
     // permissions 更新：同步把基线 & 待保存缓存刷新成最新云端值（避免"未保存"红标误亮）
     try {
       if (keys.indexOf('permissions') >= 0) {
-        // 关键修复：如果本地刚保存过权限（60秒内），不要用云端旧数据覆盖 _pendingPerms
+        // 关键修复：如果有未保存的修改，不要用云端数据覆盖 _pendingPerms（否则用户刚改的值会丢失）
+        var hasUnsavedChanges = (typeof _hasPermChanges === 'function' && _hasPermChanges());
+        // 关键修复：如果本地刚保存过权限（60秒内），也不要覆盖
         var localSaveTs_set = 0;
         try {
           var origLS_set = window._origLocalStorage || localStorage;
           var tsStr_set = origLS_set.getItem('_lastLocalSave_permissions');
           if (tsStr_set) localSaveTs_set = parseInt(tsStr_set, 10) || 0;
         } catch(_) {}
-        if (localSaveTs_set && (Date.now() - localSaveTs_set < 60000)) {
+        if (hasUnsavedChanges) {
+          console.log('[settings.html] 有未保存的权限修改，跳过云端覆盖 _pendingPerms');
+        } else if (localSaveTs_set && (Date.now() - localSaveTs_set < 60000)) {
           console.log('[settings.html] 权限本地刚保存(' + Math.round((Date.now() - localSaveTs_set)/1000) + 's内)，跳过云端覆盖 _pendingPerms');
         } else {
           var storedNow = App.store.get('permissions', {});
