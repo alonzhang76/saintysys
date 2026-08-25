@@ -58,13 +58,13 @@
 <script src="js/auth-guard.js?v=20260823a"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
 <script type="module" src="js/supabase.js?v=20260822ff"></script>
-<script src="js/supabase-store.js?v=20260823a"></script>
+<script src="js/supabase-store.js?v=20260825a"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
 <script src="js/supabase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260823a"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
-<script src="js/init-page.js?v=20260823a"></script>
+<script src="js/init-page.js?v=20260825a"></script>
 <script>
 // ===== 关键：全局共享键（权限、用户、NAS 配置）仅管理员可写 =====
 // 防止非管理员在自动备份时把本地旧值覆盖管理员发布的全局权限
@@ -570,6 +570,10 @@ function savePendingPerms() {
     App.store.set('permissions', toSave);
     try { localStorage.setItem('permissions', JSON.stringify(toSave)); } catch(_) {}
 
+    // 关键修复：记录本地保存时间戳到原始 localStorage（防止刷新后云端旧数据覆盖本地新数据）
+    // _recentWrites 是内存变量刷新即丢失；_lastLocalSave_<key> 持久化，刷新后仍可保护
+    try { (window._origLocalStorage || localStorage).setItem('_lastLocalSave_permissions', String(tsNow)); } catch(_) {}
+
     // 2) Supabase 同步层 setSync（兼容旧桥）
     if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
       try { window.SupabaseStore.setSync('permissions', toSave); } catch(_) {}
@@ -636,6 +640,8 @@ function resetPerms() {
     _pendingPerms = _deepClonePerms(def);
     _baselinePerms = _deepClonePerms(def);
     try { localStorage.setItem('permissions', JSON.stringify(def)); } catch(_) {}
+    // 关键修复：记录本地保存时间戳（防止刷新后云端旧数据覆盖本地新数据）
+    try { (window._origLocalStorage || localStorage).setItem('_lastLocalSave_permissions', String(Date.now())); } catch(_) {}
     if (window.SupabaseStore && typeof window.SupabaseStore.setSync === 'function') {
       try { window.SupabaseStore.setSync('permissions', def); } catch(_) {}
     }

@@ -1112,6 +1112,18 @@ function _processRestRows(rows, source) {
     var lastWrite = _recentWrites[key] || 0;
     if (now - lastWrite < SKIP_WINDOW) continue;
 
+    // 关键修复：检查持久化的本地保存时间戳（_recentWrites 刷新后丢失）
+    try {
+      var origLS_pr = window._origLocalStorage || localStorage;
+      var localSaveTsStr_pr = origLS_pr.getItem('_lastLocalSave_' + key);
+      if (localSaveTsStr_pr) {
+        var localSaveTs_pr = parseInt(localSaveTsStr_pr, 10) || 0;
+        var cloudUpdatedAt_pr = 0;
+        try { cloudUpdatedAt_pr = new Date(row.updated_at).getTime() || 0; } catch(_) {}
+        if (localSaveTs_pr && cloudUpdatedAt_pr && localSaveTs_pr > cloudUpdatedAt_pr) continue;
+      }
+    } catch(_) {}
+
     var newVal = normalizePayload(row.payload);
 
     // 先对比再更新

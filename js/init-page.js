@@ -107,6 +107,16 @@
                 var lastWrite = rwStore._recentWrites[key] || 0;
                 if (lastWrite && (nowMs - lastWrite < RECENT_WRITE_WINDOW)) continue;
               }
+              // 关键修复：检查持久化的本地保存时间戳（_recentWrites 刷新后丢失）
+              try {
+                var localSaveTsStr_fb = origLS.getItem('_lastLocalSave_' + key);
+                if (localSaveTsStr_fb) {
+                  var localSaveTs_fb = parseInt(localSaveTsStr_fb, 10) || 0;
+                  var cloudUpdatedAt_fb = 0;
+                  try { cloudUpdatedAt_fb = new Date(row.updated_at).getTime() || 0; } catch(_) {}
+                  if (localSaveTs_fb && cloudUpdatedAt_fb && localSaveTs_fb > cloudUpdatedAt_fb) continue;
+                }
+              } catch(_) {}
               origLS.setItem(key, JSON.stringify(row.payload));
               changedKeys.push(key);
             }
@@ -390,6 +400,35 @@
               try {
                 var hashSkip = JSON.stringify(payload) + '|' + (row.updated_at || '');
                 newHashes[key] = hashSkip;
+              } catch(_) {}
+              continue;
+            }
+          }
+        } catch(_) {}
+
+        // 关键修复：检查持久化的本地保存时间戳（_recentWrites 刷新后丢失）
+        // 如果本地保存时间晚于云端 updated_at → 本地数据更新，跳过覆盖并推送本地值到云端
+        try {
+          var origLS_lts = window._origLocalStorage || localStorage;
+          var localSaveTsStr = origLS_lts.getItem('_lastLocalSave_' + key);
+          if (localSaveTsStr) {
+            var localSaveTs = parseInt(localSaveTsStr, 10) || 0;
+            var cloudUpdatedAt = 0;
+            try { cloudUpdatedAt = new Date(row.updated_at).getTime() || 0; } catch(_) {}
+            if (localSaveTs && cloudUpdatedAt && localSaveTs > cloudUpdatedAt) {
+              // 本地比云端新，不覆盖，记录 hash 供下次对比
+              try {
+                var hashSkipLts = JSON.stringify(payload) + '|' + (row.updated_at || '');
+                newHashes[key] = hashSkipLts;
+              } catch(_) {}
+              // 同时触发云端写入（把本地新值推上去，forceUpsert 保证胜出）
+              try {
+                var localValRaw = origLS_lts.getItem(key);
+                if (localValRaw) {
+                  window.dispatchEvent(new CustomEvent('cloud-write-request', {
+                    detail: { key: key, value: JSON.parse(localValRaw), ts: Date.now(), __forceUpsert: true }
+                  }));
+                }
               } catch(_) {}
               continue;
             }
@@ -691,6 +730,11 @@
       } else if (req.type !== 'delete') {
         _writeLastHash[req.key] = hashValue(req.value);
       }
+      // 清理本地保存时间戳（云端写入成功后不再需要保护，允许其他电脑的新更新覆盖）
+      try {
+        var origLS_wq = window._origLocalStorage || localStorage;
+        origLS_wq.removeItem('_lastLocalSave_' + req.key);
+      } catch(_) {}
       // ===== 关键修复 2：绝对不要在这里广播 cloud-data-updated！ =====
     }).catch(function(err) {
       console.warn('[init-page] ✨ 独立写入失败，重新入队:', req.key, err && err.message ? err.message : err);
