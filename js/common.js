@@ -1144,7 +1144,12 @@ App.SCREENSHOT_DEFAULT_PERMISSIONS = {
 // ===== 初始化数据结构 =====
 App.initSampleData = function() {
   const DATA_VERSION = '11'; // v11: 新增"外勤QC"模块与"QC检验员"角色，跨所有电脑强制重置一次默认权限
-  const currentVersion = localStorage.getItem('dataVersion');
+  const rawVersion = localStorage.getItem('dataVersion');
+  // 兼容云端轮询写入的 JSON.stringify 值（字符串值会被加引号，如 '"11"' 而非 '11'）
+  let currentVersion = rawVersion;
+  if (rawVersion) {
+    try { currentVersion = JSON.parse(rawVersion); } catch(_) { /* 非 JSON 格式，直接用原值 */ }
+  }
   const isVersionChanged = currentVersion !== DATA_VERSION;
 
   // 版本变更：清理旧用户和权限数据（本地 + 远端），确保所有电脑都以截图默认值为基线

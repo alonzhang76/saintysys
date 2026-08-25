@@ -1171,9 +1171,11 @@ function _processRestRows(rows, source) {
     updatedCount++;
 
     if (needsEvent) changedKeys.push(key);
-    
-    // 同时写入原始 localStorage（确保独立轮询和其他读取方式可用）
-    syncToLocal.push({key: key, val: JSON.stringify(newVal)});
+
+    // 同时写入原始 localStorage（仅 SUPERSET_KEYS，跳过 dataVersion 等本地专属键）
+    if (typeof SUPERSET_KEYS === 'undefined' || SUPERSET_KEYS.indexOf(key) >= 0) {
+      syncToLocal.push({key: key, val: JSON.stringify(newVal)});
+    }
   }
 
   // 批量写入原始 localStorage

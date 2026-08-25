@@ -117,6 +117,8 @@
                   if (localSaveTs_fb && cloudUpdatedAt_fb && localSaveTs_fb > cloudUpdatedAt_fb) continue;
                 }
               } catch(_) {}
+              // 跳过非 SUPERSET_KEYS 的 key（如 dataVersion），防止本地专属数据被 JSON.stringify 损坏
+              if (typeof SUPERSET_KEYS !== 'undefined' && SUPERSET_KEYS.indexOf(key) < 0) continue;
               origLS.setItem(key, JSON.stringify(row.payload));
               changedKeys.push(key);
             }
@@ -443,6 +445,12 @@
           hash = String(payload) + '|' + (row.updated_at || '');
         }
         newHashes[key] = hash;
+
+        // 关键修复：跳过非 SUPERSET_KEYS 的 key（如 dataVersion），防止云端轮询覆盖本地专属数据
+        // dataVersion 等本地键被 JSON.stringify 写回后会加引号，导致 initSampleData 误判版本变更→删除权限
+        if (typeof SUPERSET_KEYS !== 'undefined' && SUPERSET_KEYS.indexOf(key) < 0) {
+          continue;
+        }
 
         // 变化检测：首次运行时，任何非空数组/对象的 key 都触发一次更新
         // （因为页面的初始渲染可能用的是旧 localStorage 数据）
