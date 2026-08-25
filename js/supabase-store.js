@@ -886,6 +886,21 @@ async function refreshFromCloud() {
         continue;
       }
 
+      // 关键修复：检查持久化的本地保存时间戳（_recentWrites 刷新后丢失）
+      try {
+        var origLS_rc = window._origLocalStorage || localStorage;
+        var localSaveTsStr_rc = origLS_rc.getItem('_lastLocalSave_' + key);
+        if (localSaveTsStr_rc) {
+          var localSaveTs_rc = parseInt(localSaveTsStr_rc, 10) || 0;
+          var cloudUpdatedAt_rc = 0;
+          try { cloudUpdatedAt_rc = new Date(row.updated_at).getTime() || 0; } catch(_) {}
+          if (localSaveTs_rc && cloudUpdatedAt_rc && localSaveTs_rc > cloudUpdatedAt_rc) {
+            skippedCount++;
+            continue;
+          }
+        }
+      } catch(_) {}
+
       let isChanged = false;
       const remoteTs = row.updated_at || '';
       const localTs = _cacheTimestamps[key] || '';
@@ -987,8 +1002,23 @@ async function forceRefreshFromCloud() {
     let updatedCount = 0;
 
     // 强制刷新：不跳过任何 key（包括自己刚写入的），全部用云端数据覆盖
+    // 关键修复：但仍需尊重持久化的本地保存时间戳（防止云端旧数据覆盖本地新保存的数据）
     for (const row of data) {
       const key = row.store_key;
+
+      // 检查持久化的本地保存时间戳：如果本地保存时间晚于云端 updated_at，跳过覆盖
+      try {
+        var origLS_fr = window._origLocalStorage || localStorage;
+        var localSaveTsStr_fr = origLS_fr.getItem('_lastLocalSave_' + key);
+        if (localSaveTsStr_fr) {
+          var localSaveTs_fr = parseInt(localSaveTsStr_fr, 10) || 0;
+          var cloudUpdatedAt_fr = 0;
+          try { cloudUpdatedAt_fr = new Date(row.updated_at).getTime() || 0; } catch(_) {}
+          if (localSaveTs_fr && cloudUpdatedAt_fr && localSaveTs_fr > cloudUpdatedAt_fr) {
+            continue;
+          }
+        }
+      } catch(_) {}
 
       const newVal = normalizePayload(row.payload);
 
