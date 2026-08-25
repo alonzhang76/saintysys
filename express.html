@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -422,6 +422,7 @@ table.data-table {
   gap: 6px;
   align-items: center;
 }
+#formItemsRows .items-editor-row { grid-template-columns: 1fr 28px; }
 .items-editor-row input {
   padding: 5px 8px;
   border: 1px solid var(--border);
@@ -694,13 +695,13 @@ table.data-table {
               <option value="其他">其他</option>
             </select>
           </div>
-          <!-- 款号/物品清单（支持多个款号+物品对，一个运单可对应多款物品） -->
+          <!-- 物品清单（支持多个物品） -->
           <div class="items-editor" id="formItemsEditor">
             <div class="items-editor-header">
-              <span class="items-editor-title">款号 / 物品 清单（一个运单可对应多个款号及其物品）</span>
+              <span class="items-editor-title">物品清单</span>
             </div>
             <div class="items-editor-rows" id="formItemsRows"></div>
-            <button type="button" class="items-add-btn" onclick="addFormItemsRow()">＋ 添加款号</button>
+            <button type="button" class="items-add-btn" onclick="addFormItemsRow()">＋ 添加物品</button>
           </div>
         </div>
         <div class="form-actions">
@@ -1197,7 +1198,7 @@ function initExpress() {
   sel.value = '顺丰速运';
   onCompanyChange();
 
-  // 初始化款号/物品清单为 1 个空行
+  // 初始化物品清单为 1 个空行
   resetFormItems();
 
   // Load data
@@ -1393,13 +1394,12 @@ function calcAmount() {
   document.getElementById('f_amount').value = (cost - discount).toFixed(2);
 }
 
-// ===== 款号/物品清单 动态行管理 =====
-function addFormItemsRow(styleNo = '', item = '') {
+// ===== 物品清单 动态行管理 =====
+function addFormItemsRow(item = '') {
   const rows = document.getElementById('formItemsRows');
   const row = document.createElement('div');
   row.className = 'items-editor-row';
   row.innerHTML = `
-    <input type="text" class="fi-style" placeholder="款号，如: A1303" value="${App.utils.escapeHtml(styleNo)}">
     <input type="text" class="fi-item" placeholder="物品，如: 面料/样衣/辅料" value="${App.utils.escapeHtml(item)}">
     <button type="button" class="row-del" onclick="removeItemsRow(this)" title="删除此行">×</button>
   `;
@@ -1411,7 +1411,6 @@ function removeItemsRow(btn) {
   // 至少保留 1 行
   if (rows.children.length <= 1) {
     // 清空最后一行内容而不是删除
-    btn.parentElement.querySelector('.fi-style').value = '';
     btn.parentElement.querySelector('.fi-item').value = '';
     return;
   }
@@ -1430,7 +1429,7 @@ function collectFormItems() {
   return items;
 }
 
-// 重置表单款号/物品清单为 1 个空行
+// 重置表单物品清单为 1 个空行
 function resetFormItems() {
   document.getElementById('formItemsRows').innerHTML = '';
   addFormItemsRow();
@@ -1454,7 +1453,7 @@ function resetForm() {
   });
   // Refresh prefix and product type options for default company
   onCompanyChange();
-  // 重置款号/物品清单为 1 个空行
+  // 重置物品清单为 1 个空行
   resetFormItems();
 }
 
