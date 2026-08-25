@@ -1145,10 +1145,11 @@ App.SCREENSHOT_DEFAULT_PERMISSIONS = {
 App.initSampleData = function() {
   const DATA_VERSION = '11'; // v11: 新增"外勤QC"模块与"QC检验员"角色，跨所有电脑强制重置一次默认权限
   const rawVersion = localStorage.getItem('dataVersion');
-  // 兼容云端轮询写入的 JSON.stringify 值（字符串值会被加引号，如 '"11"' 而非 '11'）
+  // 兼容云端轮询写入的 JSON.stringify 值：字符串 '11' 可能被存为 '"11"'（带引号）
+  // 注意：不能用 JSON.parse('11')，因为它返回数字 11，而 DATA_VERSION 是字符串 '11'，11 !== '11' 恒为 true
   let currentVersion = rawVersion;
-  if (rawVersion) {
-    try { currentVersion = JSON.parse(rawVersion); } catch(_) { /* 非 JSON 格式，直接用原值 */ }
+  if (rawVersion && rawVersion.length >= 2 && rawVersion[0] === '"' && rawVersion[rawVersion.length - 1] === '"') {
+    currentVersion = rawVersion.slice(1, -1); // 去掉 JSON.stringify 添加的首尾引号
   }
   const isVersionChanged = currentVersion !== DATA_VERSION;
 
