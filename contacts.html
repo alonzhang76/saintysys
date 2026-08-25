@@ -143,29 +143,88 @@
   margin-right: 3px;
 }
 .contact-actions {
-  margin-top: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
   display: flex;
-  gap: 5px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+.contact-actions .btn-sm {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+}
+.contact-actions .btn-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.contact-actions .btn-sm.btn-view {
+  border-color: #dbeafe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.contact-actions .btn-sm.btn-view:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+.contact-actions .btn-sm.btn-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+.contact-actions .btn-sm.btn-success:hover {
+  background: #bbf7d0;
+  border-color: #86efac;
+}
+.contact-actions .btn-sm.btn-danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+.contact-actions .btn-sm.btn-danger:hover {
+  background: #fecaca;
+  border-color: #fca5a5;
+}
+.contact-actions .btn-sm.btn-primary {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.contact-actions .btn-sm.btn-primary:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 .contact-favorite {
   cursor: pointer;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1;
   user-select: none;
-  transition: transform 0.15s;
+  transition: transform 0.15s, filter 0.15s;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  padding: 0;
 }
 .contact-favorite:hover {
   transform: scale(1.2);
+  background: rgba(37, 99, 235, 0.08);
 }
 .contact-favorite.active {
   color: #f59e0b;
-  text-shadow: 0 0 2px rgba(245, 158, 11, 0.3);
+  -webkit-text-stroke: 1px #2563eb;
+  text-shadow: 0 1px 3px rgba(245, 158, 11, 0.25);
 }
 .contact-favorite.inactive {
-  color: #d1d5db;
+  color: #fff;
+  -webkit-text-stroke: 1.5px #2563eb;
 }
 @media (max-width: 1200px) {
   .contact-card { width: calc(33.333% - 7px); }
@@ -655,10 +714,11 @@ const Contacts = {
           </div>
           ${infoHtml}
           <div class="contact-actions">
-            <button class="btn btn-sm btn-success" title="编辑" onclick="Contacts.openForm('${c.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" title="删除" onclick="Contacts.deleteContact('${c.id}')">🗑️</button>
-            <button class="btn btn-sm" title="查看同公司联系人" onclick="Contacts.viewSameCompany('${c.id}')">👥</button>
-            <button class="btn btn-sm btn-primary" title="添加同公司联系人" onclick="Contacts.openForm(null, '${c.id}')">➕</button>
+            <button class="btn btn-sm btn-view" title="查看详情" onclick="Contacts.viewContact('${c.id}')">👁️ 查看</button>
+            <button class="btn btn-sm btn-success" title="编辑" onclick="Contacts.openForm('${c.id}')">✏️ 编辑</button>
+            <button class="btn btn-sm btn-danger" title="删除" onclick="Contacts.deleteContact('${c.id}')">🗑️ 删除</button>
+            <button class="btn btn-sm" title="查看同公司联系人" onclick="Contacts.viewSameCompany('${c.id}')">👥 同公司</button>
+            <button class="btn btn-sm btn-primary" title="添加同公司联系人" onclick="Contacts.openForm(null, '${c.id}')">➕ 添加</button>
           </div>
         </div>`;
     }).join('');
@@ -850,6 +910,72 @@ const Contacts = {
     this.renderStats();
     this.updateFilterCounts();
     this.renderCards();
+  },
+
+  // ===== 查看联系人详情（清新简约弹窗） =====
+  viewContact(id) {
+    const contacts = App.store.get('contacts', []);
+    const c = contacts.find(x => x.id === id);
+    if (!c) return;
+    const isFav = this.getFavorites().has(id);
+    const isCoop = this.isCooperating(c.name);
+    const typeColor = this.typeColors[c.type] || '#9ca3af';
+    const sameCompanyCount = this.getSameCompanyCount(c.name, c.id);
+    const sameCompanyBadge = sameCompanyCount > 0
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:#e0f2fe;color:#0369a1;margin-left:6px;">👥 ${sameCompanyCount + 1}人</span>`
+      : '';
+
+    const Field = (label, value, icon) => {
+      if (!value) return '';
+      return `
+        <div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid #f3f4f6;">
+          <div style="width:80px;flex-shrink:0;display:flex;align-items:flex-start;gap:5px;color:#6b7280;font-size:12px;font-weight:500;padding-top:1px;">
+            <span>${icon}</span><span>${label}</span>
+          </div>
+          <div style="flex:1;color:#111827;font-size:13px;word-break:break-all;line-height:1.5;">${App.utils.escapeHtml(value)}</div>
+        </div>`;
+    };
+
+    const body = `
+      <div style="background:linear-gradient(135deg,#dbeafe 0%,#f0fdf4 100%);margin:-20px -20px 20px;padding:22px 24px;border-radius:8px 8px 0 0;">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="width:60px;height:60px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#2563eb;box-shadow:0 4px 12px rgba(37,99,235,0.15);letter-spacing:-1px;">
+            ${App.utils.escapeHtml((c.contactPerson || c.name || '?').charAt(0).toUpperCase())}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="font-size:18px;font-weight:700;color:#111827;">${App.utils.escapeHtml(c.contactPerson || '未填写')}</span>
+              <span class="contact-favorite ${isFav ? 'active' : 'inactive'}" onclick="Contacts.toggleFavorite('${c.id}'); Contacts.viewContact('${c.id}');" style="font-size:18px;width:auto;height:auto;padding:0 2px;">${isFav ? '★' : '☆'}</span>
+              ${c.position ? `<span style="font-size:12px;color:#374151;background:#fff;padding:2px 8px;border-radius:10px;">${App.utils.escapeHtml(c.position)}</span>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;color:#1e3a8a;">${App.utils.escapeHtml(c.name || '未填写')}</span>${sameCompanyBadge}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
+              ${c.type ? `<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;color:#fff;background:${typeColor};">${App.utils.escapeHtml(c.type)}</span>` : ''}
+              <span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;color:#fff;background:${isCoop ? '#2d9d5f' : '#d9883a'};">${isCoop ? '● 合作中' : '○ 待开发'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin:0 4px;">
+        ${Field('电话', c.phone, '📞')}
+        ${Field('邮箱', c.email, '✉️')}
+        ${Field('地址', c.address, '📍')}
+        ${Field('网址', c.website, '🌐')}
+        ${Field('银行账号', c.bankAccount, '🏦')}
+        ${Field('开户行', c.bankAddress, '🏛️')}
+        ${Field('行号', c.bankCode, '🔢')}
+        ${Field('税号', c.taxNo, '🧾')}
+        ${Field('备注', c.description, '📝')}
+      </div>
+    `;
+    const footer = `
+      <button class="btn" onclick="App.modal.close()">✖️ 关闭</button>
+      <button class="btn btn-sm" title="查看同公司" style="border-color:#dbeafe;background:#eff6ff;color:#1d4ed8;" onclick="App.modal.close(); Contacts.viewSameCompany('${c.id}');">👥 同公司联系人</button>
+      <button class="btn btn-sm btn-success" onclick="App.modal.close(); Contacts.openForm('${c.id}');">✏️ 编辑</button>
+    `;
+    App.modal.open({ title: '联系人详情', body, footer, size: 'lg', closeOnOverlay: true });
   },
 
   // ===== 删除 =====
