@@ -150,14 +150,22 @@
 }
 .contact-favorite {
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
+  user-select: none;
+  transition: transform 0.15s;
+  display: inline-flex;
+  align-items: center;
+}
+.contact-favorite:hover {
+  transform: scale(1.2);
 }
 .contact-favorite.active {
-  color: #d44848;
+  color: #f59e0b;
+  text-shadow: 0 0 2px rgba(245, 158, 11, 0.3);
 }
 .contact-favorite.inactive {
-  color: var(--border);
+  color: #d1d5db;
 }
 @media (max-width: 1200px) {
   .contact-card { width: calc(33.333% - 7px); }
@@ -400,7 +408,7 @@ const Contacts = {
   pageSize: 12,
 
   // 类型选项（合并原类型与业务类型）
-  typeOptions: ['客户', '面里衬厂', '水洗厂', '辅料厂', '服装厂', '货代', '同事', '样衣师', '其他'],
+  typeOptions: ['客户', '面里衬厂', '水洗厂', '辅料厂', '服装厂', '货代', '同事', '物流', '其他'],
 
   // 类型颜色映射
   typeColors: {
@@ -411,6 +419,7 @@ const Contacts = {
     '服装厂': '#2d9d5f',
     '货代': '#d44848',
     '同事': '#6b7280',
+    '物流': '#e11d48',
     '其他': '#9ca3af',
   },
 
@@ -635,12 +644,14 @@ const Contacts = {
       return `
         <div class="contact-card">
           <div class="contact-card-header">
-            <div class="contact-person-name">${App.utils.escapeHtml(c.contactPerson || '未填写')}</div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span class="contact-favorite ${isFav ? 'active' : 'inactive'}" onclick="event.stopPropagation(); Contacts.toggleFavorite('${c.id}')" title="${isFav ? '取消收藏' : '点击收藏'}">${isFav ? '★' : '☆'}</span>
+              <div class="contact-person-name">${App.utils.escapeHtml(c.contactPerson || '未填写')}</div>
+            </div>
             <div class="contact-badges">${badges}</div>
           </div>
           <div class="contact-company-name" onclick="Contacts.viewSameCompany('${c.id}')" title="点击查看同公司联系人">
             <span class="company-text">${App.utils.escapeHtml(c.name)}${sameCompanyBadge}</span>
-            <span class="contact-favorite ${isFav ? 'active' : 'inactive'}" onclick="event.stopPropagation(); Contacts.toggleFavorite('${c.id}')">${isFav ? '⭐' : '☆'}</span>
           </div>
           ${infoHtml}
           <div class="contact-actions">
@@ -1059,8 +1070,8 @@ const Contacts = {
           '服装厂': '服装厂', '打样厂': '服装厂',
           '水洗厂': '水洗厂',
           '客户': '客户', '品牌商': '客户', '贸易商': '客户',
-          '货代': '货代', '物流': '货代',
-          '同事': '同事', '打样师': '样衣师',
+          '货代': '货代', '物流': '物流',
+          '同事': '同事', '打样师': '物流', '样衣师': '物流',
           '供应商': '其他', '客户/供应商': '其他', '其他': '其他',
         };
 
@@ -1141,15 +1152,16 @@ const Contacts = {
     const bizMap = {
       '面料商': '面里衬厂', '辅料商': '辅料厂', '服装厂': '服装厂',
       '水洗厂': '水洗厂', '打样厂': '服装厂', '品牌商': '客户',
-      '贸易商': '客户', '物流': '货代', '其他': '其他',
+      '贸易商': '客户', '物流': '物流', '其他': '其他',
     };
     // 旧 type → 新 type 映射
     const oldTypeMap = {
       '客户': '客户', '供应商': '其他', '客户/供应商': '其他',
-      '物流': '货代', '其他': '其他',
+      '其他': '其他',
       '面料厂': '面里衬厂', // 旧名称迁移
       '面料商': '面里衬厂',
-      '打样师': '样衣师',
+      '打样师': '物流',
+      '样衣师': '物流',
     };
 
     // 检查是否需要迁移（存在 businessType 字段 或 存在旧类型值）
