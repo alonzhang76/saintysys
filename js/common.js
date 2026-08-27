@@ -245,7 +245,7 @@ const App = {
   // 注入侧边栏（根据当前用户权限过滤"不显示"的模块）
   injectSidebar(currentPage) {
     this._currentPageKey = currentPage; // 保存当前页key，供 auth-role-updated 事件重新注入
-    let menuHtml = '<div class="sidebar-logo"><span class="logo-icon">👔</span><span class="logo-text">AA服装外贸系统</span></div>';
+    let menuHtml = '<div class="sidebar-logo"><span class="logo-icon"><img src="logo.png" alt="logo" style="height:24px;width:24px;vertical-align:middle;"></span><span class="logo-text">AA服装外贸系统</span></div>';
     menuHtml += '<div class="sidebar-menu">';
 
     // 按分组累积可见菜单项，若整组都被隐藏则不显示分组标题
