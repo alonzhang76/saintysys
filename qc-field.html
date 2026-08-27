@@ -2151,14 +2151,16 @@ function buildQcReportUrlFromRecord(r){
   var factory = r.factory || '';
   var styleNo = r.styleNo || '';
   var orderNo = r.orderNo || '';
-  // 基础：三个必填若缺失也先允许跳转，QC-report.html 会显示空白可编辑
   var qcName = r.qcName || '';
-  var matNotes = (r.materialsCheck && r.materialsCheck.notes) ? r.materialsCheck.notes : '';
-  var tags = (r.materialsCheck && Array.isArray(r.materialsCheck.tags)) ? r.materialsCheck.tags.slice() : [];
-  // 生产中问题及整改：从 records 的 issues 逐行取
+  // 注意：记录中 garment 是子容器，materialsCheck 和生产问题都放在它下面（见 collectFormData L1890-L1902）
+  var garment = r.garment || {};
+  var matCheck = garment.materialsCheck || {};
+  var matNotes = matCheck.notes ? String(matCheck.notes) : '';
+  var tags = Array.isArray(matCheck.tags) ? matCheck.tags.slice() : [];
+  // 生产中问题及整改：garment.productionIssues（由 collectIssueRows → {date, issue, rectification, status, resolvedDate, image}）
   var prodIssues = [];
-  if(Array.isArray(r.issues)){
-    r.issues.forEach(function(it){
+  if(Array.isArray(garment.productionIssues)){
+    garment.productionIssues.forEach(function(it){
       var issue = (it.issue || '').toString().trim();
       var rect = (it.rectification || '').toString().trim();
       var st = (it.status || '').toString();
