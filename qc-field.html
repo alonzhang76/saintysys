@@ -48,6 +48,21 @@ textarea.qc-form-control{resize:vertical;min-height:48px;font-family:inherit;}
 select.qc-form-control{cursor:pointer;}
 .qc-checkbox-group{display:flex;align-items:center;gap:6px;padding:5px 0;}
 .qc-checkbox-group input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+/* QC报告问题类别 标签 */
+.qc-tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:1px solid var(--qc-border);border-radius:14px;background:#fff;cursor:pointer;font-size:12px;user-select:none;transition:.15s;}
+.qc-tag-chip input[type=checkbox]{display:none;}
+.qc-tag-chip span{color:#495057;}
+.qc-tag-chip:has(input:checked){background:var(--qc-primary);border-color:var(--qc-primary);}
+.qc-tag-chip:has(input:checked) span{color:#fff;}
+.qc-tag-chip:hover{border-color:var(--qc-primary);}
+/* QC报告问题类别 管理弹窗 */
+.qc-tag-modal{position:fixed;inset:0;z-index:3000;}
+.qc-tag-modal-mask{position:absolute;inset:0;background:rgba(0,0,0,0.35);}
+.qc-tag-modal-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:420px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;background:#fff;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.qc-tag-modal-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--qc-border);font-weight:600;font-size:14px;}
+.qc-tag-modal-body{padding:10px 14px;overflow-y:auto;flex:1;}
+.qc-tag-mgr-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.qc-tag-mgr-row input{flex:1;border:1px solid var(--qc-border);border-radius:4px;padding:5px 8px;font-size:13px;}
 /* Size table */
 .qc-size-table,.qc-sub-table{width:100%;border-collapse:collapse;font-size:12px;}
 .qc-size-table th,.qc-sub-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border:1px solid var(--qc-border);font-weight:600;white-space:nowrap;}
@@ -402,28 +417,11 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
                 <div class="qc-issue-img-block" id="gMatIssueBlock"></div>
               </div>
               <div class="qc-form-group full">
-                <label>QC报告问题类别 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（勾选后点击“验货报告”可快速带入验货报告类别列）</span></label>
-                <div class="qc-tag-group" id="qcTagGroup" style="display:flex;flex-wrap:wrap;gap:6px;">
-                  <label class="qc-tag-chip"><input type="checkbox" value="面料"><span>面料</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="里料"><span>里料</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="衬"><span>衬</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="牵带衬"><span>牵带衬</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="垫肩"><span>垫肩</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="拉链"><span>拉链</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="纽扣"><span>纽扣</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="气眼"><span>气眼</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="铆钉"><span>铆钉</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="主唛"><span>主唛</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="洗唛"><span>洗唛</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="尺码"><span>尺码</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="吊牌"><span>吊牌</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="配比包装条码"><span>配比包装条码</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="独色独码条码"><span>独色独码条码</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="胶袋"><span>胶袋</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="纸箱"><span>纸箱</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="干燥剂"><span>干燥剂</span></label>
-                  <label class="qc-tag-chip"><input type="checkbox" value="拷贝纸"><span>拷贝纸</span></label>
-                </div>
+                <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <span>QC报告问题类别 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（勾选后点击“验货报告”可快速带入验货报告类别列）</span></span>
+                  <button type="button" class="qc-btn qc-btn-outline qc-btn-sm" onclick="openQcTagManager()">管理</button>
+                </label>
+                <div class="qc-tag-group" id="qcTagGroup" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
               </div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
@@ -459,6 +457,24 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
           <button class="qc-btn qc-btn-outline" onclick="resetForm()">重置</button>
           <button class="qc-btn qc-btn-primary" onclick="saveRecord()">保存记录</button>
           <button class="qc-btn qc-btn-success" onclick="generateQCReport()" title="将当前外勤登记信息带入验货报告">验货报告</button>
+        </div>
+
+        <!-- QC报告问题类别 管理弹窗 -->
+        <div class="qc-tag-modal" id="qcTagModal" style="display:none;">
+          <div class="qc-tag-modal-mask" onclick="closeQcTagManager()"></div>
+          <div class="qc-tag-modal-card">
+            <div class="qc-tag-modal-header">
+              <span>管理 QC 报告问题类别</span>
+              <button class="qc-btn-icon" onclick="closeQcTagManager()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#666;">&times;</button>
+            </div>
+            <div class="qc-tag-modal-body" id="qcTagManagerList"></div>
+            <div class="qc-tag-modal-footer" style="display:flex;gap:8px;align-items:center;">
+              <button class="qc-btn qc-btn-outline qc-btn-sm" onclick="addQcTagManagerRow()">+ 添加</button>
+              <span style="flex:1;"></span>
+              <button class="qc-btn qc-btn-outline qc-btn-sm" onclick="closeQcTagManager()">取消</button>
+              <button class="qc-btn qc-btn-primary qc-btn-sm" onclick="saveQcTagManager()">保存</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1390,6 +1406,10 @@ function openImageFullscreenByPath(path){
 
 // ==================== 上线记录 ====================
 function addOnlineRow(date='',qc='',notes=''){
+  if(!date){
+    var n = new Date();
+    date = n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  }
   var tbody = document.getElementById('onlineTableBody');
   var tr = document.createElement('tr');
   var idx = tbody.children.length + 1;
@@ -1402,6 +1422,10 @@ function renumberOnline(){
 
 // ==================== 问题记录 ====================
 function addIssueRow(date='',issue='',rect='',status='open',resolveDate='', image){
+  if(!date){
+    var n = new Date();
+    date = n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  }
   var tbody = document.getElementById('issueTableBody');
   var tr = document.createElement('tr');
   var idx = tbody.children.length;
@@ -1774,6 +1798,69 @@ function setSelectedTags(tags){
     cb.checked = arr.indexOf(cb.value) >= 0;
   });
 }
+// ====== QC报告问题类别 标签库管理（可编辑/添加/删除）======
+var QC_TAG_LIB_KEY = 'qcTagLibrary';
+function getDefaultQcTags(){
+  return ['面料','里料','衬','牵带衬','垫肩','拉链','纽扣','气眼','铆钉','主唛','洗唛','尺码','吊牌','配比包装条码','独色独码条码','胶袋','纸箱','干燥剂','拷贝纸'];
+}
+function getQcTagLibrary(){
+  try{
+    var raw = localStorage.getItem(QC_TAG_LIB_KEY);
+    if(raw){
+      var arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length) return arr;
+    }
+  }catch(_e){}
+  return getDefaultQcTags();
+}
+function saveQcTagLibrary(arr){
+  try{ localStorage.setItem(QC_TAG_LIB_KEY, JSON.stringify(arr)); }catch(_e){}
+}
+// 渲染标签chip到 #qcTagGroup（保留已勾选状态）
+function renderQcTags(){
+  var group = document.getElementById('qcTagGroup');
+  if(!group) return;
+  var prev = collectSelectedTags();
+  var libs = getQcTagLibrary();
+  var html = libs.map(function(name){
+    var checked = prev.indexOf(name) >= 0 ? 'checked' : '';
+    return '<label class="qc-tag-chip"><input type="checkbox" value="'+escAttr(name)+'" '+checked+'><span>'+esc(name)+'</span></label>';
+  }).join('');
+  group.innerHTML = html;
+}
+function openQcTagManager(){
+  var modal = document.getElementById('qcTagModal');
+  var list = document.getElementById('qcTagManagerList');
+  if(!modal || !list) return;
+  list.innerHTML = '';
+  getQcTagLibrary().forEach(function(name){ addQcTagManagerRow(name); });
+  modal.style.display = 'block';
+}
+function closeQcTagManager(){
+  var modal = document.getElementById('qcTagModal');
+  if(modal) modal.style.display = 'none';
+}
+function addQcTagManagerRow(name){
+  var list = document.getElementById('qcTagManagerList');
+  if(!list) return;
+  var row = document.createElement('div');
+  row.className = 'qc-tag-mgr-row';
+  row.innerHTML = '<input type="text" value="'+escAttr(name||'')+'" placeholder="标签名"><button class="qc-btn qc-btn-danger qc-btn-sm" onclick="this.closest(\'.qc-tag-mgr-row\').remove()">删除</button>';
+  list.appendChild(row);
+}
+function saveQcTagManager(){
+  var list = document.getElementById('qcTagManagerList');
+  if(!list) return;
+  var arr = [];
+  list.querySelectorAll('input[type=text]').forEach(function(inp){
+    var v = inp.value.trim();
+    if(v && arr.indexOf(v) < 0) arr.push(v);
+  });
+  saveQcTagLibrary(arr);
+  renderQcTags();
+  closeQcTagManager();
+  if(App && App.toast) App.toast('标签库已更新', 'success');
+}
 function collectFormData(){
   var onlineRecords = [];
   document.querySelectorAll('#onlineTableBody tr').forEach(tr=>{
@@ -1975,6 +2062,16 @@ function generateQCReport(){
   var qcName = val('qcName');
   var matNotes = val('g_mat_notes');
   var tags = collectSelectedTags();
+  // 收集"生产中问题及整改"逐行（问题描述/整改措施/状态）
+  var prodIssues = [];
+  document.querySelectorAll('#issueTableBody tr').forEach(function(tr){
+    var ins = tr.querySelectorAll('input');
+    var sel = tr.querySelector('select');
+    var issue = ins[1] ? ins[1].value.trim() : '';
+    var rect = ins[2] ? ins[2].value.trim() : '';
+    var st = sel ? sel.value : '';
+    if(issue || rect) prodIssues.push({issue: issue, rect: rect, status: st});
+  });
   // 从订单智能匹配：款式描述 + 订单数量
   var styleDesc = '', orderQty = '';
   try{
@@ -2009,6 +2106,7 @@ function generateQCReport(){
   push('qcName', qcName);
   push('matNotes', matNotes);
   push('tags', tags.join('|'));
+  if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   var url = 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
   window.open(url, '_blank');
 }
@@ -2633,6 +2731,7 @@ function init(){
   updateCount();
   populateContactDatalists();
   populateStyleNoDatalist();
+  renderQcTags();
   // 初始化三个固定问题图片块（空白状态）
   ['wFirstIssue','wBulkIssue','gMatIssue'].forEach(function(prefix){
     renderIssueImageBlock(prefix);

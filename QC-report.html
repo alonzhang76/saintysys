@@ -52,12 +52,13 @@
 
   td {
     border: 1px solid #000;
-    padding: 2px 4px;
-    font-size: 11pt;
+    padding: 2px 3px;
+    font-size: 9pt;
     vertical-align: middle;
     height: 22px;
-    white-space: nowrap;
-    overflow: hidden;
+    white-space: normal;
+    word-break: break-all;
+    overflow: visible;
   }
 
   /* Column widths based on Excel proportions */
@@ -224,7 +225,7 @@
 
     <!-- Row 1: Company Name -->
     <tr>
-      <td colspan="14" class="company-name">江 苏 舜 天 汉 唐 贸 易 有 限 公 司</td>
+      <td colspan="14" class="company-name"><img src="logo.png" alt="logo" style="height:38px;vertical-align:middle;margin-right:14px;">江 苏 舜 天 汉 唐 贸 易 有 限 公 司</td>
     </tr>
 
     <!-- Row 2: Report Title -->
@@ -518,18 +519,46 @@ function fillFromUrlParams() {
   // 跟单人 = QC姓名
   set('sigMerchandiser', params.qcName);
 
-  // 问题描述区：保留"问题描述"标题，追加外勤登记的"面里衬辅料问题及整改"内容
+  // 问题描述区：保留"问题描述"标题，追加"面里衬辅料问题及整改" + "生产中问题及整改"逐行
   var descEl = document.getElementById('descArea');
-  if (descEl && params.matNotes) {
-    descEl.innerHTML = '<div>问题描述</div><div style="margin-top:6px;font-weight:normal;font-size:11pt;white-space:pre-wrap;">' + esc(params.matNotes) + '</div>';
+  if (descEl) {
+    var parts = ['<div>问题描述</div>'];
+    if (params.matNotes) {
+      parts.push('<div style="margin-top:6px;font-weight:bold;font-size:10pt;">【面里衬辅料问题及整改】</div>');
+      parts.push('<div style="margin-top:2px;font-weight:normal;font-size:9pt;white-space:pre-wrap;">' + esc(params.matNotes) + '</div>');
+    }
+    if (params.prodIssues) {
+      try {
+        var arr = JSON.parse(params.prodIssues);
+        if (Array.isArray(arr) && arr.length) {
+          parts.push('<div style="margin-top:8px;font-weight:bold;font-size:10pt;">【生产中问题及整改】</div>');
+          var statusMap = { open: '未解决', resolved: '已解决' };
+          arr.forEach(function(it, i) {
+            var line = (i + 1) + '. ';
+            if (it.issue) line += '问题：' + it.issue;
+            if (it.rect) line += (it.issue ? '；' : '') + '整改：' + it.rect;
+            if (it.status) line += '（' + (statusMap[it.status] || it.status) + '）';
+            parts.push('<div style="margin-top:2px;font-weight:normal;font-size:9pt;white-space:pre-wrap;">' + esc(line) + '</div>');
+          });
+        }
+      } catch (_e) {}
+    }
+    if (parts.length > 1) {
+      descEl.innerHTML = parts.join('');
+    }
   }
 
-  // 类别列：按传入顺序填充前 N 行
+  // 类别列：按传入顺序填充前 N 行；仅"有标签名"的行才显示"正确/错误"checkbox
   if (params.tags) {
     var tags = params.tags.split('|').filter(function(t) { return t !== ''; });
-    var cells = document.querySelectorAll('.checklist-row .category-name');
-    for (var i = 0; i < cells.length; i++) {
-      cells[i].textContent = (i < tags.length) ? tags[i] : '';
+    var rows = document.querySelectorAll('.checklist-row');
+    var cbHtml = '<div class="checkbox" onclick="toggleCheck(this)"></div>';
+    for (var i = 0; i < rows.length; i++) {
+      var hasTag = i < tags.length;
+      var cells = rows[i].children;
+      cells[0].textContent = hasTag ? tags[i] : '';
+      cells[1].innerHTML = hasTag ? cbHtml : '';
+      cells[2].innerHTML = hasTag ? cbHtml : '';
     }
   }
 }
