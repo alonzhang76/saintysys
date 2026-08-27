@@ -8,12 +8,12 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
-    background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #fdf2f8 100%);
+    font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    background: linear-gradient(135deg, #eaf0f7 0%, #f4f6fa 40%, #eef1e6 100%);
     padding: 24px;
     display: flex;
     justify-content: center;
-    color: #1f2937;
+    color: #1d2a3a;
   }
 
   .container {
@@ -22,19 +22,29 @@
     background: #fff;
     padding: 10mm 5mm;
     position: relative;
-    border-radius: 14px;
+    border-radius: 6px;
     box-shadow:
-      0 1px 2px rgba(17, 24, 39, 0.04),
-      0 8px 28px rgba(17, 24, 39, 0.08),
-      0 32px 64px rgba(17, 24, 39, 0.06);
+      0 2px 4px rgba(16, 42, 76, 0.05),
+      0 10px 32px rgba(16, 42, 76, 0.10),
+      0 36px 72px rgba(16, 42, 76, 0.08);
     overflow: hidden;
+    /* 蓝底金边：外描边深蓝 + 内嵌金线 */
+    outline: 1px solid #0f2b55;
   }
   .container::before {
     content: "";
     position: absolute;
+    inset: 6px;
+    border: 1px solid #c9a961;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  .container::after {
+    content: "";
+    position: absolute;
     left: 0; top: 0; right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #6366f1 0%, #ec4899 50%, #f59e0b 100%);
+    height: 5px;
+    background: linear-gradient(90deg, #0f2b55 0%, #1f4582 35%, #c9a961 60%, #1f4582 85%, #0f2b55 100%);
   }
 
   .print-btn {
@@ -44,31 +54,29 @@
     width: 48px;
     height: 48px;
     border: none;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: #fff;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #1f4582 0%, #0f2b55 100%);
+    color: #f4e4b7;
     font-size: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 22px rgba(99, 102, 241, 0.45);
+    box-shadow: 0 6px 16px rgba(15, 43, 85, 0.45), inset 0 1px 0 rgba(201, 169, 97, 0.5);
     transition: transform .18s ease, box-shadow .18s ease;
     z-index: 1000;
-    backdrop-filter: blur(6px);
+    border: 1px solid #c9a961;
   }
-  .print-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(99, 102, 241, 0.55); }
+  .print-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(15, 43, 85, 0.55), inset 0 1px 0 rgba(201, 169, 97, 0.6); }
 
   table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    border-radius: 8px;
-    overflow: hidden;
   }
 
   td {
-    border: 1px solid #e2e4ea;
+    border: 1px solid #2c477a;
     padding: 4px 7px;
     font-size: 9.5pt;
     vertical-align: middle;
@@ -102,38 +110,57 @@
     border: none !important;
     padding: 10px 0 4px;
     letter-spacing: 2.5px;
-    background: linear-gradient(90deg, #4f46e5, #9333ea, #db2777);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: #0f2b55;
+    /* 金字描边质感 */
+    text-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(15,43,85,0.05);
+    position: relative;
+  }
+  .company-name::after {
+    content: "";
+    display: block;
+    margin: 8px auto 0;
+    width: 220px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c9a961, transparent);
   }
 
   .report-title {
     text-align: center;
-    font-size: 20pt;
+    font-size: 22pt;
     font-weight: 800;
     border: none !important;
-    padding: 2px 0 8px;
-    letter-spacing: 8px;
+    padding: 6px 0 10px;
+    letter-spacing: 10px;
     position: relative;
+    color: #0f2b55;
   }
   .report-title::after {
     content: "";
     display: block;
-    margin: 8px auto 0;
-    width: 110px;
-    height: 3px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, #6366f1, #ec4899);
+    margin: 10px auto 0;
+    width: 60%;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, transparent, #1f4582, #c9a961, #1f4582, transparent);
+  }
+  .report-title::before {
+    content: "";
+    display: block;
+    margin: 0 auto 6px;
+    width: 18px;
+    height: 18px;
+    background:
+      radial-gradient(circle at center, #c9a961 0 4px, transparent 4px 7px, #1f4582 7px 9px, transparent 9px);
   }
 
   .date-row td { border: none !important; }
   .date-label {
     text-align: right;
-    padding-right: 12px;
+    padding-right: 14px;
     font-size: 10pt;
-    color: #64748b;
+    color: #2c477a;
     font-weight: 500;
+    letter-spacing: 1px;
   }
 
   .spacer-row td {
@@ -145,27 +172,34 @@
 
   .info-label {
     text-align: left;
-    padding-left: 6px;
+    padding-left: 8px;
     font-size: 10pt;
     font-weight: 600;
-    color: #475569;
-    background: #f8fafc;
+    color: #f4e4b7;
+    background: linear-gradient(180deg, #1f4582 0%, #0f2b55 100%);
+    border: 1px solid #0f2b55 !important;
+    box-shadow: inset 0 -1px 0 rgba(201, 169, 97, 0.35);
   }
-  .info-value { text-align: left; color: #0f172a; }
+  .info-value { text-align: left; color: #1d2a3a; }
 
   .progress-label {
     text-align: left;
-    padding-left: 6px;
+    padding-left: 8px;
     font-weight: 600;
-    color: #475569;
-    background: #f8fafc;
+    color: #f4e4b7;
+    background: linear-gradient(180deg, #1f4582 0%, #0f2b55 100%);
+    border: 1px solid #0f2b55 !important;
+    box-shadow: inset 0 -1px 0 rgba(201, 169, 97, 0.35);
   }
   .progress-header {
     text-align: center;
     font-size: 10pt;
     font-weight: 700;
-    background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
-    color: #4338ca;
+    background: linear-gradient(180deg, #1f4582 0%, #0f2b55 100%);
+    color: #f4e4b7;
+    border: 1px solid #0f2b55 !important;
+    box-shadow: inset 0 -1px 0 rgba(201, 169, 97, 0.4);
+    letter-spacing: 2px;
   }
   .progress-value { text-align: center; }
 
@@ -174,25 +208,25 @@
     text-align: right !important;
     padding-right: 10px !important;
     font-weight: 600;
-    color: #0f172a;
+    color: #1d2a3a;
   }
   .qty-cell[contenteditable="true"] {
-    background: #fffbeb;
+    background: linear-gradient(180deg, #fffdf5 0%, #fff8e1 100%);
     cursor: text;
     outline: none;
   }
   .qty-cell[contenteditable="true"]:focus {
-    box-shadow: inset 0 0 0 2px #f59e0b;
+    box-shadow: inset 0 0 0 2px #c9a961;
   }
   .qty-num {
     font-size: 10.5pt;
     font-weight: 700;
-    color: #1e293b;
+    color: #0f2b55;
   }
   .qty-unit {
     font-size: 8.5pt;
     font-weight: 400;
-    color: #94a3b8;
+    color: #8c7a44;
     margin-left: 3px;
   }
 
@@ -202,43 +236,70 @@
     padding: 8px 10px;
     font-weight: bold;
     font-size: 14pt;
-    background: linear-gradient(180deg, #fefefe 0%, #f8fafc 100%);
+    background:
+      linear-gradient(180deg, #ffffff 0%, #f8f6ef 100%);
+    border: 1px solid #2c477a !important;
+  }
+  .description-area[contenteditable="true"] {
+    cursor: text;
+    outline: none;
+  }
+  .description-area[contenteditable="true"]:focus {
+    box-shadow: inset 0 0 0 2px #c9a961;
+    background: linear-gradient(180deg, #fffdf5 0%, #fff8e1 100%);
   }
 
   .checklist-header {
     text-align: center;
     font-weight: 700;
-    background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
-    color: #4338ca;
+    background: linear-gradient(180deg, #1f4582 0%, #0f2b55 100%);
+    color: #f4e4b7;
+    border: 1px solid #0f2b55 !important;
+    box-shadow: inset 0 -1px 0 rgba(201, 169, 97, 0.4);
+    letter-spacing: 2px;
   }
 
   .category-name {
     text-align: left;
     padding-left: 8px;
     font-weight: 600;
-    color: #334155;
+    color: #0f2b55;
   }
-  .checklist-row:nth-child(odd) .category-name { background: #fafbff; }
+  .checklist-row:nth-child(odd) .category-name { background: #f4f2ea; }
 
-  .check-cell { text-align: center; background: #fafbfc; }
-  .notes-cell { text-align: left; padding: 3px 6px; }
+  .check-cell { text-align: center; background: #f9fafb; }
+  .notes-cell {
+    text-align: left;
+    padding: 3px 6px;
+    background: #fff;
+  }
+  .notes-cell[contenteditable="true"] {
+    cursor: text;
+    outline: none;
+    background: linear-gradient(180deg, #fffdf5 0%, #fff8e1 100%);
+  }
+  .notes-cell[contenteditable="true"]:focus {
+    box-shadow: inset 0 0 0 2px #c9a961;
+  }
 
   .checkbox {
     display: inline-block;
     width: 14px;
     height: 14px;
-    border: 1.5px solid #94a3b8;
-    border-radius: 3px;
+    border: 1.5px solid #2c477a;
+    border-radius: 2px;
     cursor: pointer;
     position: relative;
     vertical-align: middle;
     background: #fff;
     transition: all .12s ease;
+    box-shadow: inset 0 0 0 1px rgba(201, 169, 97, 0.25);
   }
-  .checkbox:hover { border-color: #6366f1; }
+  .checkbox:hover { border-color: #c9a961; box-shadow: inset 0 0 0 1px #c9a961; }
   .checkbox.checked {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border-color: #6366f1;
+    background: linear-gradient(180deg, #1f4582 0%, #0f2b55 100%);
+    border-color: #c9a961;
+    box-shadow: inset 0 0 0 1px #c9a961;
   }
   .checkbox.checked::after {
     content: '';
@@ -247,7 +308,7 @@
     top: -1px;
     width: 5px;
     height: 10px;
-    border: solid #fff;
+    border: solid #f4e4b7;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
@@ -255,26 +316,28 @@
   .sig-label {
     border: none !important;
     text-align: left;
-    padding-left: 6px;
+    padding-left: 8px;
     font-size: 10.5pt;
     font-weight: 600;
-    color: #334155;
+    color: #0f2b55;
   }
   .sig-line {
     border: none !important;
-    border-bottom: 1.5px solid #cbd5e1 !important;
+    border-bottom: 1.5px solid #2c477a !important;
   }
   .sig-empty { border: none !important; }
 
   .footer-info {
-    text-align: center;
-    margin-top: 14px;
+    text-align: left;
+    margin: 14px auto 0;
+    max-width: 1280px;
+    padding-left: 18px;
     font-size: 10pt;
-    color: #64748b;
+    color: #2c477a;
     letter-spacing: 1px;
   }
 
-  /* Print styles — 打印时保留黑白效果避免丢失 */
+  /* Print styles — 蓝配金风格黑白化 + 90% 缩放 + 页尾日期靠左 */
   @media print {
     body { background: #fff; padding: 0; }
     .container {
@@ -283,24 +346,45 @@
       padding: 0;
       box-shadow: none;
       border-radius: 0;
+      outline: none;
+      /* 90% 缩放以适配纸张 */
+      transform: scale(0.9);
+      transform-origin: top left;
+      width: 111.11%;
     }
-    .container::before { display: none; }
+    .container::before, .container::after { display: none; }
     .print-btn { display: none !important; }
-    .footer-info { display: none; }
+    .footer-info { display: block !important; text-align: left !important; padding-left: 6mm; color: #000; }
 
-    td { border: 1px solid #000 !important; padding: 2px 4px; font-size: 9pt; }
-    .company-name { color: #000 !important; -webkit-text-fill-color: #000; }
-    .report-title::after { display: none; }
-    .info-label, .progress-label, .progress-header, .checklist-header { background: #fff !important; color: #000 !important; }
+    td { border: 1px solid #000 !important; padding: 2px 4px; font-size: 9pt; background: #fff !important; color: #000 !important; }
+    .company-name { color: #000 !important; text-shadow: none; }
+    .company-name::after { background: #000 !important; }
+    .report-title { color: #000 !important; }
+    .report-title::before { background: radial-gradient(circle at center, #000 0 4px, transparent 4px 7px, #000 7px 9px, transparent 9px); }
+    .report-title::after { background: linear-gradient(90deg, transparent, #000, transparent) !important; }
+    .info-label, .progress-label, .progress-header, .checklist-header {
+      background: #fff !important;
+      color: #000 !important;
+      box-shadow: none !important;
+      border: 1px solid #000 !important;
+    }
     .checklist-row:nth-child(odd) .category-name { background: #fff !important; }
-    .description-area { background: #fff !important; }
+    .description-area { background: #fff !important; color: #000 !important; }
     .check-cell { background: #fff !important; }
-    .checkbox { border: 1.5px solid #000 !important; background: #fff !important; }
-    .checkbox.checked { background: #000 !important; }
+    .qty-unit { color: #000 !important; opacity: .75; }
+    .checkbox { border: 1.5px solid #000 !important; background: #fff !important; box-shadow: none !important; }
+    .checkbox.checked { background: #000 !important; border-color: #000 !important; box-shadow: none !important; }
+    .checkbox.checked::after { border-color: #fff !important; }
+    .sig-line { border-bottom: 1.5px solid #000 !important; }
 
     @page {
       size: A4 landscape;
       margin: 5mm 5mm 12mm 5mm;
+      @bottom-left {
+        content: string(pFooterDate);
+        font-size: 10pt;
+        font-family: inherit;
+      }
     }
   }
 </style>
@@ -358,7 +442,7 @@
       <td class="info-label">订单数量</td>
       <td class="info-value qty-cell" id="infoOrderQty"></td>
       <td class="info-label">抽查数量</td>
-      <td class="info-value qty-cell" id="infoCheckQty"></td>
+      <td class="info-value qty-cell" contenteditable="true" id="infoCheckQty"></td>
     </tr>
 
     <!-- Row 6: Spacer -->
@@ -373,7 +457,7 @@
       <td class="progress-header">缝制</td>
       <td class="progress-header">水洗</td>
       <td class="progress-header">包装</td>
-      <td rowspan="27" colspan="8" class="description-area" id="descArea">问题描述</td>
+      <td rowspan="27" colspan="8" class="description-area" contenteditable="true" id="descArea">问题描述</td>
     </tr>
 
     <!-- Row 8: Progress Values -->
@@ -687,6 +771,8 @@ function fillFromUrlParams() {
     String(now.getDate()).padStart(2, '0');
   document.getElementById('screenFooter').textContent = '打印日期：' + dateStr;
   document.getElementById('inspectDate').textContent = dateStr;
+  // 所有备注单元格可编辑
+  document.querySelectorAll('.notes-cell').forEach(function(td){ td.setAttribute('contenteditable','true'); });
   fillFromUrlParams();
 })();
 </script>
