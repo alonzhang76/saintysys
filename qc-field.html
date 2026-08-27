@@ -2107,6 +2107,13 @@ function generateQCReport(){
   push('matNotes', matNotes);
   push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
+  // 款号缩略图：优先当前编辑中的图（base64/path），没有再从订单/款号共享缓存取
+  var _thumb = '';
+  try{ _thumb = getCurrentImage() || ''; }catch(_e){}
+  if(!_thumb && styleNo){
+    try{ _thumb = (typeof StyleImgCache !== 'undefined' && StyleImgCache) ? (StyleImgCache.resolve(styleNo) || '') : ''; }catch(_e){}
+  }
+  if(_thumb) push('styleImg', _thumb);
   var url = 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
   window.open(url, '_blank');
 }
@@ -2199,6 +2206,12 @@ function buildQcReportUrlFromRecord(r){
   push('matNotes', matNotes);
   if(tags.length) push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
+  // 款号缩略图：优先记录中保存的 styleImage（可能是 base64 data:image 或存储路径），兜底走款号共享缓存
+  var _thumb = (r.styleImage && typeof r.styleImage === 'string') ? r.styleImage : '';
+  if(!_thumb && styleNo){
+    try{ _thumb = (typeof StyleImgCache !== 'undefined' && StyleImgCache) ? (StyleImgCache.resolve(styleNo) || '') : ''; }catch(_e){}
+  }
+  if(_thumb) push('styleImg', _thumb);
   return 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
 }
 

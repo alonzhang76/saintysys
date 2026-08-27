@@ -247,6 +247,7 @@
   }
 
   .description-area {
+    position: relative;
     text-align: left;
     vertical-align: top;
     padding: 8px 10px;
@@ -256,14 +257,30 @@
       linear-gradient(180deg, #ffffff 0%, #f8f6ef 100%);
     border: 1px solid var(--qc-blue-soft) !important;
   }
-  .description-area[contenteditable="true"] {
-    cursor: text;
-    outline: none;
-  }
+  .description-area[contenteditable="true"] { cursor: text; outline: none; }
   .description-area[contenteditable="true"]:focus {
     box-shadow: inset 0 0 0 2px var(--qc-gold);
     background: linear-gradient(180deg, #fffdf5 0%, #fff8e1 100%);
   }
+  /* 问题描述框右上角：款号缩略图 约 20×10mm */
+  .desc-thumb {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 20mm;
+    height: 10mm;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid var(--qc-gold);
+    border-radius: 3px;
+    padding: 1px;
+    box-shadow: 0 1px 3px rgba(15, 43, 85, 0.2);
+    z-index: 2;
+    display: none;
+  }
+  .desc-thumb.show { display: block; }
+  /* 当缩略图显示时，描述文字右侧预留 22mm 避免覆盖 */
+  .description-area.has-thumb { padding-right: 24mm; }
 
   .checklist-header {
     text-align: center;
@@ -471,7 +488,27 @@
       height: 100% !important;
       min-height: 150mm !important;
       vertical-align: top !important;
+      position: relative !important;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
     }
+    .description-area.has-thumb { padding-right: 25mm !important; }
+    .desc-thumb {
+      display: block !important;
+      width: 20mm !important;
+      height: 10mm !important;
+      position: absolute !important;
+      top: 5px !important;
+      right: 6px !important;
+      border: 1px solid #000 !important;
+      background: #fff !important;
+      padding: 1px !important;
+      box-shadow: none !important;
+      object-fit: contain !important;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+    .desc-content { display: block !important; padding: 0 !important; margin: 0 !important; }
 
     .check-cell { background: #fff !important; text-align: center !important; }
     .notes-cell { background: #fff !important; padding: 1px 3px !important; }
@@ -577,7 +614,10 @@
       <td class="progress-header">缝制</td>
       <td class="progress-header">水洗</td>
       <td class="progress-header">包装</td>
-      <td rowspan="27" colspan="8" class="description-area" contenteditable="true" id="descArea">问题描述</td>
+      <td rowspan="27" colspan="8" class="description-area" contenteditable="true" id="descArea">
+        <img class="desc-thumb" id="descThumb" alt="" />
+        <div class="desc-content" id="descContent">问题描述</div>
+      </td>
     </tr>
 
     <!-- Row 8: Progress Values -->
@@ -855,7 +895,10 @@ function fillFromUrlParams() {
   }
 
   // 问题描述区：保留"问题描述"标题，追加"面里衬辅料问题及整改" + "生产中问题及整改"逐行
-  var descEl = document.getElementById('descArea');
+  // 写 descContent 而不是 descArea，保持 descArea 内的缩略图 <img id="descThumb"> 不被覆盖
+  var descEl = document.getElementById('descContent');
+  var descArea = document.getElementById('descArea');
+  var thumbEl = document.getElementById('descThumb');
   if (descEl) {
     var parts = ['<div>问题描述</div>'];
     if (params.matNotes) {
@@ -881,6 +924,12 @@ function fillFromUrlParams() {
     if (parts.length > 1) {
       descEl.innerHTML = parts.join('');
     }
+  }
+  // 款号缩略图：放在"问题描述"框右上角（约 20×10mm）
+  if (thumbEl && params.styleImg) {
+    thumbEl.src = params.styleImg;
+    thumbEl.classList.add('show');
+    if (descArea) descArea.classList.add('has-thumb');
   }
 
   // 类别列：按传入顺序填充前 N 行；仅"有标签名"的行才显示"正确/错误"checkbox
