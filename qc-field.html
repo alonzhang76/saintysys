@@ -2111,6 +2111,72 @@ function generateQCReport(){
   window.open(url, '_blank');
 }
 
+// 数据查询页"验货报告"按钮：根据记录 id 读取并跳转 QC-report.html
+function openQcReportById(id){
+  var r = null;
+  try{
+    var all = JSON.parse(localStorage.getItem(QC_STORAGE_KEY) || '[]');
+    all.forEach(function(x){ if(x && x.id === id) r = x; });
+  }catch(_){}
+  if(!r){ alert('记录未找到'); return; }
+  var url = buildQcReportUrlFromRecord(r);
+  window.open(url, '_blank');
+}
+
+// 根据记录对象构造 QC-report.html URL（与 generateQCReport 参数一致）
+function buildQcReportUrlFromRecord(r){
+  var factory = r.factory || '';
+  var styleNo = r.styleNo || '';
+  var orderNo = r.orderNo || '';
+  // 基础：三个必填若缺失也先允许跳转，QC-report.html 会显示空白可编辑
+  var qcName = r.qcName || '';
+  var matNotes = (r.materialsCheck && r.materialsCheck.notes) ? r.materialsCheck.notes : '';
+  var tags = (r.materialsCheck && Array.isArray(r.materialsCheck.tags)) ? r.materialsCheck.tags.slice() : [];
+  // 生产中问题及整改：从 records 的 issues 逐行取
+  var prodIssues = [];
+  if(Array.isArray(r.issues)){
+    r.issues.forEach(function(it){
+      var issue = (it.issue || '').toString().trim();
+      var rect = (it.rectification || '').toString().trim();
+      var st = (it.status || '').toString();
+      if(issue || rect) prodIssues.push({issue: issue, rect: rect, status: st});
+    });
+  }
+  // 款式描述 + 订单数量（从订单智能匹配）
+  var styleDesc = '', orderQty = '';
+  try{
+    var order = findOrderByNo(orderNo, styleNo);
+    if(order){
+      styleDesc = order.styleDescription || order.styleName || '';
+      if(order.sizeMatrix && order.sizeMatrix.rows && order.sizeMatrix.sizes){
+        var sizes = order.sizeMatrix.sizes || [];
+        var rows = order.sizeMatrix.rows || [];
+        var total = 0;
+        rows.forEach(function(row){
+          var cartons = parseInt(row.noOfCartons) || 0;
+          sizes.forEach(function(s){
+            var q = parseInt((row.quantities || {})[s]) || 0;
+            total += (row.assType === 'SOLID') ? q : q * cartons;
+          });
+        });
+        if(total > 0) orderQty = String(total);
+      }
+    }
+  }catch(_e){}
+  var params = [];
+  function push(k, v){ if(v !== '' && v !== null && v !== undefined) params.push(k + '=' + encodeURIComponent(v)); }
+  push('factory', factory);
+  push('styleNo', styleNo);
+  push('orderNo', orderNo);
+  push('styleDesc', styleDesc);
+  push('orderQty', orderQty);
+  push('qcName', qcName);
+  push('matNotes', matNotes);
+  if(tags.length) push('tags', tags.join('|'));
+  if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
+  return 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
+}
+
 // ==================== 查询 ====================
 function setFilter(f){
   currentFilter = f;
@@ -2139,7 +2205,7 @@ function renderQueryTable(){
     return;
   }
   var html = '<table class="qc-data-table"><thead><tr>'+
-    '<th>服装厂</th><th>QC</th><th>订单号</th><th style="width:80px;">款式图</th><th>款号</th><th>交期</th><th>尺寸/数量</th><th>状态</th><th>进度</th><th>问题</th><th style="width:90px;">操作</th>'+
+    '<th>服装厂</th><th>QC</th><th>订单号</th><th style="width:80px;">款式图</th><th>款号</th><th>交期</th><th>尺寸/数量</th><th>状态</th><th>进度</th><th>问题</th><th style="width:120px;">操作</th>'+
   '</tr></thead><tbody>';
   filtered.forEach(r=>{
     var status = getOverallStatus(r);
@@ -2196,6 +2262,7 @@ function renderQueryTable(){
       '<td>'+
         '<button class="qc-btn-icon" title="查看" onclick="viewRecord(\''+r.id+'\')">👁</button>'+
         '<button class="qc-btn-icon" title="编辑" onclick="editRecord(\''+r.id+'\')">✏</button>'+
+        '<button class="qc-btn-icon" title="验货报告" onclick="openQcReportById(\''+r.id+'\')" style="background:linear-gradient(180deg,#1f4582,#0f2b55);color:#f4e4b7;border-color:#c9a961;">📋</button>'+
         '<button class="qc-btn-icon danger" title="删除" onclick="deleteRecord(\''+r.id+'\')">🗑</button>'+
       '</td>'+
     '</tr>';
