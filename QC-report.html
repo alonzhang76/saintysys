@@ -8,11 +8,12 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: '宋体', SimSun, serif;
-    background: #f0f0f0;
-    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #fdf2f8 100%);
+    padding: 24px;
     display: flex;
     justify-content: center;
+    color: #1f2937;
   }
 
   .container {
@@ -21,44 +22,61 @@
     background: #fff;
     padding: 10mm 5mm;
     position: relative;
+    border-radius: 14px;
+    box-shadow:
+      0 1px 2px rgba(17, 24, 39, 0.04),
+      0 8px 28px rgba(17, 24, 39, 0.08),
+      0 32px 64px rgba(17, 24, 39, 0.06);
+    overflow: hidden;
+  }
+  .container::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #6366f1 0%, #ec4899 50%, #f59e0b 100%);
   }
 
   .print-btn {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 44px;
-    height: 44px;
+    top: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
     border: none;
-    border-radius: 8px;
-    background: #2c7be5;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     color: #fff;
     font-size: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    transition: background 0.2s;
+    box-shadow: 0 8px 22px rgba(99, 102, 241, 0.45);
+    transition: transform .18s ease, box-shadow .18s ease;
     z-index: 1000;
+    backdrop-filter: blur(6px);
   }
-  .print-btn:hover { background: #1a68d4; }
+  .print-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(99, 102, 241, 0.55); }
 
   table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
   td {
-    border: 1px solid #000;
-    padding: 2px 3px;
-    font-size: 9pt;
+    border: 1px solid #e2e4ea;
+    padding: 4px 7px;
+    font-size: 9.5pt;
     vertical-align: middle;
-    height: 22px;
+    height: 24px;
     white-space: normal;
     word-break: break-all;
     overflow: visible;
+    background: #fff;
   }
 
   /* Column widths based on Excel proportions */
@@ -79,89 +97,157 @@
 
   .company-name {
     text-align: center;
-    font-size: 18pt;
-    font-weight: bold;
+    font-size: 19pt;
+    font-weight: 800;
     border: none !important;
-    padding: 8px 0;
-    letter-spacing: 2px;
+    padding: 10px 0 4px;
+    letter-spacing: 2.5px;
+    background: linear-gradient(90deg, #4f46e5, #9333ea, #db2777);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .report-title {
     text-align: center;
-    font-size: 18pt;
-    font-weight: bold;
+    font-size: 20pt;
+    font-weight: 800;
     border: none !important;
-    padding: 6px 0;
+    padding: 2px 0 8px;
+    letter-spacing: 8px;
+    position: relative;
+  }
+  .report-title::after {
+    content: "";
+    display: block;
+    margin: 8px auto 0;
+    width: 110px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #6366f1, #ec4899);
   }
 
   .date-row td { border: none !important; }
   .date-label {
     text-align: right;
-    padding-right: 10px;
-    font-size: 11pt;
+    padding-right: 12px;
+    font-size: 10pt;
+    color: #64748b;
+    font-weight: 500;
   }
 
   .spacer-row td {
     border: none !important;
     height: 6px;
     padding: 0;
+    background: transparent !important;
   }
 
   .info-label {
     text-align: left;
-    padding-left: 4px;
-    font-size: 11pt;
+    padding-left: 6px;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
   }
-  .info-value { text-align: left; }
+  .info-value { text-align: left; color: #0f172a; }
 
   .progress-label {
     text-align: left;
-    padding-left: 4px;
+    padding-left: 6px;
+    font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
   }
   .progress-header {
     text-align: center;
-    font-size: 11pt;
+    font-size: 10pt;
+    font-weight: 700;
+    background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+    color: #4338ca;
   }
   .progress-value { text-align: center; }
+
+  /* 数量相关：靠右，数值加粗，“件”字弱化 */
+  .qty-cell {
+    text-align: right !important;
+    padding-right: 10px !important;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .qty-cell[contenteditable="true"] {
+    background: #fffbeb;
+    cursor: text;
+    outline: none;
+  }
+  .qty-cell[contenteditable="true"]:focus {
+    box-shadow: inset 0 0 0 2px #f59e0b;
+  }
+  .qty-num {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .qty-unit {
+    font-size: 8.5pt;
+    font-weight: 400;
+    color: #94a3b8;
+    margin-left: 3px;
+  }
 
   .description-area {
     text-align: left;
     vertical-align: top;
-    padding: 4px;
+    padding: 8px 10px;
     font-weight: bold;
     font-size: 14pt;
+    background: linear-gradient(180deg, #fefefe 0%, #f8fafc 100%);
   }
 
   .checklist-header {
     text-align: center;
-    font-weight: bold;
+    font-weight: 700;
+    background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+    color: #4338ca;
   }
 
   .category-name {
     text-align: left;
-    padding-left: 6px;
+    padding-left: 8px;
+    font-weight: 600;
+    color: #334155;
   }
+  .checklist-row:nth-child(odd) .category-name { background: #fafbff; }
 
-  .check-cell { text-align: center; }
-  .notes-cell { text-align: left; padding: 2px 4px; }
+  .check-cell { text-align: center; background: #fafbfc; }
+  .notes-cell { text-align: left; padding: 3px 6px; }
 
   .checkbox {
     display: inline-block;
     width: 14px;
     height: 14px;
-    border: 1.5px solid #333;
+    border: 1.5px solid #94a3b8;
+    border-radius: 3px;
     cursor: pointer;
     position: relative;
     vertical-align: middle;
+    background: #fff;
+    transition: all .12s ease;
+  }
+  .checkbox:hover { border-color: #6366f1; }
+  .checkbox.checked {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-color: #6366f1;
   }
   .checkbox.checked::after {
     content: '';
     position: absolute;
     left: 3px;
-    top: 0px;
+    top: -1px;
     width: 5px;
-    height: 9px;
-    border: solid #000;
+    height: 10px;
+    border: solid #fff;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
@@ -169,23 +255,26 @@
   .sig-label {
     border: none !important;
     text-align: left;
-    padding-left: 4px;
-    font-size: 11pt;
+    padding-left: 6px;
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #334155;
   }
   .sig-line {
     border: none !important;
-    border-bottom: 2px solid #000 !important;
+    border-bottom: 1.5px solid #cbd5e1 !important;
   }
   .sig-empty { border: none !important; }
 
   .footer-info {
     text-align: center;
-    margin-top: 10px;
+    margin-top: 14px;
     font-size: 10pt;
-    color: #666;
+    color: #64748b;
+    letter-spacing: 1px;
   }
 
-  /* Print styles */
+  /* Print styles — 打印时保留黑白效果避免丢失 */
   @media print {
     body { background: #fff; padding: 0; }
     .container {
@@ -193,9 +282,21 @@
       min-height: auto;
       padding: 0;
       box-shadow: none;
+      border-radius: 0;
     }
+    .container::before { display: none; }
     .print-btn { display: none !important; }
     .footer-info { display: none; }
+
+    td { border: 1px solid #000 !important; padding: 2px 4px; font-size: 9pt; }
+    .company-name { color: #000 !important; -webkit-text-fill-color: #000; }
+    .report-title::after { display: none; }
+    .info-label, .progress-label, .progress-header, .checklist-header { background: #fff !important; color: #000 !important; }
+    .checklist-row:nth-child(odd) .category-name { background: #fff !important; }
+    .description-area { background: #fff !important; }
+    .check-cell { background: #fff !important; }
+    .checkbox { border: 1.5px solid #000 !important; background: #fff !important; }
+    .checkbox.checked { background: #000 !important; }
 
     @page {
       size: A4 landscape;
@@ -255,9 +356,9 @@
       <td class="info-label">款式描述</td>
       <td class="info-value" id="infoStyleDesc"></td>
       <td class="info-label">订单数量</td>
-      <td class="info-value" id="infoOrderQty"></td>
+      <td class="info-value qty-cell" id="infoOrderQty"></td>
       <td class="info-label">抽查数量</td>
-      <td class="info-value" id="infoCheckQty"></td>
+      <td class="info-value qty-cell" id="infoCheckQty"></td>
     </tr>
 
     <!-- Row 6: Spacer -->
@@ -278,10 +379,10 @@
     <!-- Row 8: Progress Values -->
     <tr>
       <td class="progress-label">完成数量</td>
-      <td colspan="2" class="progress-value"></td>
-      <td class="progress-value"></td>
-      <td class="progress-value"></td>
-      <td class="progress-value"></td>
+      <td colspan="2" class="progress-value qty-cell" contenteditable="true" id="progCutQty"></td>
+      <td class="progress-value qty-cell" contenteditable="true" id="progSewQty"></td>
+      <td class="progress-value qty-cell" contenteditable="true" id="progWashQty"></td>
+      <td class="progress-value qty-cell" contenteditable="true" id="progPackQty"></td>
     </tr>
 
     <!-- Row 9: Spacer (A-F only) -->
@@ -515,9 +616,25 @@ function fillFromUrlParams() {
   set('infoStyleNo', params.styleNo);
   set('infoOrderNo', params.orderNo);
   set('infoStyleDesc', params.styleDesc);
-  set('infoOrderQty', params.orderQty);
+  // 数量：订单/抽查 + 裁剪/缝制/水洗/包装 填值+"件"并靠右
+  setQty('infoOrderQty', params.orderQty);
+  setQty('infoCheckQty', params.checkQty);
+  setQty('progCutQty', params.cutQty);
+  setQty('progSewQty', params.sewQty);
+  setQty('progWashQty', params.washQty);
+  setQty('progPackQty', params.packQty);
   // 跟单人 = QC姓名
   set('sigMerchandiser', params.qcName);
+
+  function setQty(id, v){
+    var el = document.getElementById(id);
+    if(!el) return;
+    if(v != null && v !== ''){
+      el.innerHTML = '<span class="qty-num">' + esc(String(v).replace(/件$/,'')) + '</span><span class="qty-unit">件</span>';
+    }else{
+      el.textContent = '';
+    }
+  }
 
   // 问题描述区：保留"问题描述"标题，追加"面里衬辅料问题及整改" + "生产中问题及整改"逐行
   var descEl = document.getElementById('descArea');
