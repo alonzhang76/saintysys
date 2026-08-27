@@ -2113,12 +2113,20 @@ function generateQCReport(){
 
 // 数据查询页"验货报告"按钮：根据记录 id 读取并跳转 QC-report.html
 function openQcReportById(id){
+  // 优先从内存 records 中读取（与 editRecord/viewRecord 保持一致的数据来源）
   var r = null;
-  try{
-    var all = JSON.parse(localStorage.getItem(QC_STORAGE_KEY) || '[]');
-    all.forEach(function(x){ if(x && x.id === id) r = x; });
-  }catch(_){}
-  if(!r){ alert('记录未找到'); return; }
+  if(Array.isArray(window.records)){
+    r = window.records.find(function(x){ return x && x.id === id; }) || null;
+  }
+  // 兜底：localStorage
+  if(!r){
+    try{
+      var key = typeof QC_STORAGE_KEY !== 'undefined' ? QC_STORAGE_KEY : 'qcFieldRecords';
+      var all = JSON.parse(localStorage.getItem(key) || '[]');
+      if(Array.isArray(all)) r = all.find(function(x){ return x && x.id === id; }) || null;
+    }catch(_){}
+  }
+  if(!r){ alert('记录未找到（id=' + id + '）'); return; }
   var url = buildQcReportUrlFromRecord(r);
   window.open(url, '_blank');
 }
