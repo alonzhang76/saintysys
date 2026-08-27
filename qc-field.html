@@ -397,9 +397,33 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
                 </select>
               </div>
               <div class="qc-form-group full">
-                <label>面里辅料核对备注</label>
-                <textarea class="qc-form-control" id="g_mat_notes" placeholder="面料、里料、辅料核对情况"></textarea>
+                <label>面里衬辅料问题及整改</label>
+                <textarea class="qc-form-control" id="g_mat_notes" placeholder="面料、里料、辅料等问题及整改情况"></textarea>
                 <div class="qc-issue-img-block" id="gMatIssueBlock"></div>
+              </div>
+              <div class="qc-form-group full">
+                <label>QC报告问题类别 <span style="color:var(--qc-text-light);font-weight:normal;font-size:11px;">（勾选后点击“验货报告”可快速带入验货报告类别列）</span></label>
+                <div class="qc-tag-group" id="qcTagGroup" style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <label class="qc-tag-chip"><input type="checkbox" value="面料"><span>面料</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="里料"><span>里料</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="衬"><span>衬</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="牵带衬"><span>牵带衬</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="垫肩"><span>垫肩</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="拉链"><span>拉链</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="纽扣"><span>纽扣</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="气眼"><span>气眼</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="铆钉"><span>铆钉</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="主唛"><span>主唛</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="洗唛"><span>洗唛</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="尺码"><span>尺码</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="吊牌"><span>吊牌</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="配比包装条码"><span>配比包装条码</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="独色独码条码"><span>独色独码条码</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="胶袋"><span>胶袋</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="纸箱"><span>纸箱</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="干燥剂"><span>干燥剂</span></label>
+                  <label class="qc-tag-chip"><input type="checkbox" value="拷贝纸"><span>拷贝纸</span></label>
+                </div>
               </div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;">
@@ -434,6 +458,7 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
         <div class="qc-form-actions">
           <button class="qc-btn qc-btn-outline" onclick="resetForm()">重置</button>
           <button class="qc-btn qc-btn-primary" onclick="saveRecord()">保存记录</button>
+          <button class="qc-btn qc-btn-success" onclick="generateQCReport()" title="将当前外勤登记信息带入验货报告">验货报告</button>
         </div>
       </div>
 
@@ -1734,6 +1759,21 @@ function getCurrentImage(){
 }
 
 // ==================== 表单收集/填充 ====================
+// 收集已勾选的QC报告问题类别标签（按勾选顺序）
+function collectSelectedTags(){
+  var tags = [];
+  document.querySelectorAll('#qcTagGroup input[type=checkbox]:checked').forEach(function(cb){
+    tags.push(cb.value);
+  });
+  return tags;
+}
+// 按 tags 数组回填勾选
+function setSelectedTags(tags){
+  var arr = Array.isArray(tags) ? tags : [];
+  document.querySelectorAll('#qcTagGroup input[type=checkbox]').forEach(function(cb){
+    cb.checked = arr.indexOf(cb.value) >= 0;
+  });
+}
 function collectFormData(){
   var onlineRecords = [];
   document.querySelectorAll('#onlineTableBody tr').forEach(tr=>{
@@ -1763,7 +1803,7 @@ function collectFormData(){
     garment: {
       sealedSample: {date: val('g_seal_date'), opinion: val('g_seal_opinion'), confirmed: document.getElementById('g_seal_confirmed').checked},
       ppSample: {date: val('g_pp_date'), confirmed: document.getElementById('g_pp_confirmed').checked, notes: val('g_pp_notes')},
-      materialsCheck: {date: val('g_mat_date'), status: val('g_mat_status'), notes: val('g_mat_notes'), image: issueImgs.gMatIssue},
+      materialsCheck: {date: val('g_mat_date'), status: val('g_mat_status'), notes: val('g_mat_notes'), image: issueImgs.gMatIssue, tags: collectSelectedTags()},
       cuttingDate: val('g_cut_date'),
       sewStartDate: val('g_sew_start'),
       sewEndDate: val('g_sew_end'),
@@ -1851,6 +1891,7 @@ function fillForm(r){
   setVal('g_mat_date', g?.materialsCheck?.date||'');
   setVal('g_mat_status', g?.materialsCheck?.status||'');
   setVal('g_mat_notes', g?.materialsCheck?.notes||'');
+  setSelectedTags(g?.materialsCheck?.tags||[]);
   setVal('g_cut_date', g?.cuttingDate||'');
   setVal('g_sew_start', g?.sewStartDate||'');
   setVal('g_sew_end', g?.sewEndDate||'');
@@ -1917,6 +1958,59 @@ function saveRecord(){
   resetForm();
   if(App && App.toast) App.toast('保存成功！', 'success');
   switchTab('query');
+}
+
+// ==================== 生成验货报告 ====================
+// 将当前外勤登记信息（含勾选的问题类别）带入 QC-report.html
+function generateQCReport(){
+  // 必填校验：至少有服装厂/款号/订单号才有意义
+  if(!val('factory') || !val('styleNo') || !val('orderNo')){
+    alert('请先填写服装厂、款号、订单号，再生成验货报告');
+    return;
+  }
+  // 收集表单字段
+  var factory = val('factory');
+  var styleNo = val('styleNo');
+  var orderNo = val('orderNo');
+  var qcName = val('qcName');
+  var matNotes = val('g_mat_notes');
+  var tags = collectSelectedTags();
+  // 从订单智能匹配：款式描述 + 订单数量
+  var styleDesc = '', orderQty = '';
+  try{
+    var order = findOrderByNo(orderNo, styleNo);
+    if(order){
+      styleDesc = order.styleDescription || order.styleName || '';
+      // 计算订单数量：sizeMatrix 各行合计之和
+      if(order.sizeMatrix && order.sizeMatrix.rows && order.sizeMatrix.sizes){
+        var sizes = order.sizeMatrix.sizes || [];
+        var rows = order.sizeMatrix.rows || [];
+        var total = 0;
+        rows.forEach(function(row){
+          var cartons = parseInt(row.noOfCartons) || 0;
+          sizes.forEach(function(s){
+            var q = parseInt((row.quantities || {})[s]) || 0;
+            total += (row.assType === 'SOLID') ? q : q * cartons;
+          });
+        });
+        if(total > 0) orderQty = String(total);
+      }
+    }
+  }catch(_e){}
+  // 生产进度（完成数量留空，仅传日期供参考，QC-report只显示数量，故留空）
+  // 组装 URL 参数
+  var params = [];
+  function push(k, v){ if(v !== '' && v !== null && v !== undefined) params.push(k + '=' + encodeURIComponent(v)); }
+  push('factory', factory);
+  push('styleNo', styleNo);
+  push('orderNo', orderNo);
+  push('styleDesc', styleDesc);
+  push('orderQty', orderQty);
+  push('qcName', qcName);
+  push('matNotes', matNotes);
+  push('tags', tags.join('|'));
+  var url = 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
+  window.open(url, '_blank');
 }
 
 // ==================== 查询 ====================

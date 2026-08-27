@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QC验货报告</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: '宋体', SimSun, serif;
+    background: #f0f0f0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .container {
+    width: 297mm;
+    min-height: 210mm;
+    background: #fff;
+    padding: 10mm 5mm;
+    position: relative;
+  }
+
+  .print-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 8px;
+    background: #2c7be5;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: background 0.2s;
+    z-index: 1000;
+  }
+  .print-btn:hover { background: #1a68d4; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  td {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    font-size: 11pt;
+    vertical-align: middle;
+    height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* Column widths based on Excel proportions */
+  col.col-A { width: 8.1%; }
+  col.col-B { width: 4.95%; }
+  col.col-C { width: 4.95%; }
+  col.col-D { width: 6.9%; }
+  col.col-E { width: 5.9%; }
+  col.col-F { width: 5.9%; }
+  col.col-G { width: 4.6%; }
+  col.col-H { width: 10.9%; }
+  col.col-I { width: 6.7%; }
+  col.col-J { width: 11.3%; }
+  col.col-K { width: 6.9%; }
+  col.col-L { width: 8.4%; }
+  col.col-M { width: 6.9%; }
+  col.col-N { width: 8.4%; }
+
+  .company-name {
+    text-align: center;
+    font-size: 18pt;
+    font-weight: bold;
+    border: none !important;
+    padding: 8px 0;
+    letter-spacing: 2px;
+  }
+
+  .report-title {
+    text-align: center;
+    font-size: 18pt;
+    font-weight: bold;
+    border: none !important;
+    padding: 6px 0;
+  }
+
+  .date-row td { border: none !important; }
+  .date-label {
+    text-align: right;
+    padding-right: 10px;
+    font-size: 11pt;
+  }
+
+  .spacer-row td {
+    border: none !important;
+    height: 6px;
+    padding: 0;
+  }
+
+  .info-label {
+    text-align: left;
+    padding-left: 4px;
+    font-size: 11pt;
+  }
+  .info-value { text-align: left; }
+
+  .progress-label {
+    text-align: left;
+    padding-left: 4px;
+  }
+  .progress-header {
+    text-align: center;
+    font-size: 11pt;
+  }
+  .progress-value { text-align: center; }
+
+  .description-area {
+    text-align: left;
+    vertical-align: top;
+    padding: 4px;
+    font-weight: bold;
+    font-size: 14pt;
+  }
+
+  .checklist-header {
+    text-align: center;
+    font-weight: bold;
+  }
+
+  .category-name {
+    text-align: left;
+    padding-left: 6px;
+  }
+
+  .check-cell { text-align: center; }
+  .notes-cell { text-align: left; padding: 2px 4px; }
+
+  .checkbox {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #333;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+  }
+  .checkbox.checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0px;
+    width: 5px;
+    height: 9px;
+    border: solid #000;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .sig-label {
+    border: none !important;
+    text-align: left;
+    padding-left: 4px;
+    font-size: 11pt;
+  }
+  .sig-line {
+    border: none !important;
+    border-bottom: 2px solid #000 !important;
+  }
+  .sig-empty { border: none !important; }
+
+  .footer-info {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 10pt;
+    color: #666;
+  }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; padding: 0; }
+    .container {
+      width: 100%;
+      min-height: auto;
+      padding: 0;
+      box-shadow: none;
+    }
+    .print-btn { display: none !important; }
+    .footer-info { display: none; }
+
+    @page {
+      size: A4 landscape;
+      margin: 5mm 5mm 12mm 5mm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="printReport()" title="打印">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+    <rect x="6" y="14" width="12" height="8"></rect>
+  </svg>
+</button>
+
+<div class="container">
+  <table>
+    <colgroup>
+      <col class="col-A"><col class="col-B"><col class="col-C"><col class="col-D">
+      <col class="col-E"><col class="col-F"><col class="col-G"><col class="col-H">
+      <col class="col-I"><col class="col-J"><col class="col-K"><col class="col-L">
+      <col class="col-M"><col class="col-N">
+    </colgroup>
+
+    <!-- Row 1: Company Name -->
+    <tr>
+      <td colspan="14" class="company-name">江 苏 舜 天 汉 唐 贸 易 有 限 公 司</td>
+    </tr>
+
+    <!-- Row 2: Report Title -->
+    <tr>
+      <td colspan="14" class="report-title">验货报告</td>
+    </tr>
+
+    <!-- Row 3: Date -->
+    <tr class="date-row">
+      <td colspan="10"></td>
+      <td colspan="4" class="date-label">检验日期：<span id="inspectDate"></span></td>
+    </tr>
+
+    <!-- Row 4: Spacer -->
+    <tr class="spacer-row">
+      <td colspan="14"></td>
+    </tr>
+
+    <!-- Row 5: Info -->
+    <tr>
+      <td class="info-label">服装厂</td>
+      <td colspan="2" class="info-value" id="infoFactory"></td>
+      <td class="info-label">款号</td>
+      <td colspan="2" class="info-value" id="infoStyleNo"></td>
+      <td class="info-label">订单号</td>
+      <td class="info-value" id="infoOrderNo"></td>
+      <td class="info-label">款式描述</td>
+      <td class="info-value" id="infoStyleDesc"></td>
+      <td class="info-label">订单数量</td>
+      <td class="info-value" id="infoOrderQty"></td>
+      <td class="info-label">抽查数量</td>
+      <td class="info-value" id="infoCheckQty"></td>
+    </tr>
+
+    <!-- Row 6: Spacer -->
+    <tr class="spacer-row">
+      <td colspan="14"></td>
+    </tr>
+
+    <!-- Row 7: Progress Header -->
+    <tr>
+      <td class="progress-label">生产进度</td>
+      <td colspan="2" class="progress-header">裁剪</td>
+      <td class="progress-header">缝制</td>
+      <td class="progress-header">水洗</td>
+      <td class="progress-header">包装</td>
+      <td rowspan="27" colspan="8" class="description-area" id="descArea">问题描述</td>
+    </tr>
+
+    <!-- Row 8: Progress Values -->
+    <tr>
+      <td class="progress-label">完成数量</td>
+      <td colspan="2" class="progress-value"></td>
+      <td class="progress-value"></td>
+      <td class="progress-value"></td>
+      <td class="progress-value"></td>
+    </tr>
+
+    <!-- Row 9: Spacer (A-F only) -->
+    <tr class="spacer-row">
+      <td colspan="6"></td>
+    </tr>
+
+    <!-- Row 10: Checklist Header -->
+    <tr>
+      <td class="checklist-header">类别</td>
+      <td class="checklist-header">正确</td>
+      <td class="checklist-header">错误</td>
+      <td colspan="3" class="checklist-header">备注</td>
+    </tr>
+
+    <!-- Rows 11-29: Checklist Items（类别列文字已清空，由外勤登记传入的标签按选中顺序填充） -->
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr class="checklist-row">
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <!-- Rows 30-33: Empty rows for additional items -->
+    <tr>
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr>
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr>
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+    <tr>
+      <td class="category-name"></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td class="check-cell"><div class="checkbox" onclick="toggleCheck(this)"></div></td>
+      <td colspan="3" class="notes-cell"></td>
+    </tr>
+
+    <!-- Row 34: Signatures -->
+    <tr>
+      <td class="sig-label">跟单人:</td>
+      <td colspan="3" class="sig-line" id="sigMerchandiser"></td>
+      <td colspan="5" class="sig-empty"></td>
+      <td class="sig-label" style="text-align:right;padding-right:4px;font-size:9pt;">工厂负责人签字/日期：</td>
+      <td colspan="4" class="sig-line"></td>
+    </tr>
+  </table>
+</div>
+
+<div class="footer-info" id="screenFooter"></div>
+
+<script>
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+}
+
+function printReport() {
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+
+  var style = document.createElement('style');
+  style.id = 'print-page-style';
+  style.textContent = '\
+    @page {\n\
+      size: A4 landscape;\n\
+      margin: 5mm 5mm 12mm 5mm;\n\
+      @bottom-center {\n\
+        content: "打印日期：' + dateStr + '    第 " counter(page) " 页 / 共 " counter(pages) " 页";\n\
+        font-family: "宋体", SimSun, serif;\n\
+        font-size: 10pt;\n\
+      }\n\
+    }';
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(function() {
+    var el = document.getElementById('print-page-style');
+    if (el) el.remove();
+  }, 1000);
+}
+
+// 从 URL 参数填充验货报告（由外勤登记"验货报告"按钮传入）
+function fillFromUrlParams() {
+  var params = {};
+  try {
+    var search = window.location.search.replace(/^\?/, '');
+    if (search) {
+      search.split('&').forEach(function(pair) {
+        var idx = pair.indexOf('=');
+        if (idx > 0) {
+          var k = pair.slice(0, idx);
+          var v = pair.slice(idx + 1);
+          params[decodeURIComponent(k)] = decodeURIComponent(v);
+        }
+      });
+    }
+  } catch (e) { return; }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  function set(id, v) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = v == null ? '' : v;
+  }
+
+  // 信息行
+  set('infoFactory', params.factory);
+  set('infoStyleNo', params.styleNo);
+  set('infoOrderNo', params.orderNo);
+  set('infoStyleDesc', params.styleDesc);
+  set('infoOrderQty', params.orderQty);
+  // 跟单人 = QC姓名
+  set('sigMerchandiser', params.qcName);
+
+  // 问题描述区：保留"问题描述"标题，追加外勤登记的"面里衬辅料问题及整改"内容
+  var descEl = document.getElementById('descArea');
+  if (descEl && params.matNotes) {
+    descEl.innerHTML = '<div>问题描述</div><div style="margin-top:6px;font-weight:normal;font-size:11pt;white-space:pre-wrap;">' + esc(params.matNotes) + '</div>';
+  }
+
+  // 类别列：按传入顺序填充前 N 行
+  if (params.tags) {
+    var tags = params.tags.split('|').filter(function(t) { return t !== ''; });
+    var cells = document.querySelectorAll('.checklist-row .category-name');
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].textContent = (i < tags.length) ? tags[i] : '';
+    }
+  }
+}
+
+(function() {
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+  document.getElementById('screenFooter').textContent = '打印日期：' + dateStr;
+  document.getElementById('inspectDate').textContent = dateStr;
+  fillFromUrlParams();
+})();
+</script>
+
+</body>
+</html>
