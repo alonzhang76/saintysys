@@ -456,7 +456,7 @@ body.readonly-mode .qc-btn-danger::before{content:'🔒 ';opacity:.7;}
         <div class="qc-form-actions">
           <button class="qc-btn qc-btn-outline" onclick="resetForm()">重置</button>
           <button class="qc-btn qc-btn-primary" onclick="saveRecord()">保存记录</button>
-          <button class="qc-btn qc-btn-success" onclick="generateQCReport()" title="将当前外勤登记信息带入验货报告">验货报告</button>
+          <button class="qc-btn qc-btn-success" onclick="(async function(){await generateQCReport();})()" title="将当前外勤登记信息带入验货报告">验货报告</button>
         </div>
 
         <!-- QC报告问题类别 管理弹窗 -->
@@ -2049,7 +2049,8 @@ function saveRecord(){
 
 // ==================== 生成验货报告 ====================
 // 将当前外勤登记信息（含勾选的问题类别）带入 QC-report.html
-function generateQCReport(){
+// 注：款号缩略图短路径需要异步解析 signed URL，故为 async
+async function generateQCReport(){
   // 必填校验：至少有服装厂/款号/订单号才有意义
   if(!val('factory') || !val('styleNo') || !val('orderNo')){
     alert('请先填写服装厂、款号、订单号，再生成验货报告');
@@ -2078,7 +2079,6 @@ function generateQCReport(){
     var order = findOrderByNo(orderNo, styleNo);
     if(order){
       styleDesc = order.styleDescription || order.styleName || '';
-      // 计算订单数量：sizeMatrix 各行合计之和
       if(order.sizeMatrix && order.sizeMatrix.rows && order.sizeMatrix.sizes){
         var sizes = order.sizeMatrix.sizes || [];
         var rows = order.sizeMatrix.rows || [];
@@ -2094,7 +2094,31 @@ function generateQCReport(){
       }
     }
   }catch(_e){}
-  // 生产进度（完成数量留空，仅传日期供参考，QC-report只显示数量，故留空）
+  // ===== 款号缩略图解析为可直接访问的 URL（signed URL / base64 / 完整 http） =====
+  // 优先级：① 当前编辑中的图（base64/path）→ ② 订单/款号共享缓存
+  var _thumbRaw = '';
+  try{ _thumbRaw = getCurrentImage() || ''; }catch(_e){}
+  if(!_thumbRaw && styleNo){
+    try{
+      if(typeof StyleImgCache !== 'undefined' && StyleImgCache){
+        var c = StyleImgCache.resolve(styleNo) || {};
+        _thumbRaw = c.styleImg_path || c.fullImg_path || '';
+      }
+    }catch(_e){}
+  }
+  var _thumbResolved = '';
+  if(_thumbRaw){
+    try{
+      if(typeof window.resolveImageUrl === 'function'){
+        _thumbResolved = (await window.resolveImageUrl(_thumbRaw, { hintStyleNo: styleNo, ttlSec: 86400 })) || '';
+      }else{
+        _thumbResolved = _thumbRaw; // 退化：直接用原值（base64/完整URL 不会坏；短路径只能碰运气相对路径）
+      }
+    }catch(_e){
+      console.warn('[generateQCReport] 缩略图解析失败，回退原值：', _thumbRaw, _e);
+      _thumbResolved = _thumbRaw;
+    }
+  }
   // 组装 URL 参数
   var params = [];
   function push(k, v){ if(v !== '' && v !== null && v !== undefined) params.push(k + '=' + encodeURIComponent(v)); }
@@ -2107,19 +2131,13 @@ function generateQCReport(){
   push('matNotes', matNotes);
   push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
-  // 款号缩略图：优先当前编辑中的图（base64/path），没有再从订单/款号共享缓存取
-  var _thumb = '';
-  try{ _thumb = getCurrentImage() || ''; }catch(_e){}
-  if(!_thumb && styleNo){
-    try{ _thumb = (typeof StyleImgCache !== 'undefined' && StyleImgCache) ? (StyleImgCache.resolve(styleNo) || '') : ''; }catch(_e){}
-  }
-  if(_thumb) push('styleImg', _thumb);
+  if(_thumbResolved) push('styleImg', _thumbResolved);
   var url = 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
   window.open(url, '_blank');
 }
 
 // 数据查询页"验货报告"按钮：根据记录 id 读取并跳转 QC-report.html
-function openQcReportById(id){
+async function openQcReportById(id){
   // 1) 优先：脚本作用域的内存 records（let records = []；与 editRecord/viewRecord/renderQueryTable 一致）
   var r = null;
   try{
@@ -2149,17 +2167,16 @@ function openQcReportById(id){
     }catch(_){}
   }
   if(!r){ alert('记录未找到（id=' + id + '）'); return; }
-  var url = buildQcReportUrlFromRecord(r);
+  var url = await buildQcReportUrlFromRecordAsync(r);
   window.open(url, '_blank');
 }
 
-// 根据记录对象构造 QC-report.html URL（与 generateQCReport 参数一致）
-function buildQcReportUrlFromRecord(r){
+// 根据记录对象构造 QC-report.html URL（与 generateQCReport 参数一致）—— async 版：短路径缩略图会解析成 signed URL
+async function buildQcReportUrlFromRecordAsync(r){
   var factory = r.factory || '';
   var styleNo = r.styleNo || '';
   var orderNo = r.orderNo || '';
   var qcName = r.qcName || '';
-  // 注意：记录中 garment 是子容器，materialsCheck 和生产问题都放在它下面（见 collectFormData L1890-L1902）
   var garment = r.garment || {};
   var matCheck = garment.materialsCheck || {};
   var matNotes = matCheck.notes ? String(matCheck.notes) : '';
@@ -2195,6 +2212,29 @@ function buildQcReportUrlFromRecord(r){
       }
     }
   }catch(_e){}
+  // ===== 款号缩略图：优先记录中保存的 styleImage，没有则款号共享缓存；短路径解析为 signed URL =====
+  var _thumbRaw = (r.styleImage && typeof r.styleImage === 'string') ? r.styleImage : '';
+  if(!_thumbRaw && styleNo){
+    try{
+      if(typeof StyleImgCache !== 'undefined' && StyleImgCache){
+        var c = StyleImgCache.resolve(styleNo) || {};
+        _thumbRaw = c.styleImg_path || c.fullImg_path || '';
+      }
+    }catch(_e){}
+  }
+  var _thumbResolved = '';
+  if(_thumbRaw){
+    try{
+      if(typeof window.resolveImageUrl === 'function'){
+        _thumbResolved = (await window.resolveImageUrl(_thumbRaw, { hintStyleNo: styleNo, ttlSec: 86400 })) || '';
+      }else{
+        _thumbResolved = _thumbRaw;
+      }
+    }catch(_e){
+      console.warn('[buildQcReportUrlFromRecordAsync] 缩略图解析失败，回退原值：', _thumbRaw, _e);
+      _thumbResolved = _thumbRaw;
+    }
+  }
   var params = [];
   function push(k, v){ if(v !== '' && v !== null && v !== undefined) params.push(k + '=' + encodeURIComponent(v)); }
   push('factory', factory);
@@ -2206,14 +2246,11 @@ function buildQcReportUrlFromRecord(r){
   push('matNotes', matNotes);
   if(tags.length) push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
-  // 款号缩略图：优先记录中保存的 styleImage（可能是 base64 data:image 或存储路径），兜底走款号共享缓存
-  var _thumb = (r.styleImage && typeof r.styleImage === 'string') ? r.styleImage : '';
-  if(!_thumb && styleNo){
-    try{ _thumb = (typeof StyleImgCache !== 'undefined' && StyleImgCache) ? (StyleImgCache.resolve(styleNo) || '') : ''; }catch(_e){}
-  }
-  if(_thumb) push('styleImg', _thumb);
+  if(_thumbResolved) push('styleImg', _thumbResolved);
   return 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
 }
+// 兼容保留同步旧名（若有其他位置调用），返回 Promise
+function buildQcReportUrlFromRecord(r){ return buildQcReportUrlFromRecordAsync(r); }
 
 // ==================== 查询 ====================
 function setFilter(f){
@@ -2300,7 +2337,7 @@ function renderQueryTable(){
       '<td>'+
         '<button class="qc-btn-icon" title="查看" onclick="viewRecord(\''+r.id+'\')">👁</button>'+
         '<button class="qc-btn-icon" title="编辑" onclick="editRecord(\''+r.id+'\')">✏</button>'+
-        '<button class="qc-btn-icon" title="验货报告" onclick="openQcReportById(\''+r.id+'\')" style="background:linear-gradient(180deg,#1f4582,#0f2b55);color:#f4e4b7;border-color:#c9a961;">📋</button>'+
+        '<button class="qc-btn-icon" title="验货报告" onclick="(async function(){await openQcReportById(\''+r.id+'\');})()" style="background:linear-gradient(180deg,#1f4582,#0f2b55);color:#f4e4b7;border-color:#c9a961;">📋</button>'+
         '<button class="qc-btn-icon danger" title="删除" onclick="deleteRecord(\''+r.id+'\')">🗑</button>'+
       '</td>'+
     '</tr>';
