@@ -2132,7 +2132,7 @@ async function generateQCReport(){
   push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   if(_thumbResolved) push('styleImg', _thumbResolved);
-  var url = 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
+  var url = 'QC-report.html?v=20260827a' + (params.length ? '&' + params.join('&') : '');
   window.open(url, '_blank');
 }
 
@@ -2247,7 +2247,7 @@ async function buildQcReportUrlFromRecordAsync(r){
   if(tags.length) push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   if(_thumbResolved) push('styleImg', _thumbResolved);
-  return 'QC-report.html' + (params.length ? '?' + params.join('&') : '');
+  return 'QC-report.html?v=20260827a' + (params.length ? '&' + params.join('&') : '');
 }
 // 兼容保留同步旧名（若有其他位置调用），返回 Promise
 function buildQcReportUrlFromRecord(r){ return buildQcReportUrlFromRecordAsync(r); }
