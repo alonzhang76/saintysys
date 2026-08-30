@@ -577,7 +577,8 @@
 
     <!-- Row 3: Date -->
     <tr class="date-row">
-      <td colspan="10"></td>
+      <td colspan="7"></td>
+      <td colspan="3" class="date-label">交期：<span id="infoDelivery"></span></td>
       <td colspan="4" class="date-label">检验日期：<span id="inspectDate"></span></td>
     </tr>
 
@@ -874,6 +875,8 @@ function fillFromUrlParams() {
   set('infoStyleNo', params.styleNo);
   set('infoOrderNo', params.orderNo);
   set('infoStyleDesc', params.styleDesc);
+  // 交期（右上角，检验日期左侧）
+  set('infoDelivery', params.deliveryDate);
   // 数量：订单/抽查 + 裁剪/缝制/水洗/包装 填值+"件"并靠右
   setQty('infoOrderQty', params.orderQty);
   setQty('infoCheckQty', params.checkQty);

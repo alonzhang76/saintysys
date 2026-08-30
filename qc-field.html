@@ -2128,11 +2128,12 @@ async function generateQCReport(){
   push('styleDesc', styleDesc);
   push('orderQty', orderQty);
   push('qcName', qcName);
+  push('deliveryDate', val('deliveryDate'));
   push('matNotes', matNotes);
   push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   if(_thumbResolved) push('styleImg', _thumbResolved);
-  var url = 'QC-report.html?v=20260827a' + (params.length ? '&' + params.join('&') : '');
+  var url = 'QC-report.html?v=20260827b' + (params.length ? '&' + params.join('&') : '');
   window.open(url, '_blank');
 }
 
@@ -2191,12 +2192,13 @@ async function buildQcReportUrlFromRecordAsync(r){
       if(issue || rect) prodIssues.push({issue: issue, rect: rect, status: st});
     });
   }
-  // 款式描述 + 订单数量（从订单智能匹配）
-  var styleDesc = '', orderQty = '';
+  // 款式描述 + 订单数量（从订单智能匹配）；交期优先记录值，缺失时回退订单 ETD
+  var styleDesc = '', orderQty = '', deliveryDate = r.deliveryDate || '';
   try{
     var order = findOrderByNo(orderNo, styleNo);
     if(order){
       styleDesc = order.styleDescription || order.styleName || '';
+      if(!deliveryDate) deliveryDate = order.etd || order.deliveryDate || order.shipDate || '';
       if(order.sizeMatrix && order.sizeMatrix.rows && order.sizeMatrix.sizes){
         var sizes = order.sizeMatrix.sizes || [];
         var rows = order.sizeMatrix.rows || [];
@@ -2243,11 +2245,12 @@ async function buildQcReportUrlFromRecordAsync(r){
   push('styleDesc', styleDesc);
   push('orderQty', orderQty);
   push('qcName', qcName);
+  push('deliveryDate', deliveryDate);
   push('matNotes', matNotes);
   if(tags.length) push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   if(_thumbResolved) push('styleImg', _thumbResolved);
-  return 'QC-report.html?v=20260827a' + (params.length ? '&' + params.join('&') : '');
+  return 'QC-report.html?v=20260827b' + (params.length ? '&' + params.join('&') : '');
 }
 // 兼容保留同步旧名（若有其他位置调用），返回 Promise
 function buildQcReportUrlFromRecord(r){ return buildQcReportUrlFromRecordAsync(r); }
