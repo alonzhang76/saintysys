@@ -577,8 +577,8 @@
 
     <!-- Row 3: Date -->
     <tr class="date-row">
+      <td colspan="3" class="date-label" style="text-align:left;padding-left:2px;">交期：<span id="infoDelivery"></span></td>
       <td colspan="7"></td>
-      <td colspan="3" class="date-label">交期：<span id="infoDelivery"></span></td>
       <td colspan="4" class="date-label">检验日期：<span id="inspectDate"></span></td>
     </tr>
 
@@ -884,8 +884,15 @@ function fillFromUrlParams() {
   setQty('progSewQty', params.sewQty);
   setQty('progWashQty', params.washQty);
   setQty('progPackQty', params.packQty);
-  // 跟单人 = QC姓名
-  set('sigMerchandiser', params.qcName);
+  // 跟单人 = QC姓名（+ 通讯录中匹配到的电话）
+  var merchEl = document.getElementById('sigMerchandiser');
+  if (merchEl) {
+    var merchHtml = esc(params.qcName || '');
+    if (params.qcPhone) {
+      merchHtml += '<span style="font-weight:normal;font-size:9pt;margin-left:10px;letter-spacing:0;">📞 ' + esc(params.qcPhone) + '</span>';
+    }
+    merchEl.innerHTML = merchHtml;
+  }
 
   function setQty(id, v){
     var el = document.getElementById(id);

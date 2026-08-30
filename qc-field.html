@@ -2048,6 +2048,15 @@ function saveRecord(){
 }
 
 // ==================== 生成验货报告 ====================
+// 从通讯录按姓名查找电话号码（contacts 记录字段：name / phone）
+function findContactPhone(name){
+  if(!name) return '';
+  try{
+    var list = App.store.get('contacts', []) || [];
+    var hit = list.find(function(c){ return c && c.name === name && c.phone; });
+    return hit ? String(hit.phone) : '';
+  }catch(_e){ return ''; }
+}
 // 将当前外勤登记信息（含勾选的问题类别）带入 QC-report.html
 // 注：款号缩略图短路径需要异步解析 signed URL，故为 async
 async function generateQCReport(){
@@ -2128,12 +2137,13 @@ async function generateQCReport(){
   push('styleDesc', styleDesc);
   push('orderQty', orderQty);
   push('qcName', qcName);
+  push('qcPhone', findContactPhone(qcName));
   push('deliveryDate', val('deliveryDate'));
   push('matNotes', matNotes);
   push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   if(_thumbResolved) push('styleImg', _thumbResolved);
-  var url = 'QC-report.html?v=20260827b' + (params.length ? '&' + params.join('&') : '');
+  var url = 'QC-report.html?v=20260827c' + (params.length ? '&' + params.join('&') : '');
   window.open(url, '_blank');
 }
 
@@ -2245,12 +2255,13 @@ async function buildQcReportUrlFromRecordAsync(r){
   push('styleDesc', styleDesc);
   push('orderQty', orderQty);
   push('qcName', qcName);
+  push('qcPhone', findContactPhone(qcName));
   push('deliveryDate', deliveryDate);
   push('matNotes', matNotes);
   if(tags.length) push('tags', tags.join('|'));
   if(prodIssues.length) push('prodIssues', JSON.stringify(prodIssues));
   if(_thumbResolved) push('styleImg', _thumbResolved);
-  return 'QC-report.html?v=20260827b' + (params.length ? '&' + params.join('&') : '');
+  return 'QC-report.html?v=20260827c' + (params.length ? '&' + params.join('&') : '');
 }
 // 兼容保留同步旧名（若有其他位置调用），返回 Promise
 function buildQcReportUrlFromRecord(r){ return buildQcReportUrlFromRecordAsync(r); }
