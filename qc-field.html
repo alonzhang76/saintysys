@@ -2048,14 +2048,24 @@ function saveRecord(){
 }
 
 // ==================== 生成验货报告 ====================
-// 从通讯录按姓名查找电话号码（contacts 记录字段：name / phone）
+// 从通讯录按姓名查找电话号码
+// 通讯录记录：name=公司/名称，contactPerson=联系人，phone=电话
+// QC姓名优先匹配 contactPerson（联系人），其次 name，最后模糊包含
 function findContactPhone(name){
+  if(!name) return '';
+  name = String(name).trim();
   if(!name) return '';
   try{
     var list = App.store.get('contacts', []) || [];
-    var hit = list.find(function(c){ return c && c.name === name && c.phone; });
+    var norm = function(s){ return String(s || '').trim(); };
+    // 1) 联系人精确匹配
+    var hit = list.find(function(c){ return c && norm(c.contactPerson) === name && c.phone; });
+    // 2) 名称精确匹配
+    if(!hit) hit = list.find(function(c){ return c && norm(c.name) === name && c.phone; });
+    // 3) 联系人/名称包含匹配（如"张三"匹配"张三丰"以外的场景：通讯录写"张三 139xx"等）
+    if(!hit) hit = list.find(function(c){ return c && c.phone && (norm(c.contactPerson).indexOf(name) >= 0 || norm(c.name).indexOf(name) >= 0); });
     return hit ? String(hit.phone) : '';
-  }catch(_e){ return ''; }
+  }catch(_e){ console.warn('[findContactPhone] 通讯录查询失败:', _e); return ''; }
 }
 // 将当前外勤登记信息（含勾选的问题类别）带入 QC-report.html
 // 注：款号缩略图短路径需要异步解析 signed URL，故为 async
