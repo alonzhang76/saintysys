@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -822,8 +822,8 @@ input[type="number"] { -moz-appearance: textfield; }
 #sampleReviewContainer .sr-annot-tool.active{background:var(--primary);color:#fff;border-color:var(--primary);}
 #sampleReviewContainer .sr-annot-tool:hover:not(.active){background:#f8fafc;}
 #sampleReviewContainer .sr-annot-color{width:28px;height:28px;border:2px solid var(--border);border-radius:4px;cursor:pointer;padding:0;}
-#sampleReviewContainer .sr-annot-canvas-wrap{border:2px dashed var(--border);border-radius:4px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:auto;flex:1;position:relative;}
-#sampleReviewContainer .sr-annot-canvas-wrap canvas{max-width:100%;cursor:crosshair;}
+#sampleReviewContainer .sr-annot-canvas-wrap{border:2px dashed var(--border);border-radius:4px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:1;position:relative;}
+#sampleReviewContainer .sr-annot-canvas-wrap canvas{max-width:100%;max-height:100%;height:auto;width:auto;object-fit:contain;cursor:crosshair;}
 #sampleReviewContainer .sr-annot-upload-prompt{text-align:center;color:var(--muted);padding:40px;}
 #sampleReviewContainer .sr-size-info-bar{display:flex;gap:20px;padding:10px 16px;background:#f1f5f9;border-radius:6px;margin-bottom:10px;font-size:12px;flex-wrap:wrap;}
 #sampleReviewContainer .sr-size-info-bar b{color:var(--ink);}
@@ -1305,7 +1305,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 <div id="sp_toastContainer"></div>
 
-<script src="js/common.js?v=20260825b"></script>
+<script src="js/common.js?v=20260903a"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260823a"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
@@ -3933,6 +3933,10 @@ function loadAnnotImage(event) {
   var wrap = $('sr-annotCanvasWrap');
   var maxW = wrap.clientWidth;
   var maxH = wrap.clientHeight;
+  // 容错：容器尚未可见时给默认尺寸
+  if (maxW < 100) maxW = wrap.parentElement.clientWidth || 800;
+  if (maxH < 100) maxH = 600;
+  maxW -= 4; maxH -= 4;
   var gap = 10;
   var imgs = [];
   var loaded = 0;
@@ -3950,9 +3954,16 @@ function loadAnnotImage(event) {
             return { img: im, w: Math.round(im.width * ratio), h: Math.round(targetH) };
           });
           var totalW = scaled.reduce(function(s, im) { return s + im.w; }, 0) + gap * (scaled.length - 1);
-          if (totalW > maxW && scaled.length > 1) {
+          // 宽度超出 → 等比缩放（单图/多图均适用）
+          if (totalW > maxW) {
             var sf = maxW / totalW;
             scaled.forEach(function(im) { im.w = Math.round(im.w * sf); im.h = Math.round(im.h * sf); });
+            totalW = scaled.reduce(function(s, im) { return s + im.w; }, 0) + gap * (scaled.length - 1);
+          }
+          // 高度超出 → 等比缩放
+          if (scaled[0].h > maxH) {
+            var sfh = maxH / scaled[0].h;
+            scaled.forEach(function(im) { im.w = Math.round(im.w * sfh); im.h = Math.round(im.h * sfh); });
             totalW = scaled.reduce(function(s, im) { return s + im.w; }, 0) + gap * (scaled.length - 1);
           }
           var cw = Math.max(totalW, scaled[0].w);
@@ -3994,7 +4005,12 @@ function setupAnnotCanvas(img) {
   wrap.innerHTML = '';
   var maxW = wrap.clientWidth;
   var maxH = wrap.clientHeight;
+  // 容错：容器尚未可见时给默认尺寸
+  if (maxW < 100) maxW = wrap.parentElement ? (wrap.parentElement.clientWidth || 800) : 800;
+  if (maxH < 100) maxH = 600;
+  maxW -= 4; maxH -= 4;
   var w = img.width, h = img.height;
+  // 等比缩放至适应显示区域（仅缩小，不放大）
   var ratio = Math.min(maxW / w, maxH / h, 1);
   w = Math.round(w * ratio); h = Math.round(h * ratio);
   var canvas = document.createElement('canvas');
@@ -5705,8 +5721,8 @@ function getTemplate() {
   '.annot-tool.active{background:#1a3a6b;color:#fff;border-color:#1a3a6b;}' +
   '.annot-tool:hover:not(.active){background:#f8fafc;}' +
   '.annot-color{width:28px;height:28px;border:2px solid var(--border,#e5e7eb);border-radius:4px;cursor:pointer;padding:0;}' +
-  '.annot-canvas-wrap{border:2px dashed var(--border,#e5e7eb);border-radius:4px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:auto;flex:1;position:relative;}' +
-  '.annot-canvas-wrap canvas{max-width:100%;cursor:crosshair;}' +
+  '.annot-canvas-wrap{border:2px dashed var(--border,#e5e7eb);border-radius:4px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:1;position:relative;}' +
+  '.annot-canvas-wrap canvas{max-width:100%;max-height:100%;height:auto;width:auto;object-fit:contain;cursor:crosshair;}' +
   '.annot-upload-prompt{text-align:center;color:var(--text-light,#64748b);padding:40px;}' +
   '@media print{.sr-tab-bar,.sr-tab-content,.toolbar,.sr-cat-tabs,.sr-search-bar,.sr-modal-overlay{display:none!important;}.sr-print-area{display:block!important;max-width:180mm;overflow:hidden;padding:0;margin:0;}body{background:#fff;font-size:11px;margin:0;padding:0;}html{margin:15mm 15mm 18mm 15mm;}.sr-app-banner{display:none;}}' +
   '</style>' +
