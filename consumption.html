@@ -728,7 +728,7 @@
 
 <script src="js/common.js?v=20260825b"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
-<script src="js/supabase-store.js?v=20260825c"></script>
+<script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/init-page.js?v=20260825b"></script>
 
 <script src="js/auth-guard.js?v=20260823a"></script>
@@ -769,13 +769,12 @@ App.initSampleData();
 App.enforcePagePermission('consumption');
 setTimeout(function() { if (window.PageDataSyncGuard) window.PageDataSyncGuard.afterInit(); }, 0);
 
-// ===== 诊断：检测 Supabase Storage 可用性 =====
+// ===== 诊断：检测 CloudBase 存储可用性 =====
 setTimeout(function() {
   var bucket = window.STORAGE_BUCKET || 'app-photos';
-  console.log('[consumption] Supabase 诊断:');
-  console.log('  SUPABASE_URL:', window.SUPABASE_URL);
+  console.log('[consumption] CloudBase 诊断:');
+  console.log('  CLOUDBASE_ENV:', window.CLOUDBASE_ENV);
   console.log('  STORAGE_BUCKET:', bucket);
-  console.log('  SUPABASE_ANON_KEY:', window.SUPABASE_ANON_KEY ? '(已设置)' : '(未设置)');
   console.log('  window.supabase:', !!window.supabase);
   console.log('  window.SupabaseSubmit:', !!window.SupabaseSubmit);
   console.log('  window.SupabaseStore:', !!window.SupabaseStore, '_isInitialized:',
@@ -815,7 +814,7 @@ if (!window.forceSyncCloud) {
     try {
       var store = window.SupabaseStore;
       if (store) {
-        var fn = store.forceRefreshFromCloud || store.refreshFromCloud || store.refreshViaREST;
+        var fn = store.forceRefreshFromCloud || store.refreshFromCloud;
         if (fn) Promise.resolve(fn.call(store)).then(function(){ next(); }).catch(function(){ next(); });
         else next();
       } else next();
@@ -1119,7 +1118,6 @@ var Cons = {
   getSignedUrl: async function(path) {
     if (!path) return null;
     if (path.startsWith('data:image')) return path;
-    // 1) 优先用 JS client（最稳定）
     if (window.supabase) {
       try {
         var sb = window.supabase;
@@ -1127,26 +1125,6 @@ var Cons = {
         var res = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
         if (res && !res.error && res.data) return res.data.signedUrl || null;
       } catch(_e) {}
-    }
-    // 2) REST API 兜底（无需 JS client 就绪）
-    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-      try {
-        var BUCKET2 = window.STORAGE_BUCKET || 'app-photos';
-        var url = window.SUPABASE_URL + '/storage/v1/object/sign/' + encodeURIComponent(BUCKET2) + '/' + encodeURIComponent(path);
-        var resp = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'apikey': window.SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: '{}'
-        });
-        if (resp.ok) {
-          var data = await resp.json();
-          if (data && data.signedUrl) return data.signedUrl;
-        }
-      } catch(_e2) {}
     }
     return null;
   },
@@ -1330,10 +1308,8 @@ var Cons = {
       var signed = await this.getSignedUrl(p);
       if (signed) { previewImg.src = signed; previewImg.style.display = 'block'; this._setBoxState(prefix, 'has-img'); return; }
     } catch(_e) {}
-    // 兜底：用直接下载 URL
-    var bucket = window.STORAGE_BUCKET || 'app-photos';
-    var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
-    previewImg.src = directUrl;
+    // 兜底：CloudBase 私有桶无公开 URL，置空触发 onerror 回退到空状态
+    previewImg.src = '';
     previewImg.style.display = 'block';
     this._setBoxState(prefix, 'has-img');
     var self = this;
@@ -1917,8 +1893,7 @@ var Cons = {
       resolved = await resolveImageUrl(src) || src;
     }
     if (!resolved && !src.startsWith('data:image') && !/^https?:\/\//i.test(src)) {
-      var bucket = window.STORAGE_BUCKET || 'app-photos';
-      resolved = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(src);
+      resolved = '';
     }
     imgEl.src = resolved;
     cap.textContent = (self.fullscreenIdx + 1) + ' / ' + Math.max(1, self.fullscreenImgs.length);
@@ -2297,9 +2272,7 @@ Cons.navThumb = function(el, styleId, dir) {
   (async function(){
     var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await Cons.getSignedUrl(p));
     if (src) { imgEl.src = src; return; }
-    var bucket = window.STORAGE_BUCKET || 'app-photos';
-    var directUrl = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
-    imgEl.src = directUrl;
+    imgEl.src = '';
   })();
 };
 
@@ -2314,8 +2287,7 @@ function hydrateThumbImages() {
     (async function(){
       var src = window.resolveImageUrl ? (await resolveImageUrl(p)) : (await Cons.getSignedUrl(p));
       if (!src) {
-        var bucket = window.STORAGE_BUCKET || 'app-photos';
-        src = (window.SUPABASE_URL || '') + '/storage/v1/object/public/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(p);
+        src = '';
       }
       img.src = src; img.style.display = 'block';
     })();

@@ -80,84 +80,96 @@
     function doRefresh() {
       var store = window.SupabaseStore;
 
-      // 兜底：即使 SupabaseStore 完全不可用，也通过独立轮询获取数据
+      // 兜底：即使 CloudbaseStore 完全不可用，也通过 CloudBase 兼容层独立拉取数据
       if (!store) {
-        console.log('[init-page] ⚠️ SupabaseStore 未加载，使用独立 fetch 兜底...');
-        // 直接使用 fetch 获取数据（与 independentPoll 类似但更简单）
-        var FALLBACK_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
-        var FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-        var userToken = null;
-        try { userToken = (typeof getUserAccessToken === 'function') ? getUserAccessToken() : null; } catch(_e) {}
-        var fbHeaders = {};
-        if (userToken) fbHeaders['Authorization'] = 'Bearer ' + userToken;
-        fetch(FALLBACK_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(FALLBACK_KEY), {cache: 'no-store', headers: fbHeaders})
-          .then(function(resp) { return resp.ok ? resp.json() : Promise.reject(resp.status); })
-          .then(function(rows) {
-            if (!Array.isArray(rows)) return;
-            var changedKeys = [];
-            var origLS = window._origLocalStorage || localStorage;
-            var nowMs = Date.now();
-            var RECENT_WRITE_WINDOW = 10000;
-            for (var i = 0; i < rows.length; i++) {
-              var row = rows[i];
-              var key = row.store_key;
-              // 关键修复：检查 _recentWrites，跳过本地刚写入的 key
-              var rwStore = window.SupabaseStore;
-              if (rwStore && rwStore._recentWrites) {
-                var lastWrite = rwStore._recentWrites[key] || 0;
-                if (lastWrite && (nowMs - lastWrite < RECENT_WRITE_WINDOW)) continue;
-              }
-              // 关键修复：检查持久化的本地保存时间戳（_recentWrites 刷新后丢失）
-              try {
-                var localSaveTsStr_fb = origLS.getItem('_lastLocalSave_' + key);
-                if (localSaveTsStr_fb) {
-                  var localSaveTs_fb = parseInt(localSaveTsStr_fb, 10) || 0;
-                  var cloudUpdatedAt_fb = 0;
-                  try { cloudUpdatedAt_fb = new Date(row.updated_at).getTime() || 0; } catch(_) {}
-                  if (localSaveTs_fb && cloudUpdatedAt_fb && localSaveTs_fb > cloudUpdatedAt_fb) continue;
+        console.log('[init-page] ⚠️ CloudbaseStore 未加载，使用 CloudBase 兼容层兜底...');
+        // 等待 window.supabase（由 js/cloudbase.js 提供）就绪
+        var waitForSb = function(cb) {
+          if (window.supabase && typeof window.supabase.from === 'function') return cb();
+          var cnt = 0;
+          var tm = setInterval(function() {
+            cnt++;
+            if (window.supabase && typeof window.supabase.from === 'function') {
+              clearInterval(tm);
+              cb();
+            } else if (cnt > 100) { // 10s 超时
+              clearInterval(tm);
+              console.warn('[init-page] ⚠️ 等待 CloudBase 兼容层超时，跳过本次兜底刷新');
+            }
+          }, 100);
+        };
+        waitForSb(function() {
+          window.supabase.from('app_data_store').select('store_key,payload,updated_at')
+            .then(function(res) {
+              if (res.error) throw res.error;
+              var rows = res.data || [];
+              if (!Array.isArray(rows)) return;
+              var changedKeys = [];
+              var origLS = window._origLocalStorage || localStorage;
+              var nowMs = Date.now();
+              var RECENT_WRITE_WINDOW = 10000;
+              for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var key = row.store_key;
+                // 关键修复：检查 _recentWrites，跳过本地刚写入的 key
+                var rwStore = window.SupabaseStore;
+                if (rwStore && rwStore._recentWrites) {
+                  var lastWrite = rwStore._recentWrites[key] || 0;
+                  if (lastWrite && (nowMs - lastWrite < RECENT_WRITE_WINDOW)) continue;
                 }
-              } catch(_) {}
-              // 跳过非 SUPERSET_KEYS 的 key（如 dataVersion），防止本地专属数据被 JSON.stringify 损坏
-              if (typeof SUPERSET_KEYS !== 'undefined' && SUPERSET_KEYS.indexOf(key) < 0) continue;
-              origLS.setItem(key, JSON.stringify(row.payload));
-              changedKeys.push(key);
-            }
-            console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key');
-            if (changedKeys.length > 0) {
-              window.dispatchEvent(new CustomEvent('cloud-data-updated', {
-                detail: { keys: changedKeys }
-              }));
-            }
-          })
-          .catch(function(e) {
-            if (Date.now() % 30000 < 15000) {
-              console.warn('[init-page] 兜底刷新失败:', e && e.message ? e.message : e);
-            }
-          });
+                // 关键修复：检查持久化的本地保存时间戳（_recentWrites 刷新后丢失）
+                try {
+                  var localSaveTsStr_fb = origLS.getItem('_lastLocalSave_' + key);
+                  if (localSaveTsStr_fb) {
+                    var localSaveTs_fb = parseInt(localSaveTsStr_fb, 10) || 0;
+                    var cloudUpdatedAt_fb = 0;
+                    try { cloudUpdatedAt_fb = new Date(row.updated_at).getTime() || 0; } catch(_) {}
+                    if (localSaveTs_fb && cloudUpdatedAt_fb && localSaveTs_fb > cloudUpdatedAt_fb) continue;
+                  }
+                } catch(_) {}
+                // 跳过非 SUPERSET_KEYS 的 key（如 dataVersion），防止本地专属数据被 JSON.stringify 损坏
+                if (typeof SUPERSET_KEYS !== 'undefined' && SUPERSET_KEYS.indexOf(key) < 0) continue;
+                origLS.setItem(key, JSON.stringify(row.payload));
+                changedKeys.push(key);
+              }
+              console.log('[init-page] ✅ 兜底刷新完成:', changedKeys.length, '个key');
+              if (changedKeys.length > 0) {
+                window.dispatchEvent(new CustomEvent('cloud-data-updated', {
+                  detail: { keys: changedKeys }
+                }));
+              }
+            })
+            .catch(function(e) {
+              if (Date.now() % 30000 < 15000) {
+                console.warn('[init-page] 兜底刷新失败:', e && e.message ? e.message : e);
+              }
+            });
+        });
         return;
       }
 
-      // 关键修复：即使未初始化也尝试刷新（forceRefreshFromCloud 内部会使用 REST API 回退）
+      // 关键修复：即使未初始化也尝试刷新（forceRefreshFromCloud 内部走 CloudBase SDK）
       var isInit = store._isInitialized && store._isInitialized();
       if (!isInit) {
-        // 未初始化状态下，直接尝试 REST API 刷新
-        console.log('[init-page] 🔄 未初始化状态，尝试 REST API 刷新...');
-        if (store.refreshViaREST) {
-          store.refreshViaREST()
+        // 未初始化状态下，直接尝试云端刷新
+        console.log('[init-page] 🔄 未初始化状态，尝试 CloudBase 刷新...');
+        var fn2 = store.forceRefreshFromCloud || store.refreshFromCloud;
+        if (fn2) {
+          fn2.call(store)
             .then(function(changed) {
               if (changed && changed.length > 0) {
-                console.log('[init-page] ✅ REST 刷新完成:', changed.length, '个 key 变更');
+                console.log('[init-page] ✅ 云端刷新完成:', changed.length, '个 key 变更');
                 // 数据加载成功后，尝试重新初始化
                 if (!isInit) {
                   console.log('[init-page] 🔄 数据已获取，尝试重新初始化...');
                   store.init && store.init();
                 }
               } else {
-                console.log('[init-page] ⏱️ REST 刷新完成，无新数据');
+                console.log('[init-page] ⏱️ 刷新完成，无新数据');
               }
             })
             .catch(function(e) {
-              console.warn('[init-page] REST 刷新出错:', e && e.message ? e.message : e);
+              console.warn('[init-page] 云端刷新出错:', e && e.message ? e.message : e);
             });
         }
         return;
@@ -340,44 +352,59 @@
   }
 
   // ===== 独立云数据轮询（Safari 兼容兜底）=====
-  // 当所有其他机制（Web Worker、SupabaseStore、UMD）都失败时，
-  // 此机制直接通过 fetch + URL 参数方式同步数据，不依赖任何中间层
+  // 当所有其他机制（Web Worker、CloudbaseStore）都失败时，
+  // 此机制通过 CloudBase 兼容层（window.supabase）直接同步数据，不依赖任何中间层
   // 解决 Safari 从 file:// 加载时的 ES Module 阻塞、CDN 跨域、CORS 预检等问题
-  
-  var INDEPENDENT_REST_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
-  var INDEPENDENT_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
+
   var _independentLastHashes = null; // null 表示首次运行（还没建基线）
   var _independentRunning = false;
+  var _independentSbReady = false;   // CloudBase 兼容层是否已就绪
+
+  // 等待 window.supabase 就绪（cloudbase.js 由 ES module 加载，可能晚于本脚本）
+  function ensureCloudbaseReady() {
+    return new Promise(function(resolve) {
+      if (_independentSbReady || (window.supabase && typeof window.supabase.from === 'function')) {
+        _independentSbReady = true;
+        return resolve(true);
+      }
+      var cnt = 0;
+      var tm = setInterval(function() {
+        cnt++;
+        if (window.supabase && typeof window.supabase.from === 'function') {
+          clearInterval(tm);
+          _independentSbReady = true;
+          resolve(true);
+        } else if (cnt > 100) { // 10s 超时
+          clearInterval(tm);
+          console.warn('[init-page] ⚠️ 等待 CloudBase 兼容层超时');
+          resolve(false);
+        }
+      }, 100);
+    });
+  }
 
   function independentPoll() {
     if (_independentRunning) return;
     _independentRunning = true;
 
-    var isFirstRun = (_independentLastHashes === null);
-    var url = INDEPENDENT_REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(INDEPENDENT_API_KEY);
-
-    // 关键修复：带上当前登录用户的 JWT，否则 RLS 会把 app_data_store 过滤成空表
-    // （绝大多数表级策略写的是 auth.uid() = user_id 或 owner_id，匿名 apikey 查不到任何行）
-    var headers = {};
-    var userToken = null;
-    try { userToken = getUserAccessToken(); } catch(_e) {}
-    if (userToken) headers['Authorization'] = 'Bearer ' + userToken;
-
-    fetch(url, {
-      // Authorization 自定义头会触发 CORS 预检，但 Supabase REST/Storage 端点默认对预检放行
-      // （Safari file:// 下万一预检失败，catch 分支会打印诊断，不会卡死轮询）
-      cache: 'no-store',
-      headers: headers
-    })
-    .then(function(resp) {
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      return resp.json();
-    })
-    .then(function(rows) {
-      if (!Array.isArray(rows)) {
-        console.warn('[init-page] 独立轮询：返回数据不是数组');
+    ensureCloudbaseReady().then(function(ready) {
+      if (!ready) {
+        _independentRunning = false;
+        setTimeout(independentPoll, 15000);
         return;
       }
+
+      var isFirstRun = (_independentLastHashes === null);
+
+      // CloudBase 兼容层查询 app_data_store 集合
+      window.supabase.from('app_data_store').select('store_key,payload,updated_at')
+        .then(function(res) {
+          if (res.error) throw res.error;
+          var rows = res.data || [];
+          if (!Array.isArray(rows)) {
+            console.warn('[init-page] 独立轮询：返回数据不是数组');
+            return;
+          }
 
       var changedKeys = [];
       var newHashes = {};
@@ -546,6 +573,7 @@
       // 下次轮询：15秒后
       setTimeout(independentPoll, 15000);
     });
+    }); // 闭合 ensureCloudbaseReady().then
   }
 
   // 关键：尽早启动独立轮询（不要与 SupabaseStore 初始化竞争）
@@ -567,11 +595,8 @@
 
   // ===== 独立写入通道（绝对兜底，保证数据一定上传到云端）=====
   // 接收 localstorage-patch.js 发出的 cloud-write-request 事件
-  // 通过 REST API 直接 upsert 到 Supabase，不依赖任何中间层
-  // 即使 SupabaseStore、setSync、UMD、ES Module 全部失败也能工作
-  var WRITE_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
-  var WRITE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-  var WRITE_AUTH_KEY_NAME = 'sb-ugoyacuagslqhqguxyqe-auth-token'; // Supabase 默认的存储 key
+  // 通过 CloudBase 兼容层（window.supabase）直接 upsert 到云数据库，不依赖任何中间层
+  // 即使 CloudbaseStore、setSync 全部失败也能工作
   var _writeQueue = [];    // 待写入队列（key + value + ts）
   var _writeRunning = false;
   var _writeLastTs = {};   // 每个 key 的最后上传时间戳（用于去抖），避免频繁上传
@@ -593,115 +618,35 @@
     }
   }
 
-  // 获取当前登录用户的 access_token（从 Supabase Auth 本地存储）
-  // 写入必须带这个 token（RLS 允许登录用户写，不允许匿名写）
-  function getUserAccessToken() {
-    try {
-      var raw = localStorage.getItem(WRITE_AUTH_KEY_NAME);
-      // 注意：必须从 _origLocalStorage 读（绕过我们的 patch），否则会无限递归
-      if (!raw) {
-        try {
-          if (window._origLocalStorage) {
-            raw = window._origLocalStorage.getItem(WRITE_AUTH_KEY_NAME);
-          } else if (window.sessionStorage) {
-            raw = sessionStorage.getItem(WRITE_AUTH_KEY_NAME);
-          }
-        } catch(e) {}
-      }
-      if (!raw) return null;
-      var parsed = JSON.parse(raw);
-      if (parsed && parsed.access_token) {
-        return parsed.access_token;
-      }
-    } catch(e) {}
-    return null;
-  }
-
-  // 处理一个写入请求
+  // 处理一个写入请求：通过 CloudBase 兼容层 upsert（onConflict=store_key）
   function executeWrite(req) {
-    var userToken = getUserAccessToken();
-    var body = JSON.stringify({
-      store_key: req.key,
-      payload: req.value,
-      updated_at: new Date().toISOString()
-    });
-
-    // ===== 方案 A：使用 Authorization Bearer 用户 token + apikey 头 =====
-    // 这是标准方式，也是能通过 RLS 写入策略的唯一方式（匿名没有写权限）
-    function tryStandard() {
-      var headers = {
-        'Content-Type': 'application/json',
-        'apikey': WRITE_ANON_KEY,
-        'Prefer': 'return=minimal, resolution=merge-duplicates'
+    return ensureCloudbaseReady().then(function(ready) {
+      if (!ready) throw new Error('CloudBase 兼容层未就绪');
+      var payload = {
+        store_key: req.key,
+        payload: req.value,
+        updated_at: new Date().toISOString()
       };
-      if (userToken) {
-        headers['Authorization'] = 'Bearer ' + userToken;
-      }
-      var url = WRITE_URL + '?on_conflict=store_key';
-      return fetch(url, {
-        method: 'POST',
-        cache: 'no-store',
-        headers: headers,
-        body: body
-      }).then(function(resp) {
-        if (!resp.ok) {
-          return { ok: false, status: resp.status, resp: resp };
-        }
-        return { ok: true };
-      });
-    }
-
-    // ===== 方案 B：Safari file:// CORS 预检失败兜底 =====
-    // 如果方案 A 失败是因为 CORS/network 问题（status=0 或 fetch 抛出 CORS error），
-    // 尝试使用 "简单请求"（simple request）——避免 OPTIONS 预检：
-    // Content-Type 改为 application/x-www-form-urlencoded（允许简单请求列表中的类型之一）
-    // 但是 body 必须转成 URL-encoded 形式，而且 Supabase 不接收 URL-encoded body 作为 JSON payload
-    // 所以这个方案不行。真正的兜底是让 SupabaseStore 正常工作。
-    // 如果方案 A 返回 401，那是 RLS 策略问题，不能通过 "简单请求" 绕过。
-    // 这里只打印更明确的错误信息给用户排查。
-
-    return tryStandard().then(function(r) {
-      if (r.ok) return true;
-
-      // 方案 A 失败，给出明确诊断
-      var msg = '';
-      switch(r.status) {
-        case 401:
-          msg = '401 未授权(R LS拒绝写入) → 用户JWT无效或已登出. 当前userToken=' + (userToken ? '有('+ userToken.slice(0,20)+'...)' : '无');
-          break;
-        case 403:
-          msg = '403 禁止(RLS policy 拒绝)';
-          break;
-        case 409:
-          msg = '409 on_conflict 参数冲突（检查列名）';
-          break;
-        case 400:
-          msg = '400 请求格式错误（JSON 或参数）';
-          break;
-        default:
-          msg = 'HTTP ' + r.status;
-      }
-      throw new Error(msg);
+      return window.supabase.from('app_data_store')
+        .upsert(payload, { onConflict: 'store_key' })
+        .then(function(res) {
+          if (res.error) throw res.error;
+          return true;
+        });
     });
   }
 
-  // 处理一个删除请求（URL 参数 delete）—— DELETE 也必须带用户 JWT
+  // 处理一个删除请求：通过 CloudBase 兼容层 delete
   function executeDelete(key) {
-    var userToken = getUserAccessToken();
-    var url = WRITE_URL + '?store_key=eq.' + encodeURIComponent(key);
-    var headers = {
-      'apikey': WRITE_ANON_KEY
-    };
-    if (userToken) {
-      headers['Authorization'] = 'Bearer ' + userToken;
-    }
-    return fetch(url, {
-      method: 'DELETE',
-      cache: 'no-store',
-      headers: headers
-    }).then(function(resp) {
-      if (!resp.ok) throw new Error('DELETE HTTP ' + resp.status + (resp.status === 401 ? ' (需要用户JWT)' : ''));
-      return true;
+    return ensureCloudbaseReady().then(function(ready) {
+      if (!ready) throw new Error('CloudBase 兼容层未就绪');
+      return window.supabase.from('app_data_store')
+        .delete()
+        .eq('store_key', key)
+        .then(function(res) {
+          if (res.error) throw res.error;
+          return true;
+        });
     });
   }
 

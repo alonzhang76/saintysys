@@ -1,7 +1,7 @@
 /* ===== 统一登录守卫 auth-guard.js =====
  *
  * 功能：
- *   1. 使用 supabase.auth.getUser() 获取当前登录用户
+ *   1. 使用 supabase 兼容层（js/cloudbase.js）的 auth.getUser() 获取当前登录用户
  *   2. 如果没有登录，跳转到 ./login.html
  *   3. 如果已经登录，允许当前页面继续加载
  *   4. 导出 window.currentSupabaseUser，方便其他页面使用
@@ -15,12 +15,12 @@
  * 工作原理（时序）：
  *   - 本文件是经典脚本（非 module），同步部分会先执行
  *   - 同步部分覆盖 App.checkLogin / App.getCurrentUser /
- *     App.loadUserInfo，使其读取 localStorage 中的 Supabase 会话
- *     （Supabase 客户端本身会把会话写入 localStorage，这不是伪造登录态）
- *   - 异步部分通过动态 import 加载 supabase 客户端，
- *     调用 getUser() 向服务器校验会话有效性
+ *     App.loadUserInfo，使其读取 localStorage 中的 CloudBase 会话缓存
+ *     （js/cloudbase.js 登录成功后会把会话写入 tcb_auth_session，这不是伪造登录态）
+ *   - 异步部分通过动态 import 加载 supabase 兼容客户端，
+ *     调用 getUser() 向 CloudBase 校验会话有效性
  *   - 若会话无效/过期，清除并跳转登录页
- *   - 同时覆盖 App.logout 调用 supabase.auth.signOut()
+ *   - 同时覆盖 App.logout 调用 auth.signOut()
  *
  * 这样既能保证页面内联脚本（同步调用 App.checkLogin）正常工作，
  * 又能在后台用 getUser() 做权威校验。
@@ -29,34 +29,27 @@
 (function () {
   "use strict";
 
-  /* ---------- 同步工具：从 localStorage 读取 Supabase 会话 ----------
-   * Supabase v2 客户端默认以 sb-<project-ref>-auth-token 为键名存储会话
-   * 这里只读取已存在的会话令牌，不做任何伪造
+  /* ---------- 同步工具：从 localStorage 读取 CloudBase 会话 ----------
+   * js/cloudbase.js 登录成功后以 tcb_auth_session 为键名存储会话
+   * 这里只读取已存在的会话缓存，不做任何伪造
    */
   function readSupabaseSession() {
     try {
-      const keys = Object.keys(localStorage);
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i];
-        // 兼容 sb-xxx-auth-token 以及带命名空间变体
-        if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") >= 0) {
-          const raw = localStorage.getItem(k);
-          if (!raw) continue;
-          try {
-            const parsed = JSON.parse(raw);
-            // v2 结构：{ access_token, user, ... }
-            if (parsed && parsed.user) return parsed;
-          } catch (e) {
-            // 某些版本可能存的是字符串，忽略
-          }
-        }
+      const raw = localStorage.getItem("tcb_auth_session");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.user) return parsed;
       }
     } catch (e) {}
     return null;
   }
 
-  // 清理 Supabase 会话存储 + 旧的本地登录态
+  // 清理 CloudBase 会话存储 + 旧的本地登录态
   function clearAllAuthState() {
+    try {
+      localStorage.removeItem("tcb_auth_session");
+    } catch (e) {}
+    // 兼容清理：旧 Supabase 会话键（历史残留）
     try {
       const keys = Object.keys(localStorage);
       keys.forEach(function (k) {
@@ -201,7 +194,7 @@
         if (window.supabase && window.supabase.auth && typeof window.supabase.auth.signOut === "function") {
           window.supabase.auth.signOut().catch(function(){});
         } else {
-          import("./supabase.js")
+          import("./cloudbase.js")
             .then(function(mod) { if (mod.supabase) mod.supabase.auth.signOut().catch(function(){}); })
             .catch(function(){});
         }
@@ -237,7 +230,7 @@
   (async function () {
     if (window.__authGuardRedirected) return;
     try {
-      const mod = await import("./supabase.js");
+      const mod = await import("./cloudbase.js");
       const supabase = mod.supabase;
       // 暴露到全局，方便调试与其他脚本使用
       window.supabase = supabase;

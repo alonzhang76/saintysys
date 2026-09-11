@@ -57,10 +57,10 @@
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260823a"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
-<script type="module" src="js/supabase.js?v=20260822ff"></script>
-<script src="js/supabase-store.js?v=20260825c"></script>
+<script type="module" src="js/cloudbase.js?v=20260822ff"></script>
+<script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
-<script src="js/supabase-bridge.js?v=20260822f"></script>
+<script src="js/cloudbase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260823a"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
@@ -194,54 +194,28 @@ function saveUsers(users) {
   _uploadUsersToCloudNow(users);
 }
 
-// 立即上传 users 到云端（带 keepalive，确保页面刷新/关闭前请求能完成）
+// 立即上传 users 到云端（通过 CloudBase 兼容层，同时派发独立写入事件兜底）
 function _uploadUsersToCloudNow(users) {
   try {
-    var SUPABASE_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co';
-    var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
-    var AUTH_KEY = 'sb-ugoyacuagslqhqguxyqe-auth-token';
-
-    // 获取用户 JWT（必须，否则 RLS 拒绝写入）
-    var token = null;
-    try {
-      var ls = window._origLocalStorage || window.localStorage;
-      var raw = ls.getItem(AUTH_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && parsed.access_token) token = parsed.access_token;
-      }
-    } catch(e) {}
-
-    if (!token) {
-      console.warn('[settings] 上传 users 失败：未找到用户 JWT（用户未登录）');
-      return;
+    // 1) 通过 CloudBase 兼容层直接 upsert
+    if (window.supabase && typeof window.supabase.from === 'function') {
+      window.supabase.from('app_data_store')
+        .upsert({ store_key: 'users', payload: users, updated_at: new Date().toISOString() }, { onConflict: 'store_key' })
+        .then(function(res) {
+          if (res.error) {
+            console.warn('[settings] users 上传失败:', res.error && res.error.message ? res.error.message : res.error);
+          } else {
+            console.log('[settings] ✅ users 已同步上传到云端');
+          }
+        })
+        .catch(function(e) {
+          console.warn('[settings] users 上传异常:', e && e.message ? e.message : e);
+        });
     }
-
-    var body = JSON.stringify({
-      store_key: 'users',
-      payload: users,
-      updated_at: new Date().toISOString()
-    });
-
-    fetch(SUPABASE_URL + '/rest/v1/app_data_store?on_conflict=store_key', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': ANON_KEY,
-        'Authorization': 'Bearer ' + token,
-        'Prefer': 'return=minimal, resolution=merge-duplicates'
-      },
-      body: body,
-      keepalive: true   // 关键：保证页面刷新/关闭前请求能完成
-    }).then(function(resp) {
-      if (resp.ok) {
-        console.log('[settings] ✅ users 已同步上传到云端');
-      } else {
-        console.warn('[settings] users 上传 HTTP ' + resp.status);
-      }
-    }).catch(function(e) {
-      console.warn('[settings] users 上传异常:', e && e.message ? e.message : e);
-    });
+    // 2) 同时派发独立写入事件（init-page.js 队列兜底，防止页面刷新时 SDK 请求被取消）
+    window.dispatchEvent(new CustomEvent('cloud-write-request', {
+      detail: { key: 'users', value: users, ts: Date.now() }
+    }));
   } catch(e) {
     console.warn('[settings] _uploadUsersToCloudNow 异常:', e && e.message ? e.message : e);
   }

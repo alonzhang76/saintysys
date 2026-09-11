@@ -1,11 +1,12 @@
-/* ===== Supabase 登录逻辑 login.js =====
+/* ===== CloudBase 登录逻辑 login.js =====
  *
- * 使用 supabase.auth.signInWithPassword({ email, password }) 完成登录
+ * 使用 supabase 兼容层（js/cloudbase.js）的 auth.signInWithPassword({ email, password })
+ * 完成登录（底层为 CloudBase 云开发邮箱密码登录）
  * 不在前端硬编码用户名/密码
  * 登录成功后跳转到 ./index.html
  */
 
-import { supabase, SUPABASE_URL } from "./supabase.js";
+import { supabase, CLOUDBASE_ENV } from "./cloudbase.js";
 
 // 中文提示文案
 const MSG = {
@@ -16,8 +17,7 @@ const MSG = {
   invalidCreds: "邮箱或密码错误",
   notConfirmed: "邮箱尚未验证，请先去邮箱确认",
   network: "网络错误，请检查网络连接",
-  urlNotConfigured: "Supabase URL 未配置，请联系管理员",
-  keyNotConfigured: "Supabase Key 未配置，请联系管理员",
+  envNotConfigured: "CloudBase 环境 ID 未配置，请联系管理员",
   unknown: "登录失败，请稍后重试",
 };
 
@@ -74,9 +74,9 @@ async function handleLogin(event) {
   }
 
   // 3) 配置检查
-  if (!SUPABASE_URL || SUPABASE_URL.indexOf("请替换") >= 0) {
-    setMessage(MSG.urlNotConfigured, "error");
-    setDebug("SUPABASE_URL 仍是占位符，请在 js/supabase.js 中填入真实值");
+  if (!CLOUDBASE_ENV || CLOUDBASE_ENV === "your-env-id") {
+    setMessage(MSG.envNotConfigured, "error");
+    setDebug("CLOUDBASE_ENV 仍是占位符，请在 js/cloudbase.js 中填入真实值");
     return false;
   }
 
@@ -93,22 +93,24 @@ async function handleLogin(event) {
     if (error) {
       console.error("[login] signInWithPassword error:", error);
 
-      // 错误分类
-      const em = (error.message || "").toLowerCase();
-      if (em.indexOf("invalid login") >= 0 || em.indexOf("invalid_credentials") >= 0) {
+      // 错误分类（CloudBase 错误信息）
+      const em = ((error.message || "") + " " + (error.code || "")).toLowerCase();
+      if (em.indexOf("password") >= 0 && (em.indexOf("error") >= 0 || em.indexOf("invalid") >= 0 || em.indexOf("incorrect") >= 0 || em.indexOf("wrong") >= 0)) {
         setMessage(MSG.invalidCreds, "error");
-      } else if (em.indexOf("email not confirmed") >= 0 || em.indexOf("not confirmed") >= 0) {
+      } else if (em.indexOf("invalid_credentials") >= 0 || em.indexOf("invalid login") >= 0 || em.indexOf("auth error") >= 0 || em.indexOf("账号或密码") >= 0) {
+        setMessage(MSG.invalidCreds, "error");
+      } else if (em.indexOf("not confirmed") >= 0 || em.indexOf("unverified") >= 0 || em.indexOf("not verified") >= 0) {
         setMessage(MSG.notConfirmed, "error");
-      } else if (em.indexOf("email") >= 0 && em.indexOf("not found") >= 0) {
+      } else if (em.indexOf("user not found") >= 0 || em.indexOf("user_not_found") >= 0 || em.indexOf("not exist") >= 0) {
         setMessage("该邮箱在系统中不存在", "error");
-      } else if (em.indexOf("rate limit") >= 0 || em.indexOf("too many") >= 0) {
+      } else if (em.indexOf("rate limit") >= 0 || em.indexOf("too many") >= 0 || em.indexOf("frequent") >= 0 || em.indexOf("频繁") >= 0) {
         setMessage("尝试次数过多，请稍后再试", "error");
-      } else if (em.indexOf("fetch") >= 0 || em.indexOf("network") >= 0 || em.indexOf("abort") >= 0) {
+      } else if (em.indexOf("fetch") >= 0 || em.indexOf("network") >= 0 || em.indexOf("abort") >= 0 || em.indexOf("cors") >= 0 || em.indexOf("跨域") >= 0) {
         setMessage(MSG.network, "error");
-        setDebug("网络请求失败：\n" + error.message + "\n\n请检查：\n1. 网络连接是否正常\n2. Supabase URL 是否正确\n3. 是否被防火墙拦截");
+        setDebug("网络请求失败：\n" + (error.message || "") + (error.code ? "\n错误码: " + error.code : "") + "\n\n请检查：\n1. 网络连接是否正常\n2. CloudBase 安全域名是否已添加本站域名（控制台→环境配置→安全配置）\n3. 是否被防火墙拦截");
       } else {
         setMessage(error.message || MSG.unknown, "error");
-        setDebug("完整错误信息：\n" + (error.message || String(error)));
+        setDebug("完整错误信息：\n" + (error.message || String(error)) + (error.code ? "\n错误码: " + error.code : ""));
       }
       setButtonState(btn, false, "登 录");
       return false;
@@ -159,33 +161,24 @@ async function handleLogin(event) {
 // 暴露到全局，供 login.html 的 onsubmit 调用
 window.handleLogin = handleLogin;
 
-// 如果已经登录（同步检查 Supabase 会话 token），立即跳首页
+// 如果已经登录（同步检查 CloudBase 会话缓存），立即跳首页
 // 先用同步方式读 localStorage，避免异步 getUser() 失败/卡住时停留在登录页
 (function redirectIfAuthedSync() {
   try {
-    const keys = Object.keys(localStorage);
-    for (let i = 0; i < keys.length; i++) {
-      const k = keys[i];
-      if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") >= 0) {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.user) {
-              const go = () => {
-                try { window.location.replace("index.html"); }
-                catch (e) { window.location.href = "index.html"; }
-              };
-              go();
-              setTimeout(go, 30);
-              setTimeout(go, 300);
-              return;
-            }
-          } catch(_) {}
-        }
+    var raw = localStorage.getItem("tcb_auth_session");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.user && parsed.user.id) {
+        const go = () => {
+          try { window.location.replace("index.html"); }
+          catch (e) { window.location.href = "index.html"; }
+        };
+        go();
+        setTimeout(go, 30);
+        setTimeout(go, 300);
       }
     }
-  } catch(_) {}
+  } catch (_) {}
 })();
 
 // 异步再确认一次（权威 getUser）

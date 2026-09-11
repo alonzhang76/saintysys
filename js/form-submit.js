@@ -1,11 +1,11 @@
 /* ===== 统一表单提交 + 文件上传 form-submit.js =====
  *
- * 对应数据表：
+ * 对应数据集合（CloudBase 云数据库）：
  *   - app_submissions(id, user_id, form_type, payload, status, created_at, updated_at)
  *   - submission_files(id, submission_id, user_id, bucket_name, file_path,
  *                      file_name, mime_type, file_size, created_at)
  *
- * Storage Bucket：app-photos（私有 Bucket，不使用公开 URL）
+ * 云存储：CloudBase 环境内置云存储（私有权限，不使用公开 URL）
  *
  * 使用方式：
  *   1) 自动绑定：给 <form> 加属性 data-supabase-form="<form_type>"
@@ -13,22 +13,23 @@
  *      已有 onsubmit 的表单（如 loginForm / sp_sampleForm）不会被重复绑定。
  *
  *   2) 手动调用：
- *      const res = await SupabaseSubmit.submit('contacts', dataObj, [file1, file2]);
- *      const list = await SupabaseSubmit.list('contacts');
- *      await SupabaseSubmit.update(id, dataObj);
- *      await SupabaseSubmit.remove(id);
+ *      const res = await CloudbaseSubmit.submit('contacts', dataObj, [file1, file2]);
+ *      const list = await CloudbaseSubmit.list('contacts');
+ *      await CloudbaseSubmit.update(id, dataObj);
+ *      await CloudbaseSubmit.remove(id);
+ *      （window.SupabaseSubmit 为兼容别名，仍然可用）
  *
  * 安全说明：
  *   - 不把 password 字段写入 app_submissions
- *   - 不保存 Supabase session 到数据库
+ *   - 不保存登录会话到数据库
  *   - 不把任何密钥写入数据库
- *   - 不把 service_role key 放到前端
- *   - 不把私有 Bucket 改成公开 Bucket
+ *   - 不把云函数/管理密钥放到前端
+ *   - 不把私有存储改成公开读
  *   - 查看图片使用 createSignedUrl，不拼接公开 URL
  *   - 普通用户页面始终限制 user_id = 当前用户 id
  */
 
-import { supabase, STORAGE_BUCKET, MAX_FILE_SIZE, ALLOWED_IMAGE_MIME } from "./supabase.js";
+import { supabase, STORAGE_BUCKET, MAX_FILE_SIZE, ALLOWED_IMAGE_MIME } from "./cloudbase.js";
 import { ADMIN_EMAILS, isAdmin } from "./admin-config.js";
 
 /* ---------- form_type 映射 ---------- */
@@ -757,9 +758,9 @@ const SupabaseSubmit = {
       const { data, error } = await supabase.auth.getUser();
       if (!error && data && data.user) return data.user;
     } catch(_e) {}
-    // 兜底：读本地 localStorage session
+    // 兜底：读本地 localStorage 会话缓存（js/cloudbase.js 写入）
     try {
-      var raw = localStorage.getItem('sb-' + (window.SUPABASE_REF || '') + '-auth-token');
+      var raw = localStorage.getItem('tcb_auth_session');
       if (raw) {
         var parsed = JSON.parse(raw);
         if (parsed && parsed.user) return parsed.user;
@@ -801,21 +802,8 @@ const SupabaseSubmit = {
       if (i < searchTargets.length - 1) await new Promise(function(r){ setTimeout(r, 20); });
     }
 
-    // 2) 如果 JS client 的 findPictureByStyleNo 完全没命中（Safari CORS / RLS / Storage 报错常见）
-    //    用纯 REST list 接口兜底：GET /storage/v1/object/list/{bucket}/{prefixPath}
-    //    这样即使 supabase-js 出问题，我们也能列出所有文件
-    if (allHits.length === 0 && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-      try {
-        console.log('[SupabaseSubmit] findStyleImages falling back to REST list...');
-        const restHits = await self._restListStyleImages(sn, bucket, user ? user.id : null);
-        if (restHits && restHits.length) {
-          console.log('[SupabaseSubmit] findStyleImages REST fallback hits:', restHits.length);
-          allHits.push.apply(allHits, restHits);
-        }
-      } catch(_err) {
-        console.warn('[SupabaseSubmit] REST fallback error:', _err);
-      }
-    }
+    // 2) （已迁移 CloudBase）存储列目录统一走 window.supabase.storage.from().list，
+    //    底层由 js/cloudbase.js 自动调用 tcb-file-list 云函数，无需 REST 回退
 
     // 3) 最后走根目录广泛扫描（兜底）
     if (allHits.length === 0) {
@@ -877,213 +865,11 @@ const SupabaseSubmit = {
     return (result.styleImg_path || result.fullImg_path) ? result : null;
   },
 
-  /**
-   * 纯 REST 列目录：用 fetch 直连 Supabase Storage，绕开 supabase-js 客户端的 RLS / CORS 兼容问题（典型于 Safari）
-   * 遍历：[当前用户ID/] + subFolder 下的所有文件，按文件名含款号匹配
-   */
-  async _restListStyleImages(styleNo, bucket, userId) {
-    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return [];
-    const self = this;
-    const base = window.SUPABASE_URL.replace(/\/$/, '');
-    const anon = window.SUPABASE_ANON_KEY;
-    const sn = String(styleNo).toLowerCase();
-    const subFolders = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
-    const results = [];
-    const auth = await self._restAuthHeader(); // 优先带登录用户的 JWT（有 RLS 权限），不行就只用 anon key
+  // （已迁移 CloudBase）原 Supabase Storage REST 列目录/签名回退通道已移除，
+  // 列目录统一走 window.supabase.storage.from().list → tcb-file-list 云函数，
+  // 签名 URL 统一走 createSignedUrl（见 js/cloudbase.js 兼容层）。
 
-    async function listDir(prefixPath) {
-      try {
-        var url = base + '/storage/v1/object/list/' + encodeURIComponent(bucket);
-        var resp = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'apikey': anon,
-            'Authorization': auth,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ prefix: prefixPath, limit: 500, offset: 0 })
-        });
-        if (!resp.ok) {
-          console.warn('[REST list] prefix=' + prefixPath + ' HTTP ' + resp.status);
-          return [];
-        }
-        var j = await resp.json();
-        if (!j || !Array.isArray(j)) return [];
-        return j;
-      } catch(e) {
-        console.warn('[REST list] fail prefix=' + prefixPath, e);
-        return [];
-      }
-    }
-
-    function scoreName(name, folderHint) {
-      var lower = String(name).toLowerCase();
-      var nameNoExt = lower.replace(/\.[^.]+$/, '');
-      var s = 0;
-      if (nameNoExt === sn) s = 100;
-      else if (nameNoExt.indexOf(sn) === 0) s = 85;
-      else if (nameNoExt.indexOf(sn) >= 0) s = 70;
-      else {
-        // xxx-{款号}.jpg 这类：{uuid}-{styleNo}.jpg
-        if (lower.indexOf('-' + sn + '.') >= 0) s = 80;
-        else if (lower.indexOf('_' + sn + '.') >= 0) s = 78;
-      }
-      return s;
-    }
-
-    const prefixesToTry = [];
-    // 当前用户 + 各个 subFolder（最高优先级）
-    if (userId) subFolders.forEach(function(sf){ prefixesToTry.push(userId + '/' + sf + '/'); });
-    // 直接 subFolder/ 前缀（兼容旧数据）
-    subFolders.forEach(function(sf){ prefixesToTry.push(sf + '/'); });
-    // ===== 款号文件夹直查（新组织方式：{styleNo}/… 所有模块共用同一个款号文件夹）
-    prefixesToTry.push(sn + '/');
-    prefixesToTry.push(sn.toUpperCase() + '/');
-    prefixesToTry.push(sn.toLowerCase() + '/');
-    // ===== 桶根目录 ''（扫手动上传的 GW27-003.png、3011043.png 这类裸文件）
-    prefixesToTry.push('');
-
-    for (var i = 0; i < prefixesToTry.length; i++) {
-      var prefix = prefixesToTry[i];
-      var items = await listDir(prefix);
-      if (!items || items.length === 0) continue;
-
-      // 若 prefix 是根目录 '' 或款号文件夹(非 UUID)：里面可能直接就是图片文件(用户手动上传的 3011043.png、GW27-003.png)
-      //       或款号文件夹；另外对 ''，还要递归深入 UUID 用户子文件夹（原有逻辑）
-      if (prefix === '' || !/^[0-9a-f]{8}-/i.test(prefix.replace(/\/$/, ''))) {
-        for (var k = 0; k < items.length; k++) {
-          var entry = items[k];
-          if (!entry) continue;
-          if (entry.type === 'folder') {
-            // 如果文件夹名本身就是款号（大小写都匹配），立刻深入扫里面的所有文件
-            var ename = (entry.name || '').toLowerCase();
-            if (ename === sn || ename === sn.toLowerCase() || ename === sn.toUpperCase().toLowerCase()) {
-              var subPath = (prefix === '' ? '' : prefix) + entry.name + '/';
-              var more2 = await listDir(subPath);
-              for (var y = 0; y < more2.length; y++) (function(item, sp){
-                if (!item || item.type === 'folder') return;
-                var sc3 = scoreName(item.name);
-                if (sc3 === 0) sc3 = 60;
-                var fullPath = (sp.endsWith('/') ? sp.substring(0, sp.length - 1) : sp) + '/' + item.name;
-                results.push({
-                  path: fullPath,
-                  signedUrl: null,
-                  score: sc3,
-                  folder: 'styleNoFolder',
-                  isFull: (String(item.name).toLowerCase().indexOf('full') >= 0 || String(item.name).toLowerCase().indexOf('big') >= 0 || String(item.name).toLowerCase().indexOf('large') >= 0)
-                });
-              })(more2[y], subPath);
-            }
-            // 根目录且是 UUID 文件夹 → 深入按老逻辑查 {userId}/subFolder/（兼容旧路径）
-            if (prefix === '' && /^[0-9a-f]{8}-/i.test(entry.name)) {
-              for (var m = 0; m < subFolders.length; m++) {
-                var subPathUuid = entry.name + '/' + subFolders[m] + '/';
-                var more = await listDir(subPathUuid);
-                for (var n = 0; n < more.length; n++) (function(item, sf){
-                  var sc = scoreName(item.name);
-                  if (sc > 0) {
-                    var fullPath = subPathUuid.substring(0, subPathUuid.length - 1) + '/' + item.name;
-                    results.push({
-                      path: fullPath,
-                      signedUrl: null,
-                      score: sc,
-                      folder: sf,
-                      isFull: (String(item.name).toLowerCase().indexOf('full') >= 0 || String(item.name).toLowerCase().indexOf('big') >= 0 || String(item.name).toLowerCase().indexOf('large') >= 0)
-                    });
-                  }
-                })(more[n], subFolders[m]);
-              }
-            }
-          } else {
-            // entry 本身是文件（绝大多数就是我们要找的根目录款号图）
-            var scFile = scoreName(entry.name);
-            if (scFile > 0) {
-              var fpFile = (prefix === '') ? entry.name : (prefix.endsWith('/') ? prefix.substring(0, prefix.length - 1) + '/' + entry.name : prefix + '/' + entry.name);
-              results.push({
-                path: fpFile,
-                signedUrl: null,
-                score: scFile + 5, // 桶根直接匹配 = 非常准，多加5分
-                folder: (prefix === '') ? 'root' : (prefix.replace(/\/$/, '')),
-                isFull: (String(entry.name).toLowerCase().indexOf('full') >= 0 || String(entry.name).toLowerCase().indexOf('big') >= 0 || String(entry.name).toLowerCase().indexOf('large') >= 0)
-              });
-            }
-          }
-        }
-      } else {
-        // 非空前缀：是具体的 {userId}/sf/ 或 sf/ 目录，里面就是文件
-        var sfHint = prefix;
-        for (var x = 0; x < items.length; x++) {
-          var it = items[x];
-          if (!it || it.type === 'folder') continue;
-          var sc2 = scoreName(it.name);
-          if (sc2 === 0) continue;
-          var fullP = (prefix.endsWith('/') ? prefix.substring(0, prefix.length - 1) : prefix) + '/' + it.name;
-          results.push({
-            path: fullP,
-            signedUrl: null,
-            score: sc2,
-            folder: sfHint,
-            isFull: (String(it.name).toLowerCase().indexOf('full') >= 0 || String(it.name).toLowerCase().indexOf('big') >= 0 || String(it.name).toLowerCase().indexOf('large') >= 0)
-          });
-        }
-      }
-    }
-
-    // 对找到的每条路径，生成 signed URL（REST 版）
-    for (var w = 0; w < results.length; w++) {
-      try {
-        var signUrl = base + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(results[w].path);
-        var signResp = await fetch(signUrl, {
-          method: 'POST',
-          headers: {
-            'apikey': anon,
-            'Authorization': auth,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ expiresIn: 7200 })
-        });
-        if (signResp.ok) {
-          var sj = await signResp.json();
-          if (sj && sj.signedURL) results[w].signedUrl = base + sj.signedURL;
-          else if (sj && sj.signedUrl) results[w].signedUrl = (sj.signedUrl.indexOf('http') === 0) ? sj.signedUrl : (base + sj.signedUrl);
-        }
-      } catch(_e) {}
-    }
-    return results;
-  },
-
-  /**
-   * 生成 REST 调用的 Authorization 头：优先用户 session 的 access_token(JWT)，没有则 Bearer anon key
-   */
-  async _restAuthHeader() {
-    // 1) 从 supabase-js 的 session 里拿 access_token
-    try {
-      if (window.supabase) {
-        var { data } = await supabase.auth.getSession();
-        if (data && data.session && data.session.access_token) {
-          return 'Bearer ' + data.session.access_token;
-        }
-      }
-    } catch(_e) {}
-    // 2) 从 localStorage 直接拿 sb-xxx-auth-token
-    try {
-      var prefix = 'sb-' + (window.SUPABASE_REF ? window.SUPABASE_REF + '-' : '');
-      var keys = Object.keys(localStorage);
-      for (var i = 0; i < keys.length; i++) {
-        if (keys[i].indexOf('sb-') === 0 && keys[i].indexOf('-auth-token') >= 0) {
-          var raw = localStorage.getItem(keys[i]);
-          if (raw) {
-            var parsed = JSON.parse(raw);
-            if (parsed && parsed.access_token) return 'Bearer ' + parsed.access_token;
-          }
-        }
-      }
-    } catch(_e) {}
-    // 3) 兜底：用 anon key（只绕过 bucket 为 public 的情况）
-    return 'Bearer ' + (window.SUPABASE_ANON_KEY || '');
-  },
-
-  _isFull: function(path, folder, styleNo) {
+  _isFull: function(path) {
     if (!path) return false;
     var p = path.toLowerCase();
     if (p.indexOf('full') >= 0) return true;

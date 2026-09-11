@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1309,10 +1309,10 @@ input[type="number"] { -moz-appearance: textfield; }
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260823a"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
-<script type="module" src="js/supabase.js?v=20260822f"></script>
-<script src="js/supabase-store.js?v=20260825c"></script>
+<script type="module" src="js/cloudbase.js?v=20260822f"></script>
+<script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
-<script src="js/supabase-bridge.js?v=20260822f"></script>
+<script src="js/cloudbase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260820"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
@@ -1858,10 +1858,9 @@ async function onSamplePicDelete(prefix) {
   if (delBtn) delBtn.disabled = true;
   if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
 }
-// 辅助：取路径的签名 URL（容错）
+// 辅助：取路径的签名 URL（容错）—— 统一走 CloudBase 兼容层 createSignedUrl
 async function getSignedUrlForPath(storagePath) {
   if (!storagePath) return null;
-  // 1) JS client
   if (window.supabase) {
     try {
       var sb = window.supabase;
@@ -1869,26 +1868,6 @@ async function getSignedUrlForPath(storagePath) {
       var res = await sb.storage.from(BUCKET).createSignedUrl(storagePath, 3600);
       if (res && !res.error && res.data) return res.data.signedUrl || null;
     } catch(_e) {}
-  }
-  // 2) REST API 兜底
-  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-    try {
-      var BUCKET2 = window.STORAGE_BUCKET || 'app-photos';
-      var url = window.SUPABASE_URL + '/storage/v1/object/sign/' + encodeURIComponent(BUCKET2) + '/' + encodeURIComponent(storagePath);
-      var resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'apikey': window.SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      });
-      if (resp.ok) {
-        var data = await resp.json();
-        if (data && data.signedUrl) return data.signedUrl;
-      }
-    } catch(_e2) {}
   }
   return null;
 }

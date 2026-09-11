@@ -46,7 +46,7 @@
     <form id="loginForm" onsubmit="return handleLogin(event)">
       <div class="form-group">
         <label class="form-label" for="email">邮箱</label>
-        <input type="email" class="form-input" id="email" name="email" placeholder="请输入 Supabase 账户邮箱" autocomplete="email" required>
+        <input type="email" class="form-input" id="email" name="email" placeholder="请输入账户邮箱" autocomplete="email" required>
       </div>
       <div class="form-group">
         <label class="form-label" for="password">密码</label>
@@ -64,7 +64,7 @@
 </div>
 <!-- 保留 common.js，便于复用 App.toast 等基础工具 -->
 <script src="js/common.js?v=20260825b"></script>
-<!-- Supabase 登录逻辑 -->
+<!-- CloudBase 登录逻辑 -->
 <script type="module" src="js/login.js?v=20260822c"></script>
 <!-- 保底：如果 module 加载失败（CDN 问题），显示错误提示 -->
 <script>
@@ -88,9 +88,9 @@
       if (dbg) {
         dbg.style.display = 'block';
         dbg.textContent = '调试信息：\n' +
-          '1. 确认 Supabase URL 和 anon key 已正确填入 js/supabase.js\n' +
+          '1. 确认 CloudBase 环境 ID 已正确填入 js/cloudbase.js\n' +
           '2. 打开浏览器控制台（F12）查看具体错误\n' +
-          '3. 尝试访问 https://esm.sh/@supabase/supabase-js@2 是否可达';
+          '3. 检查网络是否可访问 CloudBase SDK CDN（static.cloudbase.net）';
       }
     }
   }, 100);

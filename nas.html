@@ -450,10 +450,10 @@
 
 <script src="js/common.js?v=20260825b"></script>
 <script src="js/auth-guard.js?v=20260823a"></script>
-<script type="module" src="js/supabase.js?v=20260822ff"></script>
-<script src="js/supabase-store.js?v=20260825c"></script>
+<script type="module" src="js/cloudbase.js?v=20260822ff"></script>
+<script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
-<script src="js/supabase-bridge.js?v=20260822f"></script>
+<script src="js/cloudbase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
 <script type="module" src="js/form-submit.js?v=20260823a"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
@@ -565,47 +565,70 @@
     },
 
     /**
-     * 从 Supabase app_data_store 表直接拉取管理员发布的 NAS 全局共享配置 & 权限规则
-     * （绕过用户级 RLS 的私有缓存；使用与 init-page independentPoll 相同的 apikey URL 模式）
+     * 从 CloudBase app_data_store 集合直接拉取管理员发布的 NAS 全局共享配置 & 权限规则
+     * 通过 CloudBase 兼容层（window.supabase）查询，不依赖 REST URL
      * 成功后写入 native localStorage，下次 App.store.get 就能读到。
      * @returns Promise<{ pulledNasConfig:boolean, pulledFolderPerms:boolean }>
      */
     _fetchSharedNasKeysFromCloud: function(timeoutMs) {
       var me = this;
       timeoutMs = timeoutMs || 6000;
-      var REST_URL = 'https://ugoyacuagslqhqguxyqe.supabase.co/rest/v1/app_data_store';
-      var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnb3lhY3VhZ3NscWhxZ3V4eXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MzI5NTUsImV4cCI6MjEwMjUwODk1NX0._GdWOGWblSpOYm3y8f_d3aVQszfn2YbRjHN0FqZiLtI';
       return new Promise(function(resolve){
-        var ctrl = new AbortController();
-        var t = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
-        fetch(REST_URL + '?select=store_key,payload,updated_at&apikey=' + encodeURIComponent(ANON_KEY), {
-          cache: 'no-store',
-          signal: ctrl.signal,
-          credentials: 'omit',
-        }).then(function(resp){
+        var done = false;
+        var t = setTimeout(function(){
+          if (done) return;
+          done = true;
+          resolve({ pulledNasConfig: false, pulledFolderPerms: false, error: 'timeout' });
+        }, timeoutMs);
+
+        function finish(out) {
+          if (done) return;
+          done = true;
           clearTimeout(t);
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          return resp.json();
-        }).then(function(rows){
-          if (!Array.isArray(rows)) return resolve({ pulledNasConfig: false, pulledFolderPerms: false, error: 'unexpected' });
-          var origLS = window._origLocalStorage || window.localStorage;
-          var out = { pulledNasConfig: false, pulledFolderPerms: false, loadedKeys: [] };
-          for (var i = 0; i < rows.length; i++) {
-            var r = rows[i];
-            if (!r || !r.store_key) continue;
-            if (r.store_key !== 'nas_config' && r.store_key !== 'nas_folder_perms') continue;
-            if (r.payload === null || r.payload === undefined) continue;
-            var serialized;
-            try { serialized = JSON.stringify(r.payload); } catch(_) { continue; }
-            try { origLS.setItem(r.store_key, serialized); } catch(_) {}
-            if (r.store_key === 'nas_config') out.pulledNasConfig = true;
-            if (r.store_key === 'nas_folder_perms') out.pulledFolderPerms = true;
-            out.loadedKeys.push(r.store_key);
-          }
           resolve(out);
-        }).catch(function(err){
-          clearTimeout(t);
-          resolve({ pulledNasConfig: false, pulledFolderPerms: false, error: (err && err.message) || String(err || 'unknown') });
+        }
+
+        // 等待 window.supabase 就绪
+        function waitAndQuery(cb) {
+          if (window.supabase && typeof window.supabase.from === 'function') return cb();
+          var cnt = 0;
+          var tm = setInterval(function() {
+            cnt++;
+            if (window.supabase && typeof window.supabase.from === 'function') {
+              clearInterval(tm);
+              cb();
+            } else if (cnt > 50) {
+              clearInterval(tm);
+              finish({ pulledNasConfig: false, pulledFolderPerms: false, error: 'cloudbase not ready' });
+            }
+          }, 100);
+        }
+
+        waitAndQuery(function() {
+          window.supabase.from('app_data_store').select('store_key,payload,updated_at')
+            .then(function(res) {
+              if (res.error) throw res.error;
+              var rows = res.data || [];
+              if (!Array.isArray(rows)) return finish({ pulledNasConfig: false, pulledFolderPerms: false, error: 'unexpected' });
+              var origLS = window._origLocalStorage || window.localStorage;
+              var out = { pulledNasConfig: false, pulledFolderPerms: false, loadedKeys: [] };
+              for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (!r || !r.store_key) continue;
+                if (r.store_key !== 'nas_config' && r.store_key !== 'nas_folder_perms') continue;
+                if (r.payload === null || r.payload === undefined) continue;
+                var serialized;
+                try { serialized = JSON.stringify(r.payload); } catch(_) { continue; }
+                try { origLS.setItem(r.store_key, serialized); } catch(_) {}
+                if (r.store_key === 'nas_config') out.pulledNasConfig = true;
+                if (r.store_key === 'nas_folder_perms') out.pulledFolderPerms = true;
+                out.loadedKeys.push(r.store_key);
+              }
+              finish(out);
+            })
+            .catch(function(err) {
+              finish({ pulledNasConfig: false, pulledFolderPerms: false, error: (err && err.message) || String(err || 'unknown') });
+            });
         });
       });
     },

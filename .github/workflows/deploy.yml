@@ -1,0 +1,61 @@
+name: Deploy to CloudBase
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install CloudBase CLI
+        run: npm install -g @cloudbase/cli
+
+      - name: CloudBase Login
+        env:
+          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+        run: |
+          tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
+
+      - name: Deploy Hosting
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: |
+          # 部署静态文件到 CloudBase 静态网站托管
+          # 排除不需要部署的文件
+          tcb hosting deploy ./ -e "$TCB_ENV_ID" \
+            --ignore "node_modules" \
+            --ignore ".git" \
+            --ignore ".github" \
+            --ignore "scripts" \
+            --ignore "cloudfunctions" \
+            --ignore "*.md" \
+            --ignore "*.sql"
+
+      - name: Deploy Cloud Functions
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: |
+          # 部署 tcb-file-list 云函数
+          if [ -d "cloudfunctions/tcb-file-list" ]; then
+            cd cloudfunctions/tcb-file-list
+            npm install --production
+            cd ../..
+            tcb fn deploy tcb-file-list -e "$TCB_ENV_ID" --force
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ 部署完成"
+          echo "环境 ID: ${{ secrets.TCB_ENV_ID }}"
+          echo "请访问 CloudBase 控制台查看静态托管域名"

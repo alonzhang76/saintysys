@@ -1,0 +1,9 @@
+{
+  "name": "tcb-file-list",
+  "version": "1.0.0",
+  "description": "列出 CloudBase 云存储目录内容的云函数",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.9.0"
+  }
+}

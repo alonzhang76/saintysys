@@ -1,22 +1,31 @@
 /* ===== AA服装外贸系统 - 共享JS ===== */
 
-/* ===== Supabase 会话读取（同步，从 localStorage 读取，不伪造登录态）=====
- * Supabase v2 客户端默认把会话写入 localStorage，键名形如 sb-<ref>-auth-token
+/* ===== 会话读取（同步，从 localStorage 读取，不伪造登录态）=====
+ * CloudBase 兼容层（js/cloudbase.js）登录成功后把会话写入 localStorage，键名为 tcb_auth_session
  * 真正的会话有效性校验由 js/auth-guard.js 调用 supabase.auth.getUser() 完成
- * 这里仅做"是否存在会话令牌"的同步判断，供 App.checkLogin 同步使用
+ * 这里仅做"是否存在会话"的同步判断，供 App.checkLogin 同步使用
  * 注意：不保存任何密码到 localStorage
  */
 function _readSupabaseSessionSync() {
   try {
+    // 优先读 CloudBase 会话键
+    var raw = localStorage.getItem('tcb_auth_session');
+    if (raw) {
+      try {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.user) return parsed;
+      } catch (e) { /* 忽略解析失败 */ }
+    }
+    // 兼容：旧版 Supabase 会话键（迁移过渡期）
     var keys = Object.keys(localStorage);
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
       if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') >= 0) {
-        var raw = localStorage.getItem(k);
-        if (!raw) continue;
+        var raw2 = localStorage.getItem(k);
+        if (!raw2) continue;
         try {
-          var parsed = JSON.parse(raw);
-          if (parsed && parsed.user) return parsed;
+          var parsed2 = JSON.parse(raw2);
+          if (parsed2 && parsed2.user) return parsed2;
         } catch (e) { /* 忽略解析失败 */ }
       }
     }
@@ -24,9 +33,12 @@ function _readSupabaseSessionSync() {
   return null;
 }
 
-// 清理所有 Supabase 会话存储 + 旧本地登录态
+// 清理所有会话存储 + 旧本地登录态
 function _clearAllAuthState() {
   try {
+    // 清理 CloudBase 会话
+    localStorage.removeItem('tcb_auth_session');
+    // 兼容：清理旧版 Supabase 会话键
     var keys = Object.keys(localStorage);
     keys.forEach(function (k) {
       if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') >= 0) {
@@ -881,7 +893,7 @@ const App = {
       if (window.supabase && window.supabase.auth && typeof window.supabase.auth.signOut === 'function') {
         window.supabase.auth.signOut().catch(function(){});
       } else {
-        import('./supabase.js').then(function(mod){
+        import('./cloudbase.js').then(function(mod){
           if (mod && mod.supabase) mod.supabase.auth.signOut().catch(function(){});
         }).catch(function(){});
       }
@@ -1393,37 +1405,11 @@ window.resolveImageUrl = async function resolveImageUrl(path, opts) {
 
   var bucket = window.STORAGE_BUCKET || 'app-photos';
   var sb = window.supabase;
-  var sbUrl = (window.SUPABASE_URL || '').replace(/\/$/, '');
-  var anon = window.SUPABASE_ANON_KEY || '';
   var cb = '_t=' + Date.now() + '-' + Math.floor(Math.random() * 1e6); // Safari 强缓存绕过
 
-  // 预取 auth header（REST sign 要用，避免后面重复算）
-  var restAuth = null;
-  if (sbUrl && anon) {
-    restAuth = 'Bearer ' + anon;
-    try {
-      if (sb && sb.auth && typeof sb.auth.getSession === 'function') {
-        var { data } = await sb.auth.getSession();
-        if (data && data.session && data.session.access_token) restAuth = 'Bearer ' + data.session.access_token;
-      }
-    } catch(_) {}
-    if (restAuth === 'Bearer ' + anon) {
-      try {
-        var lkeys = Object.keys(localStorage);
-        for (var li = 0; li < lkeys.length; li++) {
-          if (lkeys[li].indexOf('sb-') === 0 && lkeys[li].indexOf('-auth-token') >= 0) {
-            var raw = localStorage.getItem(lkeys[li]);
-            if (raw) { var parsed = JSON.parse(raw); if (parsed && parsed.access_token) { restAuth = 'Bearer ' + parsed.access_token; break; } }
-          }
-        }
-      } catch(_) {}
-    }
-  }
-
-  /** 对单个路径生成 signed URL：先 JS client 再 REST sign；成功返回 {ok:true, url:string}，否则 {ok:false} */
+  /** 对单个路径生成 signed URL：统一走 JS client（CloudBase 兼容层 createSignedUrl）；成功返回 {ok:true, url:string}，否则 {ok:false} */
   async function trySignOnce(candidatePath) {
     if (!candidatePath) return { ok: false };
-    // 1) JS client
     if (sb && sb.storage && sb.storage.from) {
       try {
         var r = await sb.storage.from(bucket).createSignedUrl(candidatePath, ttl);
@@ -1433,27 +1419,6 @@ window.resolveImageUrl = async function resolveImageUrl(path, opts) {
           return { ok: true, url: u };
         }
       } catch(_e1) {}
-    }
-    // 2) REST sign
-    if (sbUrl && anon) {
-      try {
-        var signUrl = sbUrl + '/storage/v1/object/sign/' + encodeURIComponent(bucket) + '/' + encodeURIComponent(candidatePath);
-        var resp = await fetch(signUrl, {
-          method: 'POST',
-          headers: { 'apikey': anon, 'Authorization': restAuth, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ expiresIn: ttl })
-        });
-        if (resp.ok) {
-          var j = await resp.json();
-          var signed = null;
-          if (j && j.signedURL) signed = sbUrl + j.signedURL;
-          else if (j && j.signedUrl) signed = (j.signedUrl.indexOf('http') === 0) ? j.signedUrl : (sbUrl + j.signedUrl);
-          if (signed) {
-            signed += (signed.indexOf('?') >= 0 ? '&' : '?') + cb;
-            return { ok: true, url: signed };
-          }
-        }
-      } catch(_e2) {}
     }
     return { ok: false };
   }
@@ -1660,46 +1625,27 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
         }
       }
       // ===== 新增：款号文件夹内"任意一张已上传的文件"兜底（因为 uploadPicture 的标准存法是 {styleNo}/{uuid}-{origName}）
-      //   用 REST list 直查款号文件夹，不依赖 JS client。如果 RLS 是 SELECT=authenticated 就能通。
+      //   用 CloudBase 兼容层 list 直查款号文件夹（底层走 tcb-file-list 云函数）
       try {
-        var sbUrl2 = (window.SUPABASE_URL || '').replace(/\/$/, '');
-        var anon2 = window.SUPABASE_ANON_KEY || '';
         var bucket2 = window.STORAGE_BUCKET || 'app-photos';
-        if (sbUrl2 && anon2) {
-          var userTok = null;
-          try {
-            if (window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function') {
-              var _sd = await window.supabase.auth.getSession();
-              if (_sd && _sd.data && _sd.data.session && _sd.data.session.access_token) userTok = _sd.data.session.access_token;
+        if (window.supabase && window.supabase.storage && window.supabase.storage.from) {
+          var lr = await window.supabase.storage.from(bucket2).list(sf.replace(/\/$/, ''), { limit: 200 });
+          if (lr && !lr.error && Array.isArray(lr.data)) {
+            var lj = lr.data;
+            for (var li = 0; li < lj.length; li++) {
+              var entry = lj[li];
+              if (!entry || entry.type === 'folder') continue;
+              var name = String(entry.name || '');
+              if (!/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name)) continue;
+              var lower2 = name.toLowerCase();
+              var isFullHint2 = (lower2.indexOf('full') >= 0 || lower2.indexOf('big') >= 0 || lower2.indexOf('large') >= 0 || lower2.indexOf('大图') >= 0);
+              candidates.push({ path: sf + name, hint: isFullHint2 ? 'full' : 'style' });
             }
-          } catch(_ee2) {}
-          var restAuth2 = 'Bearer ' + (userTok || anon2);
-          var listUrl = sbUrl2 + '/storage/v1/object/list/' + encodeURIComponent(bucket2);
-          var lr = await fetch(listUrl, {
-            method: 'POST', cache: 'no-store',
-            headers: { 'apikey': anon2, 'Authorization': restAuth2, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prefix: sf.replace(/\/$/, ''), limit: 200, offset: 0 })
-          });
-          if (lr.ok) {
-            var lj = await lr.json();
-            if (Array.isArray(lj)) {
-              for (var li = 0; li < lj.length; li++) {
-                var entry = lj[li];
-                if (!entry || entry.type === 'folder') continue;
-                var name = String(entry.name || '');
-                if (!/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name)) continue;
-                var lower2 = name.toLowerCase();
-                var isFullHint2 = (lower2.indexOf('full') >= 0 || lower2.indexOf('big') >= 0 || lower2.indexOf('large') >= 0 || lower2.indexOf('大图') >= 0);
-                candidates.push({ path: sf + name, hint: isFullHint2 ? 'full' : 'style' });
-              }
-              console.log('[getStyleImagesForStyleNo] ③-extra REST list 子目录 ' + sf + ' 返回 ' + lj.length + ' 条，其中图片候选已追加');
-            }
-          } else {
-            console.warn('[getStyleImagesForStyleNo] ③-extra REST list 子目录 ' + sf + ' 失败: HTTP ' + lr.status);
+            console.log('[getStyleImagesForStyleNo] ③-extra list 子目录 ' + sf + ' 返回 ' + lj.length + ' 条，其中图片候选已追加');
           }
         }
       } catch(_eList) {
-        console.warn('[getStyleImagesForStyleNo] ③-extra REST list 款号文件夹异常:', _eList && _eList.message ? _eList.message : _eList);
+        console.warn('[getStyleImagesForStyleNo] ③-extra list 款号文件夹异常:', _eList && _eList.message ? _eList.message : _eList);
       }
     }
     // 去重
