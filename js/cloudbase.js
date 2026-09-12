@@ -1,4 +1,4 @@
-/* ===== CloudBase 客户端 + Supabase 兼容层 cloudbase.js =====
+﻿/* ===== CloudBase 客户端 + Supabase 兼容层 cloudbase.js =====
  *
  * 本项目已从 Supabase 迁移到腾讯云开发 CloudBase（https://tcb.cloud.tencent.com）
  *
@@ -387,6 +387,12 @@ async function fetchAccessToken(app) {
 
 // 未登录时尝试匿名登录（需在云开发控制台"身份认证→登录方式"开启匿名登录）
 async function ensureLogin(app) {
+  // 登录页不做匿名登录：用户会主动用邮箱密码登录，
+  // 若此处发起匿名登录会与邮箱登录竞争并覆盖会话，导致 JWT role=anon、写操作 401
+  if (typeof window !== "undefined" && window.location &&
+      /login\.html$/i.test(window.location.pathname || window.location.href)) {
+    return;
+  }
   try {
     var auth = getAuthInstance(app);
     if (!auth) return;
@@ -401,6 +407,11 @@ async function ensureLogin(app) {
     var cached = readSessionCache();
     if (cached && cached.user && cached.user.id) return; // 已有本地会话，等 getUser 校验
     if (typeof auth.signInAnonymously !== "function") return;
+    // 再次校验：等待 hasLoginState 可能与邮箱登录存在竞争，
+    // 真正发起匿名登录前再确认一次，避免覆盖刚完成的邮箱登录会话
+    if (typeof auth.hasLoginState === "function") {
+      try { if (await auth.hasLoginState()) return; } catch (_e) {}
+    }
     try {
       // v3.9.3: 返回 { data: {user, session}, error }
       var res = await auth.signInAnonymously();
@@ -1168,6 +1179,15 @@ export const supabase = {
         if (!creds.username && creds.email) creds.username = creds.email;
         delete creds.email;
 
+        // 先清掉任何已有会话（尤其是 ensureLogin 留下的匿名会话），
+        // 否则 SDK 可能复用旧会话，导致邮箱登录后 JWT 仍是 role=anon
+        try {
+          if (typeof auth.signOut === "function") {
+            await auth.signOut();
+          }
+        } catch (_e) { /* 忽略 signOut 失败，继续登录 */ }
+        clearSessionCache();
+
         var res;
         if (typeof auth.signInWithPassword === "function") {
           // v3.9.3 官方账号密码登录方法（登录失败 5 次后若触发验证码，SDK 经 adapter 弹窗）
@@ -1184,8 +1204,11 @@ export const supabase = {
         }
         // 成功：data.user / data.session
         var rawUser = (res.data && res.data.user) || null;
+        console.log("[cloudbase.js] signInWithPassword 原始返回 user:",
+          rawUser ? { id: rawUser.userId || rawUser.uid || rawUser.id, email: rawUser.email || "", username: rawUser.username || "" } : null);
         var user = rawUser ? mapUser(rawUser) : await fetchUser(app);
         if (!user) user = await fetchUser(app);
+        console.log("[cloudbase.js] 登录后映射用户 email=" + (user && user.email) + " is_anonymous=" + (user && user.is_anonymous));
         if (user) saveSessionCache(user);
         return {
           data: { user: user, session: (res.data && res.data.session) || null },

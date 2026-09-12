@@ -1,4 +1,4 @@
-/* ===== 统一登录守卫 auth-guard.js =====
+﻿/* ===== 统一登录守卫 auth-guard.js =====
  *
  * 功能：
  *   1. 使用 supabase 兼容层（js/cloudbase.js）的 auth.getUser() 获取当前登录用户
@@ -194,7 +194,7 @@
         if (window.supabase && window.supabase.auth && typeof window.supabase.auth.signOut === "function") {
           window.supabase.auth.signOut().catch(function(){});
         } else {
-          import("./cloudbase.js")
+          import("./cloudbase.js?v=20260912g")
             .then(function(mod) { if (mod.supabase) mod.supabase.auth.signOut().catch(function(){}); })
             .catch(function(){});
         }
@@ -235,7 +235,7 @@
   (async function () {
     if (window.__authGuardRedirected) return;
     try {
-      const mod = await import("./cloudbase.js");
+      const mod = await import("./cloudbase.js?v=20260912g");
       const supabase = mod.supabase;
       // 暴露到全局，方便调试与其他脚本使用
       window.supabase = supabase;

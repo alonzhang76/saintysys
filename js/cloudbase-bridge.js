@@ -1,4 +1,4 @@
-/* ===== CloudBase Bridge =====
+﻿/* ===== CloudBase Bridge =====
  *
  * 桥接 App.store 到 CloudbaseStore
  * 所有通过 App.store.get/set 的调用会自动走 CloudBase 云端

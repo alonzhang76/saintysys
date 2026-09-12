@@ -1,4 +1,4 @@
-/* ===== 退出登录 logout.js =====
+﻿/* ===== 退出登录 logout.js =====
  *
  * 调用 supabase 兼容层（js/cloudbase.js）的 auth.signOut() 清除
  * CloudBase 会话，然后跳转到 ./login.html
@@ -17,7 +17,7 @@
  * 便于以后新增的独立退出按钮使用。
  */
 
-import { supabase } from "./cloudbase.js";
+import { supabase } from "./cloudbase.js?v=20260912g";
 
 async function performLogout() {
   try {

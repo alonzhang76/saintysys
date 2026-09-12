@@ -1,4 +1,4 @@
-/* ===== 统一表单提交 + 文件上传 form-submit.js =====
+﻿/* ===== 统一表单提交 + 文件上传 form-submit.js =====
  *
  * 对应数据集合（CloudBase 云数据库）：
  *   - app_submissions(id, user_id, form_type, payload, status, created_at, updated_at)
@@ -29,7 +29,7 @@
  *   - 普通用户页面始终限制 user_id = 当前用户 id
  */
 
-import { supabase, STORAGE_BUCKET, MAX_FILE_SIZE, ALLOWED_IMAGE_MIME } from "./cloudbase.js";
+import { supabase, STORAGE_BUCKET, MAX_FILE_SIZE, ALLOWED_IMAGE_MIME } from "./cloudbase.js?v=20260912g";
 import { ADMIN_EMAILS, isAdmin } from "./admin-config.js";
 
 /* ---------- form_type 映射 ---------- */

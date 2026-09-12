@@ -1,4 +1,4 @@
-/* ===== localStorage Global Patch =====
+﻿/* ===== localStorage Global Patch =====
  *
  * 全局替换 localStorage.getItem / setItem / removeItem
  * 使现有代码无需修改即可走 Supabase

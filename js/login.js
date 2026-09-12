@@ -1,4 +1,4 @@
-/* ===== CloudBase 登录逻辑 login.js =====
+﻿/* ===== CloudBase 登录逻辑 login.js =====
  *
  * 使用 supabase 兼容层（js/cloudbase.js）的 auth.signInWithPassword({ email, password })
  * 完成登录（底层为 CloudBase 云开发邮箱密码登录）
@@ -6,7 +6,7 @@
  * 登录成功后跳转到 ./index.html
  */
 
-import { supabase, CLOUDBASE_ENV } from "./cloudbase.js";
+import { supabase, CLOUDBASE_ENV } from "./cloudbase.js?v=20260912g";
 
 // 中文提示文案
 const MSG = {
@@ -163,12 +163,13 @@ window.handleLogin = handleLogin;
 
 // 如果已经登录（同步检查 CloudBase 会话缓存），立即跳首页
 // 先用同步方式读 localStorage，避免异步 getUser() 失败/卡住时停留在登录页
+// 关键：匿名会话（无邮箱）不跳，否则会与 auth-guard 的匿名拦截形成登录→首页→登录死循环
 (function redirectIfAuthedSync() {
   try {
     var raw = localStorage.getItem("tcb_auth_session");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.user && parsed.user.id) {
+      if (parsed && parsed.user && parsed.user.id && parsed.user.email && !parsed.user.is_anonymous) {
         const go = () => {
           try { window.location.replace("index.html"); }
           catch (e) { window.location.href = "index.html"; }
@@ -181,11 +182,11 @@ window.handleLogin = handleLogin;
   } catch (_) {}
 })();
 
-// 异步再确认一次（权威 getUser）
+// 异步再确认一次（权威 getUser）—— 同样要求有邮箱才跳
 (async function redirectIfAuthed() {
   try {
     const { data } = await supabase.auth.getUser();
-    if (data && data.user) {
+    if (data && data.user && data.user.email && !data.user.is_anonymous) {
       const go = () => {
         try { window.location.replace("index.html"); }
         catch (e) { window.location.href = "index.html"; }

@@ -1,4 +1,4 @@
-/* ===== AA服装外贸系统 - 共享JS ===== */
+﻿/* ===== AA服装外贸系统 - 共享JS ===== */
 
 /* ===== 会话读取（同步，从 localStorage 读取，不伪造登录态）=====
  * CloudBase 兼容层（js/cloudbase.js）登录成功后把会话写入 localStorage，键名为 tcb_auth_session
@@ -894,7 +894,7 @@ const App = {
       if (window.supabase && window.supabase.auth && typeof window.supabase.auth.signOut === 'function') {
         window.supabase.auth.signOut().catch(function(){});
       } else {
-        import('./cloudbase.js').then(function(mod){
+        import('./cloudbase.js?v=20260912g').then(function(mod){
           if (mod && mod.supabase) mod.supabase.auth.signOut().catch(function(){});
         }).catch(function(){});
       }

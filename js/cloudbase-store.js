@@ -1,4 +1,4 @@
-/* ===== CloudBase 统一数据存储层 cloudbase-store.js =====
+﻿/* ===== CloudBase 统一数据存储层 cloudbase-store.js =====
  *
  * 替代 App.store 的 localStorage 实现，所有业务数据存到 CloudBase 云数据库
  * 使用方式：与 App.store 完全兼容
