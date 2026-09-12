@@ -426,13 +426,41 @@ function mapError(e) {
   };
 }
 
-/* ---------- 数据库查询构建器（Supabase 风格 → CloudBase collection） ---------- */
+/* ---------- 工具：行 ID 生成 + rdb 错误归一 ---------- */
+function genRowId() {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  } catch (e) {}
+  return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+}
+
+// rdb 返回 { data, error } → 统一转 Error（无错误返回 null）
+function rdbErr(res) {
+  var e = res && res.error;
+  if (!e) return null;
+  var msg = e.message || e.error_description || e.details || "";
+  if (msg && typeof msg === "object") {
+    try { msg = JSON.stringify(msg); } catch (_) { msg = String(msg); }
+  }
+  if (!msg) { try { msg = JSON.stringify(e); } catch (_) { msg = String(e); } }
+  var err = new Error(msg);
+  err.code = e.code || e.errorCode || "";
+  return err;
+}
+
+/* ---------- 数据库查询构建器（Supabase 风格 → CloudBase rdb/PostgreSQL） ----------
+ * 当前环境为 PostgreSQL 实例（无文档型数据库），业务行统一存储为：
+ *   { id: text 主键, data: jsonb 业务字段 }
+ * 读取时自动展开 data 为扁平行（附 id/_id），对业务代码透明。
+ * 仅 id 等值过滤走服务端，其余过滤/排序/分页在客户端完成
+ * （数据量小，行为与原文档库实现保持一致）。
+ */
 class TcbQueryBuilder {
   constructor(table, getDb) {
     this._table = table;
     this._getDb = getDb;
     this._selectCols = "*";
-    this._wheres = [];       // {op:'eq'|'neq', f, v}
+    this._wheres = [];       // {op:'eq'|'neq'|'gt'|'lt', f, v}
     this._order = null;      // {f, asc}
     this._limitVal = null;
     this._insertVal = undefined;
@@ -470,100 +498,116 @@ class TcbQueryBuilder {
     function (e) { return Promise.resolve(fn()).then(function () { throw e; }); }
   ); }
 
-  // 归一化文档：补 id 字段（来自 _id）
-  _norm(doc) {
-    if (!doc || typeof doc !== "object") return doc;
-    if (doc.id === undefined && doc._id !== undefined) {
-      var copy = Object.assign({}, doc);
-      copy.id = doc._id;
-      return copy;
+  // 展开存储行 {id, data} → 业务扁平行
+  _expand(r) {
+    var d = (r && typeof r.data === "object" && r.data !== null && !Array.isArray(r.data)) ? r.data : {};
+    var row = Object.assign({}, d);
+    if (r && r.id !== undefined && r.id !== null) {
+      row.id = r.id;
+      row._id = r.id;
+    } else if (row.id !== undefined) {
+      row._id = row.id;
     }
-    return doc;
+    return row;
   }
 
-  // where 条件 → CloudBase where 对象
-  _buildWhere(cmd) {
-    var w = {};
+  // 客户端 where 匹配
+  _matchRow(row) {
     for (var i = 0; i < this._wheres.length; i++) {
       var c = this._wheres[i];
-      if (c.op === "eq") w[c.f] = c.v;
-      else if (c.op === "neq") w[c.f] = cmd.neq(c.v);
-      else if (c.op === "gt") w[c.f] = cmd.gt(c.v);
-      else if (c.op === "lt") w[c.f] = cmd.lt(c.v);
+      var v = row ? row[c.f] : undefined;
+      var eqv = (v === c.v) || (String(v) === String(c.v));
+      if (c.op === "eq" && !eqv) return false;
+      if (c.op === "neq" && eqv) return false;
+      if (c.op === "gt" && !(v > c.v)) return false;
+      if (c.op === "lt" && !(v < c.v)) return false;
     }
-    return w;
+    return true;
+  }
+
+  // 拉取匹配行（id 等值过滤走服务端，其余客户端过滤）
+  async _fetchRows(db) {
+    var idCond = null, otherConds = 0;
+    for (var i = 0; i < this._wheres.length; i++) {
+      var c = this._wheres[i];
+      if (c.op === "eq" && c.f === "id" && idCond === null) idCond = c.v;
+      else otherConds++;
+    }
+
+    var stored = [];
+    if (idCond !== null && otherConds === 0) {
+      var g = await db.from(this._table).select("*").eq("id", String(idCond));
+      var errG = rdbErr(g);
+      if (errG) throw errG;
+      stored = (g && g.data) || [];
+    } else {
+      var PAGE = 1000, MAX_ROWS = 5000, skip = 0;
+      while (true) {
+        var page = await db.from(this._table).select("*").range(skip, skip + PAGE - 1);
+        var errP = rdbErr(page);
+        if (errP) throw errP;
+        var docs = (page && page.data) || [];
+        stored = stored.concat(docs);
+        if (docs.length < PAGE) break;
+        skip += docs.length;
+        if (stored.length >= MAX_ROWS) break;
+      }
+    }
+
+    var rows = stored.map(this._expand.bind(this));
+    return rows.filter(function (row) { return this._matchRow(row); }.bind(this));
   }
 
   async _execute() {
     try {
       var app = await this._getDb();
-      if (!app || !app.database) {
-        return { data: null, error: mapError("CloudBase SDK 未初始化，请检查 js/cloudbase.js 配置与网络") };
+      if (!app || typeof app.rdb !== "function") {
+        return { data: null, error: mapError("CloudBase rdb(PG) 未就绪，请检查 js/cloudbase.js 配置与网络") };
       }
-      var db = app.database();
-      var cmd = db.command;
-      var collection = db.collection(this._table);
-      var whereObj = this._buildWhere(cmd);
+      var db = app.rdb();
 
       /* ---- INSERT ---- */
       if (this._insertVal !== undefined) {
         var rows = Array.isArray(this._insertVal) ? this._insertVal : [this._insertVal];
         var out = [];
         for (var i = 0; i < rows.length; i++) {
-          var res = await collection.add(JSON.parse(JSON.stringify(rows[i])));
-          var row = Object.assign({}, rows[i]);
-          row.id = res && res.id ? res.id : row.id;
-          row._id = row.id;
-          out.push(row);
+          var row = JSON.parse(JSON.stringify(rows[i] || {}));
+          var newId = (row.id !== undefined && row.id !== null && row.id !== "") ? String(row.id) : genRowId();
+          row.id = newId;
+          var insRes = await db.from(this._table).insert({ id: newId, data: row });
+          var errI = rdbErr(insRes);
+          if (errI) throw errI;
+          var outRow = Object.assign({}, row);
+          outRow._id = newId;
+          out.push(outRow);
         }
         return { data: out, error: null };
       }
 
-      /* ---- UPSERT（onConflict 字段 → 用该字段值作为文档 _id，实现原子级 upsert） ---- */
+      /* ---- UPSERT（onConflict 字段 → 用该字段值作为主键 id） ---- */
       if (this._upsertVal !== undefined) {
         var rowsU = Array.isArray(this._upsertVal) ? this._upsertVal : [this._upsertVal];
         var outU = [];
         for (var j = 0; j < rowsU.length; j++) {
-          var rowU = JSON.parse(JSON.stringify(rowsU[j]));
+          var rowU = JSON.parse(JSON.stringify(rowsU[j] || {}));
           var conflictVal = this._onConflict ? rowU[this._onConflict] : null;
-          var saved = false;
-          if (conflictVal !== null && conflictVal !== undefined && conflictVal !== "") {
-            // 方案 A：以冲突字段值为文档 ID，直接 set（不存在则创建）
-            try {
-              await collection.doc(String(conflictVal)).set(rowU);
-              rowU.id = String(conflictVal);
-              rowU._id = rowU.id;
-              saved = true;
-            } catch (eA) {
-              // 方案 B：查询已有文档后 update / add
-              try {
-                var ex = await collection.where(this._onConflict ? { [this._onConflict]: conflictVal } : {}).get();
-                var exDocs = (ex && ex.data) || [];
-                if (exDocs.length > 0) {
-                  await collection.doc(exDocs[0]._id).update(rowU);
-                  rowU.id = exDocs[0]._id;
-                  rowU._id = rowU.id;
-                } else {
-                  var addRes = await collection.add(rowU);
-                  rowU.id = addRes && addRes.id ? addRes.id : "";
-                  rowU._id = rowU.id;
-                }
-                saved = true;
-              } catch (eB) {
-                return { data: null, error: mapError(eB.message || eB) };
-              }
-            }
+          var docId = (conflictVal !== null && conflictVal !== undefined && conflictVal !== "")
+            ? String(conflictVal)
+            : ((rowU.id !== undefined && rowU.id !== null && rowU.id !== "") ? String(rowU.id) : genRowId());
+          rowU.id = docId;
+          var ex = await db.from(this._table).select("id").eq("id", docId);
+          var errE = rdbErr(ex);
+          if (errE) throw errE;
+          if (ex && ex.data && ex.data.length > 0) {
+            var upRes = await db.from(this._table).update({ data: rowU }).eq("id", docId);
+            var errU2 = rdbErr(upRes);
+            if (errU2) throw errU2;
+          } else {
+            var addRes = await db.from(this._table).insert({ id: docId, data: rowU });
+            var errA = rdbErr(addRes);
+            if (errA) throw errA;
           }
-          if (!saved) {
-            // 没有 onConflict：直接新增
-            try {
-              var addRes2 = await collection.add(rowU);
-              rowU.id = addRes2 && addRes2.id ? addRes2.id : "";
-              rowU._id = rowU.id;
-            } catch (eAdd) {
-              return { data: null, error: mapError(eAdd.message || eAdd) };
-            }
-          }
+          rowU._id = docId;
           outU.push(rowU);
         }
         return { data: outU, error: null };
@@ -572,91 +616,52 @@ class TcbQueryBuilder {
       /* ---- UPDATE ---- */
       if (this._updateVal !== undefined) {
         var updData = JSON.parse(JSON.stringify(this._updateVal));
-        // 按主键 id 等值更新
-        var idWhere = null;
-        for (var w1 = 0; w1 < this._wheres.length; w1++) {
-          if (this._wheres[w1].f === "id" && this._wheres[w1].op === "eq") idWhere = this._wheres[w1].v;
+        var matchedU = await this._fetchRows(db);
+        var outUpd = [];
+        for (var k = 0; k < matchedU.length; k++) {
+          var cur = matchedU[k];
+          var merged = Object.assign({}, cur, updData);
+          delete merged._id;
+          merged.id = cur.id; // 主键列不变
+          var uRes = await db.from(this._table).update({ data: merged }).eq("id", cur.id);
+          var errU = rdbErr(uRes);
+          if (errU) throw errU;
+          var uRow = Object.assign({}, merged);
+          uRow._id = cur.id;
+          outUpd.push(uRow);
         }
-        try {
-          if (idWhere) {
-            await collection.doc(String(idWhere)).update(updData);
-            var got = await collection.doc(String(idWhere)).get();
-            var docs1 = ((got && got.data) || []).map(this._norm.bind(this));
-            return { data: docs1, error: null };
-          }
-          await collection.where(whereObj).update(updData);
-          var got2 = await collection.where(whereObj).get();
-          var docs2 = ((got2 && got2.data) || []).map(this._norm.bind(this));
-          return { data: docs2, error: null };
-        } catch (eU) {
-          return { data: null, error: mapError(eU.message || eU) };
-        }
+        return { data: outUpd, error: null };
       }
 
       /* ---- DELETE ---- */
       if (this._isDelete) {
-        var delId = null;
-        for (var w2 = 0; w2 < this._wheres.length; w2++) {
-          if (this._wheres[w2].f === "id" && this._wheres[w2].op === "eq") delId = this._wheres[w2].v;
+        var matchedD = await this._fetchRows(db);
+        for (var d = 0; d < matchedD.length; d++) {
+          var dRes = await db.from(this._table).delete().eq("id", matchedD[d].id);
+          var errD = rdbErr(dRes);
+          if (errD) throw errD;
         }
-        try {
-          if (delId) {
-            await collection.doc(String(delId)).remove();
-          } else {
-            await collection.where(whereObj).remove();
-          }
-          return { data: [], error: null };
-        } catch (eD) {
-          return { data: null, error: mapError(eD.message || eD) };
-        }
+        return { data: [], error: null };
       }
 
       /* ---- SELECT（默认） ---- */
-      // 按主键 id 查单条
-      var selId = null;
-      for (var w3 = 0; w3 < this._wheres.length; w3++) {
-        if (this._wheres[w3].f === "id" && this._wheres[w3].op === "eq") selId = this._wheres[w3].v;
-      }
-      if (selId) {
-        var g = await collection.doc(String(selId)).get();
-        var one = ((g && g.data) || []).map(this._norm.bind(this));
-        return { data: one, error: null };
-      }
-
-      // 分页拉全量（CloudBase 单次最多 1000 条），再在客户端应用 limit/order
-      var PAGE = 1000;
-      var MAX_ROWS = 5000;
-      var skip = 0;
-      var all = [];
-      while (true) {
-        var q = Object.keys(whereObj).length > 0 ? collection.where(whereObj) : collection;
-        if (this._order) q = q.orderBy(this._order.f, this._order.asc ? "asc" : "desc");
-        var want = this._limitVal != null ? Math.max(this._limitVal - skip, 0) : PAGE;
-        if (want <= 0) break;
-        q = q.skip(skip).limit(Math.min(want, PAGE));
-        var page = await q.get();
-        var docs = (page && page.data) || [];
-        all = all.concat(docs);
-        if (docs.length < Math.min(want, PAGE)) break;
-        skip += docs.length;
-        if (all.length >= MAX_ROWS) break;
-      }
-      // 客户端排序兜底（orderBy 对混合类型字段可能不生效）
-      if (this._order && this._limitVal == null) {
-        var fOrd = this._order.f;
+      var all = await this._fetchRows(db);
+      // 客户端排序
+      if (this._order) {
+        var fOrd = this._order.f, asc = this._order.asc;
         all = all.slice().sort(function (a, b) {
           var av = a[fOrd], bv = b[fOrd];
           if (av === bv) return 0;
           if (av === undefined || av === null) return 1;
           if (bv === undefined || bv === null) return -1;
           if (typeof av === "string" || typeof bv === "string") {
-            return this._order.asc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+            return asc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
           }
-          return this._order.asc ? (av > bv ? 1 : -1) : (av > bv ? -1 : 1);
-        }.bind(this));
+          return asc ? (av > bv ? 1 : -1) : (av > bv ? -1 : 1);
+        });
       }
       if (this._limitVal != null) all = all.slice(0, this._limitVal);
-      return { data: all.map(this._norm.bind(this)), error: null };
+      return { data: all, error: null };
     } catch (e) {
       return { data: null, error: mapError(e) };
     }
