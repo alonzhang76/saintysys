@@ -10,12 +10,12 @@ import { supabase, CLOUDBASE_ENV } from "./cloudbase.js";
 
 // 中文提示文案
 const MSG = {
-  empty: "请输入邮箱和密码",
-  invalidEmail: "请输入正确的邮箱地址",
+  empty: "请输入用户名和密码",
+  invalidEmail: "请输入用户名",
   submitting: "登录中…",
   success: "登录成功，正在跳转…",
-  invalidCreds: "邮箱或密码错误",
-  notConfirmed: "邮箱尚未验证，请先去邮箱确认",
+  invalidCreds: "用户名或密码错误",
+  notConfirmed: "账号尚未验证，请先去邮箱确认",
   network: "网络错误，请检查网络连接",
   envNotConfigured: "CloudBase 环境 ID 未配置，请联系管理员",
   unknown: "登录失败，请稍后重试",
@@ -67,8 +67,8 @@ async function handleLogin(event) {
     return false;
   }
 
-  // 2) 邮箱格式校验
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  // 2) 用户名格式校验（允许邮箱或普通用户名）
+  if (!/^[^\s@]{2,}$/.test(email)) {
     setMessage(MSG.invalidEmail, "error");
     return false;
   }
@@ -102,7 +102,7 @@ async function handleLogin(event) {
       } else if (em.indexOf("not confirmed") >= 0 || em.indexOf("unverified") >= 0 || em.indexOf("not verified") >= 0) {
         setMessage(MSG.notConfirmed, "error");
       } else if (em.indexOf("user not found") >= 0 || em.indexOf("user_not_found") >= 0 || em.indexOf("not exist") >= 0) {
-        setMessage("该邮箱在系统中不存在", "error");
+        setMessage("该用户名在系统中不存在", "error");
       } else if (em.indexOf("rate limit") >= 0 || em.indexOf("too many") >= 0 || em.indexOf("frequent") >= 0 || em.indexOf("频繁") >= 0) {
         setMessage("尝试次数过多，请稍后再试", "error");
       } else if (em.indexOf("fetch") >= 0 || em.indexOf("network") >= 0 || em.indexOf("abort") >= 0 || em.indexOf("cors") >= 0 || em.indexOf("跨域") >= 0) {

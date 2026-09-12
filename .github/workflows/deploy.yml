@@ -27,35 +27,36 @@ jobs:
         run: |
           tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
 
-      - name: Deploy Hosting
-        env:
-          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+      - name: Prepare Deploy Directory
         run: |
-          # 部署静态文件到 CloudBase 静态网站托管
-          # 排除不需要部署的文件
-          tcb hosting deploy ./ -e "$TCB_ENV_ID" \
-            --ignore "node_modules" \
-            --ignore ".git" \
-            --ignore ".github" \
-            --ignore "scripts" \
-            --ignore "cloudfunctions" \
-            --ignore "*.md" \
-            --ignore "*.sql"
+          # 只打包线上需要的静态资源，排除脚本/云函数源码/文档/备份
+          mkdir -p _deploy
+          cp -r css js picture layout _deploy/ 2>/dev/null || true
+          cp *.html _deploy/ 2>/dev/null || true
+          cp *.png *.jpg _deploy/ 2>/dev/null || true
+          # 不发布备份文件
+          rm -f _deploy/*.bak
+          ls -la _deploy
 
-      - name: Deploy Cloud Functions
+      - name: Deploy Static Hosting
         env:
           TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
         run: |
-          # 部署 tcb-file-list 云函数
-          if [ -d "cloudfunctions/tcb-file-list" ]; then
-            cd cloudfunctions/tcb-file-list
-            npm install --production
-            cd ../..
-            tcb fn deploy tcb-file-list -e "$TCB_ENV_ID" --force
-          fi
+          # 部署 _deploy 目录内容到静态托管根目录
+          tcb hosting deploy _deploy / -e "$TCB_ENV_ID" --force
+
+      - name: Deploy Cloud Function (tcb-file-list)
+        # 文件列表云函数为可选增强（图片浏览），失败不阻断静态部署
+        continue-on-error: true
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: |
+          cd cloudfunctions/tcb-file-list
+          npm install --production
+          tcb fn deploy tcb-file-list -e "$TCB_ENV_ID" --force
 
       - name: Deployment Summary
         run: |
           echo "✅ 部署完成"
           echo "环境 ID: ${{ secrets.TCB_ENV_ID }}"
-          echo "请访问 CloudBase 控制台查看静态托管域名"
+          echo "访问地址：https://6f6e-${{ secrets.TCB_ENV_ID }}-1255789358.tcb.qcloud.la/login.html"

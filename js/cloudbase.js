@@ -3,7 +3,7 @@
  * 本项目已从 Supabase 迁移到腾讯云开发 CloudBase（https://tcb.cloud.tencent.com）
  *
  * 工作原理：
- *   - 通过 CDN 加载 CloudBase JS SDK v2（@cloudbase/js-sdk，UMD 版）
+ *   - 通过 CDN 加载 CloudBase JS SDK v3（@cloudbase/js-sdk，UMD 版）
  *   - 在其上构建一层与 supabase-js 兼容的 API（auth / from / storage），
  *     业务代码无需改动即可继续使用 window.supabase.* 调用
  *   - 底层全部走 CloudBase 云数据库 / 云存储 / 登录认证
@@ -20,7 +20,7 @@
  */
 
 // ===== CloudBase 环境配置（请替换为你的真实值）=====
-export const CLOUDBASE_ENV = "your-env-id";
+export const CLOUDBASE_ENV = "onlineofficework-d4e93l98bdf879e";
 export const CLOUDBASE_REGION = "ap-shanghai";
 // Publishable Key：可暴露在浏览器，用于匿名/公开资源访问，降低 MAU 消耗
 export const CLOUDBASE_ACCESS_KEY = "";
@@ -56,7 +56,8 @@ if (!CLOUDBASE_ENV || CLOUDBASE_ENV === "your-env-id") {
 }
 
 /* ---------- SDK 加载（UMD 动态注入 + CDN 容错） ---------- */
-const SDK_VERSION = "2.28.6";
+// CloudBase JS SDK v3（webv3，与新版 CloudBase 环境认证 v2 兼容）
+const SDK_VERSION = "3.9.3";
 const CDN_LIST = [
   "https://static.cloudbase.net/cloudbase-js-sdk/" + SDK_VERSION + "/cloudbase.full.js",
   "https://imgcache.qq.com/qcloud/cloudbase-js-sdk/" + SDK_VERSION + "/cloudbase.full.js",
@@ -98,18 +99,146 @@ function loadSdk() {
   return _sdkPromise;
 }
 
+/* ---------- 图形验证码弹窗（登录失败 5 次后触发） ---------- */
+// v3 SDK 通过 adapter 的 openURIWithCallback 回调要求展示验证码
+var _authRefForCaptcha = null;
+
+// 显示验证码弹窗，返回 Promise（用户点确定并校验成功后 resolve）
+function showCaptchaModal(captcha) {
+  return new Promise(function (resolve, reject) {
+    var state = {
+      captchaData: captcha.captchaData, // Base64 图片
+      state: captcha.state,
+      token: captcha.token,
+    };
+
+    // 遮罩
+    var mask = document.createElement("div");
+    mask.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;";
+
+    var box = document.createElement("div");
+    box.style.cssText = "background:#fff;border-radius:10px;padding:24px;width:320px;box-shadow:0 8px 30px rgba(0,0,0,.2);font-family:system-ui,sans-serif;";
+    box.innerHTML =
+      '<div style="font-size:16px;font-weight:600;margin-bottom:14px;text-align:center;">安全验证</div>' +
+      '<div style="text-align:center;margin-bottom:12px;cursor:pointer;" title="点击刷新验证码">' +
+        '<img id="tcb-cap-img" style="height:48px;border:1px solid #ddd;border-radius:4px;" alt="验证码"/>' +
+      '</div>' +
+      '<input id="tcb-cap-input" type="text" maxlength="6" placeholder="请输入图中字符" ' +
+        'style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #ccc;border-radius:6px;font-size:15px;margin-bottom:12px;"/>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button id="tcb-cap-cancel" style="flex:1;padding:9px;border:1px solid #ccc;background:#f5f5f5;border-radius:6px;cursor:pointer;font-size:14px;">取消</button>' +
+        '<button id="tcb-cap-ok" style="flex:1;padding:9px;border:none;background:#075985;color:#fff;border-radius:6px;cursor:pointer;font-size:14px;">确定</button>' +
+      '</div>' +
+      '<div id="tcb-cap-err" style="color:#dc2626;font-size:12px;margin-top:8px;text-align:center;min-height:16px;"></div>';
+    mask.appendChild(box);
+    document.body.appendChild(mask);
+
+    var img = box.querySelector("#tcb-cap-img");
+    var input = box.querySelector("#tcb-cap-input");
+    var errEl = box.querySelector("#tcb-cap-err");
+    var okBtn = box.querySelector("#tcb-cap-ok");
+
+    function renderImg() {
+      if (state.captchaData) {
+        img.src = state.captchaData.indexOf("data:") === 0
+          ? state.captchaData
+          : "data:image/png;base64," + state.captchaData;
+      }
+    }
+    renderImg();
+    setTimeout(function () { input.focus(); }, 100);
+
+    function cleanup() {
+      if (mask.parentNode) mask.parentNode.removeChild(mask);
+    }
+
+    // 刷新验证码
+    img.onclick = function () {
+      if (!_authRefForCaptcha || typeof _authRefForCaptcha.createCaptchaData !== "function") return;
+      errEl.textContent = "刷新中…";
+      _authRefForCaptcha.createCaptchaData({ state: state.state })
+        .then(function (res) {
+          state.captchaData = res.data || res.captchaData;
+          state.token = res.token || state.token;
+          renderImg();
+          errEl.textContent = "";
+          input.value = "";
+          input.focus();
+        })
+        .catch(function () { errEl.textContent = "刷新失败，请重试"; });
+    };
+
+    box.querySelector("#tcb-cap-cancel").onclick = function () {
+      cleanup();
+      reject(new Error("用户取消了验证码"));
+    };
+
+    function submit() {
+      var key = input.value.trim();
+      if (!key) { errEl.textContent = "请输入验证码"; return; }
+      if (!_authRefForCaptcha || typeof _authRefForCaptcha.verifyCaptchaData !== "function") {
+        errEl.textContent = "验证码模块不可用";
+        return;
+      }
+      okBtn.disabled = true;
+      _authRefForCaptcha.verifyCaptchaData({ token: state.token, key: key })
+        .then(function (verifyResult) {
+          cleanup();
+          resolve(verifyResult);
+        })
+        .catch(function () {
+          errEl.textContent = "验证码错误，请重试";
+          okBtn.disabled = false;
+          input.value = "";
+          input.focus();
+          // 自动刷新一张
+          img.onclick && img.onclick();
+        });
+    }
+    okBtn.onclick = submit;
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") submit();
+    });
+  });
+}
+
+// 注册验证码 adapter（必须在 init 之前调用）
+function setupCaptchaAdapter(cb) {
+  if (typeof cb.useAdapters !== "function" || typeof cb.parseCaptcha !== "function") return;
+  try {
+    var adapter = {
+      captchaOptions: {
+        openURIWithCallback: async function (url) {
+          var parsed;
+          try {
+            parsed = cb.parseCaptcha(url);
+          } catch (e) {
+            throw new Error("验证码数据解析失败");
+          }
+          return await showCaptchaModal(parsed);
+        },
+      },
+    };
+    cb.useAdapters(adapter, {});
+  } catch (e) {
+    console.warn("[cloudbase.js] 验证码 adapter 注册失败:", e && e.message ? e.message : e);
+  }
+}
+
 /* ---------- 初始化 CloudBase App ---------- */
 var _appPromise = loadSdk()
   .then(function (cb) {
+    // v3 验证码 adapter 必须在 init 之前注册
+    setupCaptchaAdapter(cb);
     var initOpts = {
       env: CLOUDBASE_ENV,
       region: CLOUDBASE_REGION,
-      // v2 SDK 要求显式开启会话检测，保持与旧行为一致
-      auth: { detectSessionInUrl: true },
     };
     if (CLOUDBASE_ACCESS_KEY) initOpts.accessKey = CLOUDBASE_ACCESS_KEY;
     var app = cb.init(initOpts);
-    console.log("[cloudbase.js] ✅ CloudBase SDK 已初始化 env=" + CLOUDBASE_ENV);
+    console.log("[cloudbase.js] ✅ CloudBase SDK v3 已初始化 env=" + CLOUDBASE_ENV);
+    // 保存 auth 引用给验证码弹窗使用
+    _authRefForCaptcha = getAuthInstance(app);
     // 未登录时尝试匿名登录（需在控制台开启"匿名登录"），保证共享数据可读
     ensureLogin(app);
     return app;
@@ -123,11 +252,29 @@ function getApp() {
   return _appPromise;
 }
 
-// 兼容 v1/v2 差异：v2 中 auth 既是函数也是对象
+// 缓存 auth 实例（v3 SDK 要求每个 app 只能有一个 auth 对象）
+var _cachedAuth = null;
+var _cachedApp = null;
+
+// v3 SDK：app.auth 是属性（对象），不是函数
 function getAuthInstance(app) {
   if (!app) return null;
+  // 同一个 app 复用同一个 auth 实例
+  if (_cachedAuth && _cachedApp === app) return _cachedAuth;
   try {
-    return typeof app.auth === "function" ? app.auth() : app.auth;
+    var auth;
+    if (typeof app.auth === "function") {
+      // v2 风格：app.auth() 返回 auth 对象
+      auth = app.auth();
+    } else {
+      // v3 风格：app.auth 直接是 auth 对象
+      auth = app.auth;
+    }
+    if (auth) {
+      _cachedAuth = auth;
+      _cachedApp = app;
+    }
+    return auth;
   } catch (e) {
     return null;
   }
@@ -188,12 +335,19 @@ function mapUser(raw) {
 async function fetchUser(app) {
   var auth = getAuthInstance(app);
   if (!auth) return null;
-  // 优先 v2 supabase 风格 getUser()
+  // v3: getCurrentUser()
+  if (typeof auth.getCurrentUser === "function") {
+    try {
+      var u = await auth.getCurrentUser();
+      if (u) return mapUser(u);
+    } catch (e) { /* 继续尝试其他方法 */ }
+  }
+  // v2 兜底: getUser()
   if (typeof auth.getUser === "function") {
     try {
       var r = await auth.getUser();
-      var u = (r && r.user) || (r && r.data && r.data.user) || null;
-      if (u) return mapUser(u);
+      var u2 = (r && r.user) || (r && r.data && r.data.user) || null;
+      if (u2) return mapUser(u2);
       if (r && r.data && r.data.userId) return mapUser(r.data);
     } catch (e) { /* 继续尝试其他方法 */ }
   }
@@ -201,8 +355,8 @@ async function fetchUser(app) {
   if (typeof auth.getUserInfo === "function") {
     try {
       var r2 = await auth.getUserInfo();
-      var u2 = (r2 && (r2.userInfo || r2.user)) || r2 || null;
-      if (u2 && (u2.userId || u2.uid || u2._id)) return mapUser(u2);
+      var u3 = (r2 && (r2.userInfo || r2.user)) || r2 || null;
+      if (u3 && (u3.userId || u3.uid || u3._id)) return mapUser(u3);
     } catch (e) { /* 忽略 */ }
   }
   return null;
@@ -229,20 +383,27 @@ async function ensureLogin(app) {
     if (!auth) return;
     var hasLogin = false;
     if (typeof auth.hasLoginState === "function") {
-      try { hasLogin = !!(await auth.hasLoginState()); } catch (e) {}
-    }
-    if (typeof auth.checkLoginState === "function" && !hasLogin) {
       try {
-        var ls = await auth.checkLoginState();
-        hasLogin = !!(ls && (ls.loginState || ls));
+        var ls = await auth.hasLoginState();
+        hasLogin = !!ls;
       } catch (e) {}
     }
     if (hasLogin) return;
     var cached = readSessionCache();
     if (cached && cached.user && cached.user.id) return; // 已有本地会话，等 getUser 校验
-    if (typeof auth.signInAnonymously === "function") {
-      await auth.signInAnonymously();
-      console.log("[cloudbase.js] 已匿名登录（共享数据可读）");
+    if (typeof auth.signInAnonymously !== "function") return;
+    try {
+      // v3.9.3: 返回 { data: {user, session}, error }
+      var res = await auth.signInAnonymously();
+      if (res && res.error) {
+        console.warn("[cloudbase.js] 匿名登录失败（请在控制台身份认证→登录方式中开启「匿名登录」）:", res.error.message || res.error.code || "");
+        return;
+      }
+      if (res && res.data && res.data.user) {
+        console.log("[cloudbase.js] 已匿名登录（共享数据可读）");
+      }
+    } catch (eAnon) {
+      console.warn("[cloudbase.js] 匿名登录失败（请在控制台开启「匿名登录」）:", eAnon && eAnon.message ? eAnon.message : eAnon);
     }
   } catch (e) {
     console.warn("[cloudbase.js] 匿名登录不可用（请在控制台开启匿名登录）:", e && e.message ? e.message : e);
@@ -253,9 +414,15 @@ async function ensureLogin(app) {
 function mapError(e) {
   if (!e) return null;
   if (typeof e === "string") return { message: e, code: "" };
+  // message 可能是对象（v3 SDK），尝试提取可读文本
+  var msg = e.message || e.errorMessage || e.error_description || "";
+  if (msg && typeof msg === "object") {
+    try { msg = JSON.stringify(msg); } catch (err) { msg = String(msg); }
+  }
+  if (!msg) msg = e.error || e.errMsg || String(e);
   return {
-    message: e.message || e.errorMessage || String(e),
-    code: e.code || e.errorCode || e.errCode || "",
+    message: msg,
+    code: e.code || e.errorCode || e.errCode || e.error_code || "",
   };
 }
 
@@ -624,27 +791,44 @@ export const supabase = {
   __isCloudBaseCompat: true,
 
   auth: {
-    // 邮箱密码登录
+    // 用户名/邮箱密码登录
+    // 兼容层：业务代码传 { email/username, password }
+    // v3.9.3 原生 auth.signInWithPassword 返回 { data: {user, session}, error }
     async signInWithPassword(credentials) {
       try {
         var app = await getApp();
         var auth = getAuthInstance(app);
-        if (!auth || typeof auth.signInWithPassword !== "function") {
+        if (!auth) {
           return { data: { user: null, session: null }, error: mapError("CloudBase 登录模块未就绪") };
         }
+        var creds = Object.assign({}, credentials);
+        // email 与 username 均可，优先用用户实际填写的字段
+        if (!creds.username && creds.email) creds.username = creds.email;
+        delete creds.email;
+
         var res;
-        try {
-          res = await auth.signInWithPassword(credentials);
-        } catch (eRaw) {
-          return { data: { user: null, session: null }, error: mapError(eRaw) };
+        if (typeof auth.signInWithPassword === "function") {
+          // v3.9.3 官方账号密码登录方法（登录失败 5 次后若触发验证码，SDK 经 adapter 弹窗）
+          res = await auth.signInWithPassword({
+            username: creds.username,
+            password: creds.password,
+          });
+        } else {
+          return { data: { user: null, session: null }, error: mapError("CloudBase 登录模块未就绪") };
         }
-        if (res && res.error) {
-          return { data: { user: null, session: null }, error: mapError(res.error) };
+        if (!res || res.error) {
+          var errObj = (res && res.error) || mapError("登录失败");
+          return { data: { user: null, session: null }, error: mapError(errObj) };
         }
-        // 登录成功后拉取完整用户信息
-        var user = await fetchUser(app);
+        // 成功：data.user / data.session
+        var rawUser = (res.data && res.data.user) || null;
+        var user = rawUser ? mapUser(rawUser) : await fetchUser(app);
+        if (!user) user = await fetchUser(app);
         if (user) saveSessionCache(user);
-        return { data: { user: user, session: user ? { access_token: null, user: user } : null }, error: null };
+        return {
+          data: { user: user, session: (res.data && res.data.session) || null },
+          error: null,
+        };
       } catch (e) {
         return { data: { user: null, session: null }, error: mapError(e) };
       }
@@ -717,10 +901,20 @@ export const supabase = {
       try {
         var app = await getApp();
         var auth = getAuthInstance(app);
-        if (!auth || typeof auth.signInAnonymously !== "function") {
+        if (!auth) {
           return { data: null, error: mapError("匿名登录不可用") };
         }
-        await auth.signInAnonymously();
+        // v3: anonymousAuthProvider().signIn()；v2: signInAnonymously()
+        var anonProvider = (typeof auth.anonymousAuthProvider === "function")
+          ? auth.anonymousAuthProvider()
+          : null;
+        if (anonProvider && typeof anonProvider.signIn === "function") {
+          await anonProvider.signIn();
+        } else if (typeof auth.signInAnonymously === "function") {
+          await auth.signInAnonymously();
+        } else {
+          return { data: null, error: mapError("当前 SDK 不支持匿名登录") };
+        }
         return { data: null, error: null };
       } catch (e) {
         return { data: null, error: mapError(e) };
