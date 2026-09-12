@@ -1,0 +1,1537 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件中心 - AA服装外贸系统</title>
+<link rel="stylesheet" href="css/common.css?v=20260812">
+<style>
+/* ===== 文件中心（CloudBase 云存储）页面专属样式 ===== */
+.cfb { --cfb-line:#e5e7eb; }
+
+/* ---- 分区域上传 ---- */
+.cfb-zones { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+.cfb-zone {
+  border:1.5px dashed var(--cfb-line); border-radius:10px; background:#fafbfc;
+  padding:14px 10px; text-align:center; cursor:pointer; user-select:none;
+  transition:all .15s ease; position:relative; min-height:96px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+}
+.cfb-zone:hover { border-color:var(--primary); background:#f0f7fb; }
+.cfb-zone.dragover { border-color:var(--primary); background:#e8f1f5; transform:scale(1.02); }
+.cfb-zone.zimg    { border-color:#99e6d5; } .cfb-zone.zimg:hover    { background:#effdf9; border-color:#0d9488; }
+.cfb-zone.zpdf    { border-color:#fca5a5; } .cfb-zone.zpdf:hover    { background:#fef2f2; border-color:#dc2626; }
+.cfb-zone.zexcel  { border-color:#a7dcb0; } .cfb-zone.zexcel:hover  { background:#f0fdf4; border-color:#16a34a; }
+.cfb-zone.zword   { border-color:#a9c4f7; } .cfb-zone.zword:hover   { background:#eff6ff; border-color:#2563eb; }
+.cfb-zone.zppt    { border-color:#f9bd8f; } .cfb-zone.zppt:hover    { background:#fff7ed; border-color:#ea580c; }
+.cfb-zone.zother  { border-color:#cbd5e1; }
+.cfb-zone-ico { font-size:26px; line-height:1; }
+.cfb-zone-name { font-size:13px; font-weight:600; color:#1f2937; }
+.cfb-zone-ext { font-size:10.5px; color:#9ca3af; line-height:1.4; }
+.cfb-zone-busy { position:absolute; inset:0; background:rgba(255,255,255,.85); border-radius:9px;
+  display:none; align-items:center; justify-content:center; font-size:12px; color:var(--primary); font-weight:600; }
+.cfb-zone.busy .cfb-zone-busy { display:flex; }
+.cfb-readonly .cfb-zone { opacity:.55; cursor:not-allowed; }
+
+/* ---- 顶部工具栏 / 面包屑 ---- */
+.cfb-topbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.cfb-status { font-size:12px; color:#64748b; display:inline-flex; align-items:center; gap:6px; }
+.status-dot { width:8px; height:8px; border-radius:50%; background:#f59e0b; display:inline-block; }
+.status-dot.ok { background:#10b981; } .status-dot.err { background:#ef4444; } .status-dot.warn { background:#f59e0b; }
+.cfb-chips { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 10px; }
+.cfb-chip {
+  font-size:12px; padding:3px 10px; border-radius:999px; background:#eef2f7; color:#334155;
+  cursor:pointer; border:1px solid transparent; white-space:nowrap;
+}
+.cfb-chip:hover { background:#e8f1f5; color:var(--primary); border-color:#cfe3ec; }
+.cfb-breadcrumb {
+  display:flex; align-items:center; gap:2px; flex-wrap:wrap; font-size:13px;
+  background:#f8fafc; border:1px solid var(--cfb-line); border-radius:8px; padding:6px 10px; margin-bottom:10px;
+}
+.cfb-breadcrumb a { color:var(--primary); text-decoration:none; cursor:pointer; padding:1px 4px; border-radius:4px; white-space:nowrap; }
+.cfb-breadcrumb a:hover { background:#e8f1f5; }
+.cfb-breadcrumb .sep { color:#cbd5e1; }
+.cfb-breadcrumb .cur { color:#0f172a; font-weight:600; padding:1px 4px; }
+
+/* ---- 资源管理器主体 ---- */
+.cfb-explorer { display:flex; gap:10px; align-items:stretch; min-height:380px; }
+.cfb-tree {
+  width:230px; flex:0 0 230px; border:1px solid var(--cfb-line); border-radius:10px;
+  background:#fbfcfd; overflow:auto; max-height:62vh; padding:8px 6px;
+}
+.cfb-tree-item {
+  display:flex; align-items:center; gap:5px; padding:4px 8px; border-radius:6px; cursor:pointer;
+  font-size:12.5px; color:#334155; white-space:nowrap;
+}
+.cfb-tree-item:hover { background:#eef4f8; }
+.cfb-tree-item.active { background:#e8f1f5; color:var(--primary); font-weight:600; }
+.cfb-tree-item .tw { width:14px; text-align:center; color:#94a3b8; font-size:10px; flex:0 0 14px; }
+.cfb-tree-item .tn { overflow:hidden; text-overflow:ellipsis; }
+.cfb-tree-children { margin-left:16px; }
+.cfb-tree-item.dropover { outline:2px dashed var(--primary); background:#e8f1f5; }
+.cfb-content {
+  flex:1; min-width:0; border:1px solid var(--cfb-line); border-radius:10px; background:#fff;
+  overflow:auto; max-height:62vh; position:relative;
+}
+.cfb-inner { padding:10px 12px; min-height:340px; }
+
+/* ---- 详细信息列表 ---- */
+.cfb-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.cfb-table th {
+  text-align:left; padding:6px 8px; color:#64748b; font-weight:600; font-size:11.5px;
+  border-bottom:1px solid var(--cfb-line); white-space:nowrap; position:sticky; top:0; background:#fff; z-index:2;
+}
+.cfb-table th.sortable { cursor:pointer; user-select:none; }
+.cfb-table th.sortable:hover { color:var(--primary); }
+.cfb-table td { padding:6px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.cfb-table tr.rowf:hover { background:#f8fafc; }
+.cfb-row-name { display:flex; align-items:center; gap:8px; min-width:0; }
+.cfb-thumb {
+  width:34px; height:34px; flex:0 0 34px; border-radius:6px; object-fit:cover; background:#f1f5f9;
+  border:1px solid var(--cfb-line); display:none;
+}
+.cfb-thumb.show { display:block; }
+.cfb-fico { width:34px; height:34px; flex:0 0 34px; border-radius:6px; background:#f8fafc;
+  display:flex; align-items:center; justify-content:center; font-size:18px; border:1px solid #eef2f7; }
+.cfb-name-txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#0f172a; cursor:pointer; }
+.cfb-name-txt:hover { color:var(--primary); text-decoration:underline; }
+.cfb-fmeta { color:#64748b; font-size:12px; white-space:nowrap; }
+.cfb-ops { display:flex; gap:2px; justify-content:flex-end; white-space:nowrap; }
+.btn-xs { padding:1px 5px; font-size:11px; line-height:1.5; }
+
+/* ---- 大图标视图 ---- */
+.cfb-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; }
+.cfb-card {
+  border:1px solid var(--cfb-line); border-radius:10px; padding:10px 8px; text-align:center;
+  cursor:pointer; background:#fff; transition:box-shadow .15s ease; position:relative;
+}
+.cfb-card:hover { box-shadow:0 4px 14px rgba(15,23,42,.08); }
+.cfb-card .cv { width:64px; height:64px; margin:0 auto 6px; border-radius:8px; object-fit:cover; background:#f1f5f9; border:1px solid #eef2f7; display:none; }
+.cfb-card .cv.show { display:block; }
+.cfb-card .ci { width:64px; height:64px; margin:0 auto 6px; border-radius:8px; background:#f8fafc; border:1px solid #eef2f7;
+  display:flex; align-items:center; justify-content:center; font-size:30px; }
+.cfb-card .cn { font-size:12px; color:#0f172a; word-break:break-all; line-height:1.35; max-height:2.7em; overflow:hidden; }
+.cfb-card .cs { font-size:10.5px; color:#94a3b8; margin-top:3px; }
+.cfb-card .cops { position:absolute; top:4px; right:4px; display:none; background:rgba(255,255,255,.95); border-radius:6px; padding:1px 3px; box-shadow:0 1px 6px rgba(0,0,0,.12); }
+.cfb-card:hover .cops { display:block; }
+
+/* ---- 空状态 / 加载 ---- */
+.cfb-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:56px 12px; color:#9ca3af; gap:6px; }
+.cfb-empty .eico { font-size:44px; }
+.cfb-loading { text-align:center; color:#94a3b8; font-size:13px; padding:50px 0; }
+
+/* ---- 上传进度条 ---- */
+.cfb-progress { height:4px; border-radius:2px; background:#eef2f7; overflow:hidden; margin-bottom:8px; display:none; }
+.cfb-progress.show { display:block; }
+.cfb-progress > div { height:100%; width:0; background:linear-gradient(90deg,var(--primary),#0d9488); transition:width .2s ease; }
+
+/* ---- 拖放遮罩 ---- */
+.cfb-dropmask {
+  position:fixed; inset:0; z-index:9998; background:rgba(8,47,73,.45); display:none;
+  align-items:center; justify-content:center;
+}
+.cfb-dropmask.show { display:flex; }
+.cfb-dropmask .inner {
+  background:#fff; border-radius:14px; padding:28px 44px; text-align:center; font-size:15px; color:#0f172a;
+  box-shadow:0 20px 50px rgba(0,0,0,.25); pointer-events:none;
+}
+.cfb-dropmask .sub { font-size:12px; color:#64748b; margin-top:6px; }
+
+/* ---- 预览模态 ---- */
+.cfb-preview {
+  position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.72); display:none;
+  align-items:center; justify-content:center; flex-direction:column; padding:24px;
+}
+.cfb-preview.show { display:flex; }
+.cfb-preview .pv-box { background:#fff; border-radius:12px; max-width:min(920px,94vw); max-height:88vh; overflow:auto; position:relative; padding:10px; }
+.cfb-preview .pv-box img { max-width:88vw; max-height:76vh; display:block; border-radius:8px; }
+.cfb-preview .pv-box iframe { width:min(860px,86vw); height:74vh; border:0; border-radius:8px; display:block; background:#f8fafc; }
+.cfb-preview .pv-cap { text-align:center; font-size:12.5px; color:#334155; padding:8px 2px 2px; word-break:break-all; }
+.cfb-preview .pv-x {
+  position:absolute; top:6px; right:8px; width:26px; height:26px; border-radius:50%; border:none;
+  background:#0f172a; color:#fff; font-size:15px; cursor:pointer; line-height:1;
+}
+
+/* ---- 款号输入行 ---- */
+.cfb-style-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.cfb-style-row input {
+  width:220px; padding:6px 10px; border:1px solid var(--cfb-line); border-radius:8px; font-size:13px;
+}
+.cfb-style-row .hint { font-size:11.5px; color:#94a3b8; line-height:1.5; }
+.cfb-style-row .hint b { color:#0d9488; font-weight:600; }
+
+@media (max-width:768px) {
+  .cfb-tree { display:none; }
+  .cfb-table th:nth-child(3), .cfb-table td:nth-child(3) { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main-area">
+    <div class="app-header">
+      <button class="header-toggle">☰</button>
+      <span class="header-title">文件中心</span>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="App.backupData()">📦</button>
+        <div class="header-user"><span>👤</span><span class="user-name" id="userName">管理员</span></div>
+        <button class="btn btn-sm" onclick="App.logout()">🚪</button>
+      </div>
+    </div>
+    <div class="app-content cfb">
+
+      <!-- ===== 分区域上传 ===== -->
+      <div class="card" id="uploadCard" style="margin-bottom:12px;">
+        <div class="card-header"><span class="card-title">📤 分区域上传</span></div>
+        <div class="cfb-style-row">
+          <label style="font-size:12.5px;font-weight:600;color:#334155;">关联款号：</label>
+          <input type="text" id="cfbStyleNo" placeholder="如 GW27-003（可留空）">
+          <span class="hint">填写款号后上传的<b>图片</b>会存入该款号文件夹，并自动共享给「订单管理 / 样衣管理 / 用料及纸板」等模块显示缩略图；文档也会归类到该款号目录下。</span>
+        </div>
+        <div class="cfb-zones" id="cfbZones"></div>
+        <input type="file" id="cfbPicker" multiple style="display:none;">
+        <input type="file" id="cfbFolderPicker" webkitdirectory directory multiple style="display:none;">
+      </div>
+
+      <!-- ===== 文件管理器 ===== -->
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span class="card-title">🗂️ 云端文件管理</span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <span id="writeBtns" style="display:none;">
+              <button class="btn btn-sm" onclick="CFB.mkDir()" title="在当前目录新建文件夹">📂新建文件夹</button>
+              <button class="btn btn-sm" onclick="CFB.pickUpload()" title="上传一个或多个文件到当前目录">📄上传文件</button>
+              <button class="btn btn-sm" onclick="CFB.pickFolderUpload()" title="上传整个文件夹（保留目录结构）">📁上传文件夹</button>
+              <button class="btn btn-sm" onclick="CFB.refresh()" title="重新加载当前目录">🔄刷新</button>
+            </span>
+            <span id="viewOnlyBtns" style="display:none;">
+              <button class="btn btn-sm" onclick="CFB.refresh()" title="重新加载当前目录">🔄刷新</button>
+            </span>
+            <span id="viewSwitch">
+              <button class="btn btn-sm" data-view="details" onclick="CFB.setViewMode('details')" title="详细信息">☰</button>
+              <button class="btn btn-sm" data-view="grid" onclick="CFB.setViewMode('grid')" title="大图标">🔲</button>
+            </span>
+            <input type="text" id="cfbSearch" placeholder="搜索当前目录…" oninput="CFB.renderList()"
+              style="width:150px;padding:4px 8px;border:1px solid var(--border-light);border-radius:6px;font-size:12px;">
+          </span>
+        </div>
+
+        <div style="padding:0 14px 14px;">
+          <div class="cfb-progress" id="cfbProgress"><div id="cfbProgressBar"></div></div>
+          <div class="cfb-topbar">
+            <span class="cfb-status"><span id="connStatus"><span class="status-dot"></span>正在初始化…</span></span>
+          </div>
+          <div class="cfb-chips" id="cfbChips"></div>
+          <div class="cfb-breadcrumb" id="breadcrumb"></div>
+
+          <div class="cfb-explorer">
+            <div class="cfb-tree" id="treeHost"></div>
+            <div class="cfb-content" id="dropZone">
+              <div class="cfb-inner" id="fileListArea"><div class="cfb-loading">正在加载…</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 拖放遮罩 -->
+<div class="cfb-dropmask" id="cfbDropMask">
+  <div class="inner">
+    <div style="font-size:44px;margin-bottom:6px;">⬆️</div>
+    <div>释放以上传文件到：<b id="cfbDropTarget">当前目录</b></div>
+    <div class="sub">支持多文件与整个文件夹（保留目录结构）</div>
+  </div>
+</div>
+
+<!-- 预览模态 -->
+<div class="cfb-preview" id="cfbPreview" onclick="if(event.target===this)CFB.closePreview()">
+  <div class="pv-box">
+    <button class="pv-x" onclick="CFB.closePreview()">×</button>
+    <div id="pvBody"></div>
+    <div class="pv-cap" id="pvCap"></div>
+  </div>
+</div>
+
+<script src="js/common.js?v=20260912a"></script>
+<script src="js/auth-guard.js?v=20260823a"></script>
+<script type="module" src="js/cloudbase.js?v=20260822ff"></script>
+<script src="js/cloudbase-store.js?v=20260825c"></script>
+<script src="js/localstorage-patch.js?v=20260823a"></script>
+<script src="js/cloudbase-bridge.js?v=20260822f"></script>
+<script type="module" src="js/admin-config.js?v=20260813"></script>
+<script type="module" src="js/form-submit.js?v=20260823a"></script>
+<script type="module" src="js/logout.js?v=20260813"></script>
+<script src="js/init-page.js?v=20260825b"></script>
+<script>
+// ==============================================
+// 文件中心（CloudBase 云存储）
+//   1) 分区域上传：图片 / PDF / Excel / Word / PPT / 其他
+//      - 填写款号 → 图片存入 {款号}/ 并写入 StyleImgCache，
+//        订单/样衣/用料等模块按 style no. 自动显示缩略图
+//   2) 文件管理器（参考云盘 NAS）：左树右列表、新建/重命名/删除/移动(拖拽)/
+//      预览/下载/搜索/排序/视图切换、整页拖放上传（保留目录结构）
+//   底层全部通过 js/cloudbase.js 的 Supabase 兼容存储层：
+//     upload / list(tcb-file-list 云函数兜底) / createSignedUrl / remove
+// ==============================================
+(function(){
+  'use strict';
+
+  // ===== 分区定义 =====
+  var ZONES = [
+    { key:'image', icon:'🖼️', name:'图片',   folder:'图片文件',  accept:'image/jpeg,image/png,image/gif,image/webp,image/bmp,image/svg+xml', exts:['jpg','jpeg','png','gif','webp','bmp','svg'], cls:'zimg',   extText:'jpg / png / gif / webp / bmp / svg' },
+    { key:'pdf',   icon:'📄', name:'PDF',    folder:'PDF 文件',  accept:'application/pdf,.pdf',          exts:['pdf'],                 cls:'zpdf',   extText:'pdf' },
+    { key:'excel', icon:'📊', name:'Excel',  folder:'Excel 表格', accept:'.xlsx,.xls,.xlsm,.csv',        exts:['xlsx','xls','xlsm','csv'], cls:'zexcel', extText:'xlsx / xls / csv' },
+    { key:'word',  icon:'📝', name:'Word',   folder:'Word 文档', accept:'.doc,.docx',                    exts:['doc','docx'],          cls:'zword',  extText:'doc / docx' },
+    { key:'ppt',   icon:'📽️', name:'PPT',    folder:'PPT 演示',  accept:'.ppt,.pptx',                    exts:['ppt','pptx'],          cls:'zppt',   extText:'ppt / pptx' },
+    { key:'other', icon:'📎', name:'其他',   folder:'其他文件',  accept:'',                              exts:null,                    cls:'zother', extText:'任意格式' },
+  ];
+  var IMAGE_EXTS = ['jpg','jpeg','png','gif','webp','bmp','svg'];
+  var FOLDER_ICON = { '图片文件':'🖼️', 'PDF 文件':'📄', 'Excel 表格':'📊', 'Word 文档':'📝', 'PPT 演示':'📽️', '其他文件':'📎', '上传文件夹':'📁' };
+
+  var CFB = {
+    // ===== 内部状态 =====
+    currentPath: '/',
+    entries: [],
+    loading: false,
+    canWrite: false,
+    sortBy: 'name',        // name | size | date
+    sortAsc: true,
+    viewMode: 'details',
+    searchQ: '',
+    // 树缓存：logicPath -> { open, loaded, folders:[{name, path}] }
+    treeCache: {},
+    // signed URL 缓存
+    urlCache: {},
+    // 内部拖拽（移动文件/文件夹）
+    _dragging: null,
+    // 正在上传数（用于分区卡片忙碌态）
+    _zoneBusy: {},
+
+    // ===== 初始化 =====
+    init: async function() {
+      var self = this;
+      var modPerm = App.getPermission('cbFiles');
+      if (modPerm === 'hidden' || modPerm === 'none') {
+        document.querySelector('.app-content').innerHTML =
+          '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 16px;color:#6b7280;">' +
+          '<div style="font-size:64px;margin-bottom:16px;">🔒</div>' +
+          '<div style="font-size:20px;font-weight:600;margin-bottom:8px;">无访问权限</div>' +
+          '<div style="font-size:14px;">您当前的角色无权访问「文件中心」，请联系管理员在 设置 → 用户组 中开通</div></div>';
+        return;
+      }
+      self.canWrite = (modPerm === 'write');
+      if (!self.canWrite) document.body.classList.add('cfb-readonly');
+
+      var u = App.getCurrentUser();
+      document.getElementById('userName').textContent = (u && (u.username || u.email)) || '管理员';
+      var wb = document.getElementById('writeBtns');
+      var vb = document.getElementById('viewOnlyBtns');
+      if (wb) wb.style.display = self.canWrite ? 'inline-flex' : 'none';
+      if (vb) vb.style.display = self.canWrite ? 'none' : 'inline-flex';
+
+      self._renderZones();
+      self._bindGlobalDnD();
+      self._bindRowActions();
+      self._restoreView();
+
+      // 等待 CloudBase 兼容层（cloudbase.js 为 ES module，异步就绪）
+      var ready = await self._waitSb(12000);
+      if (!ready) {
+        self.setStatus('err', 'CloudBase 存储未就绪，请检查网络后刷新重试');
+        document.getElementById('fileListArea').innerHTML =
+          '<div class="cfb-empty"><div class="eico">📡</div><div>CloudBase 存储连接失败</div>' +
+          '<div style="font-size:12px;">请确认网络可访问 static.cloudbase.net，然后刷新页面</div></div>';
+        return;
+      }
+      self.setStatus('ok', 'CloudBase 云存储已连接');
+      self.refresh();
+      self.renderTree();
+    },
+
+    _waitSb: function(timeoutMs) {
+      return new Promise(function(resolve){
+        var cnt = 0, max = Math.ceil((timeoutMs||10000)/100);
+        var tm = setInterval(function(){
+          cnt++;
+          var sb = window.supabase;
+          if (sb && sb.storage && typeof sb.storage.from === 'function') { clearInterval(tm); resolve(true); }
+          else if (cnt > max) { clearInterval(tm); resolve(false); }
+        }, 100);
+      });
+    },
+
+    _st: function() {
+      var bucket = window.STORAGE_BUCKET || 'app-photos';
+      return window.supabase.storage.from(bucket);
+    },
+
+    setStatus: function(kind, text) {
+      var el = document.getElementById('connStatus');
+      if (!el) return;
+      var cls = kind === 'ok' ? 'ok' : (kind === 'err' ? 'err' : 'warn');
+      el.innerHTML = '<span class="status-dot ' + cls + '"></span>' + App.utils.escapeHtml(text);
+    },
+
+    // ===== 路径工具 =====
+    // 内联 onclick 里 JS 字符串参数用的双重转义（JS 字符串 + HTML 属性）
+    _escJs: function(s) {
+      return App.utils.escapeHtml(String(s == null ? '' : s)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'"))
+        .replace(/"/g, '&quot;');
+    },
+    _norm: function(p) {
+      p = String(p || '/').replace(/\\/g, '/').replace(/\/+/g, '/');
+      if (p.charAt(0) !== '/') p = '/' + p;
+      if (p.length > 1) p = p.replace(/\/+$/, '');
+      return p || '/';
+    },
+    join: function(dir, name) {
+      dir = this._norm(dir);
+      name = String(name || '').replace(/^\/+|\/+$/g, '');
+      if (dir === '/') return '/' + name;
+      return dir + '/' + name;
+    },
+    nameOf: function(p) {
+      p = this._norm(p);
+      if (p === '/') return '/';
+      return p.slice(p.lastIndexOf('/') + 1) || p;
+    },
+    parentOf: function(p) {
+      p = this._norm(p);
+      if (p === '/') return '/';
+      var i = p.lastIndexOf('/');
+      return i <= 0 ? '/' : p.slice(0, i);
+    },
+    // 列目录用前缀：根 ''，子目录 'GW27-003/'（带尾斜杠，避免误匹配同级前缀目录）
+    _prefix: function(dir) {
+      dir = this._norm(dir);
+      return dir === '/' ? '' : dir.slice(1) + '/';
+    },
+
+    // ===== 列目录 =====
+    listDir: async function(dir) {
+      var prefix = this._prefix(dir);
+      var r = await this._st().list(prefix, { limit: 1000 });
+      // 某些 SDK/list 实现对尾斜杠敏感：失败时去掉尾斜杠重试一次
+      if (r && r.error && prefix) {
+        var r2 = await this._st().list(prefix.replace(/\/+$/, ''), { limit: 1000 });
+        if (r2 && !r2.error) r = r2;
+      }
+      if (r && r.error) return { list: [], error: r.error };
+      var out = [];
+      var arr = (r && r.data) || [];
+      for (var i = 0; i < arr.length; i++) {
+        var it = arr[i] || {};
+        var name = String(it.name || '').replace(/\/+$/, '');
+        if (!name || name === '.keep') continue; // 目录占位文件不显示
+        var isFolder = it.type === 'folder';
+        var size = 0, lm = '';
+        try {
+          var raw = it.raw || {};
+          size = Number((it.metadata && it.metadata.size) || raw.size || raw.Size || 0) || 0;
+          lm = raw.lastModified || raw.LastModified || raw.last_modified || '';
+        } catch(_e) {}
+        out.push({
+          name: name,
+          type: isFolder ? 'folder' : 'file',
+          path: this.join(dir, name),
+          size: size,
+          lastModified: lm,
+        });
+      }
+      // 目录在前；再按当前排序
+      var self = this, key = self.sortBy, asc = self.sortAsc;
+      out.sort(function(a, b) {
+        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        var c = 0;
+        if (key === 'size') c = (a.size || 0) - (b.size || 0);
+        else if (key === 'date') c = String(a.lastModified || '').localeCompare(String(b.lastModified || ''));
+        else c = a.name.localeCompare(b.name, 'zh-CN');
+        if (c === 0) c = a.name.localeCompare(b.name, 'zh-CN');
+        return asc ? c : -c;
+      });
+      return { list: out, error: null };
+    },
+
+    refresh: async function() {
+      if (this.loading) return;
+      this.loading = true;
+      var area = document.getElementById('fileListArea');
+      area.innerHTML = '<div class="cfb-loading">正在加载目录…</div>';
+      var r = await this.listDir(this.currentPath);
+      this.loading = false;
+      if (r.error) {
+        this.setStatus('err', '列目录失败：' + (r.error.message || r.error));
+        area.innerHTML = '<div class="cfb-empty"><div class="eico">⚠️</div><div>列目录失败</div>' +
+          '<div style="font-size:12px;">' + App.utils.escapeHtml(r.error.message || String(r.error)) + '</div>' +
+          '<button class="btn btn-sm" onclick="CFB.refresh()">🔄 重试</button></div>';
+        return;
+      }
+      this.entries = r.list;
+      // 让树缓存标记已加载
+      var tc = this.treeCache[this.currentPath];
+      if (tc) { tc.loaded = true; }
+      this.renderBreadcrumb();
+      this.renderList();
+    },
+
+    // ===== 面包屑 =====
+    renderBreadcrumb: function() {
+      var host = document.getElementById('breadcrumb');
+      var path = this.currentPath;
+      var html = '<a onclick="CFB.openDir(\'/\')">☁️ 根目录</a>';
+      if (path !== '/') {
+        var parts = path.slice(1).split('/');
+        var acc = '';
+        for (var i = 0; i < parts.length; i++) {
+          acc += '/' + parts[i];
+          var isLast = (i === parts.length - 1);
+          if (isLast) html += '<span class="sep">›</span><span class="cur">' + App.utils.escapeHtml(parts[i]) + '</span>';
+          else html += '<span class="sep">›</span><a onclick="CFB.openDir(\'' + this._escJs(acc) + '\')">' + App.utils.escapeHtml(parts[i]) + '</a>';
+        }
+      }
+      var cnt = this.entries.length;
+      html += '<span style="margin-left:auto;font-size:11.5px;color:#94a3b8;">' + cnt + ' 项</span>';
+      host.innerHTML = html;
+      // 常用目录 chips
+      var chips = '';
+      for (var z = 0; z < ZONES.length; z++) {
+        var fz = ZONES[z].folder;
+        chips += '<span class="cfb-chip" onclick="CFB.openDir(\'' + this._escJs('/' + fz) + '\')">' + ZONES[z].icon + ' ' + fz + '</span>';
+      }
+      document.getElementById('cfbChips').innerHTML = chips;
+    },
+
+    openDir: function(p) {
+      this.currentPath = this._norm(p);
+      this.searchQ = '';
+      var s = document.getElementById('cfbSearch'); if (s) s.value = '';
+      this.refresh();
+      this.renderTree();
+    },
+
+    // ===== 目录树 =====
+    _loadTreeNode: async function(path) {
+      var tc = this.treeCache[path];
+      if (!tc) { tc = this.treeCache[path] = { open: false, loaded: false, folders: [] }; }
+      if (tc.loaded) return tc;
+      var r = await this.listDir(path);
+      if (!r.error) {
+        tc.folders = r.list.filter(function(x){ return x.type === 'folder'; })
+          .map(function(x){ return { name: x.name, path: x.path }; });
+        tc.loaded = true;
+      }
+      return tc;
+    },
+    toggleTreeNode: async function(path) {
+      var tc = this.treeCache[path];
+      if (!tc) tc = this.treeCache[path] = { open: false, loaded: false, folders: [] };
+      if (!tc.loaded) await this._loadTreeNode(path);
+      tc.open = !tc.open;
+      this.renderTree();
+    },
+    renderTree: async function() {
+      var self = this;
+      await this._loadTreeNode('/');
+      var html = '';
+      function node(path, label, icon, depth) {
+        var tc = self.treeCache[path] || { open: false, loaded: false, folders: [] };
+        var active = self.currentPath === path ? ' active' : '';
+        var tw = tc.open ? '▾' : '▸';
+        var pEsc = self._escJs(path);
+        return '<div class="cfb-tree-item' + active + '" data-treepath="' + App.utils.escapeHtml(path) + '" draggable="true" style="padding-left:' + (8 + depth * 14) + 'px;" onclick="CFB.openDir(\'' + pEsc + '\')">' +
+          '<span class="tw" onclick="event.stopPropagation();CFB.toggleTreeNode(\'' + pEsc + '\')">' + tw + '</span>' +
+          '<span>' + icon + '</span><span class="tn">' + App.utils.escapeHtml(label) + '</span></div>' +
+          (tc.open ? '<div class="cfb-tree-children">' + (tc.folders || []).map(function(f){
+            return node(f.path, f.name, '📁', depth + 1);
+          }).join('') + '</div>' : '');
+      }
+      html += node('/', '全部文件', '☁️', 0);
+      for (var z = 0; z < ZONES.length; z++) {
+        var zp = '/' + ZONES[z].folder;
+        html += node(zp, ZONES[z].folder, ZONES[z].icon, 1);
+      }
+      document.getElementById('treeHost').innerHTML = html;
+      self._bindTreeDnD();
+    },
+
+    // ===== 列表渲染 =====
+    setViewMode: function(m) {
+      this.viewMode = m;
+      try { localStorage.setItem('cfb_viewMode', m); } catch(_e) {}
+      this._highlightViewBtns();
+      this.renderList();
+    },
+    _restoreView: function() {
+      try { this.viewMode = localStorage.getItem('cfb_viewMode') || 'details'; } catch(_e) {}
+      this._highlightViewBtns();
+    },
+    _highlightViewBtns: function() {
+      var btns = document.querySelectorAll('#viewSwitch [data-view]');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].style.background = btns[i].getAttribute('data-view') === this.viewMode ? 'var(--primary)' : '';
+        btns[i].style.color = btns[i].getAttribute('data-view') === this.viewMode ? '#fff' : '';
+      }
+    },
+
+    renderList: function() {
+      var area = document.getElementById('fileListArea');
+      var q = this.searchQ.trim().toLowerCase();
+      var list = this.entries;
+      if (q) list = list.filter(function(x){ return x.name.toLowerCase().indexOf(q) >= 0; });
+      if (!list.length) {
+        area.innerHTML = '<div class="cfb-empty"><div class="eico">🗂️</div>' +
+          '<div>' + (q ? '没有匹配「' + App.utils.escapeHtml(this.searchQ) + '」的文件' : '此目录为空') + '</div>' +
+          (this.canWrite && !q ? '<div style="font-size:12px;">可从上方分区域上传，或拖拽文件到页面任意位置</div>' : '') + '</div>';
+        this._hydrateThumbs();
+        return;
+      }
+      if (this.viewMode === 'grid') area.innerHTML = this._renderGrid(list);
+      else area.innerHTML = this._renderTable(list);
+      this._hydrateThumbs();
+    },
+
+    _renderTable: function(list) {
+      var self = this;
+      function sortArrow(k) {
+        if (self.sortBy !== k) return '';
+        return self.sortAsc ? ' ↑' : ' ↓';
+      }
+      var rows = '';
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var isFolder = it.type === 'folder';
+        var icon = isFolder ? (FOLDER_ICON[it.name] || '📁') : self._iconOf(it.name);
+        var pEsc = self._escJs(it.path);
+        var nameCell;
+        if (isFolder) {
+          nameCell = '<span class="cfb-fico">' + icon + '</span>' +
+            '<span class="cfb-name-txt" onclick="CFB.openDir(\'' + pEsc + '\')" title="打开文件夹">' + App.utils.escapeHtml(it.name) + '</span>';
+        } else if (self._isImage(it.name)) {
+          nameCell = '<img class="cfb-thumb" data-cfbthumb="' + App.utils.escapeHtml(it.path) + '" alt="">' +
+            '<span class="cfb-name-txt" onclick="CFB.previewByPath(\'' + pEsc + '\')" title="点击预览">' + App.utils.escapeHtml(it.name) + '</span>';
+        } else {
+          nameCell = '<span class="cfb-fico">' + icon + '</span>' +
+            '<span class="cfb-name-txt" onclick="CFB.previewByPath(\'' + pEsc + '\')">' + App.utils.escapeHtml(it.name) + '</span>';
+        }
+        var ops = self._opsHtml(it);
+        rows += '<tr class="rowf" draggable="' + (self.canWrite ? 'true' : 'false') + '" data-path="' + App.utils.escapeHtml(it.path) + '" data-type="' + it.type + '">' +
+          '<td><div class="cfb-row-name">' + nameCell + '</div></td>' +
+          '<td class="cfb-fmeta">' + (isFolder ? '文件夹' : self._typeName(it.name)) + '</td>' +
+          '<td class="cfb-fmeta">' + (isFolder ? '—' : self._fmtSize(it.size)) + '</td>' +
+          '<td class="cfb-fmeta">' + (it.lastModified ? self._fmtTime(it.lastModified) : '—') + '</td>' +
+          '<td><div class="cfb-ops">' + ops + '</div></td></tr>';
+      }
+      return '<table class="cfb-table"><thead><tr>' +
+        '<th class="sortable" data-sort="name" onclick="CFB.sortByCol(\'name\')">名称' + sortArrow('name') + '</th>' +
+        '<th>类型</th>' +
+        '<th class="sortable" data-sort="size" onclick="CFB.sortByCol(\'size\')">大小' + sortArrow('size') + '</th>' +
+        '<th class="sortable" data-sort="date" onclick="CFB.sortByCol(\'date\')">修改时间' + sortArrow('date') + '</th>' +
+        '<th style="text-align:right;">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    },
+
+    _renderGrid: function(list) {
+      var self = this;
+      var cards = '';
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var isFolder = it.type === 'folder';
+        var icon = isFolder ? (FOLDER_ICON[it.name] || '📁') : self._iconOf(it.name);
+        var pEsc = self._escJs(it.path);
+        var openAct = isFolder
+          ? ' onclick="CFB.openDir(\'' + pEsc + '\')"'
+          : ' onclick="CFB.previewByPath(\'' + pEsc + '\')"';
+        var visual = isFolder
+          ? '<div class="ci">' + icon + '</div>'
+          : (self._isImage(it.name)
+            ? '<img class="cv" data-cfbthumb="' + App.utils.escapeHtml(it.path) + '" alt="">'
+            : '<div class="ci">' + icon + '</div>');
+        cards += '<div class="cfb-card"' + openAct + ' draggable="' + (self.canWrite ? 'true' : 'false') + '" data-path="' + App.utils.escapeHtml(it.path) + '" data-type="' + it.type + '">' +
+          '<span class="cops">' + self._opsHtml(it) + '</span>' + visual +
+          '<div class="cn" title="' + App.utils.escapeHtml(it.name) + '">' + App.utils.escapeHtml(it.name) + '</div>' +
+          '<div class="cs">' + (isFolder ? '文件夹' : self._fmtSize(it.size)) + '</div></div>';
+      }
+      return '<div class="cfb-grid">' + cards + '</div>';
+    },
+
+    // 行内操作按钮（事件委托统一处理，data-act + data-path）
+    _opsHtml: function(it) {
+      var self = this;
+      var isFolder = it.type === 'folder';
+      var pEsc = self._escJs(it.path);
+      var h = '';
+      if (isFolder) {
+        h += '<button class="btn btn-xs" title="打开" onclick="event.stopPropagation();CFB.openDir(\'' + pEsc + '\')">📂</button>';
+      } else {
+        h += '<button class="btn btn-xs" title="预览" onclick="event.stopPropagation();CFB.previewByPath(\'' + pEsc + '\')">👁</button>';
+        h += '<button class="btn btn-xs" title="下载" onclick="event.stopPropagation();CFB.download(\'' + pEsc + '\')">⬇</button>';
+        if (!isFolder && self._isImage(it.name) && self.canWrite) {
+          h += '<button class="btn btn-xs" title="设为款式图（各模块缩略图）" onclick="event.stopPropagation();CFB.setStyleImageDlg(\'' + pEsc + '\',\'style\')" style="color:#0d9488;border-color:#99e6d5;">🖼</button>';
+          h += '<button class="btn btn-xs" title="设为大图" onclick="event.stopPropagation();CFB.setStyleImageDlg(\'' + pEsc + '\',\'full\')" style="color:#6d28d9;border-color:#ddd6fe;">🖼＋</button>';
+        }
+      }
+      if (self.canWrite) {
+        h += '<button class="btn btn-xs" title="重命名（可跨目录移动，如 docs/a.pdf → /GW27-003/a.pdf）" onclick="event.stopPropagation();CFB.renameDlg(\'' + pEsc + '\',\'' + (isFolder ? 'folder' : 'file') + '\')">✏️</button>';
+        h += '<button class="btn btn-xs" title="删除" onclick="event.stopPropagation();CFB.deleteDlg(\'' + pEsc + '\',\'' + (isFolder ? 'folder' : 'file') + '\')" style="color:#ef4444;border-color:#fecaca;">🗑</button>';
+      }
+      return h;
+    },
+
+    _hydrateThumbs: async function() {
+      var imgs = document.querySelectorAll('img[data-cfbthumb]');
+      for (var i = 0; i < imgs.length; i++) {
+        var el = imgs[i];
+        var p = el.getAttribute('data-cfbthumb');
+        var url = await this._signed(p, 1800);
+        if (url) { el.src = url; el.classList.add('show'); }
+      }
+    },
+
+    sortByCol: function(k) {
+      if (this.sortBy === k) this.sortAsc = !this.sortAsc;
+      else { this.sortBy = k; this.sortAsc = true; }
+      // 本地重排已缓存条目
+      var self = this, key = k, asc = this.sortAsc;
+      this.entries.sort(function(a, b) {
+        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        var c = 0;
+        if (key === 'size') c = (a.size || 0) - (b.size || 0);
+        else if (key === 'date') c = String(a.lastModified || '').localeCompare(String(b.lastModified || ''));
+        else c = a.name.localeCompare(b.name, 'zh-CN');
+        if (c === 0) c = a.name.localeCompare(b.name, 'zh-CN');
+        return asc ? c : -c;
+      });
+      this.renderList();
+    },
+
+    // ===== 增删改（CloudBase 无原生目录 API：mkdir 用 .keep 占位；移动/重命名 = 下载→重传→删除）=====
+    mkDir: async function() {
+      if (!this.canWrite) return App.toast('只读模式不可新建文件夹', 'warning');
+      var self = this;
+      this._nameDialog('新建文件夹', '', function(name) {
+        name = String(name || '').trim().replace(/[\\:*?"<>|]/g, '_').replace(/^\/+|\/+$/g, '');
+        if (!name) return;
+        (async function() {
+          var target = self.join(self.currentPath, name);
+          try {
+            // upsert:true 使 mkdir 幂等（目录已存在时不报错）
+            var res = await self._st().upload(self.join(target, '.keep'), new Blob(['']), { contentType: 'text/plain', upsert: true });
+            if (res && res.error) throw res.error;
+            App.toast('✅ 文件夹已创建：' + name, 'success');
+            self.refresh();
+            self.renderTree();
+          } catch(e) {
+            console.error('[CFB] mkdir 失败:', e);
+            App.toast('新建文件夹失败：' + ((e && e.message) || e), 'error');
+          }
+        })();
+      });
+    },
+
+    renameDlg: function(p, type) {
+      if (!this.canWrite) return App.toast('只读模式不可重命名', 'warning');
+      var self = this;
+      var oldName = this.nameOf(p);
+      this._nameDialog('重命名 / 移动（可输入相对路径）', oldName, function(v) {
+        var name = String(v || '').trim();
+        if (!name || name === oldName) return;
+        (async function() {
+          // 支持输入 "子目录/新名字"：若以 / 开头则相对根目录，否则相对当前目录
+          var targetDir, newName;
+          if (name.charAt(0) === '/') {
+            var i2 = name.lastIndexOf('/');
+            targetDir = i2 === 0 ? '/' : name.slice(0, i2);
+            newName = name.slice(i2 + 1);
+          } else {
+            var i3 = name.lastIndexOf('/');
+            if (i3 >= 0) { targetDir = self.join(self.currentPath, name.slice(0, i3)); newName = name.slice(i3 + 1); }
+            else { targetDir = self.currentPath; newName = name; }
+          }
+          try {
+            self.setProgress(50);
+            await self._move(p, targetDir, newName);
+            self.setProgress(null);
+            App.toast('✅ 已重命名/移动', 'success');
+            self.refresh(); self.renderTree();
+          } catch(e) {
+            self.setProgress(null);
+            console.error('[CFB] 重命名失败:', e);
+            App.toast('重命名失败：' + ((e && e.message) || e), 'error');
+          }
+        })();
+      });
+    },
+
+    deleteDlg: function(p, type) {
+      if (!this.canWrite) return App.toast('只读模式不可删除', 'warning');
+      var self = this;
+      var msg = type === 'folder'
+        ? '确定删除文件夹「<b>' + App.utils.escapeHtml(this.nameOf(p)) + '</b>」及其全部内容吗？此操作不可恢复！'
+        : '确定删除文件「<b>' + App.utils.escapeHtml(this.nameOf(p)) + '</b>」吗？';
+      App.confirm(msg, function() {
+        (async function() {
+          try {
+            self.setProgress(30);
+            if (type === 'folder') await self._deleteFolder(p);
+            else {
+              var r = await self._st().remove([p.slice(1)]);
+              if (r && r.error) throw r.error;
+              self._scrubStyleCache(p, null);
+            }
+            self.setProgress(null);
+            App.toast('🗑 已删除', 'success');
+            self.refresh(); self.renderTree();
+          } catch(e) {
+            self.setProgress(null);
+            console.error('[CFB] 删除失败:', e);
+            App.toast('删除失败：' + ((e && e.message) || e), 'error');
+          }
+        })();
+      });
+    },
+
+    // 递归列出一个目录下所有文件（含子目录与 .keep）
+    _walkAll: async function(dir) {
+      var out = [];
+      var self = this;
+      var r = await this.listDir(dir);
+      if (r.error) throw r.error;
+      for (var i = 0; i < r.list.length; i++) {
+        var it = r.list[i];
+        if (it.type === 'folder') {
+          var sub = await self._walkAll(it.path);
+          out = out.concat(sub);
+        } else {
+          out.push(it.path);
+        }
+      }
+      // 空目录也有 .keep 占位（listDir 过滤掉了 .keep，这里补上）
+      out.push(this.join(dir, '.keep'));
+      return out;
+    },
+
+    // 尽力而为批量删除：整批失败时逐个重试并忽略单个失败（.keep 占位可能不存在）
+    _removeBestEffort: async function(paths) {
+      for (var j = 0; j < paths.length; j += 40) {
+        var batch = paths.slice(j, j + 40);
+        var r = await this._st().remove(batch);
+        if (r && r.error) {
+          console.warn('[CFB] 批量删除报错，降级为逐个删除:', r.error.message || r.error);
+          for (var k = 0; k < batch.length; k++) {
+            try {
+              var r1 = await this._st().remove([batch[k]]);
+              if (r1 && r1.error) console.warn('[CFB] 单个删除失败(忽略):', batch[k], r1.error.message || r1.error);
+            } catch(_e1) {}
+          }
+        }
+        this.setProgress(Math.min(95, Math.round((j + batch.length) / paths.length * 100)));
+      }
+    },
+
+    _deleteFolder: async function(dir) {
+      var paths = await this._walkAll(dir);
+      // 去掉末.重复（.keep 占位可能实际不存在）
+      var seen = {}, uniq = [];
+      for (var i = 0; i < paths.length; i++) {
+        var p = paths[i].slice(1);
+        if (!seen[p]) { seen[p] = 1; uniq.push(p); }
+      }
+      await this._removeBestEffort(uniq);
+      // 清理 StyleImgCache 中指向该目录的引用
+      try {
+        var all = (window.StyleImgCache && StyleImgCache._load) ? StyleImgCache._load() : {};
+        var touched = false;
+        var prefixKey = dir.slice(1) + '/';
+        Object.keys(all).forEach(function(sn) {
+          var e = all[sn] || {};
+          if ((e.styleImg_path || '').indexOf(prefixKey) === 0) { e.styleImg_path = ''; e.styleImg_name = ''; touched = true; }
+          if ((e.fullImg_path || '').indexOf(prefixKey) === 0) { e.fullImg_path = ''; e.fullImg_name = ''; touched = true; }
+          if (!e.styleImg_path && !e.fullImg_path) delete all[sn];
+        });
+        if (touched && window.StyleImgCache && StyleImgCache._save) StyleImgCache._save(all);
+      } catch(_e) {}
+    },
+
+    // 移动/重命名：下载 → 上传到新路径 → 删除旧路径（文件夹递归）
+    _move: async function(oldPath, targetDir, newName) {
+      var self = this;
+      oldPath = this._norm(oldPath);
+      var newPath = this.join(targetDir, newName);
+      if (oldPath === newPath) return;
+      // 简单防呆：不能把目录移动到自己内部
+      if (newPath.indexOf(oldPath + '/') === 0) throw new Error('不能把文件夹移动到其自身内部');
+
+      var r = await this.listDir(this.parentOf(oldPath));
+      if (r.error) throw r.error;
+      var entry = r.list.find(function(x){ return x.name === self.nameOf(oldPath); });
+      if (!entry) throw new Error('源不存在或已被删除');
+
+      if (entry.type === 'file') {
+        var blob = await this._fetchBlob(oldPath);
+        var up = await this._st().upload(newPath.slice(1), blob, { contentType: this._guessMime(newName), upsert: true });
+        if (up && up.error) throw up.error;
+        var del = await this._st().remove([oldPath.slice(1)]);
+        if (del && del.error) throw del.error;
+        this._scrubStyleCache(oldPath, newPath);
+      } else {
+        var files = [];
+        var rr = await this.listDir(oldPath);
+        if (rr.error) throw rr.error;
+        for (var i = 0; i < rr.list.length; i++) {
+          var it = rr.list[i];
+          if (it.type === 'folder') {
+            // 递归搬移子目录：目标父目录 = newPath，名字不变（内部自行完成下载→重传→删除）
+            await this._move(it.path, newPath, it.name);
+          } else {
+            files.push(it);
+          }
+        }
+        for (var k = 0; k < files.length; k++) {
+          var f = files[k];
+          var npath = this.join(newPath, f.name);
+          var blob2 = await this._fetchBlob(f.path);
+          var up2 = await this._st().upload(npath.slice(1), blob2, { contentType: this._guessMime(f.name), upsert: true });
+          if (up2 && up2.error) throw up2.error;
+          var del2 = await this._st().remove([f.path.slice(1)]);
+          if (del2 && del2.error) throw del2.error;
+          this._scrubStyleCache(f.path, npath);
+          this.setProgress(Math.min(95, Math.round((k + 1) / files.length * 100)));
+        }
+        // 删除源目录占位
+        try { await this._st().remove([oldPath.slice(1) + '/.keep']); } catch(_e) {}
+        this._scrubStyleCache(oldPath + '/.keep', null);
+      }
+    },
+
+    _scrubStyleCache: function(oldPath, newPath) {
+      try {
+        if (!window.StyleImgCache || !StyleImgCache._load) return;
+        var safeName = function(p) {
+          var n = String(p || '').split('/').pop();
+          try { n = decodeURIComponent(n); } catch(_e) {}
+          return n;
+        };
+        var all = StyleImgCache._load();
+        var touched = false;
+        Object.keys(all).forEach(function(sn) {
+          var e = all[sn] || {};
+          if (e.styleImg_path === oldPath) { e.styleImg_path = newPath || ''; e.styleImg_name = newPath ? safeName(newPath) : ''; touched = true; }
+          if (e.fullImg_path === oldPath) { e.fullImg_path = newPath || ''; e.fullImg_name = newPath ? safeName(newPath) : ''; touched = true; }
+          if (!e.styleImg_path && !e.fullImg_path) delete all[sn];
+        });
+        if (touched && StyleImgCache._save) StyleImgCache._save(all);
+      } catch(_e) {}
+    },
+
+    // ===== 下载 / 预览 =====
+    _signed: async function(path, ttl) {
+      var c = this.urlCache[path];
+      var now = Date.now();
+      if (c && c.exp > now) return c.url;
+      var r = await this._st().createSignedUrl(path.slice(1), ttl || 7200);
+      if (r && !r.error && r.data && r.data.signedUrl) {
+        this.urlCache[path] = { url: r.data.signedUrl, exp: now + (ttl || 7200) * 1000 - 600000 };
+        return r.data.signedUrl;
+      }
+      return null;
+    },
+
+    _fetchBlob: async function(path) {
+      // 优先兼容层 download，失败回退 fetch(signedUrl)
+      try {
+        var dr = await this._st().download(path.slice(1));
+        if (dr && !dr.error && dr.data) {
+          if (dr.data instanceof Blob) return dr.data;
+          if (dr.data.fileContent instanceof Blob) return dr.data.fileContent;
+        }
+      } catch(_e) {}
+      var url = await this._signed(path, 3600);
+      if (!url) throw new Error('无法获取文件下载地址');
+      var resp = await fetch(url);
+      if (!resp.ok) throw new Error('下载失败 HTTP ' + resp.status);
+      return await resp.blob();
+    },
+
+    download: async function(path) {
+      try {
+        this.setStatus('warn', '正在下载 ' + this.nameOf(path) + ' …');
+        var blob = await this._fetchBlob(path);
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = this.nameOf(path);
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+        this.setStatus('ok', 'CloudBase 云存储已连接');
+      } catch(e) {
+        console.error('[CFB] 下载失败:', e);
+        // 最后兜底：新标签页打开
+        var u = await this._signed(path, 3600);
+        if (u) window.open(u, '_blank');
+        else App.toast('下载失败：' + ((e && e.message) || e), 'error');
+        this.setStatus('ok', 'CloudBase 云存储已连接');
+      }
+    },
+
+    previewByPath: async function(path) {
+      var name = this.nameOf(path);
+      var ext = this._extOf(name);
+      if (IMAGE_EXTS.indexOf(ext) >= 0) {
+        var url = await this._signed(path, 7200);
+        if (!url) return App.toast('获取预览地址失败', 'error');
+        document.getElementById('pvBody').innerHTML = '<img src="' + url + '" alt="">';
+        document.getElementById('pvCap').textContent = name;
+        document.getElementById('cfbPreview').classList.add('show');
+        return;
+      }
+      if (ext === 'pdf') {
+        var url2 = await this._signed(path, 7200);
+        if (!url2) return App.toast('获取预览地址失败', 'error');
+        document.getElementById('pvBody').innerHTML = '<iframe src="' + url2 + '#toolbar=1" title="PDF 预览"></iframe>';
+        document.getElementById('pvCap').textContent = name;
+        document.getElementById('cfbPreview').classList.add('show');
+        return;
+      }
+      // 其他类型：提示下载
+      App.confirm('该类型（' + App.utils.escapeHtml(ext || '未知') + '）暂不支持在线预览，是否下载查看？', function() {
+        CFB.download(path);
+      });
+    },
+
+    closePreview: function() {
+      var pv = document.getElementById('cfbPreview');
+      pv.classList.remove('show');
+      document.getElementById('pvBody').innerHTML = ''; // 停掉 iframe/pdf 渲染
+    },
+
+    // ===== 设为款式图 / 大图（跨模块缩略图入口）=====
+    setStyleImageDlg: function(path, kind) {
+      var self = this;
+      var guess = this._norm(this.parentOf(path)).split('/')[1] || '';
+      var zoneFolders = {}; ZONES.forEach(function(z){ zoneFolders[z.folder] = 1; });
+      if (zoneFolders[guess]) guess = '';
+      this._nameDialog('设为' + (kind === 'style' ? '款式图' : '大图') + ' — 输入款号', guess, function(sn) {
+        sn = String(sn || '').trim();
+        if (!sn) return App.toast('款号不能为空', 'warning');
+        self._applyStyleImage(path, sn, kind);
+      });
+    },
+    _applyStyleImage: function(path, styleNo, kind) {
+      try {
+        if (!window.StyleImgCache) return App.toast('StyleImgCache 未加载', 'error');
+        var rawName = this.nameOf(path);
+        var name = rawName;
+        try { name = decodeURIComponent(rawName); } catch(_e) {}
+        var patch = {};
+        if (kind === 'full') { patch.fullImg_path = path; patch.fullImg_name = name; }
+        else { patch.styleImg_path = path; patch.styleImg_name = name; }
+        StyleImgCache.set(styleNo, patch);
+        App.toast('✅ 已设为款号 ' + styleNo + ' 的' + (kind === 'full' ? '大图' : '款式图') + '，订单/样衣等模块将显示该缩略图', 'success', 3500);
+      } catch(e) {
+        console.error('[CFB] 设为款式图失败:', e);
+        App.toast('设置失败：' + ((e && e.message) || e), 'error');
+      }
+    },
+
+    // ===== 名称输入对话框 =====
+    _nameDialog: function(title, value, onOk) {
+      var overlay = App.modal.open({
+        title: title,
+        body: '<input type="text" id="cfbNameInput" class="form-input" style="width:100%;" value="' + App.utils.escapeHtml(value || '') + '" placeholder="请输入名称">',
+        footer: '<button class="btn" onclick="App.modal.close()">取消</button><button class="btn btn-primary" id="cfbNameOk">确定</button>',
+        size: 'sm'
+      });
+      var input = overlay.querySelector('#cfbNameInput');
+      setTimeout(function(){ input.focus(); input.select(); }, 60);
+      function submit() {
+        var v = input.value;
+        App.modal.close();
+        onOk(v);
+      }
+      overlay.querySelector('#cfbNameOk').onclick = submit;
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') submit(); });
+    },
+
+    // ===== 分区域上传 =====
+    _renderZones: function() {
+      var host = document.getElementById('cfbZones');
+      var self = this;
+      var html = '';
+      for (var i = 0; i < ZONES.length; i++) {
+        var z = ZONES[i];
+        html += '<div class="cfb-zone ' + z.cls + '" data-zone="' + z.key + '" id="zone_' + z.key + '">' +
+          '<div class="cfb-zone-ico">' + z.icon + '</div>' +
+          '<div class="cfb-zone-name">' + z.name + '上传</div>' +
+          '<div class="cfb-zone-ext">' + z.extText + '</div>' +
+          '<div class="cfb-zone-busy" id="zoneBusy_' + z.key + '">上传中…</div></div>';
+      }
+      host.innerHTML = html;
+      // 事件绑定
+      var zones = host.querySelectorAll('.cfb-zone');
+      zones.forEach(function(el) {
+        var key = el.getAttribute('data-zone');
+        el.addEventListener('click', function() {
+          if (!self.canWrite) return App.toast('只读模式不可上传', 'warning');
+          self._pickForZone(key);
+        });
+        el.addEventListener('dragover', function(e) { e.preventDefault(); e.stopPropagation(); el.classList.add('dragover'); });
+        el.addEventListener('dragleave', function() { el.classList.remove('dragover'); });
+        el.addEventListener('drop', function(e) {
+          e.preventDefault(); e.stopPropagation(); el.classList.remove('dragover');
+          if (!self.canWrite) return App.toast('只读模式不可上传', 'warning');
+          self._handleZoneDrop(e, key);
+        });
+      });
+      // 隐藏选择器
+      var picker = document.getElementById('cfbPicker');
+      picker.addEventListener('change', function(e) {
+        var files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (!files.length) { self._pendingZone = null; return; }
+        if (self._pendingZone === 'direct') self.uploadDirect(files);
+        else if (self._pendingZone) self.uploadFiles(files, null, self._pendingZone);
+        self._pendingZone = null;
+      });
+      var fpicker = document.getElementById('cfbFolderPicker');
+      fpicker.addEventListener('change', function(e) {
+        var files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (files.length) self._uploadWithRelativePaths(files);
+      });
+    },
+
+    _pendingZone: null,
+    _pickForZone: function(key) {
+      var z = ZONES.find(function(x){ return x.key === key; });
+      if (!z) return;
+      this._pendingZone = key;
+      var picker = document.getElementById('cfbPicker');
+      picker.setAttribute('accept', z.accept || '');
+      picker.click();
+    },
+
+    pickUpload: function() {
+      if (!this.canWrite) return App.toast('只读模式不可上传', 'warning');
+      this._pendingZone = 'direct';
+      document.getElementById('cfbPicker').removeAttribute('accept');
+      document.getElementById('cfbPicker').click();
+    },
+    pickFolderUpload: function() {
+      if (!this.canWrite) return App.toast('只读模式不可上传', 'warning');
+      document.getElementById('cfbFolderPicker').click();
+    },
+
+    _handleZoneDrop: async function(e, zoneKey) {
+      var self = this;
+      var items = e.dataTransfer && e.dataTransfer.items;
+      // 支持拖入文件夹：递归收集后按分区上传
+      var got = await this._collectDropped(items);
+      if (got && got.length) {
+        var z = ZONES.find(function(x){ return x.key === zoneKey; });
+        // 文件按扩展名二次校验分区（拖错区给提示但容错：other 区接受一切）
+        var okFiles = [], wrong = 0;
+        for (var i = 0; i < got.length; i++) {
+          var f = got[i].file;
+          if (!z.exts || z.key === 'other' || self._extIn(f.name, z.exts)) okFiles.push(f);
+          else wrong++;
+        }
+        if (wrong) App.toast('⚠️ 有 ' + wrong + ' 个文件不属于「' + z.name + '」区域，已跳过', 'warning');
+        if (okFiles.length) this.uploadFiles(okFiles, null, zoneKey);
+        return;
+      }
+      var files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+      if (files.length) this.uploadFiles(files, null, zoneKey);
+    },
+
+    // ===== 统一上传入口 =====
+    // files: File[]；targetDir: 目标目录（null → 按款号/分区规则决定）；zoneKey: 分区
+    uploadFiles: async function(files, targetDir, zoneKey) {
+      var self = this;
+      if (!this.canWrite) return App.toast('只读模式不可上传', 'warning');
+      var styleNo = String((document.getElementById('cfbStyleNo') || {}).value || '').trim();
+      styleNo = styleNo.replace(/[\\/:*?"<>|]/g, '-');
+      var z = ZONES.find(function(x){ return x.key === zoneKey; }) || null;
+
+      // 目标目录规则：
+      //   指定 targetDir（文件管理器上传/整页拖放）→ 用它（根目录时按分区归档）
+      //   分区上传：有款号 → /{款号}/；无款号 → /{分区目录}/
+      var dir = targetDir;
+      if (!dir) {
+        if (styleNo) dir = '/' + styleNo;
+        else dir = '/' + (z ? z.folder : '其他文件');
+      } else if (dir === '/') {
+        dir = '/' + (z ? z.folder : '其他文件');
+      }
+
+      // 分区类型校验（other 放行一切）
+      if (z && z.exts && z.key !== 'other') {
+        var bad = files.filter(function(f){ return !self._extIn(f.name, z.exts); });
+        if (bad.length) {
+          App.toast('「' + z.name + '」区域仅支持：' + z.extText + '（' + bad.length + ' 个文件被跳过）', 'error', 3500);
+          files = files.filter(function(f){ return self._extIn(f.name, z.exts); });
+        }
+      }
+      if (!files.length) return;
+
+      // 大小限制 10MB（与系统 MAX_FILE_SIZE 一致）
+      var MAX = (window.MAX_FILE_SIZE || (10 * 1024 * 1024));
+      var oversize = files.filter(function(f){ return f.size > MAX; });
+      if (oversize.length) {
+        App.toast('单文件不能超过 10MB，已跳过 ' + oversize.length + ' 个', 'error', 3500);
+        files = files.filter(function(f){ return f.size <= MAX; });
+      }
+      if (!files.length) return;
+
+      this.setStatus('warn', '正在上传 ' + files.length + ' 个文件…');
+      this._zoneBusy[zoneKey] = true;
+      this._setZoneBusy(zoneKey, true);
+      this.setProgress(3);
+
+      var okCount = 0, failCount = 0, failNames = [];
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i];
+        // 根目录直传（无款号）时按每个文件的类型自动归档到对应分区目录
+        var fileDir = dir;
+        if (targetDir === '/' && !styleNo) {
+          fileDir = '/' + this._zoneFolderOfName(f.name);
+        }
+        var path = this.join(fileDir, this._uuid() + '-' + this._safeName(f.name));
+        try {
+          var res = await this._st().upload(path.slice(1), f, { contentType: f.type || this._guessMime(f.name), upsert: false });
+          if (res && res.error) throw res.error;
+          okCount++;
+          // 图片 + 款号 → 写入 StyleImgCache 共享缓存（跨模块缩略图）
+          if (styleNo && z && z.key === 'image') this._cacheStyleUpload(styleNo, path, f.name);
+          console.log('[CFB] 上传成功:', path);
+        } catch(err) {
+          failCount++;
+          failNames.push(f.name);
+          console.error('[CFB] 上传失败:', path, err);
+        }
+        this.setProgress(Math.round((i + 1) / files.length * 100));
+      }
+
+      this._zoneBusy[zoneKey] = false;
+      this._setZoneBusy(zoneKey, false);
+      this.setProgress(null);
+      this.setStatus('ok', 'CloudBase 云存储已连接');
+
+      if (okCount && !failCount) App.toast('✅ 成功上传 ' + okCount + ' 个文件到「' + dir + '」' + (styleNo ? '（款号 ' + styleNo + '）' : ''), 'success', 3000);
+      else if (okCount && failCount) App.toast('⚠️ ' + okCount + ' 个成功，' + failCount + ' 个失败：' + failNames.slice(0, 3).join('、') + (failNames.length > 3 ? '…' : ''), 'warning', 4500);
+      else if (failCount) App.toast('❌ 上传失败：' + failNames.slice(0, 3).join('、') + (failNames.length > 3 ? '…' : ''), 'error', 4500);
+
+      // 上传后刷新当前视图与目录树（根目录归档可能落到任意分区目录，统一刷新最稳妥）
+      this.refresh();
+      this.renderTree();
+    },
+
+    // 文件管理器「上传到当前目录」/ 整页拖放（不按分区归档，直接进当前目录；根目录按分区归档）
+    uploadDirect: function(files) {
+      this.uploadFiles(files, this.currentPath, this._zoneOfFiles(files));
+    },
+    _zoneOfFiles: function(files) {
+      var self = this;
+      for (var i = 0; i < files.length; i++) {
+        var ext = this._extOf(files[i].name);
+        for (var j = 0; j < ZONES.length; j++) {
+          var zz = ZONES[j];
+          if (zz.key === 'other') continue;
+          if (zz.exts.indexOf(ext) >= 0) return zz.key;
+        }
+      }
+      return 'other';
+    },
+    _zoneFolderOfName: function(name) {
+      var ext = this._extOf(name);
+      for (var j = 0; j < ZONES.length; j++) {
+        var zz = ZONES[j];
+        if (zz.key !== 'other' && zz.exts.indexOf(ext) >= 0) return zz.folder;
+      }
+      return '其他文件';
+    },
+    _uploadWithRelativePaths: function(files) {
+      var self = this;
+      if (!files.length) return;
+      var base = this.currentPath === '/' ? '/上传文件夹' : this.currentPath;
+      (async function() {
+        self.setStatus('warn', '正在上传文件夹（' + files.length + ' 个文件）…');
+        self.setProgress(3);
+        var ok = 0, fail = 0;
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          var rel = String(f.webkitRelativePath || f.name).replace(/\\/g, '/');
+          if (rel.charAt(0) === '/') rel = rel.slice(1);
+          var path = self.join(base, rel).replace(/\/+/g, '/');
+          try {
+            var res = await self._st().upload(path.slice(1), f, { contentType: f.type || self._guessMime(f.name), upsert: false });
+            if (res && res.error) throw res.error;
+            ok++;
+          } catch(e) { fail++; console.error('[CFB] 文件夹上传失败:', path, e); }
+          self.setProgress(Math.round((i + 1) / files.length * 100));
+        }
+        self.setProgress(null);
+        self.setStatus('ok', 'CloudBase 云存储已连接');
+        if (ok) App.toast('✅ 文件夹上传完成：' + ok + ' 个成功' + (fail ? ('，' + fail + ' 个失败') : ''), fail ? 'warning' : 'success', 3500);
+        else App.toast('文件夹上传失败', 'error');
+        self.refresh(); self.renderTree();
+      })();
+    },
+
+    // 款号图片上传后写 StyleImgCache（与 form-submit.js uploadPicture 同规则）
+    _cacheStyleUpload: function(styleNo, path, origName) {
+      try {
+        if (!window.StyleImgCache) return;
+        var lower = String(origName || '').toLowerCase();
+        var isFull = lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0 || lower.indexOf('大图') >= 0;
+        var existing = (typeof StyleImgCache.resolve === 'function') ? (StyleImgCache.resolve(styleNo) || {}) : {};
+        var patch = { styleImg_path: existing.styleImg_path || '', fullImg_path: existing.fullImg_path || '' };
+        if (isFull) { if (!patch.fullImg_path) patch.fullImg_path = path; }
+        else { if (!patch.styleImg_path) patch.styleImg_path = path; }
+        StyleImgCache.set(styleNo, patch);
+      } catch(_e) {}
+    },
+
+    _setZoneBusy: function(key, busy) {
+      var el = document.getElementById('zone_' + key);
+      if (el) el.classList.toggle('busy', !!busy);
+    },
+
+    setProgress: function(pct) {
+      var bar = document.getElementById('cfbProgress');
+      var fill = document.getElementById('cfbProgressBar');
+      if (!bar || !fill) return;
+      if (pct === null || pct === undefined) { bar.classList.remove('show'); fill.style.width = '0'; return; }
+      bar.classList.add('show');
+      fill.style.width = Math.max(2, Math.min(100, pct)) + '%';
+    },
+
+    // ===== 整页拖放（上传）+ 行拖拽（移动）=====
+    _bindGlobalDnD: function() {
+      var self = this;
+      var mask = document.getElementById('cfbDropMask');
+      var depth = 0;
+      window.addEventListener('dragenter', function(e) {
+        if (self._dragging) return; // 内部移动不显示上传遮罩
+        if (!e.dataTransfer || Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') < 0) return;
+        depth++;
+        mask.classList.add('show');
+        document.getElementById('cfbDropTarget').textContent = (self.currentPath === '/' ? '根目录（按文件类型自动归档）' : self.currentPath);
+      });
+      window.addEventListener('dragleave', function() {
+        depth = Math.max(0, depth - 1);
+        if (depth === 0) mask.classList.remove('show');
+      });
+      window.addEventListener('dragover', function(e) { e.preventDefault(); });
+      window.addEventListener('drop', function(e) {
+        e.preventDefault();
+        depth = 0; mask.classList.remove('show');
+        if (self._dragging) return;
+        if (!self.canWrite) return App.toast('只读模式不可上传', 'warning');
+        var files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+        if (files.length) {
+          self.uploadDirect(files);
+          return;
+        }
+        // 文件夹拖入
+        self._collectDropped(e.dataTransfer && e.dataTransfer.items).then(function(list) {
+          if (list && list.length) self._uploadWithRelativePaths(list.map(function(x){ return x.file; }));
+        });
+      });
+    },
+
+    // 递归收集拖入的文件（支持文件夹），返回 [{file, rel}]
+    _collectDropped: function(items) {
+      return new Promise(function(resolve) {
+        var out = [];
+        if (!items || !items.length || !items[0] || typeof items[0].webkitGetAsEntry !== 'function') {
+          resolve(out); return; // 无 entries 能力 → 外层回退用 files
+        }
+        var entries = [];
+        for (var i = 0; i < items.length; i++) {
+          var en = null;
+          try { en = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry(); } catch(_e) {}
+          if (en) entries.push(en);
+        }
+        if (!entries.length) { resolve(out); return; }
+
+        function walkEntry(entry, base) {
+          return new Promise(function(res2) {
+            if (entry.isFile) {
+              entry.file(function(f) {
+                out.push({ file: f, rel: base + f.name });
+                res2();
+              }, function() { res2(); });
+            } else if (entry.isDirectory) {
+              var reader = entry.createReader();
+              var all = [];
+              function readBatch() {
+                reader.readEntries(function(batch) {
+                  if (!batch.length) {
+                    Promise.all(all.map(function(e2){ return walkEntry(e2, base + entry.name + '/'); }))
+                      .then(function(){ res2(); }, function(){ res2(); });
+                    return;
+                  }
+                  all = all.concat(Array.prototype.slice.call(batch));
+                  readBatch();
+                }, function() { res2(); });
+              }
+              readBatch();
+            } else res2();
+          });
+        }
+        Promise.all(entries.map(function(e3){ return walkEntry(e3, ''); }))
+          .then(function(){ resolve(out); }, function(){ resolve(out); });
+      });
+    },
+
+    _bindRowActions: function() {
+      var self = this;
+      // 行拖拽（移动到文件夹）
+      var area = document.getElementById('fileListArea');
+      area.addEventListener('dragstart', function(e) {
+        var row = e.target.closest && e.target.closest('[data-path]');
+        if (!row || !self.canWrite) { e.preventDefault(); return; }
+        self._dragging = { path: row.getAttribute('data-path'), type: row.getAttribute('data-type') };
+        try { e.dataTransfer.setData('text/plain', 'cfb-move'); e.dataTransfer.effectAllowed = 'move'; } catch(_e) {}
+      });
+      area.addEventListener('dragend', function() { self._dragging = null; self._clearDropover(); });
+      area.addEventListener('dragover', function(e) {
+        var row = e.target.closest && e.target.closest('[data-path][data-type="folder"]');
+        self._clearDropover();
+        if (row && self._dragging && self._dragging.path !== row.getAttribute('data-path')) {
+          e.preventDefault(); e.stopPropagation();
+          row.classList.add('dropover');
+        }
+      });
+      area.addEventListener('drop', function(e) {
+        var row = e.target.closest && e.target.closest('[data-path][data-type="folder"]');
+        if (!row || !self._dragging) return;
+        e.preventDefault(); e.stopPropagation();
+        var target = row.getAttribute('data-path');
+        var payload = self._dragging; self._dragging = null;
+        self._doMove(payload, target);
+        self._clearDropover();
+      });
+    },
+
+    _bindTreeDnD: function() {
+      var self = this;
+      var host = document.getElementById('treeHost');
+      var items = host.querySelectorAll('.cfb-tree-item');
+      items.forEach(function(el) {
+        el.addEventListener('dragover', function(e) {
+          if (!self._dragging) return;
+          e.preventDefault(); e.stopPropagation();
+          el.classList.add('dropover');
+        });
+        el.addEventListener('dragleave', function() { el.classList.remove('dropover'); });
+        el.addEventListener('drop', function(e) {
+          if (!self._dragging) return;
+          e.preventDefault(); e.stopPropagation();
+          var target = el.getAttribute('data-treepath');
+          var payload = self._dragging; self._dragging = null;
+          el.classList.remove('dropover');
+          self._doMove(payload, target);
+        });
+      });
+    },
+    _clearDropover: function() {
+      document.querySelectorAll('.dropover').forEach(function(el){ el.classList.remove('dropover'); });
+    },
+    _doMove: function(payload, targetDir) {
+      var self = this;
+      if (!payload) return;
+      if (this.parentOf(payload.path) === targetDir) return App.toast('已在目标目录中', 'info');
+      App.confirm('移动「<b>' + App.utils.escapeHtml(this.nameOf(payload.path)) + '</b>」到「<b>' + App.utils.escapeHtml(this.nameOf(targetDir)) + '</b>」？', function() {
+        (async function() {
+          try {
+            self.setProgress(20);
+            await self._move(payload.path, targetDir, self.nameOf(payload.path));
+            self.setProgress(null);
+            App.toast('✅ 已移动', 'success');
+            self.refresh(); self.renderTree();
+          } catch(e) {
+            self.setProgress(null);
+            console.error('[CFB] 移动失败:', e);
+            App.toast('移动失败：' + ((e && e.message) || e), 'error');
+          }
+        })();
+      });
+    },
+
+    // ===== 工具 =====
+    _extOf: function(name) {
+      var m = String(name || '').match(/\.([^.]+)$/);
+      return m ? m[1].toLowerCase() : '';
+    },
+    _isImage: function(name) { return IMAGE_EXTS.indexOf(this._extOf(name)) >= 0; },
+    _extIn: function(name, exts) { return exts.indexOf(this._extOf(name)) >= 0; },
+    _iconOf: function(name) {
+      var e = this._extOf(name);
+      if (e === 'pdf') return '📄';
+      if (['xlsx','xls','xlsm','csv'].indexOf(e) >= 0) return '📊';
+      if (['doc','docx'].indexOf(e) >= 0) return '📝';
+      if (['ppt','pptx'].indexOf(e) >= 0) return '📽️';
+      if (IMAGE_EXTS.indexOf(e) >= 0) return '🖼️';
+      if (['zip','rar','7z'].indexOf(e) >= 0) return '🗜️';
+      if (['mp3','wav'].indexOf(e) >= 0) return '🎵';
+      if (['mp4','mov','avi'].indexOf(e) >= 0) return '🎬';
+      if (['txt','md'].indexOf(e) >= 0) return '📃';
+      return '📎';
+    },
+    _typeName: function(name) {
+      var e = this._extOf(name);
+      var map = { pdf:'PDF 文档', xlsx:'Excel 表格', xls:'Excel 表格', xlsm:'Excel 表格', csv:'CSV 表格',
+        doc:'Word 文档', docx:'Word 文档', ppt:'PPT 演示', pptx:'PPT 演示', txt:'文本', zip:'压缩包', rar:'压缩包', '7z':'压缩包' };
+      return map[e] || (e ? e.toUpperCase() + ' 文件' : '文件');
+    },
+    _safeName: function(name) {
+      return String(name || 'file').replace(/[\\/:*?"<>|]/g, '_');
+    },
+    _uuid: function() {
+      try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(_e) {}
+      return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    },
+    _guessMime: function(name) {
+      var e = this._extOf(name);
+      var map = { pdf:'application/pdf', png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif',
+        webp:'image/webp', svg:'image/svg+xml', bmp:'image/bmp', csv:'text/csv', txt:'text/plain',
+        xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        xls:'application/vnd.ms-excel',
+        doc:'application/msword',
+        docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ppt:'application/vnd.ms-powerpoint',
+        pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation' };
+      return map[e] || 'application/octet-stream';
+    },
+    _fmtSize: function(n) {
+      n = Number(n) || 0;
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+      if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+      return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+    },
+    _fmtTime: function(v) {
+      try {
+        var d = (typeof v === 'number') ? new Date(v) : new Date(String(v));
+        if (isNaN(d.getTime())) return String(v);
+        var p = function(x){ return (x < 10 ? '0' : '') + x; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      } catch(_e) { return String(v); }
+    },
+  };
+
+  window.CFB = CFB;
+
+  document.addEventListener('DOMContentLoaded', function(){
+    App.init('cbFiles');
+    App.initSampleData();
+    try { CFB.init(); } catch(e) { console.error('[CFB] init 异常:', e); }
+  });
+})();
+</script>
+</body>
+</html>

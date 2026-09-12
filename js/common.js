@@ -225,6 +225,7 @@ const App = {
     { key: 'finance', text: '财务管理', icon: '💰', url: 'finance.html' },
     { group: '数据存储' },
     { key: 'nasDrive', text: '云盘 NAS', icon: '☁️', url: 'nas.html' },
+    { key: 'cbFiles', text: '文件中心', icon: '🗂️', url: 'cb-files.html' },
     { group: '基础数据' },
     { key: 'contacts', text: '通讯录', icon: '📞', url: 'contacts.html' },
     { key: 'maintenance', text: '维护资料', icon: '📚', url: 'maintenance.html' },
@@ -940,6 +941,7 @@ const App = {
     express:      '寄件管理',
     finance:      '财务管理',
     nasDrive:     '云盘 NAS',
+    cbFiles:      '文件中心',
     contacts:     '通讯录',
     maintenance:  '维护资料',
     settings:     '设置',
@@ -1147,7 +1149,8 @@ App.SCREENSHOT_DEFAULT_PERMISSIONS = {
   shipping:    { merchandiser: 'write', purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'read',  user: 'read'  }, // 出运管理：跟单读写
   express:     { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 寄件管理：跟单/采购/设计/经理读写
   finance:     { merchandiser: 'read',  purchaser: 'read',  designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 财务管理：管理层读写
-  nasDrive:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 云盘NAS：跟单/采购/设计/经理读写
+  nasDrive:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read', finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 云盘NAS：跟单/采购/设计/经理读写
+  cbFiles:     { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read', finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 文件中心：跟单/采购/设计/经理读写
   contacts:    { merchandiser: 'write', purchaser: 'write', designer: 'write', qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 通讯录：跟单/采购/设计/经理读写
   maintenance: { merchandiser: 'write', purchaser: 'write', designer: 'read',  qc: 'read',  qcInspector: 'read',  finance: 'read',  documentary: 'read',  manager: 'write', user: 'read'  }, // 维护资料：跟单/采购/经理读写
   settings:    { merchandiser: 'hidden',purchaser: 'hidden',designer: 'hidden',qc: 'hidden',qcInspector: 'hidden',finance: 'hidden',documentary: 'hidden',manager: 'hidden',user: 'hidden'}, // 设置：全不显示（仅管理员可见）
@@ -1286,6 +1289,12 @@ const StyleImgCache = {
     if (images.styleImg_path && images.styleImg_path !== existing.styleImg_path) changed = true;
     if (images.fullImg_path && images.fullImg_path !== existing.fullImg_path) changed = true;
     if (changed) this.set(styleNo, images);
+  },
+
+  // put = set 的别名（form-submit.js / resolveImageUrl 的既有调用点使用 put；
+  // set 内部会合并旧值，语义一致）
+  put(styleNo, images) {
+    this.updateIfChanged(styleNo, images || {});
   },
 
   // 删除指定款号的图片缓存
