@@ -101,3 +101,66 @@ CREATE POLICY submission_files_anon_read ON public.submission_files
 -- 执行完成后可运行以下语句验证：
 -- SELECT table_name FROM information_schema.tables WHERE table_schema='public';
 -- SELECT * FROM public.app_data_store LIMIT 1;
+
+-- ---------- 5. 写权限 401 专项修复 ----------
+-- 症状：浏览器控制台 PATCH/POST .../rdb/rest/app_data_store 返回 401，
+--       消息 "permission denied for table app_data_store"（SELECT 正常、写失败）。
+-- 原因：控制台手动建表通常只给 authenticated 授予了 SELECT，缺少 INSERT/UPDATE/DELETE；
+--       或第 2 节 GRANT 执行时角色不存在而整条脚本中断。
+-- 本段可独立、重复执行（幂等）。
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'CREATE ROLE authenticated';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'CREATE ROLE anon';
+  END IF;
+END $$;
+
+-- schema 连接权限
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
+-- 已存在表：登录用户完全读写，匿名只读（比第 2 节单表 GRANT 更兜底）
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT                         ON ALL TABLES IN SCHEMA public TO anon;
+
+-- 今后新建的表自动继承同样权限
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO anon;
+
+-- 再次确保 RLS 策略存在（CREATE POLICY 要求表已存在，故对五张表逐一处理）
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'app_data_store','user_roles','module_permissions','app_submissions','submission_files'
+  ] LOOP
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema='public' AND table_name=t) THEN
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t||'_auth_all', t);
+      EXECUTE format('CREATE POLICY %I ON public.%I FOR ALL TO authenticated USING (true) WITH CHECK (true)', t||'_auth_all', t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t||'_anon_read', t);
+      EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO anon USING (true)', t||'_anon_read', t);
+    END IF;
+  END LOOP;
+END $$;
+
+-- ---------- 6. 诊断（执行后把结果发给排查人员） ----------
+-- 当前会话身份：
+SELECT current_user AS current_user, session_user AS session_user;
+-- authenticated 对各表的实际权限（应有 SELECT/INSERT/UPDATE/DELETE 四行）：
+SELECT table_name, string_agg(privilege_type, ',' ORDER BY privilege_type) AS grants
+FROM information_schema.role_table_grants
+WHERE grantee = 'authenticated' AND table_schema = 'public'
+GROUP BY table_name
+ORDER BY table_name;
+-- RLS 是否开启（rowsecurity 应为 true）：
+SELECT relname AS table_name, relrowsecurity AS rls_enabled
+FROM pg_class
+WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'
+ORDER BY relname;

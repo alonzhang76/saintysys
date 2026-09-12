@@ -730,6 +730,30 @@ function normalizeStorageList(raw, prefix) {
  * 可用 window.CLOUDBASE_BUCKET 手动覆盖（应急/多桶场景）。
  */
 var _defaultBucketPromise = null;
+
+// 在任意层级的响应体中深度查找「桶数组」：元素为对象且含 id/bucketId/name 字段
+function _deepFindBucketArray(node, depth) {
+  if (depth > 6 || node == null) return null;
+  if (Array.isArray(node)) {
+    if (node.length && node.every(function (x) {
+      return x && typeof x === "object" && (x.id || x.bucketId || x.bucket_id || x.name);
+    })) return node;
+    for (var i = 0; i < node.length; i++) {
+      var hit = _deepFindBucketArray(node[i], depth + 1);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (typeof node === "object") {
+    var keys = Object.keys(node);
+    for (var k = 0; k < keys.length; k++) {
+      var hit2 = _deepFindBucketArray(node[keys[k]], depth + 1);
+      if (hit2) return hit2;
+    }
+  }
+  return null;
+}
+
 function resolveDefaultBucketId(st) {
   if (window.CLOUDBASE_BUCKET) return Promise.resolve(window.CLOUDBASE_BUCKET);
   if (_defaultBucketPromise) return _defaultBucketPromise;
@@ -737,12 +761,16 @@ function resolveDefaultBucketId(st) {
     if (!st || typeof st.listBuckets !== "function") throw new Error("SDK 不支持 listBuckets");
     var res = await st.listBuckets({ limit: 100 });
     if (res && res.error) throw res.error;
-    var d = res && res.data;
-    var rows = null;
-    if (Array.isArray(d)) rows = d;
-    else if (d) rows = d.buckets || d.list || d.items || d.records ||
-      (d.data && (d.data.buckets || d.data.list || d.data.items)) || null;
-    if (!rows || !rows.length) throw new Error("CloudBase 环境中没有存储桶");
+    var body = res && res.data;
+    var rows = _deepFindBucketArray(body, 0);
+    if (!rows || !rows.length) {
+      // 打印原始响应便于定位真实结构（只打一次级别，截断防刷屏）
+      try {
+        console.warn("[cloudbase.js] listBuckets 原始响应（未识别桶数组结构）:",
+          JSON.stringify(body).slice(0, 800));
+      } catch (_e) {}
+      throw new Error("CloudBase 环境中没有存储桶（或 listBuckets 响应结构未识别，详见控制台原始响应）");
+    }
     var def = null;
     for (var i = 0; i < rows.length; i++) {
       var b = rows[i] || {};
@@ -751,7 +779,7 @@ function resolveDefaultBucketId(st) {
     if (!def) def = rows[0];
     var id = def.id || def.bucketId || def.bucket_id || def.name || "";
     if (!id) throw new Error("无法解析默认桶 ID");
-    console.log("[cloudbase.js] ✅ 默认存储桶 ID:", id);
+    console.log("[cloudbase.js] ✅ 默认存储桶 ID:", id, "（共", rows.length, "个桶）");
     return id;
   })().catch(function (e) {
     // 失败后允许后续重试（不缓存 rejection）
@@ -759,6 +787,110 @@ function resolveDefaultBucketId(st) {
     throw e;
   });
   return _defaultBucketPromise;
+}
+
+/* 经典网关存储适配器：
+ * 当环境无法解析新版桶 ID 时，走 SDK 内部 CloudbaseStorage 实体方法
+ * （storage.uploadFile / batchGetDownloadUrl / batchDeleteFile），
+ * 这些网关接口接受纯 cloudPath（环境即默认桶），不依赖桶 ID。
+ * 注意：网关无「列目录」接口，list 仍需 tcb-file-list 云函数。
+ */
+function makeClassicStorageAdapter() {
+  // 上传成功后网关会返回真实 fileID（cloud:// 形式）；缓存 path→fileID，
+  // 后续签名/删除优先使用 fileID，纯路径作为回退
+  var FILEID_MAP_KEY = "_cbClassicFileIds";
+  function loadMap() {
+    try { return JSON.parse(localStorage.getItem(FILEID_MAP_KEY) || "{}") || {}; }
+    catch (_e) { return {}; }
+  }
+  function saveMap(m) {
+    try { localStorage.setItem(FILEID_MAP_KEY, JSON.stringify(m)); } catch (_e) {}
+  }
+  function rememberFileId(path, id) {
+    if (!id || !path || id === path || String(id).indexOf("://") < 0) return;
+    var m = loadMap(); m[path] = id; saveMap(m);
+  }
+  function idFor(path) {
+    var m = loadMap();
+    return m[path] || path;
+  }
+  function forgetIds(pathsArr) {
+    var m = loadMap(); var changed = false;
+    pathsArr.forEach(function (p) { if (m[p]) { delete m[p]; changed = true; } });
+    if (changed) saveMap(m);
+  }
+
+  async function classicRef() {
+    var app = await getApp();
+    if (!app || !app.storage || typeof app.storage.from !== "function") {
+      throw new Error("CloudBase Storage 未初始化");
+    }
+    var ref = app.storage.from(); // 空参 → ClassicStorageFileApi
+    if (!ref || !ref.storage) throw new Error("经典存储 API 不可用");
+    return ref;
+  }
+  return {
+    __classic: true,
+    async upload(path, fileBody, fileOptions) {
+      try {
+        var ref = await classicRef();
+        var res = await ref.upload(path, fileBody, fileOptions || {});
+        if (res && !res.error && res.data) rememberFileId(path, res.data.id);
+        return res;
+      } catch (e) { return { data: null, error: mapError(e) }; }
+    },
+    async list() {
+      return { data: null, error: mapError({ message: "LIST_UNSUPPORTED_CLASSIC", code: "LIST_UNSUPPORTED_CLASSIC" }) };
+    },
+    async createSignedUrl(path, expiresIn) {
+      try {
+        var ref = await classicRef();
+        var r = await ref.storage.getTempFileURL({
+          fileList: [{ fileID: idFor(path), maxAge: expiresIn || 7200 }],
+        });
+        var item = r && r.fileList && r.fileList[0];
+        if (!item || (item.code && item.code !== "SUCCESS")) {
+          // 用真实 fileID 失败时再用纯路径兜底重试一次
+          if (idFor(path) !== path) {
+            var r2 = await ref.storage.getTempFileURL({
+              fileList: [{ fileID: path, maxAge: expiresIn || 7200 }],
+            });
+            item = r2 && r2.fileList && r2.fileList[0];
+          }
+        }
+        if (!item || (item.code && item.code !== "SUCCESS")) {
+          return { data: null, error: mapError((item && (item.message || item.code)) || "获取下载链接失败") };
+        }
+        var url = item.tempFileURL || item.temp_file_url || item.download_url ||
+          item.downloadUrl || item.url || "";
+        if (!url) return { data: null, error: mapError("getTempFileURL 未返回 URL") };
+        return { data: { signedUrl: url }, error: null };
+      } catch (e) { return { data: null, error: mapError(e) }; }
+    },
+    async createSignedUrls(paths, expiresIn) {
+      var out = [];
+      for (var i = 0; i < paths.length; i++) out.push((await this.createSignedUrl(paths[i], expiresIn)).data);
+      return { data: out, error: null };
+    },
+    async remove(pathsArr) {
+      try {
+        var ref = await classicRef();
+        var arr = (Array.isArray(pathsArr) ? pathsArr : [pathsArr]).map(idFor);
+        var r = await ref.storage.deleteFile({ fileList: arr });
+        var list = (r && r.fileList) || [];
+        var failed = list.filter(function (x) { return x && x.code && x.code !== "SUCCESS"; });
+        if (failed.length) {
+          return { data: null, error: mapError(failed[0].message || ("删除失败 " + failed.length + " 个文件")) };
+        }
+        forgetIds(Array.isArray(pathsArr) ? pathsArr : [pathsArr]);
+        return { data: list, error: null };
+      } catch (e) { return { data: null, error: mapError(e) }; }
+    },
+    async getPublicUrl(path) { return this.createSignedUrl(path, 3600); },
+    async download() {
+      return { data: null, error: mapError("经典适配器不支持直接 download，请使用 createSignedUrl + fetch") };
+    },
+  };
 }
 
 function makeStorageRef(bucketName) {
@@ -773,9 +905,9 @@ function makeStorageRef(bucketName) {
         var realBucketId = await resolveDefaultBucketId(st);
         return st.from(realBucketId);
       } catch (e) {
-        console.warn("[cloudbase.js] 解析默认桶失败，回退经典存储 API（仅 upload 可用）:",
+        console.warn("[cloudbase.js] 解析默认桶失败，回退经典网关存储 API（upload/sign/remove 可用；列目录需部署 tcb-file-list 云函数）:",
           e && e.message ? e.message : e);
-        return st.from();
+        return makeClassicStorageAdapter();
       }
     }
     return st;
@@ -831,6 +963,18 @@ function makeStorageRef(bucketName) {
         if (payload.error) return { data: null, error: mapError(payload.error) };
         return { data: payload.data || [], error: null };
       } catch (fe) {
+        var fnMsg = (fe && (fe.message || fe.errMsg)) || String(fe);
+        // 云函数未部署（404 / FunctionName 找不到）：给出明确可执行的指引
+        if (/404|not.?found|找不到|未部署|FunctionNotFound/i.test(fnMsg)) {
+          return {
+            data: null,
+            error: mapError({
+              code: "TCB_FUNCTION_NOT_FOUND",
+              message: "列目录云函数 " + FILE_LIST_FUNCTION + " 未部署（404）。请在 CloudBase 控制台「云函数」部署 cloudfunctions/" +
+                FILE_LIST_FUNCTION + "（详见 CLOUDBASE_DEPLOY.md 第 5 节）；部署前上传/下载/删除可用，文件列表暂不可用。",
+            }),
+          };
+        }
         // 云函数也失败时优先回报 SDK 的错误（信息更贴近真实根因）
         return { data: null, error: sdkErr || mapError(fe) };
       }

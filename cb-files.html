@@ -257,7 +257,7 @@
 
 <script src="js/common.js?v=20260912a"></script>
 <script src="js/auth-guard.js?v=20260823a"></script>
-<script type="module" src="js/cloudbase.js?v=20260912a"></script>
+<script type="module" src="js/cloudbase.js?v=20260912c"></script>
 <script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
 <script src="js/cloudbase-bridge.js?v=20260822f"></script>
@@ -416,8 +416,8 @@
     listDir: async function(dir) {
       var prefix = this._prefix(dir);
       var r = await this._st().list(prefix, { limit: 1000 });
-      // 某些 SDK/list 实现对尾斜杠敏感：失败时去掉尾斜杠重试一次
-      if (r && r.error && prefix) {
+      // 云函数未部署等明确错误无需去尾斜杠重试
+      if (r && r.error && prefix && r.error.code !== 'TCB_FUNCTION_NOT_FOUND') {
         var r2 = await this._st().list(prefix.replace(/\/+$/, ''), { limit: 1000 });
         if (r2 && !r2.error) r = r2;
       }
@@ -465,10 +465,23 @@
       var r = await this.listDir(this.currentPath);
       this.loading = false;
       if (r.error) {
-        this.setStatus('err', '列目录失败：' + (r.error.message || r.error));
-        area.innerHTML = '<div class="cfb-empty"><div class="eico">⚠️</div><div>列目录失败</div>' +
-          '<div style="font-size:12px;">' + App.utils.escapeHtml(r.error.message || String(r.error)) + '</div>' +
-          '<button class="btn btn-sm" onclick="CFB.refresh()">🔄 重试</button></div>';
+        var errMsg = r.error.message || String(r.error);
+        this.setStatus('err', '列目录失败：' + errMsg);
+        var icon = (r.error.code === 'TCB_FUNCTION_NOT_FOUND') ? '📦' : '⚠️';
+        var tip = '';
+        if (r.error.code === 'TCB_FUNCTION_NOT_FOUND') {
+          tip = '<div style="font-size:12px;line-height:1.7;max-width:560px;">'
+            + '文件列表依赖云函数 <b>tcb-file-list</b>，当前环境尚未部署。<br>'
+            + '部署方法（任选一种）：<br>'
+            + '① 控制台：云开发控制台 → 云函数 → 新建/上传 <code>cloudfunctions/tcb-file-list</code> 目录；<br>'
+            + '② 命令行：<code>tcb fn deploy tcb-file-list -e ' + 'onlineofficework-d4e93l98bdf879e</code>。<br>'
+            + '部署前：上方各分区的<b>上传、按款号取图、下载、删除仍可正常使用</b>，仅浏览列表不可用。'
+            + '</div>';
+        } else {
+          tip = '<div style="font-size:12px;">' + App.utils.escapeHtml(errMsg) + '</div>';
+        }
+        area.innerHTML = '<div class="cfb-empty"><div class="eico">' + icon + '</div><div>列目录失败</div>' +
+          tip + '<button class="btn btn-sm" onclick="CFB.refresh()">🔄 重试</button></div>';
         return;
       }
       this.entries = r.list;
