@@ -257,7 +257,7 @@
 
 <script src="js/common.js?v=20260912a"></script>
 <script src="js/auth-guard.js?v=20260823a"></script>
-<script type="module" src="js/cloudbase.js?v=20260912d"></script>
+<script type="module" src="js/cloudbase.js?v=20260912e"></script>
 <script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
 <script src="js/cloudbase-bridge.js?v=20260822f"></script>
@@ -470,12 +470,11 @@
         var icon = (r.error.code === 'TCB_FUNCTION_NOT_FOUND') ? '📦' : '⚠️';
         var tip = '';
         if (r.error.code === 'TCB_FUNCTION_NOT_FOUND') {
-          tip = '<div style="font-size:12px;line-height:1.7;max-width:560px;">'
-            + '文件列表依赖云函数 <b>tcb-file-list</b>，当前环境尚未部署。<br>'
-            + '部署方法（任选一种）：<br>'
-            + '① 控制台：云开发控制台 → 云函数 → 新建/上传 <code>cloudfunctions/tcb-file-list</code> 目录；<br>'
-            + '② 命令行：<code>tcb fn deploy tcb-file-list -e ' + 'onlineofficework-d4e93l98bdf879e</code>。<br>'
-            + '部署前：上方各分区的<b>上传、按款号取图、下载、删除仍可正常使用</b>，仅浏览列表不可用。'
+          tip = '<div style="font-size:12px;line-height:1.7;max-width:600px;">'
+            + 'PG 模式云存储需要先创建 <b>Bucket</b> 并配置 RLS 策略，当前环境尚未就绪。<br>'
+            + '请在 <b>云开发控制台 → 数据库 → SQL 编辑器</b> 执行部署包中 '
+            + '<code>cloudbase-pg-setup.sql</code> 的 <b>第 7 节</b>（创建桶 app-photos 及读写策略）。<br>'
+            + '执行成功后回到本页点「重试」即可；上传、下载、列表、删除全部走官方 Storage API，无需部署云函数。'
             + '</div>';
         } else {
           tip = '<div style="font-size:12px;">' + App.utils.escapeHtml(errMsg) + '</div>';

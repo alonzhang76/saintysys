@@ -234,7 +234,10 @@ var _appPromise = loadSdk()
       env: CLOUDBASE_ENV,
       region: CLOUDBASE_REGION,
     };
-    if (CLOUDBASE_ACCESS_KEY) initOpts.accessKey = CLOUDBASE_ACCESS_KEY;
+    // Publishable Key 来源：代码常量 → window.CLOUDBASE_ACCESS_KEY → localStorage（控制台临时测试用）
+    var _pk = CLOUDBASE_ACCESS_KEY || window.CLOUDBASE_ACCESS_KEY ||
+      (function () { try { return localStorage.getItem("cb_publishable_key") || ""; } catch (_e) { return ""; } })();
+    if (_pk) initOpts.accessKey = _pk;
     var app = cb.init(initOpts);
     console.log("[cloudbase.js] ✅ CloudBase SDK v3 已初始化 env=" + CLOUDBASE_ENV);
     // 保存 auth 引用给验证码弹窗使用
@@ -429,13 +432,14 @@ function _decodeJwtPayload(token) {
 
 async function cbDiag(probeWrite) {
   var app = await getApp();
-  var out = { sdkReady: !!app, hasToken: false, role: null, sub: null, exp: null, isAnonymous: null, user: null };
+  var out = { sdkReady: !!app, hasToken: false, role: null, sub: null, exp: null, isAnonymous: null, user: null, rawClaims: null };
   var token = null;
   try {
     token = await fetchAccessToken(app);
     out.hasToken = !!token;
     var p = token ? _decodeJwtPayload(token) : null;
     if (p) {
+      out.rawClaims = p; // 完整 claims，便于定位 role 是否嵌套/字段名差异
       out.role = p.role || null;
       out.sub = p.sub || null;
       out.exp = p.exp ? new Date(p.exp * 1000).toLocaleString() : null;
@@ -462,8 +466,8 @@ async function cbDiag(probeWrite) {
   var verdict = out.role === "authenticated"
     ? "JWT 是 authenticated（登录身份）；若写仍失败 → 数据库 GRANT/RLS 问题，请执行 cloudbase-pg-setup.sql 第 5 节"
     : (out.role === "anon"
-      ? "⚠️ JWT 是 anon（匿名身份）！写必然 401。请重新走邮箱登录（确认登录成功而非仅本地缓存会话）"
-      : "⚠️ 未识别到 role claim（token 缺失或异常），写请求会被当匿名拒绝");
+      ? "⚠️ JWT 是 anon（匿名身份）！写必然 401。请退出后重新邮箱登录"
+      : "⚠️ token 没有 role claim（非 PG 登录令牌）。请：1) 退出并重新邮箱登录（让 SDK 换发新令牌）；2) 若仍如此，在 cloudbase.js 顶部填入 Publishable Key（控制台→身份认证→凭证，pk 开头）后重新部署");
   out.verdict = verdict;
   console.log("%c[cloudbase.js] 🔑 JWT 诊断\n" + JSON.stringify(out, null, 2) + "\n结论：" + verdict,
     "color:#0369a1;font-size:12px;");
@@ -788,11 +792,11 @@ function normalizeStorageList(raw, prefix) {
   return out;
 }
 
-/* ---------- 默认存储桶解析 ----------
- * CloudBase v3 存储为「环境唯一默认桶」，桶 ID 不是 Supabase 时代的 'app-photos'。
- * 直接 from('app-photos') 会报 404 STORAGE_BUCKET_NOT_FOUND；
- * 必须先 listBuckets() 查出环境真实桶 ID 再 from(realBucketId)。
- * 可用 window.CLOUDBASE_BUCKET 手动覆盖（应急/多桶场景）。
+/* ---------- 默认存储桶解析（PG 模式） ----------
+ * PG 模式环境中 Bucket 是 storage.buckets 表中的记录，必须先在控制台/SQL 创建。
+ * 业务桶名固定为 STORAGE_BUCKET（'app-photos'）；listBuckets 优先选取同名桶，
+ * 其次选取 default 标记桶，最后取第一个。
+ * 可用 window.CLOUDBASE_BUCKET 手动覆盖。
  */
 var _defaultBucketPromise = null;
 
@@ -819,6 +823,10 @@ function _deepFindBucketArray(node, depth) {
   return null;
 }
 
+function _bucketRowId(b) {
+  return (b && (b.id || b.bucketId || b.bucket_id || b.name)) || "";
+}
+
 function resolveDefaultBucketId(st) {
   if (window.CLOUDBASE_BUCKET) return Promise.resolve(window.CLOUDBASE_BUCKET);
   if (_defaultBucketPromise) return _defaultBucketPromise;
@@ -829,22 +837,23 @@ function resolveDefaultBucketId(st) {
     var body = res && res.data;
     var rows = _deepFindBucketArray(body, 0);
     if (!rows || !rows.length) {
-      // 打印原始响应便于定位真实结构（只打一次级别，截断防刷屏）
-      try {
-        console.warn("[cloudbase.js] listBuckets 原始响应（未识别桶数组结构）:",
-          JSON.stringify(body).slice(0, 800));
-      } catch (_e) {}
-      throw new Error("CloudBase 环境中没有存储桶（或 listBuckets 响应结构未识别，详见控制台原始响应）");
+      throw new Error("NO_BUCKET");
     }
-    var def = null;
+    // 1) 优先业务桶名 app-photos；2) default 标记；3) 第一个
+    var pick = null;
     for (var i = 0; i < rows.length; i++) {
-      var b = rows[i] || {};
-      if (b.isDefault === true || b.default === true || b.is_default === true || b.type === "default") { def = b; break; }
+      if (_bucketRowId(rows[i]) === STORAGE_BUCKET) { pick = rows[i]; break; }
     }
-    if (!def) def = rows[0];
-    var id = def.id || def.bucketId || def.bucket_id || def.name || "";
+    if (!pick) {
+      for (var j = 0; j < rows.length; j++) {
+        var b = rows[j] || {};
+        if (b.isDefault === true || b.default === true || b.is_default === true || b.type === "default") { pick = b; break; }
+      }
+    }
+    if (!pick) pick = rows[0];
+    var id = _bucketRowId(pick);
     if (!id) throw new Error("无法解析默认桶 ID");
-    console.log("[cloudbase.js] ✅ 默认存储桶 ID:", id, "（共", rows.length, "个桶）");
+    console.log("[cloudbase.js] ✅ 存储桶 ID:", id, "（共", rows.length, "个桶）");
     return id;
   })().catch(function (e) {
     // 失败后允许后续重试（不缓存 rejection）
@@ -959,6 +968,8 @@ function makeClassicStorageAdapter() {
 }
 
 function makeStorageRef(bucketName) {
+  // PG 桶 API 的对象名不允许前导 "/"（经典 API 会自动剥离，新版不会），统一在边界归一化
+  function normKey(p) { return String(p == null ? "" : p).replace(/^\/+/, ""); }
   async function getFromRef() {
     var app = await getApp();
     if (!app || !app.storage) throw new Error("CloudBase Storage 未初始化");
@@ -970,8 +981,16 @@ function makeStorageRef(bucketName) {
         var realBucketId = await resolveDefaultBucketId(st);
         return st.from(realBucketId);
       } catch (e) {
-        console.warn("[cloudbase.js] 解析默认桶失败，回退经典网关存储 API（upload/sign/remove 可用；列目录需部署 tcb-file-list 云函数）:",
-          e && e.message ? e.message : e);
+        var msg = e && e.message ? e.message : String(e);
+        if (msg === "NO_BUCKET") {
+          console.warn("[cloudbase.js] ⚠️ PG 存储桶不存在：请先在控制台 SQL 窗口执行 cloudbase-pg-setup.sql 第 7 节创建桶 '" +
+            STORAGE_BUCKET + "' 及 RLS 策略（存储→SQL 或数据库→SQL 编辑器）");
+          var adapter = makeClassicStorageAdapter();
+          adapter.__noBucket = true;
+          return adapter;
+        } else {
+          console.warn("[cloudbase.js] 解析存储桶失败，回退经典网关存储 API:", msg);
+        }
         return makeClassicStorageAdapter();
       }
     }
@@ -983,7 +1002,7 @@ function makeStorageRef(bucketName) {
     async upload(path, fileBody, fileOptions) {
       try {
         var ref = await getFromRef();
-        var res = await ref.upload(path, fileBody, fileOptions);
+        var res = await ref.upload(normKey(path), fileBody, fileOptions);
         if (res && res.error) return { data: null, error: mapError(res.error) };
         var d = (res && res.data) || {};
         return {
@@ -999,11 +1018,20 @@ function makeStorageRef(bucketName) {
       }
     },
 
-    // 列目录：优先 SDK 新版桶 API；失败/不支持时回退 tcb-file-list 云函数（服务端默认桶）
+    // 列目录：PG 桶 API（storage.from(bucketId).list）。桶不存在时直接给建桶指引，不打云函数
     async list(prefix, options) {
       var sdkErr = null;
       try {
         var ref = await getFromRef();
+        if (ref && ref.__noBucket) {
+          return {
+            data: null,
+            error: mapError({
+              code: "TCB_FUNCTION_NOT_FOUND",
+              message: "PG 存储桶 '" + STORAGE_BUCKET + "' 不存在，请先执行 cloudbase-pg-setup.sql 第 7 节创建 Bucket 与 RLS 策略。",
+            }),
+          };
+        }
         if (ref && typeof ref.list === "function") {
           // SDK 签名为 list(prefix: string, options)：首参必须是字符串 prefix
           var lr = await ref.list(String(prefix || ""), options || {});
@@ -1017,7 +1045,7 @@ function makeStorageRef(bucketName) {
         console.warn("[cloudbase.js] SDK list 异常，回退云函数 " + FILE_LIST_FUNCTION + ":",
           sdkErr && sdkErr.message ? sdkErr.message : sdkErr);
       }
-      // 云函数兜底（需部署 tcb-file-list；其内部使用环境默认桶）
+      // 云函数兜底（传统模式环境可选部署 tcb-file-list；PG 模式不需要）
       try {
         var app = await getApp();
         var fnRes = await app.callFunction({
@@ -1029,14 +1057,14 @@ function makeStorageRef(bucketName) {
         return { data: payload.data || [], error: null };
       } catch (fe) {
         var fnMsg = (fe && (fe.message || fe.errMsg)) || String(fe);
-        // 云函数未部署（404 / FunctionName 找不到）：给出明确可执行的指引
+        // 云函数未部署（404 / FunctionName 找不到）：PG 模式下通常意味着 Bucket 未创建
         if (/404|not.?found|找不到|未部署|FunctionNotFound/i.test(fnMsg)) {
           return {
             data: null,
             error: mapError({
               code: "TCB_FUNCTION_NOT_FOUND",
-              message: "列目录云函数 " + FILE_LIST_FUNCTION + " 未部署（404）。请在 CloudBase 控制台「云函数」部署 cloudfunctions/" +
-                FILE_LIST_FUNCTION + "（详见 CLOUDBASE_DEPLOY.md 第 5 节）；部署前上传/下载/删除可用，文件列表暂不可用。",
+              message: "文件列表不可用：PG 模式请先执行 cloudbase-pg-setup.sql 第 7 节创建存储桶 '" +
+                STORAGE_BUCKET + "' 及 RLS 策略；传统模式需部署云函数 " + FILE_LIST_FUNCTION + "。",
             }),
           };
         }
@@ -1049,7 +1077,7 @@ function makeStorageRef(bucketName) {
     async createSignedUrl(path, expiresIn) {
       try {
         var ref = await getFromRef();
-        var sr = await ref.createSignedUrl(path, expiresIn || 7200);
+        var sr = await ref.createSignedUrl(normKey(path), expiresIn || 7200);
         if (sr && sr.error) return { data: null, error: mapError(sr.error) };
         var sd = (sr && sr.data) || {};
         // 经典 API 返回 signedUrl；新版桶 API 返回 fullSignedURL/signedURL
@@ -1076,7 +1104,7 @@ function makeStorageRef(bucketName) {
     async remove(paths) {
       try {
         var ref = await getFromRef();
-        var rr = await ref.remove(Array.isArray(paths) ? paths : [paths]);
+        var rr = await ref.remove((Array.isArray(paths) ? paths : [paths]).map(normKey));
         if (rr && rr.error) return { data: null, error: mapError(rr.error) };
         return { data: (rr && rr.data) || [], error: null };
       } catch (e) {
@@ -1089,7 +1117,7 @@ function makeStorageRef(bucketName) {
       try {
         var ref = await getFromRef();
         if (typeof ref.getPublicUrl === "function") {
-          var pr = await ref.getPublicUrl(path);
+          var pr = await ref.getPublicUrl(normKey(path));
           var pd = (pr && pr.data) || {};
           return { data: { publicUrl: pd.publicUrl || pd.url || path }, error: null };
         }
@@ -1103,7 +1131,7 @@ function makeStorageRef(bucketName) {
     async download(path) {
       try {
         var ref = await getFromRef();
-        var dr = await ref.download(path);
+        var dr = await ref.download(normKey(path));
         if (dr && dr.error) return { data: null, error: mapError(dr.error) };
         return { data: (dr && dr.data) || dr || null, error: null };
       } catch (e) {

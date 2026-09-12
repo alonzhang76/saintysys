@@ -169,3 +169,50 @@ SELECT relname AS table_name, relrowsecurity AS rls_enabled
 FROM pg_class
 WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'
 ORDER BY relname;
+
+-- ---------- 7. PG 云存储：创建业务 Bucket + RLS 策略 ----------
+-- 症状：前端上传报 404 STORAGE_BUCKET_NOT_FOUND，或
+--       "invalid ... must be alphanumeric/hyphens/underscores, 3-63 chars"；
+--       JS SDK listBuckets() 返回 []（环境还没有任何 Bucket）。
+-- 原因：PG 模式环境不会自动配好 Bucket，必须先在 storage.buckets 建桶，
+--       且 storage.objects 的唯一权限闸门是 RLS Policy（默认无任何策略 = 全部拒绝）。
+-- 本段幂等，可整段重复执行。
+
+-- 7.1 创建业务桶 app-photos（前端 STORAGE_BUCKET 常量同名；≤20MB；不限制文件类型）
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('app-photos', 'app-photos', true, 20 * 1024 * 1024, NULL)
+ON CONFLICT (id) DO UPDATE
+  SET public = EXCLUDED.public,
+      file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- 7.2 storage.buckets：anon/authenticated 均可读取桶元数据（前端列桶/校验用）
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='buckets' AND policyname='buckets_read_all') THEN
+    CREATE POLICY buckets_read_all ON storage.buckets
+      FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+END $$;
+
+-- 7.3 storage.objects：本系统为全员共享工作区——登录用户可读写删 app-photos 全部对象，
+--     匿名用户只读（保证登录页/签名链接等场景的图片可读）
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='app_photos_anon_select') THEN
+    CREATE POLICY app_photos_anon_select ON storage.objects
+      FOR SELECT TO anon
+      USING (bucket_id = 'app-photos');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='app_photos_auth_all') THEN
+    CREATE POLICY app_photos_auth_all ON storage.objects
+      FOR ALL TO authenticated
+      USING (bucket_id = 'app-photos')
+      WITH CHECK (bucket_id = 'app-photos');
+  END IF;
+END $$;
+
+-- 7.4 验证（桶应返回 1 行；策略应返回 3 行）：
+-- SELECT id, name, public, file_size_limit FROM storage.buckets ORDER BY id;
+-- SELECT policyname, roles, cmd FROM pg_policies
+--   WHERE schemaname='storage' AND tablename IN ('buckets','objects') ORDER BY policyname;
