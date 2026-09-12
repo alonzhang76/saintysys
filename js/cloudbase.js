@@ -670,38 +670,95 @@ class TcbQueryBuilder {
 
 /* ---------- Storage 兼容层 ---------- */
 // 将 CloudBase SDK 的 list 返回值归一化为 Supabase 风格数组 [{name, type:'folder'|'file'}]
-// 兼容多种返回结构：Array / {files:[]} / {data:{files:[]}} / {data:[]} / {Contents:[]}
+// 兼容多种返回结构：
+//   Array / {files:[]} / {data:{files:[]}} / {data:[]} / {Contents:[]}
+//   新版桶 API：{objects:[]|contents:[], prefixes:[]|commonPrefixes:[]}
 function normalizeStorageList(raw, prefix) {
-  var arr = null;
-  if (Array.isArray(raw)) arr = raw;
-  else if (raw && Array.isArray(raw.files)) arr = raw.files;
-  else if (raw && raw.data && Array.isArray(raw.data.files)) arr = raw.data.files;
-  else if (raw && raw.data && Array.isArray(raw.data)) arr = raw.data;
-  else if (raw && Array.isArray(raw.Contents)) arr = raw.Contents;
-  if (!arr) return [];
-  var pre = prefix || "";
+  var files = null, folders = null;
+  if (Array.isArray(raw)) files = raw;
+  else if (raw) {
+    var d = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? raw.data : raw;
+    files = raw.files || d.files || d.objects || d.Objects || d.contents || d.Contents || (Array.isArray(raw.data) ? raw.data : null);
+    folders = raw.folders || d.folders || d.prefixes || d.commonPrefixes || d.CommonPrefixes || null;
+  }
   var out = [], seen = {};
-  for (var i = 0; i < arr.length; i++) {
-    var it = arr[i] || {};
-    var key = it.Key || it.key || it.name || it.Name || it.fileName || it.fileID || it.FileID || "";
-    if (!key) continue;
-    var name = String(key).replace(/^\//, "").replace(/\/+$/, "");
+  function pushName(rawName, isDir, it) {
+    var key = String(rawName == null ? "" : rawName);
+    if (!key) return;
+    var name = key.replace(/^\//, "").replace(/\/+$/, "");
     if (pre && name.indexOf(pre) === 0) name = name.slice(pre.length);
     name = name.replace(/^\//, "");
-    var isDir = it.type === "folder" || it.IsDir === true || it.isdir === true || /\/$/.test(String(key));
     var slashIdx = name.indexOf("/");
     if (slashIdx >= 0) { name = name.slice(0, slashIdx); isDir = true; }
-    if (!name || seen[name]) continue;
+    if (!name || seen[name]) return;
     seen[name] = true;
+    var size = Number((it && (it.size || it.Size || it.contentLength || it.ContentLength)) ||
+      (it && it.metadata && it.metadata.size) || 0) || 0;
+    var lastModified = (it && (it.lastModified || it.LastModified || it.last_modified || it.updateTime)) || "";
     out.push({
       name: name,
       type: isDir ? "folder" : "file",
-      id: it.id || it.ETag || name,
-      metadata: it.Size != null ? { size: Number(it.Size) } : (it.metadata || null),
-      raw: it,
+      id: (it && (it.id || it.ETag || it.etag)) || name,
+      size: size,
+      lastModified: lastModified,
+      metadata: size ? { size: size } : (it && it.metadata) || null,
+      raw: it || { name: key },
     });
   }
+  var pre = prefix || "";
+  if (Array.isArray(folders)) {
+    for (var fi = 0; fi < folders.length; fi++) {
+      var fo = folders[fi];
+      pushName(typeof fo === "string" ? fo : (fo && (fo.name || fo.prefix || fo.Prefix || fo.path)), true, typeof fo === "string" ? {} : fo);
+    }
+  }
+  if (Array.isArray(files)) {
+    for (var i = 0; i < files.length; i++) {
+      var it = files[i] || {};
+      var key = it.Key || it.key || it.name || it.Name || it.fileName || it.fileID || it.FileID || it.objectId || "";
+      var isDir = it.type === "folder" || it.IsDir === true || it.isdir === true || /\/$/.test(String(key));
+      pushName(key, isDir, it);
+    }
+  }
   return out;
+}
+
+/* ---------- 默认存储桶解析 ----------
+ * CloudBase v3 存储为「环境唯一默认桶」，桶 ID 不是 Supabase 时代的 'app-photos'。
+ * 直接 from('app-photos') 会报 404 STORAGE_BUCKET_NOT_FOUND；
+ * 必须先 listBuckets() 查出环境真实桶 ID 再 from(realBucketId)。
+ * 可用 window.CLOUDBASE_BUCKET 手动覆盖（应急/多桶场景）。
+ */
+var _defaultBucketPromise = null;
+function resolveDefaultBucketId(st) {
+  if (window.CLOUDBASE_BUCKET) return Promise.resolve(window.CLOUDBASE_BUCKET);
+  if (_defaultBucketPromise) return _defaultBucketPromise;
+  _defaultBucketPromise = (async function () {
+    if (!st || typeof st.listBuckets !== "function") throw new Error("SDK 不支持 listBuckets");
+    var res = await st.listBuckets({ limit: 100 });
+    if (res && res.error) throw res.error;
+    var d = res && res.data;
+    var rows = null;
+    if (Array.isArray(d)) rows = d;
+    else if (d) rows = d.buckets || d.list || d.items || d.records ||
+      (d.data && (d.data.buckets || d.data.list || d.data.items)) || null;
+    if (!rows || !rows.length) throw new Error("CloudBase 环境中没有存储桶");
+    var def = null;
+    for (var i = 0; i < rows.length; i++) {
+      var b = rows[i] || {};
+      if (b.isDefault === true || b.default === true || b.is_default === true || b.type === "default") { def = b; break; }
+    }
+    if (!def) def = rows[0];
+    var id = def.id || def.bucketId || def.bucket_id || def.name || "";
+    if (!id) throw new Error("无法解析默认桶 ID");
+    console.log("[cloudbase.js] ✅ 默认存储桶 ID:", id);
+    return id;
+  })().catch(function (e) {
+    // 失败后允许后续重试（不缓存 rejection）
+    _defaultBucketPromise = null;
+    throw e;
+  });
+  return _defaultBucketPromise;
 }
 
 function makeStorageRef(bucketName) {
@@ -710,7 +767,16 @@ function makeStorageRef(bucketName) {
     if (!app || !app.storage) throw new Error("CloudBase Storage 未初始化");
     var st = app.storage;
     if (typeof st.from === "function") {
-      return bucketName ? st.from(bucketName) : st.from();
+      // CloudBase 环境只有一个默认桶；忽略 Supabase 时代的桶名（'app-photos'），
+      // 动态解析真实桶 ID，否则上传 404、签名/删除报 bucketId is not set
+      try {
+        var realBucketId = await resolveDefaultBucketId(st);
+        return st.from(realBucketId);
+      } catch (e) {
+        console.warn("[cloudbase.js] 解析默认桶失败，回退经典存储 API（仅 upload 可用）:",
+          e && e.message ? e.message : e);
+        return st.from();
+      }
     }
     return st;
   }
@@ -736,17 +802,26 @@ function makeStorageRef(bucketName) {
       }
     },
 
-    // 列目录：优先 SDK（若支持），否则调 tcb-file-list 云函数
+    // 列目录：优先 SDK 新版桶 API；失败/不支持时回退 tcb-file-list 云函数（服务端默认桶）
     async list(prefix, options) {
+      var sdkErr = null;
       try {
         var ref = await getFromRef();
         if (ref && typeof ref.list === "function") {
           // SDK 签名为 list(prefix: string, options)：首参必须是字符串 prefix
           var lr = await ref.list(String(prefix || ""), options || {});
-          if (lr && lr.error) return { data: null, error: mapError(lr.error) };
-          return { data: normalizeStorageList(lr, prefix || ""), error: null };
+          if (lr && !lr.error) return { data: normalizeStorageList(lr, prefix || ""), error: null };
+          sdkErr = (lr && lr.error) || mapError("SDK list 失败");
+          console.warn("[cloudbase.js] SDK list 失败，回退云函数 " + FILE_LIST_FUNCTION + ":",
+            sdkErr && sdkErr.message ? sdkErr.message : sdkErr);
         }
-        // 云函数兜底（需部署 tcb-file-list）
+      } catch (e) {
+        sdkErr = mapError(e);
+        console.warn("[cloudbase.js] SDK list 异常，回退云函数 " + FILE_LIST_FUNCTION + ":",
+          sdkErr && sdkErr.message ? sdkErr.message : sdkErr);
+      }
+      // 云函数兜底（需部署 tcb-file-list；其内部使用环境默认桶）
+      try {
         var app = await getApp();
         var fnRes = await app.callFunction({
           name: FILE_LIST_FUNCTION,
@@ -755,8 +830,9 @@ function makeStorageRef(bucketName) {
         var payload = (fnRes && (fnRes.result || fnRes.data)) || {};
         if (payload.error) return { data: null, error: mapError(payload.error) };
         return { data: payload.data || [], error: null };
-      } catch (e) {
-        return { data: null, error: mapError(e) };
+      } catch (fe) {
+        // 云函数也失败时优先回报 SDK 的错误（信息更贴近真实根因）
+        return { data: null, error: sdkErr || mapError(fe) };
       }
     },
 
@@ -767,7 +843,9 @@ function makeStorageRef(bucketName) {
         var sr = await ref.createSignedUrl(path, expiresIn || 7200);
         if (sr && sr.error) return { data: null, error: mapError(sr.error) };
         var sd = (sr && sr.data) || {};
-        var signedUrl = sd.signedUrl || sd.signedURL || sd.url || (Array.isArray(sd) && sd[0] && (sd[0].signedUrl || sd[0].url)) || null;
+        // 经典 API 返回 signedUrl；新版桶 API 返回 fullSignedURL/signedURL
+        var signedUrl = sd.signedUrl || sd.signedURL || sd.fullSignedURL || sd.fullSignedUrl || sd.url ||
+          (Array.isArray(sd) && sd[0] && (sd[0].signedUrl || sd[0].fullSignedURL || sd[0].url)) || null;
         if (!signedUrl) return { data: null, error: mapError("createSignedUrl 未返回 URL") };
         return { data: { signedUrl: signedUrl }, error: null };
       } catch (e) {

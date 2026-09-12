@@ -257,7 +257,7 @@
 
 <script src="js/common.js?v=20260912a"></script>
 <script src="js/auth-guard.js?v=20260823a"></script>
-<script type="module" src="js/cloudbase.js?v=20260822ff"></script>
+<script type="module" src="js/cloudbase.js?v=20260912a"></script>
 <script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
 <script src="js/cloudbase-bridge.js?v=20260822f"></script>
@@ -941,19 +941,21 @@
     },
 
     _fetchBlob: async function(path) {
-      // 优先兼容层 download，失败回退 fetch(signedUrl)
-      try {
-        var dr = await this._st().download(path.slice(1));
-        if (dr && !dr.error && dr.data) {
-          if (dr.data instanceof Blob) return dr.data;
-          if (dr.data.fileContent instanceof Blob) return dr.data.fileContent;
-        }
-      } catch(_e) {}
+      // 优先 signed URL + fetch（最稳：新旧 SDK、云函数环境均适用；
+      // 新版桶 API 的 download() 返回 DownloadBuilder 而非 Promise，不直接 await）
       var url = await this._signed(path, 3600);
-      if (!url) throw new Error('无法获取文件下载地址');
-      var resp = await fetch(url);
-      if (!resp.ok) throw new Error('下载失败 HTTP ' + resp.status);
-      return await resp.blob();
+      if (url) {
+        var resp = await fetch(url);
+        if (resp.ok) return await resp.blob();
+        throw new Error('下载失败 HTTP ' + resp.status);
+      }
+      // 兜底：兼容层 download（经典 API 时可用）
+      var dr = await this._st().download(path.slice(1));
+      if (dr && !dr.error && dr.data) {
+        if (dr.data instanceof Blob) return dr.data;
+        if (dr.data.fileContent instanceof Blob) return dr.data.fileContent;
+      }
+      throw new Error('无法获取文件下载地址');
     },
 
     download: async function(path) {
