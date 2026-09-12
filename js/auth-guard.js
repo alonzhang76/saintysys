@@ -207,7 +207,12 @@
    * 对有 App 的页面，与 App.checkLogin() 互为冗余双保险，均跳 login.html
    */
   var _preSession = readSupabaseSession();
-  if (!_preSession || !_preSession.user) {
+  // 同步预检：无会话 或 匿名会话（无邮箱）都立即跳登录页
+  // PG 模式匿名用户 JWT role=anon，写操作必 401，不应进入受保护页面
+  if (!_preSession || !_preSession.user || _preSession.user.is_anonymous || !_preSession.user.email) {
+    if (_preSession && _preSession.user && (_preSession.user.is_anonymous || !_preSession.user.email)) {
+      console.warn("[auth-guard] 本地会话为匿名（无邮箱），已清除并跳转登录页");
+    }
     clearAllAuthState();
     // 关键修复：无会话时的跳转也用"乐观多次跳转"
     // 避免 Safari 或 file:/// 协议下 replace 被静默吞掉
@@ -253,6 +258,22 @@
 
       const user = data.user;
       window.currentSupabaseUser = user;
+
+      // PG 模式关键校验：匿名用户（JWT role=anon）对数据库只有只读权限，
+      // 任何写操作都会 401 permission denied。匿名会话不应进入受保护页面。
+      if (user && (user.is_anonymous || !user.email)) {
+        console.warn("[auth-guard] 检测到匿名会话（无邮箱），跳转到登录页。请用邮箱账号登录。");
+        clearAllAuthState();
+        const goLogin = function() {
+          try { window.location.replace("login.html"); }
+          catch (e) { window.location.href = "login.html"; }
+        };
+        goLogin();
+        setTimeout(goLogin, 20);
+        setTimeout(goLogin, 200);
+        setTimeout(goLogin, 1500);
+        return;
+      }
 
       // 从 Supabase user_roles 表加载用户真实角色
       try {

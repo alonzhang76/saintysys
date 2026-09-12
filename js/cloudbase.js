@@ -322,11 +322,17 @@ function mapUser(raw) {
   var username = raw.username || raw.nickname || raw.nickName || (email ? email.split("@")[0] : "用户");
   var meta = Object.assign({}, custom);
   if (!meta.username) meta.username = username;
+  // PG 模式：匿名用户的 JWT role=anon，写操作会被拒（401）；显式标记以便上层拦截
+  var isAnon = !!(raw.isAnonymous || raw.is_anonymous ||
+    (raw.user_metadata && (raw.user_metadata.is_anonymous || raw.user_metadata.isAnonymous)) ||
+    /^anon/i.test(raw.scope || "") ||
+    (raw.app_metadata && raw.app_metadata.provider === "anonymous"));
   return {
     id: id,
     sub: id,
     email: email,
     phone: raw.phone || raw.phoneNumber || "",
+    is_anonymous: isAnon,
     user_metadata: meta,
     app_metadata: { provider: raw.provider || "cloudbase" },
     created_at: raw.createdAt || raw.createAt || raw.createTime || raw.create_date || "",
