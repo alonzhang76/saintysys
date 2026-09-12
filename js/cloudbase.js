@@ -741,13 +741,8 @@ function makeStorageRef(bucketName) {
       try {
         var ref = await getFromRef();
         if (ref && typeof ref.list === "function") {
-          var lr;
-          try {
-            // CloudBase SDK 签名为 list({ prefix, marker, pageSize })
-            lr = await ref.list(Object.assign({ prefix: prefix || "" }, options || {}));
-          } catch (e1) {
-            lr = await ref.list(prefix || "", options || {});
-          }
+          // SDK 签名为 list(prefix: string, options)：首参必须是字符串 prefix
+          var lr = await ref.list(String(prefix || ""), options || {});
           if (lr && lr.error) return { data: null, error: mapError(lr.error) };
           return { data: normalizeStorageList(lr, prefix || ""), error: null };
         }
