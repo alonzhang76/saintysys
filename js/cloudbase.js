@@ -669,6 +669,41 @@ class TcbQueryBuilder {
 }
 
 /* ---------- Storage 兼容层 ---------- */
+// 将 CloudBase SDK 的 list 返回值归一化为 Supabase 风格数组 [{name, type:'folder'|'file'}]
+// 兼容多种返回结构：Array / {files:[]} / {data:{files:[]}} / {data:[]} / {Contents:[]}
+function normalizeStorageList(raw, prefix) {
+  var arr = null;
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw && Array.isArray(raw.files)) arr = raw.files;
+  else if (raw && raw.data && Array.isArray(raw.data.files)) arr = raw.data.files;
+  else if (raw && raw.data && Array.isArray(raw.data)) arr = raw.data;
+  else if (raw && Array.isArray(raw.Contents)) arr = raw.Contents;
+  if (!arr) return [];
+  var pre = prefix || "";
+  var out = [], seen = {};
+  for (var i = 0; i < arr.length; i++) {
+    var it = arr[i] || {};
+    var key = it.Key || it.key || it.name || it.Name || it.fileName || it.fileID || it.FileID || "";
+    if (!key) continue;
+    var name = String(key).replace(/^\//, "").replace(/\/+$/, "");
+    if (pre && name.indexOf(pre) === 0) name = name.slice(pre.length);
+    name = name.replace(/^\//, "");
+    var isDir = it.type === "folder" || it.IsDir === true || it.isdir === true || /\/$/.test(String(key));
+    var slashIdx = name.indexOf("/");
+    if (slashIdx >= 0) { name = name.slice(0, slashIdx); isDir = true; }
+    if (!name || seen[name]) continue;
+    seen[name] = true;
+    out.push({
+      name: name,
+      type: isDir ? "folder" : "file",
+      id: it.id || it.ETag || name,
+      metadata: it.Size != null ? { size: Number(it.Size) } : (it.metadata || null),
+      raw: it,
+    });
+  }
+  return out;
+}
+
 function makeStorageRef(bucketName) {
   async function getFromRef() {
     var app = await getApp();
@@ -706,9 +741,15 @@ function makeStorageRef(bucketName) {
       try {
         var ref = await getFromRef();
         if (ref && typeof ref.list === "function") {
-          var lr = await ref.list(prefix || "", options || {});
+          var lr;
+          try {
+            // CloudBase SDK 签名为 list({ prefix, marker, pageSize })
+            lr = await ref.list(Object.assign({ prefix: prefix || "" }, options || {}));
+          } catch (e1) {
+            lr = await ref.list(prefix || "", options || {});
+          }
           if (lr && lr.error) return { data: null, error: mapError(lr.error) };
-          return { data: (lr && lr.data) || [], error: null };
+          return { data: normalizeStorageList(lr, prefix || ""), error: null };
         }
         // 云函数兜底（需部署 tcb-file-list）
         var app = await getApp();
