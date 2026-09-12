@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1305,7 +1305,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 <div id="sp_toastContainer"></div>
 
-<script src="js/common.js?v=20260912b"></script>
+<script src="js/common.js?v=20260912c"></script>
 <!-- Supabase 登录守卫 -->
 <script src="js/auth-guard.js?v=20260912a"></script>
 <!-- Supabase 存储层：localStorage → Supabase -->
@@ -1314,7 +1314,7 @@ input[type="number"] { -moz-appearance: textfield; }
 <script src="js/localstorage-patch.js?v=20260823a"></script>
 <script src="js/cloudbase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
-<script type="module" src="js/form-submit.js?v=20260820"></script>
+<script type="module" src="js/form-submit.js?v=20260912a"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script src="js/init-page.js?v=20260825b"></script>
 <script>
@@ -1767,7 +1767,10 @@ async function _uploadSamplePicture(prefix, file) {
     if (previewImg) { previewImg.src = localUrl; previewImg.style.display = 'block'; }
   } catch(_e) {}
   try {
-    var result = await SupabaseSubmit.uploadPicture(file, 'sample');
+    // 款号从表单读取，确保图片统一进 图片文件/款式图/ 并按款号共享
+    var snEl = document.getElementById('sp_f_styleNo');
+    var snVal = snEl ? String(snEl.value || '').trim() : '';
+    var result = await SupabaseSubmit.uploadPicture(file, 'sample', snVal || null);
     if (!result || !result.path) {
       statusEl.className = 'pic-upload-status err';
       statusEl.textContent = '上传失败，请重试';

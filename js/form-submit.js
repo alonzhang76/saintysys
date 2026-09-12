@@ -82,6 +82,26 @@ function safeFileName(name) {
     .slice(0, 120);
 }
 
+// 轻量 HTML 转义（确认弹窗展示文件名用）
+function escapeHtmlLite(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// 从文件名识别款号：1110577.png / GW27-003.jpg / SS-3011043.webp
+function detectStyleNoFromFileName(name) {
+  if (!name) return "";
+  var stem = String(name).replace(/\.[^.]+$/, "");
+  var m1 = stem.match(/[A-Za-z]{1,4}[-_]?\d{2,5}[-_]?\d{1,5}/);
+  if (m1) return m1[0];
+  var m2 = stem.match(/\d{5,8}/);
+  if (m2) return m2[0];
+  var m3 = stem.match(/[A-Za-z]{1,4}\d{3,6}/);
+  if (m3) return m3[0];
+  return "";
+}
+
 // 根据当前页面推断 form_type
 function getFormTypeFromPage() {
   const path = (location.pathname || "").split("/").pop() || "index.html";
@@ -495,28 +515,52 @@ const SupabaseSubmit = {
       return null;
     }
 
-    // 路径策略：
-    //   a) 如果传了 styleNo（款号） → 新组织方式：{styleNo}/{uuid}-{safeOriginalName}
-    //      → 所有模块共用同一个款号文件夹，order / consumption / sample 传同一个款号自动相互复用图片
-    //   b) 没传 styleNo → 向后兼容旧路径：{userId}/{subFolder}/{uuid}-{safeOriginalName}
+    // 路径策略（统一规则）：
+    //   款式图（订单/样衣/用料/QC款号图等）→ 统一存 图片文件/款式图/{原文件名}
+    //   例外：QC 问题照片（subFolder='qcFieldIssue'）非款式图，保留旧 {userId}/{subFolder}/ 路径
     const safeOrig = safeFileName(file.name);
-    const ext = ((safeOrig.split(".").pop() || "jpg")).toLowerCase();
+    const isQcIssue = subFolder === "qcFieldIssue";
+    const UNI_STYLE_DIR = "图片文件/款式图";
     let path;
-    if (styleNo && String(styleNo).trim()) {
-      const sn = String(styleNo).trim();
-      path = sn + "/" + crypto.randomUUID() + "-" + safeOrig;
+    let overwrite = false;
+    // 未显式传款号时，尝试从文件名识别（如 1110577.png、GW27-003.jpg）
+    let effStyleNo = (styleNo && String(styleNo).trim()) || detectStyleNoFromFileName(file.name);
+
+    if (!isQcIssue) {
+      path = UNI_STYLE_DIR + "/" + safeOrig;
+      // 同名检查：列出统一目录，若已存在同名文件则提示 覆盖/取消
+      try {
+        const existRes = await supabase.storage.from(STORAGE_BUCKET).list(UNI_STYLE_DIR, { limit: 1000 });
+        const rows = (existRes && !existRes.error && Array.isArray(existRes.data)) ? existRes.data : [];
+        const dup = rows.some(function(r){ return r && r.type !== "folder" && String(r.name || "") === safeOrig; });
+        if (dup) {
+          const msg = "「款式图」文件夹中已存在同名文件 <b>" + escapeHtmlLite(safeOrig) +
+            "</b><br>覆盖将替换旧图片，是否继续？";
+          if (window.App && typeof App.confirmAsync === "function") {
+            overwrite = await App.confirmAsync(msg, "覆盖", true);
+          } else {
+            overwrite = window.confirm("「款式图」文件夹中已存在同名文件 " + safeOrig + "，是否覆盖？");
+          }
+          if (!overwrite) {
+            toast("已取消上传（同名文件未覆盖）", "info");
+            return null;
+          }
+        }
+      } catch(_eList) {
+        console.warn("[form-submit] 同名检查失败，按继续处理:", _eList);
+      }
     } else {
       path = user.id + "/" + subFolder + "/" + crypto.randomUUID() + "-" + safeOrig;
     }
     const _subFolderHint = subFolder;
 
-    console.log("[form-submit] uploadPicture: bucket=" + STORAGE_BUCKET + ", path=" + path + ", userId=" + user.id + (styleNo ? (", styleNo=" + styleNo) : ""));
+    console.log("[form-submit] uploadPicture: bucket=" + STORAGE_BUCKET + ", path=" + path + ", userId=" + user.id + (effStyleNo ? (", styleNo=" + effStyleNo) : "") + (overwrite ? ", overwrite=true" : ""));
 
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, file, {
         contentType: file.type || "image/jpeg",
-        upsert: false,
+        upsert: overwrite,
       });
 
     if (error) {
@@ -534,21 +578,24 @@ const SupabaseSubmit = {
     }
 
     // 更新 StyleImgCache 共享缓存（款式图/大图根据文件名关键字判断），保证一上传其它模块同款号立刻能看到
-    if (styleNo && window.StyleImgCache && typeof window.StyleImgCache.put === 'function') {
+    if (effStyleNo && window.StyleImgCache && typeof window.StyleImgCache.put === 'function') {
       try {
         var lower = String(safeOrig).toLowerCase();
         var isFull = (lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0
           || lower.indexOf('大图') >= 0);
-        var existing = (typeof window.StyleImgCache.resolve === 'function') ? (window.StyleImgCache.resolve(styleNo) || {}) : {};
-        var patch = { styleImg_path: existing.styleImg_path || '', fullImg_path: existing.fullImg_path || '' };
-        if (isFull) { if (!patch.fullImg_path) patch.fullImg_path = path; else patch.styleImg_path = patch.styleImg_path || path; }
-        else       { if (!patch.styleImg_path) patch.styleImg_path = path; else patch.fullImg_path = patch.fullImg_path || path; }
-        window.StyleImgCache.put(styleNo, patch);
+        var existing = (typeof window.StyleImgCache.resolve === 'function') ? (window.StyleImgCache.resolve(effStyleNo) || {}) : {};
+        var patch = {
+          styleImg_path: overwrite ? path : (existing.styleImg_path || ''),
+          fullImg_path: existing.fullImg_path || ''
+        };
+        if (isFull) { patch.fullImg_path = path; }
+        else if (!patch.styleImg_path) { patch.styleImg_path = path; }
+        window.StyleImgCache.put(effStyleNo, patch);
       } catch(_e) {}
     }
 
     console.log("[form-submit] uploadPicture 成功:", data);
-    toast("上传成功" + (styleNo ? "（已自动共享给同款号其它模块）" : ""), "success");
+    toast("上传成功" + (effStyleNo ? "（已自动共享给同款号其它模块）" : "") + (overwrite ? "（已覆盖同名文件）" : ""), "success");
     return { path: path, fileName: file.name };
   },
 
@@ -785,6 +832,33 @@ const SupabaseSubmit = {
     const searchTargets = ["order", "consumption", "sample", "wash", "fabric", "accessory", "uploads"];
     const allHits = [];
     const user = await self._peekCurrentUser(); // 绝不跳转登录页
+
+    // 0) 优先直查统一款式图目录：图片文件/款式图/（文件中心与各标签页的统一上传位置）
+    try {
+      const uniDir = '图片文件/款式图';
+      const ures = await supabase.storage.from(bucket).list(uniDir, { limit: 1000 });
+      if (ures && !ures.error && Array.isArray(ures.data)) {
+        const snLower = sn.toLowerCase();
+        for (const uitem of ures.data) {
+          if (!uitem || uitem.type === 'folder') continue;
+          const uname = String(uitem.name || '');
+          if (!/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(uname)) continue;
+          const ustem = uname.replace(/\.[^.]+$/, '').toLowerCase();
+          if (ustem !== snLower && ustem.indexOf(snLower) < 0) continue;
+          const ufull = uniDir + '/' + uname;
+          let usigned = null;
+          try { const sr = await supabase.storage.from(bucket).createSignedUrl(ufull, 3600); if (sr && !sr.error && sr.data && sr.data.signedUrl) usigned = sr.data.signedUrl; } catch(_es) {}
+          const uscore = ustem === snLower ? 120 : (ustem.indexOf(snLower) === 0 ? 110 : 95);
+          allHits.push({
+            path: ufull, signedUrl: usigned, score: uscore,
+            folder: 'uniStyle', isFull: self._isFull(ufull)
+          });
+        }
+        if (allHits.length) console.log('[SupabaseSubmit] findStyleImages 统一目录命中 ' + allHits.length + ' 张');
+      }
+    } catch(_eUni) {
+      console.warn('[SupabaseSubmit] findStyleImages 统一目录查询异常:', _eUni && _eUni.message ? _eUni.message : _eUni);
+    }
 
     // 1) 对每个 subFolder 使用 findPictureByStyleNo（内部含跨用户策略 + 缓存）
     for (let i = 0; i < searchTargets.length; i++) {

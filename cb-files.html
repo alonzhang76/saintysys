@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -187,7 +187,7 @@
         <div class="cfb-style-row">
           <label style="font-size:12.5px;font-weight:600;color:#334155;">关联款号：</label>
           <input type="text" id="cfbStyleNo" placeholder="如 GW27-003（可留空）">
-          <span class="hint">填写款号后上传的<b>图片</b>会存入该款号文件夹，并自动共享给「订单管理 / 样衣管理 / 用料及纸板」等模块显示缩略图；文档也会归类到该款号目录下。<b>留空时会从文件名自动识别款号</b>（如 <code>1110577.png</code>、<code>GW27-003.jpg</code>）。</span>
+          <span class="hint">上传的<b>图片</b>统一存入 <code>图片文件/款式图/</code>（与订单、样衣等标签页同一位置），自动共享给「订单管理 / 样衣管理 / 用料及纸板」等模块显示缩略图。可填款号辅助关联；<b>留空时从文件名自动识别款号</b>（如 <code>1110577.png</code>、<code>GW27-003.jpg</code>）。同名文件会提示覆盖或取消。</span>
         </div>
         <div class="cfb-zones" id="cfbZones"></div>
         <input type="file" id="cfbPicker" multiple style="display:none;">
@@ -255,14 +255,14 @@
   </div>
 </div>
 
-<script src="js/common.js?v=20260912b"></script>
+<script src="js/common.js?v=20260912c"></script>
 <script src="js/auth-guard.js?v=20260912a"></script>
 <script type="module" src="js/cloudbase.js?v=20260912g"></script>
 <script src="js/cloudbase-store.js?v=20260825c"></script>
 <script src="js/localstorage-patch.js?v=20260823a"></script>
 <script src="js/cloudbase-bridge.js?v=20260822f"></script>
 <script type="module" src="js/admin-config.js?v=20260813"></script>
-<script type="module" src="js/form-submit.js?v=20260823a"></script>
+<script type="module" src="js/form-submit.js?v=20260912a"></script>
 <script type="module" src="js/logout.js?v=20260813"></script>
 <script src="js/init-page.js?v=20260825b"></script>
 <script>
@@ -1170,15 +1170,10 @@
       var z = ZONES.find(function(x){ return x.key === zoneKey; }) || null;
 
       // 目标目录规则：
-      //   指定 targetDir（文件管理器上传/整页拖放）→ 用它（根目录时按分区归档）
-      //   分区上传：有款号 → /{款号}/；无款号 → /{分区目录}/
-      var dir = targetDir;
-      if (!dir) {
-        if (styleNo) dir = '/' + styleNo;
-        else dir = '/' + (z ? z.folder : '其他文件');
-      } else if (dir === '/') {
-        dir = '/' + (z ? z.folder : '其他文件');
-      }
+      //   分区「图片上传」→ 统一进 /图片文件/款式图/（与各标签页款式图同一位置）
+      //   其他分区 → 各自分区目录
+      //   文件管理器上传/整页拖放（targetDir）→ 用户所选目录（根目录按类型归档）
+      var UNI_STYLE_DIR = '/图片文件/款式图';
 
       // 分区类型校验（other 放行一切）
       if (z && z.exts && z.key !== 'other') {
@@ -1199,38 +1194,82 @@
       }
       if (!files.length) return;
 
-      this.setStatus('warn', '正在上传 ' + files.length + ' 个文件…');
+      // 为每个文件计算上传计划（目标目录 / 云端路径 / 关联款号）
+      var plans = files.map(function(f) {
+        var isImageZone = z && z.key === 'image';
+        var fileDir;
+        var effStyleNo = '';
+        if (!targetDir) {
+          if (isImageZone) {
+            fileDir = UNI_STYLE_DIR;
+            effStyleNo = styleNo || self._detectStyleNoFromName(f.name);
+          } else {
+            fileDir = '/' + (z ? z.folder : '其他文件');
+          }
+        } else {
+          fileDir = (targetDir === '/') ? ('/' + self._zoneFolderOfName(f.name)) : targetDir;
+          if (isImageZone) effStyleNo = styleNo || self._detectStyleNoFromName(f.name);
+        }
+        var name = self._safeName(f.name);
+        return {
+          f: f, fileDir: fileDir, name: name,
+          path: self.join(fileDir, name),
+          effStyleNo: effStyleNo,
+          isImage: self._isImageName(f.name),
+          overwrite: false, skip: false
+        };
+      });
+
+      // 同名检查：按目标目录分组，每个目录 list 一次
+      var dirMap = {};
+      plans.forEach(function(p){ (dirMap[p.fileDir] = dirMap[p.fileDir] || []).push(p); });
+      var dirKeys = Object.keys(dirMap);
+      for (var di = 0; di < dirKeys.length; di++) {
+        var dk = dirKeys[di];
+        var dPlans = dirMap[dk];
+        var lr = await self.listDir(dk);
+        var existNames = {};
+        (lr.list || []).forEach(function(it){ if (it.type === 'file') existNames[it.name] = true; });
+        var dups = dPlans.filter(function(p){ return existNames[p.name]; });
+        if (dups.length) {
+          var showNames = dups.slice(0, 5).map(function(p){ return App.utils.escapeHtml(p.name); }).join('、') +
+            (dups.length > 5 ? ' 等 ' + dups.length + ' 个' : '');
+          var msg = '目标文件夹已存在同名文件：<b>' + showNames + '</b><br>是否<b>覆盖</b>？点「取消」则跳过这些文件。';
+          var ow = await App.confirmAsync(msg, '覆盖', true);
+          dups.forEach(function(p){ if (ow) p.overwrite = true; else p.skip = true; });
+        }
+      }
+      var willUpload = plans.filter(function(p){ return !p.skip; });
+      if (!willUpload.length) {
+        App.toast('已取消：所有同名文件均未覆盖', 'info', 3000);
+        return;
+      }
+
+      this.setStatus('warn', '正在上传 ' + willUpload.length + ' 个文件…');
       this._zoneBusy[zoneKey] = true;
       this._setZoneBusy(zoneKey, true);
       this.setProgress(3);
 
-      var okCount = 0, failCount = 0, failNames = [];
-      for (var i = 0; i < files.length; i++) {
-        var f = files[i];
-        // 根目录直传（无款号）时按每个文件的类型自动归档到对应分区目录
-        var fileDir = dir;
-        // 没手动填款号时，尝试从文件名自动识别款号（如 "1110577.png"、"GW27-003.jpg"）
-        var effStyleNo = styleNo || (z && z.key === 'image' ? this._detectStyleNoFromName(f.name) : '');
-        if (targetDir === '/' && !effStyleNo) {
-          fileDir = '/' + this._zoneFolderOfName(f.name);
-        }
-        // 自动识别到款号时，归入款号目录（与手动填款号行为一致）
-        if (!styleNo && effStyleNo && !targetDir) fileDir = '/' + effStyleNo;
-        // 保持云端文件名与电脑端原文件名一致（重名时 upsert 覆盖）
-        var path = this.join(fileDir, this._safeName(f.name));
+      var okCount = 0, failCount = 0, skipCount = plans.length - willUpload.length;
+      var failNames = [];
+      for (var i = 0; i < plans.length; i++) {
+        var p = plans[i];
+        if (p.skip) continue;
+        var f = p.f;
+        var path = p.path;
         try {
-          var res = await this._st().upload(path.slice(1), f, { contentType: f.type || this._guessMime(f.name), upsert: true });
+          var res = await this._st().upload(path.slice(1), f, { contentType: f.type || this._guessMime(f.name), upsert: p.overwrite });
           if (res && res.error) throw res.error;
           okCount++;
           // 图片 + 款号 → 写入 StyleImgCache 共享缓存（跨模块缩略图）
-          if (effStyleNo && z && z.key === 'image') this._cacheStyleUpload(effStyleNo, path, f.name);
-          console.log('[CFB] 上传成功:', path, effStyleNo ? '(关联款号 ' + effStyleNo + ')' : '');
+          if (p.isImage && p.effStyleNo) this._cacheStyleUpload(p.effStyleNo, path, f.name, p.overwrite);
+          console.log('[CFB] 上传成功:', path, p.effStyleNo ? ('(关联款号 ' + p.effStyleNo + ')') : '', p.overwrite ? '(覆盖)' : '');
         } catch(err) {
           failCount++;
           failNames.push(f.name);
           console.error('[CFB] 上传失败:', path, err);
         }
-        this.setProgress(Math.round((i + 1) / files.length * 100));
+        this.setProgress(Math.round((i + 1) / plans.length * 100));
       }
 
       this._zoneBusy[zoneKey] = false;
@@ -1238,8 +1277,9 @@
       this.setProgress(null);
       this.setStatus('ok', 'CloudBase 云存储已连接');
 
-      if (okCount && !failCount) App.toast('✅ 成功上传 ' + okCount + ' 个文件到「' + dir + '」' + (styleNo ? '（款号 ' + styleNo + '）' : ''), 'success', 3000);
-      else if (okCount && failCount) App.toast('⚠️ ' + okCount + ' 个成功，' + failCount + ' 个失败：' + failNames.slice(0, 3).join('、') + (failNames.length > 3 ? '…' : ''), 'warning', 4500);
+      var skipHint = skipCount ? ('，跳过 ' + skipCount + ' 个同名文件') : '';
+      if (okCount && !failCount) App.toast('✅ 成功上传 ' + okCount + ' 个文件' + skipHint, 'success', 3000);
+      else if (okCount && failCount) App.toast('⚠️ ' + okCount + ' 个成功' + skipHint + '，' + failCount + ' 个失败：' + failNames.slice(0, 3).join('、') + (failNames.length > 3 ? '…' : ''), 'warning', 4500);
       else if (failCount) App.toast('❌ 上传失败：' + failNames.slice(0, 3).join('、') + (failNames.length > 3 ? '…' : ''), 'error', 4500);
 
       // 上传后刷新当前视图与目录树（根目录归档可能落到任意分区目录，统一刷新最稳妥）
@@ -1305,15 +1345,18 @@
     },
 
     // 款号图片上传后写 StyleImgCache（与 form-submit.js uploadPicture 同规则）
-    _cacheStyleUpload: function(styleNo, path, origName) {
+    // overwrite=true 时强制把缓存指向新路径（覆盖旧图）
+    _cacheStyleUpload: function(styleNo, path, origName, overwrite) {
       try {
         if (!window.StyleImgCache) return;
         var lower = String(origName || '').toLowerCase();
         var isFull = lower.indexOf('full') >= 0 || lower.indexOf('big') >= 0 || lower.indexOf('large') >= 0 || lower.indexOf('大图') >= 0;
         var existing = (typeof StyleImgCache.resolve === 'function') ? (StyleImgCache.resolve(styleNo) || {}) : {};
         var patch = { styleImg_path: existing.styleImg_path || '', fullImg_path: existing.fullImg_path || '' };
-        if (isFull) { if (!patch.fullImg_path) patch.fullImg_path = path; }
-        else { if (!patch.styleImg_path) patch.styleImg_path = path; }
+        if (isFull) { patch.fullImg_path = path; if (overwrite && !patch.styleImg_path) patch.styleImg_path = path; }
+        else {
+          if (overwrite || !patch.styleImg_path) patch.styleImg_path = path;
+        }
         StyleImgCache.set(styleNo, patch);
       } catch(_e) {}
     },

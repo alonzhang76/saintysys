@@ -520,6 +520,25 @@ const App = {
     });
   },
 
+  // Promise 版确认框：返回 true=确定 / false=取消（供 async/await 调用）
+  confirmAsync(message, okText, danger) {
+    return new Promise((resolve) => {
+      const btnCls = danger === false ? 'btn btn-primary' : 'btn btn-danger';
+      const overlay = this.modal.open({
+        title: '确认操作',
+        body: `<p style="font-size:14px;">${message}</p>`,
+        footer: `<button class="btn" id="confirm-cancel-btn">取消</button><button class="${btnCls}" id="confirm-ok-btn">${okText || '确定'}</button>`,
+        size: 'sm'
+      });
+      let done = false;
+      const finish = (v) => { if (done) return; done = true; this.modal.close(); resolve(v); };
+      const okBtn = document.getElementById('confirm-ok-btn');
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+      if (okBtn) okBtn.addEventListener('click', () => finish(true));
+      if (cancelBtn) cancelBtn.addEventListener('click', () => finish(false));
+    });
+  },
+
   // ===== 工具函数 =====
   utils: {
     // 生成ID
@@ -1656,6 +1675,38 @@ window.getStyleImagesForStyleNo = async function getStyleImagesForStyleNo(styleN
       } catch(_eList) {
         console.warn('[getStyleImagesForStyleNo] ③-extra list 款号文件夹异常:', _eList && _eList.message ? _eList.message : _eList);
       }
+    }
+    // ===== 统一款式图目录：图片文件/款式图/{款号}.ext（文件中心/各标签页统一上传位置）=====
+    try {
+      var bucketU = window.STORAGE_BUCKET || 'app-photos';
+      if (window.supabase && window.supabase.storage && window.supabase.storage.from) {
+        // 先直接试标准命名（省一次 list）
+        var uniDir = '图片文件/款式图/';
+        for (var ue = 0; ue < exts.length; ue++) {
+          candidates.push({ path: uniDir + sn + '.' + exts[ue], hint: 'style' });
+          candidates.push({ path: uniDir + sn.toUpperCase() + '.' + exts[ue], hint: 'style' });
+        }
+        // list 统一目录，匹配文件名含款号的图片
+        var ur = await window.supabase.storage.from(bucketU).list('图片文件/款式图', { limit: 1000 });
+        if (ur && !ur.error && Array.isArray(ur.data)) {
+          for (var ui = 0; ui < ur.data.length; ui++) {
+            var uentry = ur.data[ui];
+            if (!uentry || uentry.type === 'folder') continue;
+            var uname = String(uentry.name || '');
+            if (!/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(uname)) continue;
+            var ustem = uname.replace(/\.[^.]+$/, '').toLowerCase();
+            // 文件名就是款号，或文件名包含款号
+            if (ustem === sn || ustem.indexOf(sn) >= 0) {
+              var ulower = uname.toLowerCase();
+              var uisFull = (ulower.indexOf('full') >= 0 || ulower.indexOf('big') >= 0 || ulower.indexOf('large') >= 0 || ulower.indexOf('大图') >= 0);
+              candidates.push({ path: uniDir + uname, hint: uisFull ? 'full' : 'style' });
+            }
+          }
+          console.log('[getStyleImagesForStyleNo] ③-extra list 统一目录 图片文件/款式图 返回 ' + ur.data.length + ' 条');
+        }
+      }
+    } catch(_eUni) {
+      console.warn('[getStyleImagesForStyleNo] ③-extra list 统一款式图目录异常:', _eUni && _eUni.message ? _eUni.message : _eUni);
     }
     // 去重
     var seenCand = {};
