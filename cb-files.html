@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -187,7 +187,7 @@
         <div class="cfb-style-row">
           <label style="font-size:12.5px;font-weight:600;color:#334155;">关联款号：</label>
           <input type="text" id="cfbStyleNo" placeholder="如 GW27-003（可留空）">
-          <span class="hint">填写款号后上传的<b>图片</b>会存入该款号文件夹，并自动共享给「订单管理 / 样衣管理 / 用料及纸板」等模块显示缩略图；文档也会归类到该款号目录下。</span>
+          <span class="hint">填写款号后上传的<b>图片</b>会存入该款号文件夹，并自动共享给「订单管理 / 样衣管理 / 用料及纸板」等模块显示缩略图；文档也会归类到该款号目录下。<b>留空时会从文件名自动识别款号</b>（如 <code>1110577.png</code>、<code>GW27-003.jpg</code>）。</span>
         </div>
         <div class="cfb-zones" id="cfbZones"></div>
         <input type="file" id="cfbPicker" multiple style="display:none;">
@@ -1209,17 +1209,22 @@
         var f = files[i];
         // 根目录直传（无款号）时按每个文件的类型自动归档到对应分区目录
         var fileDir = dir;
-        if (targetDir === '/' && !styleNo) {
+        // 没手动填款号时，尝试从文件名自动识别款号（如 "1110577.png"、"GW27-003.jpg"）
+        var effStyleNo = styleNo || (z && z.key === 'image' ? this._detectStyleNoFromName(f.name) : '');
+        if (targetDir === '/' && !effStyleNo) {
           fileDir = '/' + this._zoneFolderOfName(f.name);
         }
-        var path = this.join(fileDir, this._uuid() + '-' + this._safeName(f.name));
+        // 自动识别到款号时，归入款号目录（与手动填款号行为一致）
+        if (!styleNo && effStyleNo && !targetDir) fileDir = '/' + effStyleNo;
+        // 保持云端文件名与电脑端原文件名一致（重名时 upsert 覆盖）
+        var path = this.join(fileDir, this._safeName(f.name));
         try {
-          var res = await this._st().upload(path.slice(1), f, { contentType: f.type || this._guessMime(f.name), upsert: false });
+          var res = await this._st().upload(path.slice(1), f, { contentType: f.type || this._guessMime(f.name), upsert: true });
           if (res && res.error) throw res.error;
           okCount++;
           // 图片 + 款号 → 写入 StyleImgCache 共享缓存（跨模块缩略图）
-          if (styleNo && z && z.key === 'image') this._cacheStyleUpload(styleNo, path, f.name);
-          console.log('[CFB] 上传成功:', path);
+          if (effStyleNo && z && z.key === 'image') this._cacheStyleUpload(effStyleNo, path, f.name);
+          console.log('[CFB] 上传成功:', path, effStyleNo ? '(关联款号 ' + effStyleNo + ')' : '');
         } catch(err) {
           failCount++;
           failNames.push(f.name);
@@ -1280,9 +1285,14 @@
           if (rel.charAt(0) === '/') rel = rel.slice(1);
           var path = self.join(base, rel).replace(/\/+/g, '/');
           try {
-            var res = await self._st().upload(path.slice(1), f, { contentType: f.type || self._guessMime(f.name), upsert: false });
+            var res = await self._st().upload(path.slice(1), f, { contentType: f.type || self._guessMime(f.name), upsert: true });
             if (res && res.error) throw res.error;
             ok++;
+            // 图片文件夹上传：从路径或文件名识别款号并写共享缓存
+            if (self._isImageName(f.name)) {
+              var snFromPath = self._detectStyleNoFromPath(path);
+              if (snFromPath) self._cacheStyleUpload(snFromPath, path, f.name);
+            }
           } catch(e) { fail++; console.error('[CFB] 文件夹上传失败:', path, e); }
           self.setProgress(Math.round((i + 1) / files.length * 100));
         }
@@ -1504,6 +1514,45 @@
     },
     _safeName: function(name) {
       return String(name || 'file').replace(/[\\/:*?"<>|]/g, '_');
+    },
+    // 从图片文件名自动识别款号（去掉扩展名后匹配）
+    // 支持：纯数字款号(1110577)、带前缀款号(GW27-003 / AB1234 / SS-3011043)
+    _detectStyleNoFromName: function(name) {
+      if (!name) return '';
+      var stem = String(name).replace(/\.[^.]+$/, '');
+      // 1) 带字母前缀+连字符/数字的款号：GW27-003、SS-3011043、AB-12345
+      var m1 = stem.match(/[A-Za-z]{1,4}[-_]?\d{2,5}[-_]?\d{1,5}/);
+      if (m1) return m1[0];
+      // 2) 纯数字款号（5-8 位）
+      var m2 = stem.match(/\d{5,8}/);
+      if (m2) return m2[0];
+      // 3) 字母+数字无连字符：GW27003、AB1234
+      var m3 = stem.match(/[A-Za-z]{1,4}\d{3,6}/);
+      if (m3) return m3[0];
+      return '';
+    },
+    // 判断是否为图片文件
+    _isImageName: function(name) {
+      var e = this._extOf(name);
+      return ['png','jpg','jpeg','gif','webp','bmp','svg'].indexOf(e) >= 0;
+    },
+    // 从完整路径中识别款号（优先取路径中段的款号目录，再取文件名）
+    _detectStyleNoFromPath: function(path) {
+      if (!path) return '';
+      var parts = String(path).split('/');
+      // 路径中间段（排除首尾：首是分区目录如"图片文件"，尾是文件名）
+      for (var i = parts.length - 2; i >= 1; i--) {
+        var seg = parts[i];
+        if (seg && /\d/.test(seg)) {
+          // 段名本身像款号
+          var m = seg.match(/[A-Za-z]{1,4}[-_]?\d{2,5}[-_]?\d{1,5}/) ||
+                  seg.match(/\d{5,8}/) ||
+                  seg.match(/[A-Za-z]{1,4}\d{3,6}/);
+          if (m) return m[0];
+        }
+      }
+      // 退回文件名
+      return this._detectStyleNoFromName(parts[parts.length - 1] || '');
     },
     _uuid: function() {
       try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(_e) {}
