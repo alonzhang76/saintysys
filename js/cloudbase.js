@@ -410,6 +410,71 @@ async function ensureLogin(app) {
   }
 }
 
+/* ===== JWT 写权限诊断 =====
+ * rdb REST 按 access_token 中的 role claim 映射数据库角色：
+ *   anon          → 只有 SELECT（写返回 permission denied / 401）
+ *   authenticated → GRANT 后可读写
+ * 页面初始化约 5 秒后自动打印一次；也可在控制台执行 __cbDiag() 手动探测
+ * （含一个「更新不存在 id」的非破坏性写探测，不会改动任何数据）。
+ */
+function _decodeJwtPayload(token) {
+  try {
+    var part = String(token).split(".")[1];
+    part = part.replace(/-/g, "+").replace(/_/g, "/");
+    while (part.length % 4) part += "=";
+    var json = decodeURIComponent(escape(atob(part)));
+    return JSON.parse(json);
+  } catch (e) { return null; }
+}
+
+async function cbDiag(probeWrite) {
+  var app = await getApp();
+  var out = { sdkReady: !!app, hasToken: false, role: null, sub: null, exp: null, isAnonymous: null, user: null };
+  var token = null;
+  try {
+    token = await fetchAccessToken(app);
+    out.hasToken = !!token;
+    var p = token ? _decodeJwtPayload(token) : null;
+    if (p) {
+      out.role = p.role || null;
+      out.sub = p.sub || null;
+      out.exp = p.exp ? new Date(p.exp * 1000).toLocaleString() : null;
+      out.isAnonymous = !!(p.is_anonymous || p.isAnonymous ||
+        (typeof p.sub === "string" && /^anon/i.test(p.sub)));
+    }
+    out.user = await fetchUser(app);
+  } catch (e) { out.error = e && e.message ? e.message : String(e); }
+  if (probeWrite && token) {
+    try {
+      // 更新一个必然不存在的 id：过了 GRANT → 200/0 行；权限不足 → 401/403 permission denied
+      var res = await fetch(
+        "https://" + CLOUDBASE_ENV + ".api.tcloudbasegateway.com/v1/rdb/rest/app_data_store?id=eq.__diag_perm_probe__",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+          body: JSON.stringify({ data: {} }),
+        }
+      );
+      out.writeProbeStatus = res.status;
+      out.writeProbeBody = (await res.text()).slice(0, 300);
+    } catch (e2) { out.writeProbeError = String(e2); }
+  }
+  var verdict = out.role === "authenticated"
+    ? "JWT 是 authenticated（登录身份）；若写仍失败 → 数据库 GRANT/RLS 问题，请执行 cloudbase-pg-setup.sql 第 5 节"
+    : (out.role === "anon"
+      ? "⚠️ JWT 是 anon（匿名身份）！写必然 401。请重新走邮箱登录（确认登录成功而非仅本地缓存会话）"
+      : "⚠️ 未识别到 role claim（token 缺失或异常），写请求会被当匿名拒绝");
+  out.verdict = verdict;
+  console.log("%c[cloudbase.js] 🔑 JWT 诊断\n" + JSON.stringify(out, null, 2) + "\n结论：" + verdict,
+    "color:#0369a1;font-size:12px;");
+  return out;
+}
+window.__cbDiag = function () { return cbDiag(true); };
+_appPromise.then(function () {
+  // 等匿名/邮箱登录态稳定后自动打印一次角色（只读，不做写探测）
+  setTimeout(function () { cbDiag(false).catch(function () {}); }, 5000);
+});
+
 // CloudBase 异常 → Supabase 风格 error 对象
 function mapError(e) {
   if (!e) return null;

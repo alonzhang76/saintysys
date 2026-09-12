@@ -108,6 +108,9 @@ CREATE POLICY submission_files_anon_read ON public.submission_files
 -- 原因：控制台手动建表通常只给 authenticated 授予了 SELECT，缺少 INSERT/UPDATE/DELETE；
 --       或第 2 节 GRANT 执行时角色不存在而整条脚本中断。
 -- 本段可独立、重复执行（幂等）。
+-- ⚠️ 执行方式：请「整段一起执行」；若 DO 块报 "permission denied to create role"，
+--    说明控制台账号无建角色权限（PG 环境通常已内置 anon/authenticated），
+--    注释掉下面这个 DO 块后继续执行其余 GRANT 语句即可。
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
@@ -153,6 +156,8 @@ END $$;
 -- ---------- 6. 诊断（执行后把结果发给排查人员） ----------
 -- 当前会话身份：
 SELECT current_user AS current_user, session_user AS session_user;
+-- 三个前端角色是否存在（authenticated / anon / service_role 都应能查到）：
+SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated','service_role') ORDER BY rolname;
 -- authenticated 对各表的实际权限（应有 SELECT/INSERT/UPDATE/DELETE 四行）：
 SELECT table_name, string_agg(privilege_type, ',' ORDER BY privilege_type) AS grants
 FROM information_schema.role_table_grants
